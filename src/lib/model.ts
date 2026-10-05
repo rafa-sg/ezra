@@ -206,6 +206,14 @@ export const workspaceSchema = z.object({
   media: z.array(mediaSchema).max(1000),
   history: z.array(eventSchema).max(10000),
   catalog: z.array(catalogProductSchema).max(2000).default([]),
+  // Per-business colors and logo; empty values keep the ezrá look.
+  appearance: z
+    .object({
+      primary: z.union([z.literal(""), z.string().regex(/^#[0-9a-fA-F]{6}$/)]),
+      secondary: z.union([z.literal(""), z.string().regex(/^#[0-9a-fA-F]{6}$/)]),
+      logoMediaId: z.union([z.literal(""), id]),
+    })
+    .default({ primary: "", secondary: "", logoMediaId: "" }),
   // What the owner confirmed about each account before an official connection.
   socialSetup: z
     .object({

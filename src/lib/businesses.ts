@@ -77,6 +77,7 @@ async function initializeWorkspace(business: Business) {
     sources: [],
     media: [],
     catalog: [],
+    appearance: { primary: "", secondary: "", logoMediaId: "" },
     socialSetup: {
       instagramProfessional: "unknown" as const,
       instagramLinkedToPage: "unknown" as const,

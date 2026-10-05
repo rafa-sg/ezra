@@ -85,6 +85,9 @@ export function reconcile(previous: Workspace, raw: unknown, now = new Date()): 
       ...(postId ? { postId } : {}),
     });
   const brandChanged = JSON.stringify(next.brand) !== JSON.stringify(previous.brand);
+  const logo = next.appearance.logoMediaId;
+  if (logo && !next.media.some((m) => m.id === logo && m.mime.startsWith("image/")))
+    throw new WorkflowError("El logo debe ser una imagen de la biblioteca de este negocio.");
   for (const product of next.catalog) {
     const old = previous.catalog.find((p) => p.id === product.id);
     const changed =

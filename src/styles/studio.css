@@ -116,8 +116,8 @@
   stroke-width: 1.6;
 }
 .nav-item.active {
-  color: #725bcb;
-  background: #efebfa;
+  color: var(--violet-dark);
+  background: var(--lilac);
   font-weight: 600;
 }
 .nav-item:hover {
@@ -3405,9 +3405,10 @@
   gap: 28px;
   padding: 27px 30px;
   margin-bottom: 24px;
-  border: 1px solid #e6dff5;
+  border: 1px solid color-mix(in srgb, var(--violet) 18%, #fff);
+  border-left: 4px solid var(--brand-secondary, var(--violet));
   border-radius: 14px;
-  background: #f0edf8;
+  background: var(--lilac);
 }
 .commercial-banner h2 {
   font-size: 23px;
@@ -4062,3 +4063,47 @@
   text-overflow: ellipsis;
 }
 
+/* Per-business appearance */
+.business-logo {
+  display: block;
+  width: 100%;
+  max-height: 64px;
+  object-fit: contain;
+  margin-bottom: 4px;
+}
+.appearance-panel input[type="color"] {
+  width: 100%;
+  height: 40px;
+  padding: 3px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.appearance-preview {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.appearance-preview img {
+  height: 44px;
+  max-width: 120px;
+  object-fit: contain;
+}
+.appearance-chip {
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--violet-dark);
+  background: var(--lilac);
+}
+.appearance-accent {
+  width: 36px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--brand-secondary, var(--violet));
+}

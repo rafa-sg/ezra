@@ -68,6 +68,8 @@ import {
   StatusBadge,
 } from "./ui";
 import { SocialSetupPanel } from "./social-setup";
+import { AppearancePanel } from "./appearance-panel";
+import { themeStyle } from "@/lib/theme";
 import { type Commit, MediaUpload, PostEditor, SourceEditor, type UploadFile } from "./editor";
 
 const navigation = [
@@ -405,7 +407,7 @@ export function Studio({
 
   return (
     <FeedbackContext.Provider value={notice}>
-      <div className="app-shell">
+      <div className="app-shell" style={state ? themeStyle(state.appearance) : undefined}>
         <a href="#main" className="skip-link">
           Saltar al contenido
         </a>
@@ -438,6 +440,13 @@ export function Studio({
             </button>
           )}
           <div className="business-switch">
+            {state?.appearance.logoMediaId && (
+              <img
+                className="business-logo"
+                src={businessApiUrl(`/api/media/${state.appearance.logoMediaId}`, business.id)}
+                alt={`Logo de ${business.name}`}
+              />
+            )}
             <label>
               Negocio activo
               <select
@@ -1941,6 +1950,7 @@ function SettingsPage({
           </div>
         </section>
         {legacyAutomation && <SpendPanel />}
+        <AppearancePanel key={`look-${state.revision}`} state={state} commit={commit} busy={busy} />
         <SocialSetupPanel key={state.revision} state={state} commit={commit} busy={busy} />
         <section className="panel connections-panel">
           <div className="section-heading">

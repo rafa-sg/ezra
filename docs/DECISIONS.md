@@ -180,3 +180,15 @@ Aprobada por el propietario, con las tres recomendaciones: nivel gratuito, `gemi
   - guarda si Instagram es profesional, si está vinculado a la página, si hay control total de la página y qué WhatsApp se usa;
   - muestra qué falta;
   - no conecta, no publica y no envía nada; WhatsApp personal se marca como no conectable.
+
+## 2026-10-05 · Apariencia propia por negocio (Sgmotos)
+
+- **Campo `appearance` por negocio:** color principal, color de acento y logo, compatible con los datos existentes. Vacío conserva el estilo de ezrá.
+- **Cómo se aplica:** solo cambian variables CSS (`--violet`, `--violet-dark`, `--lilac`, `--brand-secondary`); la estructura y el comportamiento son iguales para todos.
+- **Contraste:** si el color principal no alcanza 4.5:1 con texto blanco, se usa automáticamente un tono más oscuro.
+- **Logo:** debe ser una imagen de la biblioteca del mismo negocio, comprobado en el servidor.
+- **Sgmotos:**
+  - azul `#3070B0` y rojo `#C83020`, medidos sobre su logo;
+  - el logo se limpió de las cintas de la bandera y se guardó en su biblioteca como material con autorización del propietario;
+  - copia previa de sus datos en `Documentos/Respaldos-ezra/`.
+- Los datos comerciales del cliente (marcas que distribuye, ubicación, cuentas) se guardan fuera de Git, en notas privadas; se usan para clasificar marcas, no para inventar especificaciones.
