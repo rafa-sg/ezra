@@ -23,7 +23,7 @@ const moves: Record<Status, Status[]> = {
   rejected: ["rejected", "draft", "review"],
   published: ["published"],
 };
-function editorial(post: Post) {
+export function editorial(post: Post) {
   return JSON.stringify([
     post.title,
     post.caption,

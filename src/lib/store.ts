@@ -26,17 +26,39 @@ export async function readWorkspace(): Promise<Workspace> {
     return workspaceSchema.parse(JSON.parse(await readFile(file, "utf8")));
   }
 }
-export async function mutateWorkspace(
-  change: (current: Workspace) => Workspace | Promise<Workspace>,
-): Promise<Workspace> {
-  const operation = (globals.ezraWriteQueue || Promise.resolve()).then(async () => {
-    const current = await readWorkspace();
-    const next = workspaceSchema.parse(await change(current));
-    const temporary = path.join(dataDirectory, `.workspace-${crypto.randomUUID()}.tmp`);
-    await writeFile(temporary, JSON.stringify(next, null, 2), { mode: 0o600 });
-    await rename(temporary, file);
-    return next;
-  });
+// Every write to data/ goes through this single queue, so files never interleave.
+export function enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+  const operation = (globals.ezraWriteQueue || Promise.resolve()).then(task);
   globals.ezraWriteQueue = operation.catch(() => {});
   return operation;
+}
+export async function writeJsonAtomic(target: string, value: unknown) {
+  const temporary = path.join(
+    dataDirectory,
+    `.${path.basename(target)}-${crypto.randomUUID()}.tmp`,
+  );
+  await writeFile(temporary, JSON.stringify(value, null, 2), { mode: 0o600 });
+  await rename(temporary, target);
+}
+async function writeWorkspace(change: (current: Workspace) => Workspace | Promise<Workspace>) {
+  const next = workspaceSchema.parse(await change(await readWorkspace()));
+  await writeJsonAtomic(file, next);
+  return next;
+}
+export function mutateWorkspace(
+  change: (current: Workspace) => Workspace | Promise<Workspace>,
+): Promise<Workspace> {
+  return enqueueWrite(() => writeWorkspace(change));
+}
+/**
+ * Adds a history event without bumping `revision`: reconcile() never trusts
+ * client history, so open tabs keep saving without a spurious 409.
+ * Must run inside enqueueWrite. Idempotent by event id.
+ */
+export function appendHistoryUnqueued(event: Workspace["history"][number]) {
+  return writeWorkspace((current) =>
+    current.history.some((e) => e.id === event.id)
+      ? current
+      : { ...current, history: [event, ...current.history].slice(0, 10000) },
+  );
 }

@@ -24,3 +24,16 @@ El usuario confirmó que las integraciones y automatizaciones se implementarán 
 Primera fase futura: n8n Community local y flujo de prueba sin llamadas pagadas ni publicación real. Una prueba completada devuelve un resultado marcado como simulado. Después: fuentes permitidas, propuesta de borrador, generación opcional y publicación aprobada en cuenta propia. La ejecución real requiere verificar permisos de Meta, medios accesibles y consumo del proveedor. n8n no sustituye esos requisitos.
 
 No está instalado ni conectado en el hito actual. Ver `docs/N8N_ARCHITECTURE.md` para contrato, aprobaciones, reintentos y límites de licencia antes de ofrecer el servicio a empresas.
+
+## 2026-10-04 · Lado de ezrá para la prueba simulada de n8n
+
+Aprobado por el usuario. n8n sigue sin instalar ni conectar.
+
+- `contentRevision` = hash SHA-256 de `editorial(post)`, las fuentes vinculadas y la marca. Se calcula al crear el encargo; no se guarda en la publicación ni cambia el esquema. Es una huella, no un contador: la futura autorización real también debe comprobar el estado de aprobación.
+- Encargos en `data/automation.json`, con Zod y la misma cola de escritura que `workspace.json`. Se incluye en el respaldo ZIP. `schemaVersion` y el PUT de `/api/workspace` no cambian.
+- `POST /api/automation/jobs`: ruta local de la interfaz (proxy de loopback y origen). Guarda el encargo antes de enviarlo y lo envía a `N8N_WEBHOOK_URL` con la cabecera `x-automation-secret` = `EZRA_TO_N8N_SECRET`. Solo acepta `action: "connection_test"` y `mode: "simulation"`. La URL debe ser local; tiene un límite de 5 s y no sigue redirecciones. Estados: `queued` → `sent` | `delivery_failed` → `completed` | `failed`.
+- `POST /api/automation/results`: exige `N8N_TO_EZRA_SECRET` en la misma cabecera y compara en tiempo constante. Solo acepta resultados simulados, con `providerId` y `publishedUrl` vacíos. Si `contentRevision` no coincide o hay otro resultado distinto: 409. Un resultado repetido igual devuelve 200 sin nuevo evento.
+- Secretos ausentes, de menos de 32 caracteres o iguales entre sí cuentan como no configurados: 503 a todo. El navegador nunca recibe secretos.
+- Un resultado solo actualiza el encargo y añade un evento al historial (id fijo `job-<jobId>`, que permite reparar el evento sin duplicarlo). Añadir ese evento no sube `revision`, porque `reconcile` ignora el historial del navegador; así no aparecen 409 en pestañas abiertas. Nunca cambia el estado de una publicación.
+- Al reiniciar no se reenvía nada; un encargo pendiente sigue aceptando su resultado.
+- n8n en Docker: `proxy.ts` acepta el host `host.docker.internal` solo en `/api/automation/results`, que exige el secreto. Todas las demás rutas siguen siendo solo loopback (probado). Configuración prevista: publicar n8n con `-p 127.0.0.1:5678:5678` (`N8N_WEBHOOK_URL=http://127.0.0.1:5678/...`), y que n8n devuelva el resultado a `http://host.docker.internal:3000/api/automation/results`. El servidor sigue escuchando solo en 127.0.0.1; Docker Desktop para Mac debería reenviar `host.docker.internal` al loopback de la Mac, pero Docker no está instalado y hay que confirmarlo al instalar.

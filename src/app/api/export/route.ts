@@ -4,6 +4,7 @@ import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
 import path from "node:path";
 import { mediaDirectory, readWorkspace } from "@/lib/store";
+import { readAutomation } from "@/lib/automation";
 import { formatLabels, statusLabels } from "@/lib/model";
 import { apiError } from "@/lib/http";
 import { WorkflowError } from "@/lib/workflow";
@@ -31,9 +32,10 @@ export async function GET(request: Request) {
       );
     } else {
       zip.file("workspace.json", JSON.stringify(state, null, 2));
+      zip.file("automation.json", JSON.stringify(await readAutomation(), null, 2));
       zip.file(
         "LEEME.txt",
-        "Respaldo completo de ezrá.\nDetén el servidor. Conserva una copia de data/ actual. Copia workspace.json y la carpeta media/ de este respaldo dentro de data/. Reinicia con npm run dev.\nNo subas este respaldo a un repositorio público: contiene tus borradores y medios.\n",
+        "Respaldo completo de ezrá.\nDetén el servidor. Conserva una copia de data/ actual. Copia workspace.json, automation.json y la carpeta media/ de este respaldo dentro de data/. Reinicia con npm run dev.\nNo subas este respaldo a un repositorio público: contiene tus borradores y medios.\n",
       );
     }
     const missing: string[] = [];
