@@ -55,13 +55,13 @@ La cuenta ya está en Free, así que hoy no se pierde nada. Si en el futuro se a
 3. En Metricool: crear la publicación en la red indicada, pegar el texto, subir los medios y programarla para la fecha prevista.
 4. Cuando se publique: copiar el enlace real (instagram.com o facebook.com) y pulsar **Registrar publicación manual** en ezrá.
 
-### ¿Basta la exportación actual?
+### ¿Basta la exportación?
 
-Sí para hacerlo a mano: incluye texto, red, formato, fecha prevista en hora de El Salvador, fuentes y archivos originales, y el registro del enlace ya acepta direcciones https de Instagram y Facebook. Mejoras propuestas, **no implementadas** y pendientes de aprobación:
+Sí. El paquete de una publicación incluye `publicacion.txt` (texto, red, formato, fecha prevista en hora de El Salvador, fuentes y medios) y los archivos originales, y el registro del enlace acepta direcciones https de Instagram y Facebook. Además, desde el 4 de octubre de 2026:
 
-- **`texto.txt` solo con el texto final**, para copiar y pegar sin arrastrar los datos internos de `publicacion.txt`.
-- **Aviso de formato:** Instagram por API solo acepta JPEG. Si Metricool lo exige o convierte por su cuenta está **sin verificar**; ezrá acepta PNG y WebP.
-- **Aviso si el paquete no está aprobado:** hoy se puede descargar el paquete de un borrador. Proponer una advertencia visible en `publicacion.txt` cuando la versión no esté aprobada.
+- `texto.txt` contiene solo el texto final, para copiar y pegar en Metricool.
+- Si la versión no está aprobada, el ZIP se llama `…-no-aprobada.zip` y `publicacion.txt` empieza con «VERSIÓN NO APROBADA».
+- En Instagram con fotos PNG o WebP, `publicacion.txt` avisa que la publicación por API solo admite JPEG. Si Metricool exige o convierte el formato por su cuenta sigue **sin verificar**.
 
 ## Fuentes
 

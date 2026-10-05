@@ -24,11 +24,25 @@ export async function GET(request: Request) {
         "El respaldo supera 1 GB. Detén el servidor y copia la carpeta data/ completa para conservar todos tus archivos.",
         413,
       );
+    // Only an approved version may be scheduled by hand (e.g. in Metricool).
+    const approved = post ? ["approved", "planned", "published"].includes(post.status) : true;
     if (post) {
       const sources = state.sources.filter((s) => post.sourceIds.includes(s.id));
+      const warnings = [
+        post.demo ? "EJEMPLO DE DEMOSTRACIÓN — revisar antes de usar" : "",
+        approved
+          ? ""
+          : "VERSIÓN NO APROBADA — no la programes ni la publiques hasta aprobarla en ezrá.",
+        post.channel === "instagram" &&
+        assets.some((m) => m.mime === "image/png" || m.mime === "image/webp")
+          ? "AVISO: Instagram publica fotos por API solo en JPEG. Si tu herramienta de programación rechaza un PNG o WebP, conviértelo a JPEG antes de subirlo."
+          : "",
+      ].filter(Boolean);
+      // Caption alone, ready to copy and paste into the scheduling tool.
+      zip.file("texto.txt", `${post.caption}\n`);
       zip.file(
         "publicacion.txt",
-        `${post.demo ? "EJEMPLO DE DEMOSTRACIÓN — revisar antes de usar\n\n" : ""}${post.title}\n\n${post.caption}\n\nRed: ${post.channel}\nFormato: ${formatLabels[post.format]}\nEstado: ${statusLabels[post.status]}\nFecha prevista (El Salvador): ${post.plannedAt || "Sin definir"}\n\nFUENTES\n${sources.map((s) => `${s.name}: ${s.url} (revisión: ${s.reviewedOn || "pendiente"})`).join("\n")}\n\nMEDIOS\n${assets.map((m) => `${m.filename} — origen: ${m.origin}; licencia/nota: ${m.attribution || "sin nota"}`).join("\n")}\n\nEste paquete no publica ni programa contenido en una red social. Las ilustraciones de ejemplo no son fotografías reales.\n`,
+        `${warnings.map((w) => `${w}\n\n`).join("")}${post.title}\n\n${post.caption}\n\nRed: ${post.channel}\nFormato: ${formatLabels[post.format]}\nEstado: ${statusLabels[post.status]}\nFecha prevista (El Salvador): ${post.plannedAt || "Sin definir"}\n\nFUENTES\n${sources.map((s) => `${s.name}: ${s.url} (revisión: ${s.reviewedOn || "pendiente"})`).join("\n")}\n\nMEDIOS\n${assets.map((m) => `${m.filename} — origen: ${m.origin}; licencia/nota: ${m.attribution || "sin nota"}`).join("\n")}\n\nEste paquete no publica ni programa contenido en una red social. texto.txt contiene solo el texto para copiar y pegar. Las ilustraciones de ejemplo no son fotografías reales.\n`,
       );
     } else {
       zip.file("workspace.json", JSON.stringify(state, null, 2));
@@ -62,7 +76,7 @@ export async function GET(request: Request) {
     return new Response(Readable.toWeb(stream) as ReadableStream, {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="ezra-${post ? post.id : "respaldo"}${missing.length ? "-incompleto" : ""}.zip"`,
+        "Content-Disposition": `attachment; filename="ezra-${post ? post.id : "respaldo"}${approved ? "" : "-no-aprobada"}${missing.length ? "-incompleto" : ""}.zip"`,
         "Cache-Control": "no-store",
       },
     });

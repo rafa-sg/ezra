@@ -22,7 +22,7 @@ Leer `docs/CLAUDE_HANDOFF.md`. El usuario pidió continuar en Claude y compartir
 2. Probar con el propietario una semana de contenido de Spotmi y fuentes realmente revisadas.
 3. Mejorar los problemas observados sin introducir servicios facturados.
 4. n8n local instalado y prueba simulada de ida y vuelta verificada (ver DECISIONS). Cuenta local de n8n creada, copia de `~/.n8n` en `Documentos/Respaldos-ezra/` y botón «Probar conexión con n8n» en Ajustes (`GET /api/automation/jobs` devuelve el estado sin secretos). Pendiente: revisión visual del botón por el usuario, porque el navegador automatizado no pasa la protección de origen.
-5. Metricool Free evaluado (ver `docs/METRICOOL.md`). Siguiente: primera publicación real programada **a mano** en Metricool desde una versión aprobada en ezrá, registrando después el enlace real. Mejoras de exportación propuestas, pendientes de aprobación: `texto.txt` solo con el texto final, aviso de formato JPEG para Instagram y advertencia al exportar una versión no aprobada.
+5. Metricool Free evaluado (ver `docs/METRICOOL.md`). Siguiente: primera publicación real programada **a mano** en Metricool desde una versión aprobada en ezrá, registrando después el enlace real. Exportación lista para esto: `texto.txt` con solo el texto, aviso JPEG para Instagram y advertencia/nombre `-no-aprobada` si la versión no está aprobada. Aprobar y publicar los hace el propietario.
 6. Antes de integrar Meta o Gemini, verificar requisitos oficiales actuales y decidir una prueba acotada.
 
 No activar API, despliegue ni publicación externa por leer esta lista. Los USD 20 adicionales siguen disponibles. La carpeta `data/` es privada y no se versiona.
