@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+data/*
+!data/.gitkeep
+work/
+test-results/
+playwright-report/
+*.tsbuildinfo
+.env*
+!.env.example
+.DS_Store
+*.log
+coverage/
+.claude/settings.local.json
