@@ -21,7 +21,7 @@ Leer `docs/CLAUDE_HANDOFF.md`. El usuario pidió continuar en Claude y compartir
 1. Completar una pasada visual de calendario, biblioteca, ajustes y móvil. Los detalles de lo ya probado están en `docs/VALIDATION.md`.
 2. Probar con el propietario una semana de contenido de Spotmi y fuentes realmente revisadas.
 3. Mejorar los problemas observados sin introducir servicios facturados.
-4. Instalar o confirmar n8n local y crear el flujo de prueba que llame a los endpoints ya preparados. Comprobar antes si el usuario ya tiene una instancia y decidir cómo se conecta (host o Docker; ver la nota sobre `proxy.ts` en DECISIONS). Aún no hay botón en la interfaz para lanzar la prueba.
+4. n8n local instalado y prueba simulada de ida y vuelta verificada (ver DECISIONS). Siguiente: crear tu cuenta local de n8n, respaldar `~/.n8n` y añadir un botón «Probar conexión» en Ajustes que muestre el estado del encargo.
 5. Antes de integrar Meta o Gemini, verificar requisitos oficiales actuales y decidir una prueba acotada.
 
 No activar API, despliegue ni publicación externa por leer esta lista. Los USD 20 adicionales siguen disponibles. La carpeta `data/` es privada y no se versiona.

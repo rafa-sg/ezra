@@ -37,3 +37,13 @@ Aprobado por el usuario. n8n sigue sin instalar ni conectar.
 - Un resultado solo actualiza el encargo y añade un evento al historial (id fijo `job-<jobId>`, que permite reparar el evento sin duplicarlo). Añadir ese evento no sube `revision`, porque `reconcile` ignora el historial del navegador; así no aparecen 409 en pestañas abiertas. Nunca cambia el estado de una publicación.
 - Al reiniciar no se reenvía nada; un encargo pendiente sigue aceptando su resultado.
 - n8n en Docker: `proxy.ts` acepta el host `host.docker.internal` solo en `/api/automation/results`, que exige el secreto. Todas las demás rutas siguen siendo solo loopback (probado). Configuración prevista: publicar n8n con `-p 127.0.0.1:5678:5678` (`N8N_WEBHOOK_URL=http://127.0.0.1:5678/...`), y que n8n devuelva el resultado a `http://host.docker.internal:3000/api/automation/results`. El servidor sigue escuchando solo en 127.0.0.1; Docker Desktop para Mac debería reenviar `host.docker.internal` al loopback de la Mac, pero Docker no está instalado y hay que confirmarlo al instalar.
+
+## 2026-10-04 · n8n local instalado
+
+El usuario no tenía n8n y aprobó instalarlo en la Mac, sin Docker.
+
+- n8n Community 2.41.6, con versión fija, en `~/n8n-local`, fuera del repositorio. La caché global de npm tenía archivos de root, así que se usó una caché aparte (`~/n8n-local/.npm-cache`), sin `sudo`.
+- `automation/n8n/Abrir n8n.command` lo arranca solo en 127.0.0.1:5678, en la zona horaria de El Salvador, sin telemetría, plantillas, API pública ni paquetes comunitarios.
+- Los secretos se generaron al azar en `.env.local` (permisos 600, ignorado por Git). Se importaron en n8n como credenciales cifradas «ezrá → n8n» y «n8n → ezrá», y el archivo temporal se borró.
+- El flujo exportado no contiene secretos, solo referencias a esas credenciales. Si recibe algo que no es una prueba simulada, no responde.
+- Primera ida y vuelta real verificada: encargo completado, un evento en el historial, publicaciones y `revision` sin cambios. Sin llamar a servicios externos ni generar gasto.

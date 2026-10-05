@@ -95,3 +95,13 @@ Consulta `docs/ROADMAP.md` para los siguientes pasos. La implementación actual 
 ## Automatización con n8n
 
 Se usará n8n como motor de integraciones. La arquitectura está documentada en `docs/N8N_ARCHITECTURE.md`; todavía no está instalado ni conectado. ezrá conservará los datos y la aprobación editorial. El primer flujo será una prueba local simulada.
+
+## Automatización local con n8n (prueba simulada)
+
+n8n está instalado fuera del proyecto, en `~/n8n-local` (versión fija 2.41.6). Sus datos y su clave de cifrado viven en `~/.n8n`: **inclúyelos en tus copias de seguridad y nunca los subas a Git**. Sin esa clave, las credenciales guardadas en n8n no se pueden recuperar.
+
+1. Abre `automation/n8n/Abrir n8n.command`. n8n queda en **http://127.0.0.1:5678**, solo en esta computadora y sin telemetría. La primera vez que abras esa dirección, n8n te pedirá crear tu cuenta local.
+2. Abre ezrá como siempre. Los secretos y la dirección de n8n están en `.env.local`, fuera de Git; el navegador nunca los recibe.
+3. El flujo «ezrá · prueba de conexión simulada» (`automation/n8n/workflows/`) recibe el encargo, comprueba el secreto y devuelve un resultado simulado. En el historial verás «Prueba de conexión simulada». **No publica nada ni cambia ninguna publicación.**
+
+Por ahora la prueba se lanza por HTTP (`POST /api/automation/jobs`); todavía no hay un botón en la interfaz.
