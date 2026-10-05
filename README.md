@@ -91,3 +91,7 @@ npm run test:integration
 - Futuro acceso comercial requiere autenticación, permisos, aislamiento de datos, una base de datos y un ejecutor de publicaciones confiable.
 
 Consulta `docs/ROADMAP.md` para los siguientes pasos. La implementación actual es un piloto funcional; no un servicio listo para vender.
+
+## Automatización con n8n
+
+Se usará n8n como motor de integraciones. La arquitectura está documentada en `docs/N8N_ARCHITECTURE.md`; todavía no está instalado ni conectado. ezrá conservará los datos y la aprobación editorial. El primer flujo será una prueba local simulada.

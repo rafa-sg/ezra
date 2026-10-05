@@ -44,3 +44,9 @@ Leer AGENTS.md, README.md, docs/PROJECT_BRIEF.md, docs/DECISIONS.md, docs/TASKS.
 En Claude Code local: trabajar directamente dentro de Spotbot. En Claude Chat: el archivo de migración adjunto contiene código/contexto como referencia; no afirmar acceso al disco. Para implementar cambios reales, usar Claude Code en esa carpeta o devolver cambios concretos que se apliquen allí. No confundir una respuesta de chat con archivos guardados.
 
 Siguiente trabajo recomendado: completar validación visual y ayudar a Rafael a crear su primera publicación real con fuente verificada. No hace falta que aprenda todo antes; explicar cada paso en español claro y breve.
+
+## Actualización expresa del usuario: n8n
+
+Usaremos n8n para integrar y automatizar procesos. Leer `docs/N8N_ARCHITECTURE.md`. El panel y sus aprobaciones siguen en ezrá; n8n ejecuta encargos autenticados y devuelve resultados. La siguiente base técnica de automatización será una prueba local simulada, sin gasto ni redes conectadas. No implementar otro motor en paralelo ni reemplazar el panel por n8n. Verificar si Rafael ya tiene una instancia antes de instalar otra. La decisión está documentada, aún no implementada.
+
+Repositorio privado confirmado: https://github.com/Josueduardev/ezra-spotmi. El primer commit funcional es `04c0d83`. Los datos editoriales no están en Git; en la migración adjunta se incluye una instantánea de los datos locales actuales, que a esta fecha son ejemplos.

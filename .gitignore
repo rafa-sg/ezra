@@ -13,3 +13,4 @@ playwright-report/
 *.log
 coverage/
 .claude/settings.local.json
+handoff/
