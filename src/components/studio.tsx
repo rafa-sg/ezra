@@ -19,6 +19,7 @@ import {
   HardDrive,
   LayoutDashboard,
   Leaf,
+  Lightbulb,
   LoaderCircle,
   Menu,
   MoreHorizontal,
@@ -42,6 +43,8 @@ import {
   type Workspace,
   displayDate,
   newPost,
+  sourceKindLabels,
+  sourceReadable,
   sourceUsable,
   statusLabels,
   today,
@@ -88,6 +91,8 @@ export function Studio({ initialView }: { initialView?: string }) {
   const [filter, setFilter] = useState<Status | "all">("all");
   const [query, setQuery] = useState("");
   const [contentTab, setContentTab] = useState<"posts" | "library">("posts");
+  const [ideaData, setIdeaData] = useState<IdeasOverview | null>(null);
+  const [searching, setSearching] = useState(false);
   const notify = (message: string, error = false) => setNotice({ message, error });
   const load = async () => {
     try {
@@ -134,6 +139,15 @@ export function Studio({ initialView }: { initialView?: string }) {
     window.history.pushState(null, "", `?view=${next}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  useEffect(() => {
+    if (view !== "sources") return;
+    const controller = new AbortController();
+    fetch("/api/automation/ideas", { signal: controller.signal })
+      .then(async (res) => (res.ok ? ((await res.json()) as IdeasOverview) : null))
+      .then((data) => data && setIdeaData(data))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [view]);
   const commit: Commit = async (change) => {
     if (!state || locked.current) return null;
     locked.current = true;
@@ -185,6 +199,77 @@ export function Studio({ initialView }: { initialView?: string }) {
       locked.current = false;
       setBusy(false);
     }
+  };
+  const loadIdeas = async () => {
+    const res = await fetch("/api/automation/ideas");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    setIdeaData(data);
+    return data as IdeasOverview;
+  };
+  // One search per click: n8n reads only authorized sites and RSS, then answers.
+  const searchIdeas = async () => {
+    setSearching(true);
+    try {
+      const res = await fetch("/api/automation/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "find_ideas", mode: "live" }),
+      });
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(
+          res.status === 502
+            ? "n8n no respondió. Abre «Abrir n8n.command» y vuelve a intentarlo."
+            : data.error,
+        );
+      let latest = (await loadIdeas()).latestSearch;
+      for (
+        let i = 0;
+        i < 45 && latest?.jobId === data.job.jobId && latest?.status === "sent";
+        i++
+      ) {
+        await new Promise((r) => setTimeout(r, 2000));
+        latest = (await loadIdeas()).latestSearch;
+      }
+      if (latest?.status === "completed") {
+        notify(
+          `${latest.accepted} ideas nuevas.${latest.rejected ? ` ${latest.rejected} descartadas por enlaces de otros sitios o datos inválidos.` : ""}`,
+        );
+        await load();
+      } else if (latest?.status === "sent")
+        notify("La búsqueda sigue en curso. Vuelve a abrir Fuentes en un momento.");
+      else notify("La búsqueda no se completó. Revisa n8n y vuelve a intentarlo.", true);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "No se pudo buscar ideas.", true);
+    } finally {
+      setSearching(false);
+    }
+  };
+  const markIdea = async (id: string, status: "discarded" | "used") => {
+    const res = await fetch("/api/automation/ideas", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
+    if (!res.ok) notify((await res.json()).error || "No se pudo actualizar la idea.", true);
+    await loadIdeas().catch(() => {});
+  };
+  // The owner writes the text; the idea only seeds the title and its source.
+  const draftFromIdea = async (idea: IdeasOverview["ideas"][number]) => {
+    const post = {
+      ...newPost(),
+      title: idea.title.slice(0, 180),
+      sourceIds: state?.sources.some((s) => s.id === idea.sourceId && !s.demo)
+        ? [idea.sourceId]
+        : [],
+    };
+    const next = await commit((d) => {
+      d.posts.unshift(post);
+    });
+    if (!next) return;
+    await markIdea(idea.id, "used");
+    setEditing(next.posts.find((p) => p.id === post.id)!);
   };
   const create = async () => {
     const post = newPost();
@@ -562,10 +647,28 @@ export function Studio({ initialView }: { initialView?: string }) {
                       title="Buenas fuentes, mejores historias."
                       description="Tú eliges qué información entra en tu estudio."
                       action={
-                        <button className="button primary" onClick={() => setSourceEditing("new")}>
-                          <Plus size={17} />
-                          Añadir fuente
-                        </button>
+                        <div className="heading-actions">
+                          <button
+                            className="button secondary"
+                            onClick={() => void searchIdeas()}
+                            disabled={searching || !state.sources.some((s) => sourceReadable(s))}
+                            title="n8n lee solo tus sitios propios y RSS autorizados"
+                          >
+                            {searching ? (
+                              <LoaderCircle className="spin" size={17} />
+                            ) : (
+                              <Lightbulb size={17} />
+                            )}
+                            {searching ? "Buscando ideas…" : "Buscar ideas"}
+                          </button>
+                          <button
+                            className="button primary"
+                            onClick={() => setSourceEditing("new")}
+                          >
+                            <Plus size={17} />
+                            Añadir fuente
+                          </button>
+                        </div>
                       }
                     />
                     <div className="source-intro">
@@ -589,10 +692,14 @@ export function Studio({ initialView }: { initialView?: string }) {
                               <h3>{s.name}</h3>
                               {s.demo && <span className="demo-tag">Ejemplo</span>}
                             </div>
-                            <a href={s.url} target="_blank" rel="noreferrer">
-                              {new URL(s.url).hostname}
-                              <ExternalLink size={12} />
-                            </a>
+                            {s.url ? (
+                              <a href={s.url} target="_blank" rel="noreferrer">
+                                {new URL(s.url).hostname}
+                                <ExternalLink size={12} />
+                              </a>
+                            ) : (
+                              <span className="source-nolink">Sin enlace</span>
+                            )}
                             <p>{s.topics}</p>
                             <span
                               className={`badge ${sourceUsable(s) ? "status-approved" : s.status === "paused" ? "status-rejected" : "status-draft"}`}
@@ -606,17 +713,20 @@ export function Studio({ initialView }: { initialView?: string }) {
                                     ? "Necesita revisión"
                                     : "Por verificar"}
                             </span>
-                            <span className="source-kind">
-                              {s.kind === "owned"
-                                ? "Material propio"
-                                : s.kind === "inspiration"
-                                  ? "Solo inspiración"
-                                  : "Información"}
-                            </span>
+                            <span className="source-kind">{sourceKindLabels[s.kind]}</span>
                           </div>
                           <div className="source-last">
                             <small>Última revisión</small>
                             <span>{s.reviewedOn ? displayDate(s.reviewedOn) : "Pendiente"}</span>
+                            {sourceReadable(s) && (
+                              <small className="source-reading">
+                                {ideaData?.sources[s.id]
+                                  ? `Última lectura: ${displayDate(ideaData.sources[s.id].lastReadAt)} · ${ideaData.sources[s.id].ideas} ideas`
+                                  : "Aún sin leer"}
+                                {ideaData?.sources[s.id]?.skipped &&
+                                  ` · omitida: ${ideaData.sources[s.id].skipped}`}
+                              </small>
+                            )}
                             <button className="text-button" onClick={() => setSourceEditing(s)}>
                               Revisar fuente <ArrowUpRight size={14} />
                             </button>
@@ -624,6 +734,47 @@ export function Studio({ initialView }: { initialView?: string }) {
                         </article>
                       ))}
                     </div>
+                    {!!ideaData?.ideas.length && (
+                      <section className="panel ideas-panel">
+                        <div className="section-heading">
+                          <h2>Ideas encontradas</h2>
+                          <span className="muted">{ideaData.ideas.length} por revisar</span>
+                        </div>
+                        {ideaData.ideas.map((idea) => (
+                          <div className="idea-row" key={idea.id}>
+                            <Lightbulb size={17} />
+                            <div>
+                              <a href={idea.url} target="_blank" rel="noreferrer">
+                                {idea.title}
+                                <ExternalLink size={12} />
+                              </a>
+                              <p>
+                                {state.sources.find((s) => s.id === idea.sourceId)?.name ||
+                                  "Fuente eliminada"}
+                                {idea.publishedAt && ` · ${displayDate(idea.publishedAt)}`}
+                              </p>
+                            </div>
+                            <button
+                              className="text-button"
+                              onClick={() => void draftFromIdea(idea)}
+                              disabled={busy}
+                            >
+                              Crear borrador
+                            </button>
+                            <button
+                              className="text-button"
+                              onClick={() => void markIdea(idea.id, "discarded")}
+                            >
+                              Descartar
+                            </button>
+                          </div>
+                        ))}
+                        <p className="field-hint">
+                          Solo título y enlace de la fuente; ezrá no copia textos ni imágenes.
+                          Comprueba cada dato en la fuente antes de usarlo.
+                        </p>
+                      </section>
+                    )}
                     {!state.sources.length && (
                       <Empty
                         title="Dale una base a tus ideas"
@@ -631,8 +782,9 @@ export function Studio({ initialView }: { initialView?: string }) {
                       />
                     )}
                     <p className="footnote">
-                      Los sitios de ejemplo no se han consultado. ezrá no rastrea páginas ni obtiene
-                      contenido automáticamente.
+                      Los sitios de ejemplo no se han consultado. ezrá solo lee tus sitios propios y
+                      RSS autorizados cuando pulsas «Buscar ideas», respetando su robots.txt. Nunca
+                      redes sociales.
                     </p>
                   </>
                 )}
@@ -741,6 +893,24 @@ export function Studio({ initialView }: { initialView?: string }) {
     </FeedbackContext.Provider>
   );
 }
+
+type IdeasOverview = {
+  sources: Record<string, { lastReadAt: string; ideas: number; skipped: string }>;
+  ideas: {
+    id: string;
+    sourceId: string;
+    title: string;
+    url: string;
+    publishedAt: string | null;
+  }[];
+  latestSearch: {
+    jobId: string;
+    status: "queued" | "sent" | "delivery_failed" | "completed" | "failed";
+    deliveryError: string;
+    accepted: number;
+    rejected: number;
+  } | null;
+};
 
 function PageHeading({
   eyebrow,

@@ -27,18 +27,24 @@ export const statusSchema = z.enum([
   "published",
   "rejected",
 ]);
-export const sourceSchema = z.object({
-  id,
-  name: z.string().trim().min(1).max(160),
-  url: webUrl,
-  kind: z.enum(["information", "inspiration", "owned"]),
-  status: z.enum(["pending", "approved", "paused"]),
-  topics: z.string().max(500),
-  notes: z.string().max(2000),
-  reviewedOn: z.union([z.literal(""), dateOnly]),
-  expiresOn: z.union([z.literal(""), dateOnly]),
-  demo: z.boolean(),
-});
+export const sourceSchema = z
+  .object({
+    id,
+    name: z.string().trim().min(1).max(160),
+    // Only a manual inspiration note may omit its address.
+    url: optionalUrl,
+    kind: z.enum(["information", "inspiration", "owned", "rss"]),
+    status: z.enum(["pending", "approved", "paused"]),
+    topics: z.string().max(500),
+    notes: z.string().max(2000),
+    reviewedOn: z.union([z.literal(""), dateOnly]),
+    expiresOn: z.union([z.literal(""), dateOnly]),
+    demo: z.boolean(),
+  })
+  .refine((s) => s.kind === "inspiration" || s.url !== "", {
+    message: "Esta fuente necesita una dirección https.",
+    path: ["url"],
+  });
 export const postSchema = z.object({
   id,
   title: z.string().trim().min(1).max(180),
@@ -121,6 +127,22 @@ export const statusLabels: Record<Status, string> = {
   published: "Publicado manualmente",
   rejected: "Rechazado",
 };
+export const sourceKindLabels: Record<Source["kind"], string> = {
+  owned: "Sitio propio",
+  information: "Sitio oficial",
+  rss: "RSS",
+  inspiration: "Nota manual de inspiración",
+};
+/** Kinds n8n may read when the owner clicks «Buscar ideas»; notes are never read. */
+export const readableSourceKinds = ["owned", "rss"] as const;
+export function sourceReadable(source: Source, day = today()) {
+  return (
+    !source.demo &&
+    !!source.url &&
+    (readableSourceKinds as readonly string[]).includes(source.kind) &&
+    sourceUsable(source, day)
+  );
+}
 export const formatLabels: Record<Post["format"], string> = {
   photo: "Foto",
   carousel: "Carrusel",

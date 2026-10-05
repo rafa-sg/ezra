@@ -83,3 +83,36 @@ Aprobada por el propietario tras una investigación en solo lectura del reposito
 - En las migraciones del sitio, la política de inserción de `events` solo comprueba `created_by`. Nada en la base obliga a `is_verified = false`, así que un usuario con sesión podría publicar sin moderación llamando directamente a PostgREST. Se informó al propietario para que lo traslade al administrador del sitio.
 - El bucket `eventos` es público. Hay que decidir si las fotos de borradores van a una ruta o bucket no público.
 - Hay que confirmar el dominio del sitio: aparecen `spotmi.com.sv`, `spotmi.sv` y `spotmisv.com`.
+
+## 2026-10-04 · Fase A: fuentes reales e ideas (USD 0, sin IA)
+
+Aprobada por el propietario, con las tres recomendaciones del plan.
+
+- **Tipos de fuente:**
+  - sitio propio (`owned`), sitio oficial (`information`), RSS (`rss`, nuevo) y nota manual de inspiración (`inspiration`);
+  - la nota puede no tener enlace y nunca se lee ni verifica hechos;
+  - no cambia `schemaVersion`; los datos existentes siguen siendo válidos.
+- **Lectura:**
+  - `AGENTS.md` cambia de «no descargar fuentes automáticamente» a «una lectura por clic del propietario, solo de fuentes autorizadas, respetando robots.txt»;
+  - n8n lee solo RSS y el RSS que anuncie un sitio propio; los sitios oficiales sin RSS se consultan a mano;
+  - nada de redes sociales ni páginas HTML;
+  - se leen como máximo 10 fuentes por clic y 5 ideas por fuente, con un tiempo límite de 6 s por petición;
+  - el visitante se identifica como `ezra-spotmi`.
+- **robots.txt:**
+  - el grupo `ezra-spotmi` manda sobre `*`;
+  - si robots.txt no se puede consultar (5xx o error de red), la fuente no se lee y se anota el motivo.
+- **Ideas:**
+  - se guardan en `data/automation.json` (lista `ideas`), solo con título, enlace y fecha;
+  - el «dato breve» queda vacío: lo escribe el propietario o, más adelante, Gemini; no se copian extractos;
+  - las ideas nunca cambian publicaciones;
+  - «Crear borrador» abre un borrador vacío con el título y la fuente.
+- **Defensa:**
+  - lo que devuelve n8n se valida con Zod;
+  - se aceptan solo enlaces https del mismo sitio que su fuente;
+  - se limpian etiquetas y caracteres de control;
+  - se descartan duplicados;
+  - se muestra como texto.
+- **Configuración:**
+  - flujo en `docs/n8n/ezra-buscar-ideas.json`, con webhook propio (`N8N_IDEAS_WEBHOOK_URL`, solo loopback);
+  - comparte los dos secretos y credenciales de la prueba de conexión.
+- **Pendiente para la fase B:** el resumen propio de cada idea con Gemini, con tope de gasto.
