@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { UserButton } from "@clerk/nextjs";
 import {
   ArrowDownToLine,
   ArrowRight,
@@ -22,7 +23,8 @@ import {
   Lightbulb,
   LoaderCircle,
   Menu,
-  MoreHorizontal,
+  Package,
+  LogOut,
   Plus,
   Search,
   Settings2,
@@ -35,6 +37,9 @@ import {
   X,
 } from "lucide-react";
 import {
+  businessApiUrl,
+  defaultBusinessId,
+  type Business,
   type Brand,
   type Media,
   type Post,
@@ -50,7 +55,8 @@ import {
   today,
   zone,
 } from "@/lib/model";
-import { Artwork } from "./artwork";
+import type { Account } from "@/lib/auth";
+import { CatalogPage } from "./catalog-page";
 import {
   Checkline,
   Dialog,
@@ -65,8 +71,9 @@ import { type Commit, MediaUpload, PostEditor, SourceEditor, type UploadFile } f
 
 const navigation = [
   { id: "overview", label: "Resumen", icon: LayoutDashboard },
-  { id: "content", label: "Contenido", icon: FolderHeart },
-  { id: "calendar", label: "Calendario", icon: CalendarDays },
+  { id: "catalog", label: "Catálogo", icon: Package },
+  { id: "content", label: "Publicaciones", icon: FolderHeart },
+  { id: "calendar", label: "Agenda", icon: CalendarDays },
   { id: "sources", label: "Fuentes", icon: Globe2 },
   { id: "brand", label: "Marca y criterios", icon: SlidersHorizontal },
   { id: "settings", label: "Ajustes", icon: Settings2 },
@@ -74,7 +81,29 @@ const navigation = [
 type View = (typeof navigation)[number]["id"];
 type Notice = { message: string; error: boolean };
 
-export function Studio({ initialView }: { initialView?: string }) {
+export function Studio({
+  initialView,
+  business,
+  businesses,
+  account,
+  onBusinessChange,
+  onCreateBusiness,
+  onLogout,
+  onExpired,
+  onOwnerPanel,
+}: {
+  initialView?: string;
+  business: Business;
+  businesses: Business[];
+  account: Account;
+  onBusinessChange: (id: string) => void;
+  onCreateBusiness: () => void;
+  onLogout: () => Promise<void>;
+  onExpired: () => void;
+  onOwnerPanel: () => void;
+}) {
+  const api = (url: string) => businessApiUrl(url, business.id);
+  const legacyAutomation = account.role === "admin" && business.id === defaultBusinessId;
   const [state, setState] = useState<Workspace | null>(null);
   const [view, setView] = useState<View>(
     navigation.some((n) => n.id === initialView) ? (initialView as View) : "overview",
@@ -100,8 +129,9 @@ export function Studio({ initialView }: { initialView?: string }) {
   const notify = (message: string, error = false) => setNotice({ message, error });
   const load = async () => {
     try {
-      const res = await fetch("/api/workspace");
+      const res = await fetch(api("/api/workspace"));
       const data = await res.json();
+      if (res.status === 401) onExpired();
       if (!res.ok) throw new Error(data.error);
       setLoadError("");
       setState(data);
@@ -111,9 +141,10 @@ export function Studio({ initialView }: { initialView?: string }) {
   };
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/workspace", { signal: controller.signal })
+    fetch(businessApiUrl("/api/workspace", business.id), { signal: controller.signal })
       .then(async (res) => {
         const data = await res.json();
+        if (res.status === 401) onExpired();
         if (!res.ok) throw new Error(data.error);
         return data as Workspace;
       })
@@ -131,7 +162,7 @@ export function Studio({ initialView }: { initialView?: string }) {
       controller.abort();
       window.removeEventListener("popstate", sync);
     };
-  }, []);
+  }, [business.id, onExpired]);
   useEffect(() => {
     if (!notice || notice.error) return;
     const id = setTimeout(() => setNotice(null), 4500);
@@ -140,18 +171,18 @@ export function Studio({ initialView }: { initialView?: string }) {
   const navigate = (next: View) => {
     setView(next);
     setMobile(false);
-    window.history.pushState(null, "", `?view=${next}`);
+    window.history.pushState(null, "", `?business=${encodeURIComponent(business.id)}&view=${next}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   useEffect(() => {
-    if (view !== "sources") return;
+    if (view !== "sources" || !legacyAutomation) return;
     const controller = new AbortController();
-    fetch("/api/automation/ideas", { signal: controller.signal })
+    fetch(businessApiUrl("/api/automation/ideas", business.id), { signal: controller.signal })
       .then(async (res) => (res.ok ? ((await res.json()) as IdeasOverview) : null))
       .then((data) => data && setIdeaData(data))
       .catch(() => {});
     return () => controller.abort();
-  }, [view]);
+  }, [view, business.id, legacyAutomation]);
   const commit: Commit = async (change) => {
     if (!state || locked.current) return null;
     locked.current = true;
@@ -159,12 +190,13 @@ export function Studio({ initialView }: { initialView?: string }) {
     try {
       const draft = structuredClone(state);
       change(draft);
-      const res = await fetch("/api/workspace", {
+      const res = await fetch(api("/api/workspace"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(draft),
       });
       const data = await res.json();
+      if (res.status === 401) onExpired();
       if (!res.ok) throw new Error(data.error);
       setState(data);
       notify("Cambios guardados en tu carpeta.");
@@ -190,8 +222,9 @@ export function Studio({ initialView }: { initialView?: string }) {
       body.set("file", file);
       body.set("origin", origin);
       body.set("attribution", attribution);
-      const res = await fetch("/api/media", { method: "POST", body });
+      const res = await fetch(api("/api/media"), { method: "POST", body });
       const data = await res.json();
+      if (res.status === 401) onExpired();
       if (!res.ok) throw new Error(data.error);
       setState(data.workspace);
       notify("Archivo guardado en la biblioteca.");
@@ -205,7 +238,7 @@ export function Studio({ initialView }: { initialView?: string }) {
     }
   };
   const loadIdeas = async () => {
-    const res = await fetch("/api/automation/ideas");
+    const res = await fetch(api("/api/automation/ideas"));
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     setIdeaData(data);
@@ -215,7 +248,7 @@ export function Studio({ initialView }: { initialView?: string }) {
   const searchIdeas = async () => {
     setSearching(true);
     try {
-      const res = await fetch("/api/automation/jobs", {
+      const res = await fetch(api("/api/automation/jobs"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "find_ideas", mode: "live" }),
@@ -251,7 +284,7 @@ export function Studio({ initialView }: { initialView?: string }) {
     }
   };
   const markIdea = async (id: string, change: { status?: "discarded" | "used"; note?: string }) => {
-    const res = await fetch("/api/automation/ideas", {
+    const res = await fetch(api("/api/automation/ideas"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, ...change }),
@@ -278,7 +311,7 @@ export function Studio({ initialView }: { initialView?: string }) {
   };
   const openGenerate = async (idea: IdeasOverview["ideas"][number]) => {
     try {
-      const res = await fetch("/api/automation/spend");
+      const res = await fetch(api("/api/automation/spend"));
       if (!res.ok) throw new Error((await res.json()).error);
       setSpend(await res.json());
       setConfirming(idea);
@@ -291,7 +324,7 @@ export function Studio({ initialView }: { initialView?: string }) {
     setConfirming(null);
     setGenerating(true);
     try {
-      const res = await fetch("/api/automation/jobs", {
+      const res = await fetch(api("/api/automation/jobs"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "generate_draft", mode: "live", ideaId: idea.id }),
@@ -313,7 +346,7 @@ export function Studio({ initialView }: { initialView?: string }) {
         latest = (await loadIdeas()).latestGeneration;
       }
       if (latest?.status === "completed" && latest.postId) {
-        const res2 = await fetch("/api/workspace");
+        const res2 = await fetch(api("/api/workspace"));
         const next: Workspace = await res2.json();
         if (res2.ok) {
           setState(next);
@@ -351,6 +384,9 @@ export function Studio({ initialView }: { initialView?: string }) {
       artwork: post.artwork,
       mediaIds: post.mediaIds,
       aiGenerated: post.aiGenerated,
+      productId: post.productId,
+      variantId: post.variantId,
+      catalogRevision: post.catalogRevision,
       sourceIds: post.sourceIds.filter((id) => state?.sources.some((s) => s.id === id && !s.demo)),
     };
     const next = await commit((d) => {
@@ -382,7 +418,7 @@ export function Studio({ initialView }: { initialView?: string }) {
         <aside className={`sidebar ${mobile ? "is-open" : ""}`}>
           <a
             className="wordmark"
-            href="?view=overview"
+            href={`?business=${encodeURIComponent(business.id)}&view=overview`}
             onClick={(e) => {
               e.preventDefault();
               navigate("overview");
@@ -394,15 +430,33 @@ export function Studio({ initialView }: { initialView?: string }) {
             </span>
             <span className="studio-label">ESTUDIO</span>
           </a>
-          <div className="workspace-switch">
-            <span className="spotmi-avatar">s</span>
-            <div>
-              <strong>Spotmi</strong>
-              <span>Tu espacio de trabajo</span>
-            </div>
-            <span className="single-workspace" title="Un espacio en este piloto">
-              <Check size={14} />
-            </span>
+          {account.role === "admin" && (
+            <button className="text-button owner-panel-link" onClick={onOwnerPanel} disabled={busy}>
+              <ChevronLeft size={16} />
+              Mi panel
+            </button>
+          )}
+          <div className="business-switch">
+            <label>
+              Negocio activo
+              <select
+                aria-label="Cambiar negocio"
+                value={business.id}
+                disabled={busy || searching || generating}
+                onChange={(e) => onBusinessChange(e.target.value)}
+              >
+                {businesses.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="field-hint">{business.organizationName}</span>
+            <button className="text-button" disabled={busy} onClick={onCreateBusiness}>
+              <Plus size={15} />
+              Crear negocio
+            </button>
           </div>
           <p className="nav-label">TU ESTUDIO</p>
           <nav aria-label="Navegación principal">
@@ -411,7 +465,7 @@ export function Studio({ initialView }: { initialView?: string }) {
               return (
                 <a
                   key={item.id}
-                  href={`?view=${item.id}`}
+                  href={`?business=${encodeURIComponent(business.id)}&view=${item.id}`}
                   className={`nav-item ${view === item.id ? "active" : ""}`}
                   aria-current={view === item.id ? "page" : undefined}
                   onClick={(e) => {
@@ -433,8 +487,8 @@ export function Studio({ initialView }: { initialView?: string }) {
               <span className="note-spark">
                 <Sparkles size={19} />
               </span>
-              <h3>A tu ritmo, con intención.</h3>
-              <p>Un buen contenido empieza con una idea bien cuidada.</p>
+              <h3>Tu comercial, organizada.</h3>
+              <p>Un catálogo verificado ayuda a crear mejores publicaciones.</p>
               <button onClick={() => setHelp(true)}>
                 Conoce tu estudio <ArrowUpRight size={15} />
               </button>
@@ -445,17 +499,21 @@ export function Studio({ initialView }: { initialView?: string }) {
               <HardDrive size={14} />
             </button>
             <div className="user-profile">
-              <span className="user-avatar">R</span>
+              <UserButton />
               <div>
-                <strong>Mi espacio personal</strong>
-                <small>Spotmi · El Salvador</small>
+                <strong>{account.displayName}</strong>
+                <small>
+                  {account.role === "admin"
+                    ? "Administración de clientes"
+                    : "Cuenta de la comercial"}
+                </small>
               </div>
               <button
                 className="icon-button"
-                aria-label="Abrir ajustes"
-                onClick={() => navigate("settings")}
+                aria-label="Cerrar sesión"
+                onClick={() => void onLogout().catch((e) => notify(e.message, true))}
               >
-                <MoreHorizontal size={19} />
+                <LogOut size={19} />
               </button>
             </div>
           </div>
@@ -470,7 +528,7 @@ export function Studio({ initialView }: { initialView?: string }) {
               >
                 <Menu size={21} />
               </button>
-              <span>Mi espacio</span>
+              <span>{business.organizationName}</span>
               <ChevronRight size={14} />
               <strong>{title}</strong>
             </div>
@@ -498,7 +556,7 @@ export function Studio({ initialView }: { initialView?: string }) {
                 <Bell size={19} />
                 {reviews > 0 && <i />}
               </button>
-              <span className="user-avatar small">R</span>
+              <span className="user-avatar small">{account.displayName.slice(0, 1)}</span>
             </div>
           </header>
           <main id="main" className="main-content">
@@ -532,10 +590,21 @@ export function Studio({ initialView }: { initialView?: string }) {
                     busy={busy}
                   />
                 )}
+                {view === "catalog" && (
+                  <CatalogPage
+                    state={state}
+                    business={business}
+                    busy={busy}
+                    commit={commit}
+                    upload={upload}
+                    open={setEditing}
+                    notify={notify}
+                  />
+                )}
                 {view === "content" && (
                   <>
                     <PageHeading
-                      eyebrow="DE LA IDEA A LA HISTORIA"
+                      eyebrow="DE LA IDEA A LA PUBLICACIÓN"
                       title="Tu contenido, en un lugar."
                       description="Dale forma, revísalo y decide cuándo compartirlo."
                       action={
@@ -594,7 +663,7 @@ export function Studio({ initialView }: { initialView?: string }) {
                               aria-label="Buscar publicaciones"
                               value={query}
                               onChange={(e) => setQuery(e.target.value)}
-                              placeholder="Buscar una historia…"
+                              placeholder="Buscar una publicación…"
                             />
                           </label>
                         </div>
@@ -618,7 +687,7 @@ export function Studio({ initialView }: { initialView?: string }) {
                             `${p.title} ${p.caption}`.toLowerCase().includes(query.toLowerCase()),
                         ) && (
                           <Empty
-                            title="Aquí empieza una nueva historia"
+                            title="Aquí empieza una nueva publicación"
                             description="No hay publicaciones con estos filtros. Prueba otra búsqueda o crea tu primer borrador."
                             action={
                               <button
@@ -655,11 +724,14 @@ export function Studio({ initialView }: { initialView?: string }) {
                                     <video
                                       controls
                                       muted
-                                      src={`/api/media/${m.id}`}
+                                      src={businessApiUrl(`/api/media/${m.id}`, state.businessId)}
                                       preload="metadata"
                                     />
                                   ) : (
-                                    <img src={`/api/media/${m.id}`} alt={m.originalName} />
+                                    <img
+                                      src={businessApiUrl(`/api/media/${m.id}`, state.businessId)}
+                                      alt={m.originalName}
+                                    />
                                   )}
                                 </div>
                                 <div>
@@ -675,7 +747,7 @@ export function Studio({ initialView }: { initialView?: string }) {
                                   {m.attribution && <small>{m.attribution}</small>}
                                   <a
                                     className="text-button"
-                                    href={`/api/media/${m.id}`}
+                                    href={businessApiUrl(`/api/media/${m.id}`, state.businessId)}
                                     download={m.originalName}
                                   >
                                     <ArrowDownToLine size={14} />
@@ -707,8 +779,8 @@ export function Studio({ initialView }: { initialView?: string }) {
                 {view === "sources" && (
                   <>
                     <PageHeading
-                      eyebrow="HISTORIAS CON RESPALDO"
-                      title="Buenas fuentes, mejores historias."
+                      eyebrow="PUBLICACIONES CON RESPALDO"
+                      title="Buenas fuentes, mejores publicaciones."
                       description="Tú eliges qué información entra en tu estudio."
                       action={
                         <div className="heading-actions">
@@ -716,6 +788,7 @@ export function Studio({ initialView }: { initialView?: string }) {
                             className="button secondary"
                             onClick={() => void searchIdeas()}
                             disabled={searching || !state.sources.some((s) => sourceReadable(s))}
+                            hidden={!legacyAutomation}
                             title="n8n lee solo tus sitios propios y RSS autorizados"
                           >
                             {searching ? (
@@ -925,21 +998,29 @@ export function Studio({ initialView }: { initialView?: string }) {
                         description="Registra una primera fuente y comprueba su información antes de autorizarla."
                       />
                     )}
-                    <p className="footnote">
-                      Los sitios de ejemplo no se han consultado. ezrá solo lee tus sitios propios y
-                      RSS autorizados cuando pulsas «Buscar ideas», respetando su robots.txt. Nunca
-                      redes sociales.
-                    </p>
+                    {legacyAutomation && (
+                      <p className="footnote">
+                        Los sitios de ejemplo no se han consultado. ezrá solo lee tus sitios propios
+                        y RSS autorizados cuando pulsas «Buscar ideas», respetando su robots.txt.
+                        Nunca redes sociales.
+                      </p>
+                    )}
                   </>
                 )}
                 {view === "brand" && <BrandPage state={state} commit={commit} busy={busy} />}
                 {view === "settings" && (
-                  <SettingsPage state={state} notify={notify} reload={load} />
+                  <SettingsPage
+                    state={state}
+                    notify={notify}
+                    reload={load}
+                    legacyAutomation={legacyAutomation}
+                    admin={account.role === "admin"}
+                  />
                 )}
               </>
             )}
             <footer className="page-footer">
-              <span>Hecho para contar lo nuestro.</span>
+              <span>Contenido claro para tu negocio.</span>
               <span>
                 ezrá · piloto local <span className="footer-dot">·</span> El Salvador
               </span>
@@ -1001,8 +1082,8 @@ export function Studio({ initialView }: { initialView?: string }) {
                 ],
                 [
                   "02",
-                  "Dale forma a tu historia",
-                  "Crea un borrador en Contenido. Escribe el texto y adjunta medios propios, generados o con licencia.",
+                  "Prepara tu publicación",
+                  "Crea un borrador en Publicaciones. Escribe el texto y adjunta medios propios, generados o con licencia.",
                 ],
                 [
                   "03",
@@ -1110,13 +1191,13 @@ function DemoNote({ state }: { state: Workspace }) {
   return count > 0 ? (
     <div className="demo-note">
       <span className="demo-dot" />
-      <span>Incluye {count} historias de ejemplo para explorar tu estudio.</span>
+      <span>Incluye {count} publicaciones de ejemplo para explorar tu estudio.</span>
       <span>Publicación manual</span>
     </div>
   ) : (
     <div className="demo-note">
       <ShieldCheck size={14} />
-      <span>Tú revisas y publicas cada historia.</span>
+      <span>Tú revisas y publicas cada publicación.</span>
       <span>Publicación manual</span>
     </div>
   );
@@ -1137,25 +1218,28 @@ function Overview({
   goReviews: () => void;
   busy: boolean;
 }) {
-  const reviews = state.posts.filter((p) => p.status === "review");
-  const upcoming = state.posts
-    .filter((p) => p.plannedAt && p.status !== "published")
-    .sort((a, b) => a.plannedAt.localeCompare(b.plannedAt));
+  const reviews = state.posts.filter((p) => p.status === "review").length;
+  const activePromotions = state.catalog.filter(
+    (p) =>
+      p.promotion.kind !== "none" &&
+      p.promotion.startsOn <= today() &&
+      p.promotion.endsOn >= today(),
+  ).length;
   const counts = [
     {
-      label: "Historias en borrador",
-      value: state.posts.filter((p) => p.status === "draft").length,
-      icon: FileText,
+      label: "Productos",
+      value: state.catalog.length,
+      icon: Package,
       color: "lilac",
-      note: "Ideas que están tomando forma",
-      action: () => navigate("content"),
+      note: "En el catálogo de este negocio",
+      action: () => navigate("catalog"),
     },
     {
       label: "Por revisar",
-      value: reviews.length,
+      value: reviews,
       icon: CheckCheck,
       color: "peach",
-      note: "Tu mirada hace la diferencia",
+      note: "Publicaciones pendientes",
       action: goReviews,
     },
     {
@@ -1163,103 +1247,55 @@ function Overview({
       value: state.posts.filter((p) => p.status === "planned").length,
       icon: CalendarDays,
       color: "mint",
-      note: "En tu calendario editorial",
+      note: "Para publicar manualmente",
       action: () => navigate("calendar"),
     },
     {
-      label: "Fuentes autorizadas",
-      value: state.sources.filter((s) => sourceUsable(s)).length,
-      icon: Globe2,
+      label: "Promociones vigentes",
+      value: activePromotions,
+      icon: FileText,
       color: "blue",
-      note: "Una base para tus historias",
-      action: () => navigate("sources"),
+      note: "Según las fechas del catálogo",
+      action: () => navigate("catalog"),
     },
   ];
   return (
     <>
       <PageHeading
-        eyebrow="TU ESTUDIO, TU RITMO"
-        title="Hagamos espacio para buenas historias."
-        description="Todo lo que necesitas para cuidar el contenido de Spotmi."
+        eyebrow="TU NEGOCIO, EN UN LUGAR"
+        title={state.brand.name}
+        description="Prepara publicaciones con información verificada y organiza las próximas tareas de tu comercial."
         action={
-          <button className="button primary" onClick={create} disabled={busy}>
+          <button className="button primary" onClick={() => navigate("catalog")} disabled={busy}>
             <Plus size={18} />
-            Crear publicación
+            Crear desde el catálogo
           </button>
         }
       />
-      <div className="hero-row">
-        <section className="hero-card">
-          <div className="hero-copy">
-            <span className="hero-pill">
-              <Leaf size={13} /> HECHO PARA LO NUESTRO
-            </span>
-            <h2>
-              Un país pequeño.
-              <br />
-              Historias <em>enormes.</em>
-            </h2>
-            <p>
-              De una buena idea a una publicación con intención.
-              <br className="desktop-break" /> Tu próxima historia de El Salvador empieza aquí.
-            </p>
-            <button className="button hero-button" onClick={create} disabled={busy}>
-              Darle forma a una idea <ArrowUpRight size={17} />
-            </button>
-            <span className="hero-decoration">✳</span>
-          </div>
-          <div className="hero-art" aria-hidden="true">
-            <div className="hero-orbit" />
-            <div className="floating-photo photo-back">
-              <Artwork scene="volcano" />
-              <span>UN POCO MÁS CERCA</span>
-            </div>
-            <div className="floating-photo photo-front">
-              <Artwork scene="coast" />
-              <span>
-                de lo nuestro. <span>↗</span>
-              </span>
-            </div>
-            <div className="hero-sticker">
-              <Mark small />
-              <span>
-                conoce.
-                <br />
-                conecta.
-                <br />
-                <strong>comparte.</strong>
-              </span>
-            </div>
-            <span className="art-caption">ILUSTRACIONES DE REFERENCIA</span>
-          </div>
-        </section>
-        <section className="focus-card">
-          <div className="section-overline">
-            <span className="focus-dot" /> TU SIGUIENTE PASO
-          </div>
-          <span className="focus-icon">
-            <CheckCheck size={26} />
-          </span>
-          <h3>
-            Una mirada antes
-            <br />
-            de compartir.
-          </h3>
+      <section className="commercial-banner">
+        <div>
+          <p className="eyebrow">TU SIGUIENTE PASO</p>
+          <h2>
+            {reviews
+              ? `${reviews} publicación${reviews === 1 ? "" : "es"} esperando revisión`
+              : state.catalog.length
+                ? "Tu catálogo está listo para crear contenido"
+                : "Agrega el primer producto de tu comercial"}
+          </h2>
           <p>
-            {reviews.length
-              ? `Tienes ${reviews.length} historia${reviews.length !== 1 ? "s" : ""} esperando tu revisión. Los buenos detalles importan.`
-              : "Tu bandeja está al día. Es un buen momento para darle forma a una nueva idea."}
+            {reviews
+              ? "Comprueba el producto, el precio y las fotos antes de aprobar cada versión."
+              : "Elige el modelo, el color y la promoción; prepara versiones para Instagram y Facebook en un solo paso."}
           </p>
-          <button className="text-button" onClick={reviews.length ? goReviews : create}>
-            {reviews.length ? "Revisar contenido" : "Crear una historia"}
-            <ArrowRight size={16} />
-          </button>
-          <div className="focus-bottom">
-            <ShieldCheck size={14} />
-            Tú tienes la última palabra.
-          </div>
-        </section>
-      </div>
+        </div>
+        <button
+          className="button secondary"
+          onClick={reviews ? goReviews : () => navigate("catalog")}
+        >
+          {reviews ? "Revisar publicaciones" : "Abrir catálogo"}
+          <ArrowRight size={17} />
+        </button>
+      </section>
       <div className="stats-grid">
         {counts.map(({ label, value, icon: Icon, color, note, action }) => (
           <button className="stat-card" key={label} onClick={action}>
@@ -1269,96 +1305,40 @@ function Overview({
               </span>
               <ArrowUpRight size={15} />
             </div>
-            <strong>{String(value).padStart(2, "0")}</strong>
+            <strong>{value}</strong>
             <h3>{label}</h3>
             <p>{note}</p>
           </button>
         ))}
       </div>
-      <div className="overview-lower">
-        <section className="stories-section">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">DEL ESTUDIO</p>
-              <h2>
-                Historias en movimiento <span>{state.posts.length}</span>
-              </h2>
-            </div>
-            <button className="text-button" onClick={() => navigate("content")}>
-              Ver todas <ArrowRight size={15} />
-            </button>
-          </div>
-          <div className="dashboard-posts">
-            {state.posts.slice(0, 3).map((p) => (
-              <PostCard key={p.id} post={p} state={state} onOpen={open} />
-            ))}
-          </div>
-          {!state.posts.length && (
-            <Empty
-              title="El comienzo de algo bueno"
-              description="Crea tu primera historia para empezar."
-              action={
-                <button className="button primary" onClick={create}>
-                  Crear publicación
-                </button>
-              }
-            />
-          )}
-          <DemoNote state={state} />
-        </section>
-        <aside className="agenda-card">
-          <div className="section-heading">
-            <h2>En el horizonte</h2>
-            <button
-              className="icon-button"
-              aria-label="Abrir calendario"
-              onClick={() => navigate("calendar")}
-            >
-              <ArrowUpRight size={17} />
-            </button>
-          </div>
-          <p className="agenda-subtitle">Tus próximas fechas previstas</p>
-          {upcoming.slice(0, 3).map((p) => (
-            <button className="agenda-item" key={p.id} onClick={() => open(p)}>
-              <span className="date-tile">
-                <small>{displayDate(p.plannedAt, { month: "short" }).replace(".", "")}</small>
-                <strong>{p.plannedAt.slice(8, 10)}</strong>
-              </span>
-              <div>
-                <h4>{p.title}</h4>
-                <span>
-                  <Network channel={p.channel} />
-                  {p.plannedAt.slice(11)} · {p.demo ? "Ejemplo" : "Manual"}
-                </span>
-              </div>
-            </button>
-          ))}
-          {!upcoming.length && (
-            <p className="muted agenda-empty">Dale una fecha a una historia para verla aquí.</p>
-          )}
-          <div className="agenda-note">
-            <CalendarDays size={17} />
-            <p>
-              Planea aquí.
-              <br />
-              <strong>Publica a tu manera.</strong>
-            </p>
-          </div>
-          <button className="button secondary full-width" onClick={() => navigate("calendar")}>
-            Abrir calendario <ArrowRight size={14} />
-          </button>
-        </aside>
+      <div className="section-heading">
+        <h2>Publicaciones recientes</h2>
+        <button className="text-button" onClick={() => navigate("content")}>
+          Ver todas
+          <ArrowRight size={15} />
+        </button>
       </div>
-      <div className="recent-activity">
-        <span className="activity-dot" />
-        <strong>Último movimiento</strong>
-        <span>{state.history[0]?.title || "Tu estudio está listo"}</span>
-        <span>
-          {state.history[0]
-            ? displayDate(state.history[0].at, { hour: "2-digit", minute: "2-digit" })
-            : ""}
-        </span>
+      <div className="dashboard-posts">
+        {state.posts.slice(0, 3).map((post) => (
+          <PostCard key={post.id} post={post} state={state} onOpen={open} />
+        ))}
       </div>
+      {!state.posts.length && (
+        <Empty
+          title="Prepara tu primera publicación"
+          description="Empieza con un producto del catálogo o crea un borrador libre para una promoción de tu negocio."
+          action={
+            <button className="button secondary" disabled={busy} onClick={create}>
+              Crear borrador libre
+            </button>
+          }
+        />
+      )}
+      <DemoNote state={state} />
+      <p className="footnote">
+        Las redes y la atención automática se conectarán en etapas posteriores. Las fechas de la
+        agenda son para organizar la publicación manual.
+      </p>
     </>
   );
 }
@@ -1391,7 +1371,7 @@ function Calendar({
     <>
       <PageHeading
         eyebrow="UN POCO DE PERSPECTIVA"
-        title="Dale tiempo a cada historia."
+        title="Dale tiempo a cada publicación."
         description="Tu calendario editorial, en hora de El Salvador."
         action={
           <button className="button primary" onClick={create}>
@@ -1471,7 +1451,7 @@ function Calendar({
       </p>
       <div className="section-heading below">
         <h2>Este mes, en detalle</h2>
-        <span className="muted">{planned.length} historias con fecha</span>
+        <span className="muted">{planned.length} publicaciones con fecha</span>
       </div>
       {planned.length ? (
         <div className="schedule-list">
@@ -1497,7 +1477,7 @@ function Calendar({
       ) : (
         <Empty
           title="Un mes lleno de posibilidades"
-          description="Asigna una fecha prevista a un borrador para organizar tus próximas historias."
+          description="Asigna una fecha prevista a un borrador para organizar tus próximas publicaciones."
         />
       )}
     </>
@@ -1512,7 +1492,7 @@ function BrandPage({ state, commit, busy }: { state: Workspace; commit: Commit; 
       <PageHeading
         eyebrow="LA ESENCIA DE SPOTMI"
         title="Una voz que se siente nuestra."
-        description="Tu criterio editorial es el punto de partida de cada historia."
+        description="Tu criterio editorial es el punto de partida de cada publicación."
       />
       <div className="brand-layout">
         <form
@@ -1528,7 +1508,7 @@ function BrandPage({ state, commit, busy }: { state: Workspace; commit: Commit; 
             <h2>Perfil de marca</h2>
             <span className="badge status-approved">
               <Leaf size={12} />
-              Spotmi
+              {state.brand.name}
             </span>
           </div>
           <div className="form-row">
@@ -1613,7 +1593,8 @@ function BrandPage({ state, commit, busy }: { state: Workspace; commit: Commit; 
             </span>
             <h2>Tu criterio deja huella.</h2>
             <p>
-              Cada aprobación, corrección y motivo de rechazo queda en el historial de tu estudio.
+              Cada aprobación, corrección y motivo de rechazo queda en el publicaciónl de tu
+              estudio.
             </p>
             <p className="field-hint">
               Es memoria editorial guardada. Todavía no se usa para generar contenido ni entrenar
@@ -1829,7 +1810,7 @@ function N8nConnection({
       </button>
       <p className="field-hint">
         Envía un encargo de prueba simulado a n8n en tu computadora. No publica, no gasta y no
-        cambia tus publicaciones; solo deja una nota en el historial.
+        cambia tus publicaciones; solo deja una nota en el publicaciónl.
       </p>
     </>
   );
@@ -1839,10 +1820,14 @@ function SettingsPage({
   state,
   notify,
   reload,
+  legacyAutomation,
+  admin,
 }: {
   state: Workspace;
   notify: (message: string, error?: boolean) => void;
   reload: () => Promise<void>;
+  legacyAutomation: boolean;
+  admin: boolean;
 }) {
   const total = state.media.reduce((sum, m) => sum + m.size, 0);
   const [ack, setAck] = useState(false);
@@ -1896,13 +1881,16 @@ function SettingsPage({
               <dd>El Salvador · UTC−6</dd>
             </div>
           </dl>
-          <a className="button secondary full-width" href="/api/export">
+          <a
+            className="button secondary full-width"
+            href={businessApiUrl("/api/export", state.businessId)}
+          >
             <ArrowDownToLine size={16} />
-            Descargar respaldo completo
+            Respaldar este negocio
           </a>
           <p className="field-hint">
-            El ZIP incluye borradores, fuentes, marca, historial y archivos. Incluye instrucciones
-            para restaurarlo.
+            El ZIP incluye borradores, fuentes, marca, publicaciónl y archivos. Incluye
+            instrucciones para restaurarlo.
           </p>
         </section>
         <section className="panel budget-card">
@@ -1916,11 +1904,11 @@ function SettingsPage({
             </div>
           </div>
           <div className="budget-total">
-            <span>$</span>0<small>de $20 disponibles este mes</small>
+            $20<small>techo mensual de planificación</small>
           </div>
           <p>
-            Solo el texto con Gemini puede tener costo, con un tope de USD 5 para la prueba. El
-            presupuesto de $20 se conserva como referencia de planificación.
+            Esta etapa funciona localmente con preparación y exportación manual. No se han
+            contratado servicios nuevos. El gasto externo no se consulta desde este negocio.
           </p>
           <dl className="settings-details">
             <div>
@@ -1929,7 +1917,7 @@ function SettingsPage({
             </div>
             <div>
               <dt>Texto con Gemini</dt>
-              <dd>Tope USD 5</dd>
+              <dd>{legacyAutomation ? "Tope USD 5 (archivo anterior)" : "Sin conectar"}</dd>
             </div>
             <div>
               <dt>Imagen y video con IA</dt>
@@ -1945,7 +1933,7 @@ function SettingsPage({
             <span>Los gastos que hagas fuera de ezrá no se consultan ni se contabilizan aquí.</span>
           </div>
         </section>
-        <SpendPanel />
+        {legacyAutomation && <SpendPanel />}
         <section className="panel connections-panel">
           <div className="section-heading">
             <h2>Cuentas e integraciones</h2>
@@ -1982,35 +1970,37 @@ function SettingsPage({
             </div>
             <span className="badge neutral-badge">Uso manual</span>
           </div>
-          <N8nConnection state={state} notify={notify} reload={reload} />
+          {legacyAutomation && <N8nConnection state={state} notify={notify} reload={reload} />}
           <p className="field-hint">
             Las conexiones requieren configuración y verificación de permisos. Tus suscripciones no
             se conectan automáticamente.
           </p>
         </section>
-        <section className="panel">
-          <div className="section-heading">
-            <h2>Para trabajar con otra IA</h2>
-            <FolderHeart size={21} />
-          </div>
-          <p className="muted">
-            Abre la misma carpeta Spotbot en VS Code, Codex o Claude Code. Las instrucciones
-            compartidas están en el archivo AGENTS.md y el estado del trabajo en docs/TASKS.md.
-          </p>
-          <div className="handoff-note">
-            <strong>Antes de mover tu estudio</strong>
-            <p>
-              Descarga un respaldo. El código y tus datos tienen copias distintas: Git conserva el
-              código; el respaldo conserva tu contenido.
+        {admin && (
+          <section className="panel">
+            <div className="section-heading">
+              <h2>Para trabajar con otra IA</h2>
+              <FolderHeart size={21} />
+            </div>
+            <p className="muted">
+              Abre la misma carpeta Spotbot en VS Code, Codex o Claude Code. Las instrucciones
+              compartidas están en el archivo AGENTS.md y el estado del trabajo en docs/TASKS.md.
             </p>
-          </div>
-          <Checkline checked={ack} onChange={setAck}>
-            Entiendo que una copia adjunta en un chat no se sincroniza con esta carpeta.
-          </Checkline>
-          <span className="version-label">
-            ezrá v0.1.0 · piloto local · sin publicación automática
-          </span>
-        </section>
+            <div className="handoff-note">
+              <strong>Antes de mover tu estudio</strong>
+              <p>
+                Descarga un respaldo. El código y tus datos tienen copias distintas: Git conserva el
+                código; el respaldo conserva tu contenido.
+              </p>
+            </div>
+            <Checkline checked={ack} onChange={setAck}>
+              Entiendo que una copia adjunta en un chat no se sincroniza con esta carpeta.
+            </Checkline>
+            <span className="version-label">
+              ezrá v0.1.0 · piloto local · sin publicación automática
+            </span>
+          </section>
+        )}
       </div>
     </>
   );

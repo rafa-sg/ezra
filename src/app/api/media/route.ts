@@ -1,6 +1,7 @@
+import { requestBusinessId } from "@/lib/businesses";
 import { writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
-import { mediaDirectory, mutateWorkspace } from "@/lib/store";
+import { mediaDirectoryFor, mutateWorkspace } from "@/lib/store";
 import { type Media } from "@/lib/model";
 import { WorkflowError } from "@/lib/workflow";
 import { apiError } from "@/lib/http";
@@ -10,6 +11,7 @@ const limit = 50 * 1024 * 1024;
 export async function POST(request: Request) {
   let savedPath: string | undefined;
   try {
+    const businessId = await requestBusinessId(request);
     if (Number(request.headers.get("content-length")) > limit + 1024 * 1024)
       throw new WorkflowError("El archivo supera 50 MB.", 413);
     const form = await request.formData();
@@ -38,10 +40,10 @@ export async function POST(request: Request) {
     const workspace = await mutateWorkspace(async (current) => {
       if (current.media.length >= 1000)
         throw new WorkflowError("La biblioteca alcanzó el límite del piloto.");
-      savedPath = path.join(mediaDirectory, media.filename);
+      savedPath = path.join(mediaDirectoryFor(businessId), media.filename);
       await writeFile(savedPath, bytes, { mode: 0o600 });
       return { ...current, revision: current.revision + 1, media: [media, ...current.media] };
-    });
+    }, businessId);
     return Response.json({ workspace, media });
   } catch (e) {
     if (savedPath) await unlink(savedPath).catch(() => {});

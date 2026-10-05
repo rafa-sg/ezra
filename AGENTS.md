@@ -6,7 +6,7 @@ Leer `docs/PROJECT_BRIEF.md`, `docs/DECISIONS.md` y `docs/TASKS.md` antes de mod
 
 ## Alcance y presupuesto
 
-Piloto local de marketing para Spotmi. Un propietario, una marca. USD 20 adicionales como techo mensual; gasto inicial previsto USD 0. No comprar servicios ni activar API facturada automáticamente. La comercialización futura es un objetivo, no una funcionalidad actual.
+Piloto local de marketing para los clientes Sgmotos y motoxspress, con un panel de administración para el propietario. Spotmi queda como archivo histórico conservado, fuera del flujo principal. USD 20 adicionales como techo mensual; gasto inicial previsto USD 0. No comprar servicios ni activar API facturada automáticamente.
 
 ## Invariantes
 

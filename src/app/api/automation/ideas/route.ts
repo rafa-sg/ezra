@@ -1,3 +1,4 @@
+import { requireLegacyAutomation } from "@/lib/businesses";
 import { z } from "zod";
 import { ideasOverview, readAutomation, setIdeaStatus } from "@/lib/automation";
 import { apiError } from "@/lib/http";
@@ -5,8 +6,9 @@ import { WorkflowError } from "@/lib/workflow";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // Ideas found in authorized sources, for the Sources screen.
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    await requireLegacyAutomation(request);
     return Response.json(ideasOverview(await readAutomation()));
   } catch (e) {
     return apiError(e);
@@ -21,6 +23,7 @@ const patchSchema = z
   .strict();
 export async function PATCH(request: Request) {
   try {
+    await requireLegacyAutomation(request);
     let parsed;
     try {
       parsed = patchSchema.safeParse(JSON.parse(await request.text()));

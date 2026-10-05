@@ -1,3 +1,5 @@
+import { createLocalClient } from "../helpers/local-client";
+import { clerkTestEnvironment } from "../helpers/clerk-fixture";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -9,6 +11,7 @@ import type { Workspace } from "../../src/lib/model";
 import type { Automation } from "../../src/lib/automation";
 
 const base = "http://127.0.0.1:3102";
+const fetch = createLocalClient(base);
 const outbound = "ezra-to-n8n-test-secret-0123456789abcdef";
 const inbound = "n8n-to-ezra-test-secret-0123456789abcdef";
 const header = "x-automation-secret";
@@ -17,7 +20,10 @@ async function startEzra(env: Record<string, string>) {
   const server = spawn(
     process.execPath,
     ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", "3102"],
-    { env: { ...process.env, ...env }, stdio: "pipe" },
+    {
+      env: { ...process.env, ...(await clerkTestEnvironment(env.EZRA_DATA_DIR)), ...env },
+      stdio: "pipe",
+    },
   );
   let logs = "";
   server.stderr.on("data", (chunk) => (logs += chunk.toString()));

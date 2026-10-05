@@ -2,7 +2,15 @@
 import { createContext, useContext, useEffect, useRef } from "react";
 import { ArrowUpRight, Check, FileText, ImageIcon, X } from "lucide-react";
 import { Artwork } from "./artwork";
-import { displayDate, formatLabels, statusLabels, type Post, type Workspace } from "@/lib/model";
+import {
+  businessApiUrl,
+  defaultBusinessId,
+  displayDate,
+  formatLabels,
+  statusLabels,
+  type Post,
+  type Workspace,
+} from "@/lib/model";
 
 export const FeedbackContext = createContext<{ message: string; error: boolean } | null>(null);
 
@@ -64,7 +72,7 @@ export function PostVisual({ post, state }: { post: Post; state: Workspace }) {
   return asset ? (
     asset.mime.startsWith("video/") ? (
       <video
-        src={`/api/media/${asset.id}`}
+        src={businessApiUrl(`/api/media/${asset.id}`, state.businessId)}
         muted
         playsInline
         preload="metadata"
@@ -72,8 +80,16 @@ export function PostVisual({ post, state }: { post: Post; state: Workspace }) {
       />
     ) : (
       // Local uploads use a protected route; no external image optimizer is needed.
-      <img src={`/api/media/${asset.id}`} alt={asset.originalName} />
+      <img
+        src={businessApiUrl(`/api/media/${asset.id}`, state.businessId)}
+        alt={asset.originalName}
+      />
     )
+  ) : post.productId || state.businessId !== defaultBusinessId ? (
+    <div className="product-placeholder">
+      <ImageIcon size={32} />
+      <span>Agrega una foto autorizada</span>
+    </div>
   ) : (
     <Artwork scene={post.artwork} />
   );
@@ -98,7 +114,7 @@ export function PostCard({
           {post.format === "text" ? <FileText size={12} /> : <ImageIcon size={12} />}{" "}
           {formatLabels[post.format]}
         </span>
-        {!post.mediaIds.length && (
+        {!post.mediaIds.length && !post.productId && state.businessId === defaultBusinessId && (
           <span className="illustration-label">Ilustración de referencia</span>
         )}
       </div>
@@ -109,7 +125,7 @@ export function PostCard({
           {post.aiGenerated && <span className="badge ai-badge">Generado con IA</span>}
         </div>
         <h3>{post.title}</h3>
-        <p>{post.caption || "Una historia por escribir…"}</p>
+        <p>{post.caption || "Una publicación por preparar…"}</p>
         <div className="post-bottom">
           <span>
             {post.plannedAt

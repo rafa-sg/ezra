@@ -74,6 +74,10 @@ export const postSchema = z.object({
   aiGenerated: z.boolean().default(false),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+  productId: id.optional(),
+  variantId: id.optional(),
+  catalogRevision: z.number().int().nonnegative().optional(),
+  campaignId: id.optional(),
 });
 export const mediaSchema = z.object({
   id,
@@ -106,14 +110,88 @@ export const eventSchema = z.object({
   detail: z.string().max(2500),
   postId: id.optional(),
 });
+export const defaultBusinessId = "spotmi";
+export const businessTypeSchema = z.enum([
+  "motorcycles",
+  "retail",
+  "food",
+  "rental",
+  "editorial",
+  "other",
+]);
+export const businessSchema = z.object({
+  id,
+  name: z.string().trim().min(1).max(120),
+  organizationName: z.string().trim().min(1).max(120),
+  organizationId: id.default("owner"),
+  type: businessTypeSchema,
+  createdAt: z.string().datetime(),
+});
+export const businessDirectorySchema = z.object({
+  schemaVersion: z.literal(1),
+  businesses: z.array(businessSchema).min(1).max(100),
+});
+const cents = z.number().int().min(0).max(100_000_000);
+export const catalogProductSchema = z.object({
+  id,
+  revision: z.number().int().nonnegative().default(0),
+  kind: z.enum(["motorcycle", "retail", "food", "rental"]),
+  name: z.string().trim().min(1).max(160),
+  category: z.string().trim().max(100),
+  brand: z.string().trim().max(100),
+  model: z.string().trim().max(100),
+  sku: z.string().trim().max(100),
+  description: z.string().max(2000),
+  priceCents: cents.nullable(),
+  availability: z.enum(["unknown", "available", "unavailable"]),
+  mediaIds: z.array(id).max(20),
+  variants: z
+    .array(
+      z.object({
+        id,
+        name: z.string().trim().min(1).max(100),
+        color: z.string().trim().max(80),
+        priceCents: cents.nullable(),
+        mediaIds: z.array(id).max(20),
+      }),
+    )
+    .min(1)
+    .max(20),
+  promotion: z.object({
+    kind: z.enum(["none", "percentage", "fixed"]),
+    value: z.number().int().min(0).max(100_000_000),
+    startsOn: z.union([z.literal(""), dateOnly]),
+    endsOn: z.union([z.literal(""), dateOnly]),
+    conditions: z.string().max(1000),
+  }),
+  sourceUrl: optionalUrl,
+  verified: z.boolean(),
+  verifiedOn: z.union([z.literal(""), dateOnly]),
+});
+export type Business = z.infer<typeof businessSchema>;
+export type CatalogProduct = z.infer<typeof catalogProductSchema>;
+export const businessTypeLabels: Record<Business["type"], string> = {
+  motorcycles: "Motos y comercio",
+  retail: "Comercio",
+  food: "Comida",
+  rental: "Rent a car",
+  editorial: "Contenido editorial",
+  other: "Otro negocio",
+};
+export function businessApiUrl(url: string, businessId = defaultBusinessId) {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}business=${encodeURIComponent(businessId)}`;
+}
 export const workspaceSchema = z.object({
   schemaVersion: z.literal(1),
+  businessId: id.default(defaultBusinessId),
   revision: z.number().int().nonnegative(),
   brand: brandSchema,
   posts: z.array(postSchema).max(2000),
   sources: z.array(sourceSchema).max(500),
   media: z.array(mediaSchema).max(1000),
   history: z.array(eventSchema).max(10000),
+  catalog: z.array(catalogProductSchema).max(2000).default([]),
 });
 export type Workspace = z.infer<typeof workspaceSchema>;
 export type Post = z.infer<typeof postSchema>;
@@ -187,7 +265,35 @@ export function sourceUsable(source: Source, day = today()) {
 export function approvalIssues(post: Post, state: Workspace, day = today()) {
   const issues: string[] = [];
   if (!post.caption.trim()) issues.push("Agrega el texto de la publicación.");
-  if (!post.sourceIds.length) issues.push("Vincula al menos una fuente verificada.");
+  if (!post.sourceIds.length && !post.productId)
+    issues.push("Vincula una fuente verificada o un producto revisado del catálogo.");
+  if (post.productId) {
+    const product = state.catalog.find((p) => p.id === post.productId);
+    if (!product || !product.verified || !product.verifiedOn || product.verifiedOn > day)
+      issues.push("Revisa y verifica la información del producto en el catálogo.");
+    if (product && post.catalogRevision !== product.revision)
+      issues.push(
+        "El producto cambió. Actualiza la publicación desde el catálogo antes de aprobar.",
+      );
+    if (product && !product.variants.some((v) => v.id === post.variantId))
+      issues.push("Selecciona una variante vigente del producto.");
+    if (product?.availability === "unavailable")
+      issues.push("El producto está marcado como no disponible.");
+    if (
+      product &&
+      product.promotion.kind !== "none" &&
+      (day < product.promotion.startsOn || day > product.promotion.endsOn)
+    )
+      issues.push("La promoción no está vigente. Revisa sus fechas en el catálogo.");
+    if (
+      product &&
+      product.promotion.kind !== "none" &&
+      post.plannedAt &&
+      (post.plannedAt.slice(0, 10) < product.promotion.startsOn ||
+        post.plannedAt.slice(0, 10) > product.promotion.endsOn)
+    )
+      issues.push("La fecha prevista debe estar dentro de la vigencia de la promoción.");
+  }
   if (
     post.sourceIds.some(
       (id) => !state.sources.some((source) => source.id === id && sourceUsable(source, day)),
@@ -229,7 +335,7 @@ export function newPost(): Post {
   const at = new Date().toISOString();
   return {
     id: crypto.randomUUID(),
-    title: "Nueva historia",
+    title: "Nueva publicación",
     caption: "",
     channel: "instagram",
     format: "photo",

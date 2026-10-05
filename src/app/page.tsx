@@ -1,5 +1,9 @@
-import { Studio } from "@/components/studio";
-export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+import { CommercialApp } from "@/components/commercial-app";
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string; business?: string }>;
+}) {
   const params = await searchParams;
-  return <Studio initialView={params.view} />;
+  return <CommercialApp initialView={params.view} initialBusiness={params.business} />;
 }

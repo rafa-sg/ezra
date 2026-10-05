@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import {
   approvalIssues,
+  businessApiUrl,
+  defaultBusinessId,
   formatLabels,
   type Media,
   type Post,
@@ -22,6 +24,7 @@ import {
   today,
   sourceKindLabels,
 } from "@/lib/model";
+import { catalogContent } from "@/lib/catalog";
 import { Dialog, Network, PostVisual, Checkline, StatusBadge } from "./ui";
 
 export type Commit = (change: (draft: Workspace) => void) => Promise<Workspace | null>;
@@ -87,11 +90,11 @@ export function PostEditor({
   };
   return (
     <Dialog
-      title="Tu próxima historia"
+      title="Editar publicación"
       subtitle={
         post.demo
           ? "Ejemplo editable · duplica para preparar una publicación real"
-          : "Estudio de contenido · Spotmi"
+          : state.brand.name
       }
       onClose={close}
       wide
@@ -108,6 +111,35 @@ export function PostEditor({
           </div>
           {tab === "edit" ? (
             <div className="form-stack">
+              {post.productId && (
+                <div className="info-note">
+                  <strong>Vinculada al catálogo · versión {post.catalogRevision}</strong>
+                  {!published && (
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={busy}
+                      onClick={() => {
+                        const product = state.catalog.find((p) => p.id === post.productId);
+                        if (!product || !post.variantId) return;
+                        if (
+                          window.confirm(
+                            "¿Reemplazar el texto y los medios con los datos actuales del catálogo? Esta versión requerirá revisión.",
+                          )
+                        )
+                          setPost((p) => ({
+                            ...p,
+                            ...catalogContent(product, post.variantId!),
+                            status: "draft",
+                            checks: { facts: false, rights: false, brand: false },
+                          }));
+                      }}
+                    >
+                      Actualizar desde el catálogo
+                    </button>
+                  )}
+                </div>
+              )}
               <label>
                 Título interno
                 <input
@@ -151,7 +183,7 @@ export function PostEditor({
                   maxLength={10000}
                   value={post.caption}
                   disabled={published}
-                  placeholder="Una idea, una historia, un lugar por descubrir…"
+                  placeholder="Describe el producto o la promoción con datos verificados…"
                   onChange={(e) => field("caption", e.target.value)}
                 />
                 <span className="field-hint">
@@ -184,9 +216,16 @@ export function PostEditor({
                           }
                         />
                         {m.mime.startsWith("video/") ? (
-                          <video src={`/api/media/${m.id}`} muted preload="metadata" />
+                          <video
+                            src={businessApiUrl(`/api/media/${m.id}`, state.businessId)}
+                            muted
+                            preload="metadata"
+                          />
                         ) : (
-                          <img src={`/api/media/${m.id}`} alt="" />
+                          <img
+                            src={businessApiUrl(`/api/media/${m.id}`, state.businessId)}
+                            alt=""
+                          />
                         )}
                         <span>{m.originalName}</span>
                       </label>
@@ -253,7 +292,7 @@ export function PostEditor({
           ) : (
             <div className="form-stack">
               <div>
-                <h3>El respaldo de tu historia</h3>
+                <h3>El respaldo de tu publicación</h3>
                 <p className="muted">
                   Vincula información que hayas revisado. Registrar un sitio no autoriza el uso de
                   sus fotografías.
@@ -311,7 +350,7 @@ export function PostEditor({
                     if (!published) field("checks", { ...post.checks, brand: v });
                   }}
                 >
-                  El contenido respeta la voz y los criterios de Spotmi.
+                  El contenido respeta la voz y los criterios de {state.brand.name}.
                 </Checkline>
               </div>
               <p className="info-note">
@@ -329,7 +368,7 @@ export function PostEditor({
                 </div>
               )}
               <div className="editor-memory">
-                <h3>Historial de esta historia</h3>
+                <h3>Historial de esta publicación</h3>
                 {state.history
                   .filter((h) => h.postId === post.id)
                   .slice(0, 5)
@@ -383,9 +422,9 @@ export function PostEditor({
           </div>
           <div className="social-preview">
             <div className="preview-account">
-              <span className="spotmi-avatar">s</span>
+              <span className="spotmi-avatar">{state.brand.name.slice(0, 1)}</span>
               <span>
-                <strong>spotmi.sv</strong>
+                <strong>{state.brand.name}</strong>
                 <small>El Salvador</small>
               </span>
               <Network channel={post.channel} />
@@ -394,7 +433,7 @@ export function PostEditor({
               <PostVisual post={post} state={state} />
             </div>
             <div className="preview-caption">
-              <strong>spotmi.sv</strong> {post.caption || "Tu historia aparecerá aquí."}
+              <strong>{state.brand.name}</strong> {post.caption || "Tu publicación aparecerá aquí."}
             </div>
           </div>
           <div className="preview-meta">
@@ -408,20 +447,25 @@ export function PostEditor({
               Ejemplo para practicar. La ilustración no documenta un destino real.
             </p>
           )}
-          <a className="text-button" href={`/api/export?post=${post.id}`}>
+          <a
+            className="text-button"
+            href={businessApiUrl(`/api/export?post=${post.id}`, state.businessId)}
+          >
             <ArrowDownToLine size={15} />
             Exportar versión guardada
           </a>
-          {!saved.demo && ["approved", "planned", "published"].includes(saved.status) && (
-            <a
-              className="text-button"
-              href={`/api/export?post=${post.id}&for=site`}
-              title="Paquete para copiar en «Agregar evento» de spotmi-web. No envía nada."
-            >
-              <ArrowDownToLine size={15} />
-              Exportar para el sitio (evento)
-            </a>
-          )}
+          {state.businessId === defaultBusinessId &&
+            !saved.demo &&
+            ["approved", "planned", "published"].includes(saved.status) && (
+              <a
+                className="text-button"
+                href={businessApiUrl(`/api/export?post=${post.id}&for=site`, state.businessId)}
+                title="Paquete para copiar en «Agregar evento» de spotmi-web. No envía nada."
+              >
+                <ArrowDownToLine size={15} />
+                Exportar para el sitio (evento)
+              </a>
+            )}
           <button
             className="text-button"
             disabled={busy || dirty}
@@ -550,7 +594,7 @@ export function SourceEditor({
     setSource((s) => ({ ...s, [key]: value }));
   return (
     <Dialog
-      title={initial ? "Revisar fuente" : "Una fuente para tus historias"}
+      title={initial ? "Revisar fuente" : "Una fuente para tus publicacións"}
       subtitle="ezrá solo lee sitios propios y RSS autorizados cuando tú pulsas «Buscar ideas». Nunca redes sociales."
       onClose={onClose}
     >
@@ -573,7 +617,7 @@ export function SourceEditor({
             value={source.name}
             maxLength={160}
             onChange={(e) => field("name", e.target.value)}
-            placeholder="Ej. Información propia de Spotmi"
+            placeholder="Ej. Información propia de la comercial"
           />
         </label>
         <label>

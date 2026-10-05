@@ -148,3 +148,11 @@ Aprobada por el propietario, con las tres recomendaciones: nivel gratuito, `gemi
   - si el texto está vacío o supera 2,200 caracteres, el encargo queda «falló» y no se crea borrador;
   - un resultado repetido no duplica el borrador.
 - **La clave de Gemini:** la crea el propietario y la pega solo en una credencial de n8n de tipo cabecera (`x-goog-api-key`), nunca en ezrá, Git ni el chat. No se usa la credencial «Google Gemini(PaLM) Api» porque envía la clave en la dirección web.
+
+## 2026-10-05 · Acceso comercial con Clerk
+
+- El producto activo se orienta a Sgmotos, motoxspress y el panel del propietario; Spotmi queda como archivo histórico.
+- Clerk gestiona identidad, contraseña y sesión. `data/access.json` solo guarda la autorización privada del panel y, tras el primer acceso, el `userId` de Clerk. No se guardan contraseñas ni claves en Git.
+- La instancia usada es desarrollo. Las tres cuentas de prueba usan correos provisionales y una contraseña débil únicamente para esta prueba local; deben sustituirse antes de cualquier entrega.
+- No se habilitaron Organizations de Clerk: el aislamiento actual es una asignación privada de cuentas a organizaciones locales, suficiente para el piloto. Se revisará B2B/Organizations antes de comercializar.
+- La publicación social, WhatsApp, chatbot, Gemini y cobros continúan fuera del hito; el flujo actual prepara y exporta manualmente.

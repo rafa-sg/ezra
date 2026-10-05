@@ -29,6 +29,8 @@ export function createSeed(now = new Date()): Workspace {
   };
   return {
     schemaVersion: 1,
+    businessId: "spotmi",
+    catalog: [],
     revision: 0,
     brand: {
       name: "Spotmi",
