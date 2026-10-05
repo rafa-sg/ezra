@@ -121,6 +121,10 @@ test(
           .async("text"),
         /NO APROBADA/,
       );
+      // Example posts never leave ezrá for the site, approved or not.
+      for (const p of [workspace.posts[0], approvedPost])
+        assert.equal((await fetch(`${base}/api/export?post=${p.id}&for=site`)).status, 422);
+      assert.equal((await fetch(`${base}/api/export?for=site`)).status, 400);
       const backup = await fetch(`${base}/api/export`);
       assert.equal(backup.status, 200);
       const zip = await JSZip.loadAsync(await backup.arrayBuffer());

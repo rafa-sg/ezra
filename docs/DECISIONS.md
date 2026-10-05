@@ -57,3 +57,29 @@ Decisión del propietario: evaluar Metricool como herramienta de publicación y 
 - No se conecta n8n con Metricool: eso exige la API, disponible solo en Advanced o Custom. El contrato de automatización de ezrá permite añadir Metricool API o Meta como proveedor más adelante sin reescribir la base.
 - El MCP de Metricool funciona en Free, pero también puede programar y publicar. Se añadió para evaluarlo y se retiró a petición del propietario; la cuenta se verificó con capturas. Volver a conectarlo requiere su aprobación, y cada escritura un sí explícito.
 - No activar pruebas ni planes de pago sin una decisión explícita: las pruebas con código piden tarjeta o PayPal y cobran automáticamente si no se cancelan.
+
+## 2026-10-04 · Envío de eventos de ezrá a spotmi-web como borrador
+
+Aprobada por el propietario tras una investigación en solo lectura del repositorio del sitio (`~/dev/spotmi-web`).
+
+**Excepción al invariante «no publicar en este hito», limitada a esto:** ezrá podrá enviar al sitio de Spotmi un evento con foto, que llega **como borrador no visible** (`events.is_verified = false`). Publicarlo sigue siendo una moderación manual en el sitio. Las redes sociales siguen sin publicación automática. La excepción solo entra en vigor cuando exista el camino (b); el camino (a) no envía nada.
+
+**Condiciones de cualquier camino:**
+
+- solo versiones aprobadas y no demo, comprobado en el servidor de ezrá;
+- confirmación explícita del propietario por cada envío, sin envíos automáticos ni en lote;
+- cada envío queda registrado como encargo con su resultado;
+- las claves del sitio viven solo en credenciales de n8n, nunca en ezrá, Git ni el chat;
+- sin `service_role` de Supabase en n8n.
+
+**Caminos:**
+
+- **(a) Activo:** «Exportar para el sitio» genera `evento.txt` con los campos del formulario «Agregar evento» del sitio y la foto, para copiarlos a mano. El formulario del sitio no sube fotos todavía.
+- **(b) Pendiente:** endpoint protegido en el sitio que reciba el evento desde n8n con un secreto propio y escriba como una cuenta bot de Supabase, no con `service_role`. Requiere el visto bueno de quien administra el sitio y Supabase (según el repositorio, Josué García; hay que confirmarlo).
+- **(c) Descartado:** n8n directo a Supabase, porque el nodo de Supabase pide la clave de administrador total.
+
+**Antes de (b):**
+
+- En las migraciones del sitio, la política de inserción de `events` solo comprueba `created_by`. Nada en la base obliga a `is_verified = false`, así que un usuario con sesión podría publicar sin moderación llamando directamente a PostgREST. Se informó al propietario para que lo traslade al administrador del sitio.
+- El bucket `eventos` es público. Hay que decidir si las fotos de borradores van a una ruta o bucket no público.
+- Hay que confirmar el dominio del sitio: aparecen `spotmi.com.sv`, `spotmi.sv` y `spotmisv.com`.

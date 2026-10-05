@@ -5,6 +5,7 @@ import { Readable } from "node:stream";
 import path from "node:path";
 import { mediaDirectory, readWorkspace } from "@/lib/store";
 import { readAutomation } from "@/lib/automation";
+import { siteEventPackage } from "@/lib/site-event";
 import { formatLabels, statusLabels } from "@/lib/model";
 import { apiError } from "@/lib/http";
 import { WorkflowError } from "@/lib/workflow";
@@ -13,12 +14,23 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const state = await readWorkspace();
-    const postId = new URL(request.url).searchParams.get("post");
+    const url = new URL(request.url);
+    const postId = url.searchParams.get("post");
+    const forSite = url.searchParams.get("for") === "site";
     const zip = new JSZip();
     const post = postId ? state.posts.find((p) => p.id === postId) : undefined;
     if (postId && !post)
       return Response.json({ error: "Publicación no encontrada." }, { status: 404 });
-    const assets = post ? state.media.filter((m) => post.mediaIds.includes(m.id)) : state.media;
+    if (forSite && !post)
+      throw new WorkflowError("Indica la publicación que quieres exportar para el sitio.", 400);
+    const site = forSite && post ? siteEventPackage(post, state) : undefined;
+    const assets = site
+      ? site.photo
+        ? [site.photo]
+        : []
+      : post
+        ? state.media.filter((m) => post.mediaIds.includes(m.id))
+        : state.media;
     if (assets.reduce((sum, m) => sum + m.size, 0) > 1024 * 1024 * 1024)
       throw new WorkflowError(
         "El respaldo supera 1 GB. Detén el servidor y copia la carpeta data/ completa para conservar todos tus archivos.",
@@ -26,7 +38,8 @@ export async function GET(request: Request) {
       );
     // Only an approved version may be scheduled by hand (e.g. in Metricool).
     const approved = post ? ["approved", "planned", "published"].includes(post.status) : true;
-    if (post) {
+    if (site) zip.file("evento.txt", site.text);
+    else if (post) {
       const sources = state.sources.filter((s) => post.sourceIds.includes(s.id));
       const warnings = [
         post.demo ? "EJEMPLO DE DEMOSTRACIÓN — revisar antes de usar" : "",
@@ -61,7 +74,7 @@ export async function GET(request: Request) {
         missing.push(`${media.filename} (${media.originalName})`);
         continue;
       }
-      zip.file(`media/${media.filename}`, createReadStream(file));
+      zip.file(`${site ? "foto" : "media"}/${media.filename}`, createReadStream(file));
     }
     if (missing.length)
       zip.file(
@@ -76,7 +89,7 @@ export async function GET(request: Request) {
     return new Response(Readable.toWeb(stream) as ReadableStream, {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="ezra-${post ? post.id : "respaldo"}${approved ? "" : "-no-aprobada"}${missing.length ? "-incompleto" : ""}.zip"`,
+        "Content-Disposition": `attachment; filename="ezra-${post ? post.id : "respaldo"}${site ? "-sitio" : ""}${approved ? "" : "-no-aprobada"}${missing.length ? "-incompleto" : ""}.zip"`,
         "Cache-Control": "no-store",
       },
     });

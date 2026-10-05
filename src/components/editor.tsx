@@ -410,6 +410,16 @@ export function PostEditor({
             <ArrowDownToLine size={15} />
             Exportar versión guardada
           </a>
+          {!saved.demo && ["approved", "planned", "published"].includes(saved.status) && (
+            <a
+              className="text-button"
+              href={`/api/export?post=${post.id}&for=site`}
+              title="Paquete para copiar en «Agregar evento» de spotmi-web. No envía nada."
+            >
+              <ArrowDownToLine size={15} />
+              Exportar para el sitio (evento)
+            </a>
+          )}
           <button
             className="text-button"
             disabled={busy || dirty}
