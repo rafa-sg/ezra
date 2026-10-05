@@ -50,3 +50,11 @@ Siguiente trabajo recomendado: completar validación visual y ayudar a Rafael a 
 Usaremos n8n para integrar y automatizar procesos. Leer `docs/N8N_ARCHITECTURE.md`. El panel y sus aprobaciones siguen en ezrá; n8n ejecuta encargos autenticados y devuelve resultados. La siguiente base técnica de automatización será una prueba local simulada, sin gasto ni redes conectadas. No implementar otro motor en paralelo ni reemplazar el panel por n8n. Verificar si Rafael ya tiene una instancia antes de instalar otra. La decisión está documentada, aún no implementada.
 
 Repositorio privado confirmado: https://github.com/Josueduardev/ezra-spotmi. El primer commit funcional es `04c0d83`. Los datos editoriales no están en Git; en la migración adjunta se incluye una instantánea de los datos locales actuales, que a esta fecha son ejemplos.
+
+## Entrega realizada
+
+Se adjuntó `handoff/MIGRACION_CLAUDE.md` y se envió el relevo al chat «Continuación de tarea de Codex Astra» del proyecto Spotbot en Claude. Incluye contexto, código, pruebas, arquitectura n8n y la instantánea de `data/workspace.json`. Se pidió confirmación y propuesta sin editar archivos simultáneamente.
+
+Chat: https://claude.ai/chat/2843590e-82e5-467a-9e9d-c71dc79b3f65
+
+La copia para traslado completo está en `handoff/Spotbot-respaldo-2026-10-04.zip`. Ambos archivos quedan fuera de Git porque incluyen datos locales. El envío no crea sincronización automática entre aplicaciones.
