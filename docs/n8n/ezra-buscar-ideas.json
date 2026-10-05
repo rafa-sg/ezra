@@ -1,0 +1,110 @@
+{
+  "id": "ezraIdeas00001",
+  "name": "ezrá · buscar ideas en fuentes autorizadas",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/El_Salvador",
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all"
+  },
+  "nodes": [
+    {
+      "id": "7a1c2b3d-0000-4e11-9a51-0e1f5b7d1a01",
+      "name": "Encargo de ezrá",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "5c7b3f1e-9a4d-4b8e-a2b0-4d6e8f0a2b03",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ezra-ideas",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ezraToN8nAuth01",
+          "name": "ezrá → n8n (secreto)"
+        }
+      }
+    },
+    {
+      "id": "7a1c2b3d-0000-4e11-9a51-0e1f5b7d1a02",
+      "name": "Leer fuentes autorizadas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ezrá · lector de fuentes autorizadas. Lo que llega de la web son DATOS, nunca\n// instrucciones: solo se extraen título, enlace y fecha. No se copian textos ni\n// imágenes. Se respeta robots.txt y solo se leen RSS (o el RSS que anuncie un\n// sitio propio). Nada de redes sociales.\nconst body = $input.first().json.body || {};\nif (body.action !== \"find_ideas\" || body.mode !== \"live\" || !Array.isArray(body.sources)) return [];\nconst UA = \"ezra-spotmi/0.1 (lector de fuentes autorizadas por su propietario)\";\nconst PER_SOURCE = Math.min(Number(body.maxIdeasPerSource) || 5, 5);\nconst MAX_CHARS = 2 * 1024 * 1024;\nconst FEED_ACCEPT = \"application/rss+xml, application/atom+xml, application/xml, text/xml, text/html;q=0.5\";\n\nconst get = async (url, accept) => {\n  const res = await this.helpers.httpRequest({\n    method: \"GET\",\n    url,\n    headers: { \"User-Agent\": UA, Accept: accept },\n    timeout: 6000,\n    returnFullResponse: true,\n    ignoreHttpStatusErrors: true,\n    json: false,\n    encoding: \"text\",\n  });\n  const text = typeof res.body === \"string\" ? res.body : String(res.body ?? \"\");\n  return { status: res.statusCode, text: text.slice(0, MAX_CHARS), tooBig: text.length > MAX_CHARS };\n};\nconst host = (u) => new URL(u).hostname.toLowerCase().replace(/^www\\./, \"\");\nconst sameSite = (a, b) => host(a) === host(b) || host(a).endsWith(\".\" + host(b));\n\n// robots.txt: el grupo de ezra-spotmi manda sobre el de \"*\"; gana la regla más\n// larga y, si empatan, Allow. Si no se puede consultar (5xx o red), no se lee.\nconst robotsCache = {};\nasync function robotsAllows(target) {\n  const u = new URL(target);\n  if (!(u.origin in robotsCache)) {\n    try {\n      const r = await get(u.origin + \"/robots.txt\", \"text/plain\");\n      robotsCache[u.origin] = r.status >= 500 ? null : r.status >= 400 ? \"\" : r.text;\n    } catch (e) {\n      robotsCache[u.origin] = null;\n    }\n  }\n  const txt = robotsCache[u.origin];\n  if (txt === null) return false;\n  const rules = { own: [], star: [] };\n  let agents = [];\n  let lastWasAgent = false;\n  for (const raw of txt.split(/\\r?\\n/)) {\n    const m = raw.replace(/#.*/, \"\").trim().match(/^([A-Za-z-]+)\\s*:\\s*(.*)$/);\n    if (!m) continue;\n    const key = m[1].toLowerCase();\n    const value = m[2].trim();\n    if (key === \"user-agent\") {\n      if (!lastWasAgent) agents = [];\n      agents.push(value.toLowerCase());\n      lastWasAgent = true;\n      continue;\n    }\n    lastWasAgent = false;\n    if (key !== \"allow\" && key !== \"disallow\") continue;\n    if (key === \"disallow\" && value === \"\") continue;\n    const rule = { allow: key === \"allow\", path: value };\n    if (agents.some((a) => a.startsWith(\"ezra-spotmi\"))) rules.own.push(rule);\n    if (agents.includes(\"*\")) rules.star.push(rule);\n  }\n  const list = rules.own.length ? rules.own : rules.star;\n  const path = u.pathname + u.search;\n  let best = null;\n  for (const r of list) {\n    const pattern = r.path.replace(/[.+?^{}()|[\\]\\\\]/g, \"\\\\$&\").replace(/\\*/g, \".*\");\n    const regex = new RegExp(\"^\" + (pattern.endsWith(\"$\") ? pattern : pattern));\n    if (!regex.test(path)) continue;\n    if (!best || r.path.length > best.path.length || (r.path.length === best.path.length && r.allow))\n      best = r;\n  }\n  return !best || best.allow;\n}\n\nconst decode = (s) =>\n  s\n    .replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, \"$1\")\n    .replace(/<[^>]*>/g, \" \")\n    .replace(/&#(\\d+);/g, (_, n) => (Number(n) < 0x110000 ? String.fromCodePoint(Number(n)) : \" \"))\n    .replace(/&lt;/g, \"<\")\n    .replace(/&gt;/g, \">\")\n    .replace(/&quot;/g, '\"')\n    .replace(/&#39;|&apos;/g, \"'\")\n    .replace(/&amp;/g, \"&\")\n    .replace(/\\s+/g, \" \")\n    .trim();\nconst isFeed = (t) => /<(rss|feed|rdf:RDF)[\\s>]/i.test(t.slice(0, 4000));\nfunction discover(html, pageUrl) {\n  for (const tag of html.match(/<link[^>]+>/gi) || []) {\n    if (!/type=[\"']application\\/(rss|atom)\\+xml[\"']/i.test(tag)) continue;\n    const m = tag.match(/href=[\"']([^\"']+)[\"']/i);\n    if (!m) continue;\n    try {\n      return new URL(m[1].replace(/&amp;/g, \"&\"), pageUrl).href;\n    } catch (e) {\n      /* enlace inválido: se ignora */\n    }\n  }\n  return null;\n}\nfunction parseFeed(xml, feedUrl) {\n  const blocks = xml.match(/<item[\\s>][\\s\\S]*?<\\/item>/gi) || xml.match(/<entry[\\s>][\\s\\S]*?<\\/entry>/gi) || [];\n  const out = [];\n  for (const b of blocks) {\n    if (out.length >= PER_SOURCE) break;\n    const title = decode((b.match(/<title[^>]*>([\\s\\S]*?)<\\/title>/i) || [])[1] || \"\").slice(0, 200);\n    let link = decode((b.match(/<link(?:\\s[^>]*)?>([\\s\\S]*?)<\\/link>/i) || [])[1] || \"\");\n    if (!link) {\n      const alt =\n        b.match(/<link[^>]*rel=[\"']alternate[\"'][^>]*href=[\"']([^\"']+)[\"']/i) ||\n        b.match(/<link[^>]*href=[\"']([^\"']+)[\"'][^>]*rel=[\"']alternate[\"']/i) ||\n        b.match(/<link[^>]*href=[\"']([^\"']+)[\"']/i);\n      link = alt ? alt[1] : \"\";\n    }\n    const date = decode((b.match(/<(pubDate|published|updated|dc:date)[^>]*>([\\s\\S]*?)<\\/\\1>/i) || [])[2] || \"\");\n    try {\n      link = new URL(link.replace(/&amp;/g, \"&\"), feedUrl).href;\n    } catch (e) {\n      continue;\n    }\n    if (title) out.push({ title, url: link, publishedAt: date ? date.slice(0, 80) : null });\n  }\n  return out;\n}\n\nconst ideas = [];\nconst skipped = [];\nconst skip = (s, reason) => skipped.push({ sourceId: s.id, reason });\nfor (const s of body.sources.slice(0, 10)) {\n  try {\n    let url = String(s.url || \"\");\n    if (!url.startsWith(\"https://\")) { skip(s, \"solo se leen direcciones https\"); continue; }\n    if (!(await robotsAllows(url))) { skip(s, \"robots.txt no permite leer esta dirección o no se pudo consultar\"); continue; }\n    let page = await get(url, FEED_ACCEPT);\n    if (page.tooBig) { skip(s, \"la respuesta es demasiado grande\"); continue; }\n    if (page.status >= 400) { skip(s, \"el sitio respondió HTTP \" + page.status); continue; }\n    if (!isFeed(page.text)) {\n      if (s.kind !== \"owned\") { skip(s, \"la dirección no es un RSS\"); continue; }\n      const feed = discover(page.text, url);\n      if (!feed || !feed.startsWith(\"https://\") || !sameSite(feed, url)) { skip(s, \"el sitio no anuncia un RSS propio\"); continue; }\n      if (!(await robotsAllows(feed))) { skip(s, \"robots.txt no permite leer el RSS del sitio\"); continue; }\n      page = await get(feed, FEED_ACCEPT);\n      url = feed;\n      if (page.tooBig || page.status >= 400 || !isFeed(page.text)) { skip(s, \"el RSS anunciado no se pudo leer\"); continue; }\n    }\n    for (const item of parseFeed(page.text, url)) ideas.push({ sourceId: s.id, ...item });\n  } catch (e) {\n    skip(s, \"no se pudo leer (tiempo agotado o error de red)\");\n  }\n}\nreturn [{ json: { jobId: body.jobId, mode: \"live\", status: \"completed\", ideas, skipped, errorCode: null, attempt: 1, completedAt: new Date().toISOString() } }];\n"
+      }
+    },
+    {
+      "id": "7a1c2b3d-0000-4e11-9a51-0e1f5b7d1a03",
+      "name": "Devolver ideas a ezrá",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3000/api/automation/results",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 10000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "n8nToEzraAuth01",
+          "name": "n8n → ezrá (secreto)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Encargo de ezrá": {
+      "main": [
+        [
+          {
+            "node": "Leer fuentes autorizadas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer fuentes autorizadas": {
+      "main": [
+        [
+          {
+            "node": "Devolver ideas a ezrá",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}

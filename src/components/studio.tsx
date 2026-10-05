@@ -19,6 +19,7 @@ import {
   HardDrive,
   LayoutDashboard,
   Leaf,
+  Lightbulb,
   LoaderCircle,
   Menu,
   MoreHorizontal,
@@ -30,6 +31,7 @@ import {
   Sparkles,
   Upload,
   Wallet,
+  Workflow,
   X,
 } from "lucide-react";
 import {
@@ -41,6 +43,8 @@ import {
   type Workspace,
   displayDate,
   newPost,
+  sourceKindLabels,
+  sourceReadable,
   sourceUsable,
   statusLabels,
   today,
@@ -87,6 +91,12 @@ export function Studio({ initialView }: { initialView?: string }) {
   const [filter, setFilter] = useState<Status | "all">("all");
   const [query, setQuery] = useState("");
   const [contentTab, setContentTab] = useState<"posts" | "library">("posts");
+  const [ideaData, setIdeaData] = useState<IdeasOverview | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [confirming, setConfirming] = useState<IdeasOverview["ideas"][number] | null>(null);
+  const [spend, setSpend] = useState<SpendSummary | null>(null);
+  const [generating, setGenerating] = useState(false);
   const notify = (message: string, error = false) => setNotice({ message, error });
   const load = async () => {
     try {
@@ -133,6 +143,15 @@ export function Studio({ initialView }: { initialView?: string }) {
     window.history.pushState(null, "", `?view=${next}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  useEffect(() => {
+    if (view !== "sources") return;
+    const controller = new AbortController();
+    fetch("/api/automation/ideas", { signal: controller.signal })
+      .then(async (res) => (res.ok ? ((await res.json()) as IdeasOverview) : null))
+      .then((data) => data && setIdeaData(data))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [view]);
   const commit: Commit = async (change) => {
     if (!state || locked.current) return null;
     locked.current = true;
@@ -185,6 +204,136 @@ export function Studio({ initialView }: { initialView?: string }) {
       setBusy(false);
     }
   };
+  const loadIdeas = async () => {
+    const res = await fetch("/api/automation/ideas");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    setIdeaData(data);
+    return data as IdeasOverview;
+  };
+  // One search per click: n8n reads only authorized sites and RSS, then answers.
+  const searchIdeas = async () => {
+    setSearching(true);
+    try {
+      const res = await fetch("/api/automation/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "find_ideas", mode: "live" }),
+      });
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(
+          res.status === 502
+            ? "n8n no respondió. Abre «Abrir n8n.command» y vuelve a intentarlo."
+            : data.error,
+        );
+      let latest = (await loadIdeas()).latestSearch;
+      for (
+        let i = 0;
+        i < 45 && latest?.jobId === data.job.jobId && latest?.status === "sent";
+        i++
+      ) {
+        await new Promise((r) => setTimeout(r, 2000));
+        latest = (await loadIdeas()).latestSearch;
+      }
+      if (latest?.status === "completed") {
+        notify(
+          `${latest.accepted} ideas nuevas.${latest.rejected ? ` ${latest.rejected} descartadas por enlaces de otros sitios o datos inválidos.` : ""}`,
+        );
+        await load();
+      } else if (latest?.status === "sent")
+        notify("La búsqueda sigue en curso. Vuelve a abrir Fuentes en un momento.");
+      else notify("La búsqueda no se completó. Revisa n8n y vuelve a intentarlo.", true);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "No se pudo buscar ideas.", true);
+    } finally {
+      setSearching(false);
+    }
+  };
+  const markIdea = async (id: string, change: { status?: "discarded" | "used"; note?: string }) => {
+    const res = await fetch("/api/automation/ideas", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...change }),
+    });
+    if (res.ok && change.note !== undefined) notify("Nota guardada.");
+    if (!res.ok) notify((await res.json()).error || "No se pudo actualizar la idea.", true);
+    await loadIdeas().catch(() => {});
+  };
+  // The owner writes the text; the idea only seeds the title and its source.
+  const draftFromIdea = async (idea: IdeasOverview["ideas"][number]) => {
+    const post = {
+      ...newPost(),
+      title: idea.title.slice(0, 180),
+      sourceIds: state?.sources.some((s) => s.id === idea.sourceId && !s.demo)
+        ? [idea.sourceId]
+        : [],
+    };
+    const next = await commit((d) => {
+      d.posts.unshift(post);
+    });
+    if (!next) return;
+    await markIdea(idea.id, { status: "used" });
+    setEditing(next.posts.find((p) => p.id === post.id)!);
+  };
+  const openGenerate = async (idea: IdeasOverview["ideas"][number]) => {
+    try {
+      const res = await fetch("/api/automation/spend");
+      if (!res.ok) throw new Error((await res.json()).error);
+      setSpend(await res.json());
+      setConfirming(idea);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "No se pudo consultar el gasto.", true);
+    }
+  };
+  // One Gemini call per confirmed click; the draft arrives labelled «Generado con IA».
+  const generate = async (idea: IdeasOverview["ideas"][number]) => {
+    setConfirming(null);
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/automation/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "generate_draft", mode: "live", ideaId: idea.id }),
+      });
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(
+          res.status === 502
+            ? "n8n no respondió. Abre «Abrir n8n.command» y vuelve a intentarlo."
+            : data.error,
+        );
+      let latest = (await loadIdeas()).latestGeneration;
+      for (
+        let i = 0;
+        i < 45 && latest?.jobId === data.job.jobId && latest?.status === "sent";
+        i++
+      ) {
+        await new Promise((r) => setTimeout(r, 2000));
+        latest = (await loadIdeas()).latestGeneration;
+      }
+      if (latest?.status === "completed" && latest.postId) {
+        const res2 = await fetch("/api/workspace");
+        const next: Workspace = await res2.json();
+        if (res2.ok) {
+          setState(next);
+          const post = next.posts.find((p) => p.id === latest?.postId);
+          notify("Borrador creado con IA. Revísalo y comprueba cada dato antes de aprobar.");
+          if (post) setEditing(post);
+        }
+      } else if (latest?.status === "sent")
+        notify("La propuesta sigue en curso. Revisa Contenido en un momento.");
+      else
+        notify(
+          `No se creó el borrador${latest?.errorCode ? ` (${latest.errorCode})` : ""}. Revisa n8n y la clave de Gemini.`,
+          true,
+        );
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "No se pudo generar la propuesta.", true);
+    } finally {
+      setGenerating(false);
+    }
+  };
   const create = async () => {
     const post = newPost();
     const next = await commit((d) => {
@@ -201,6 +350,7 @@ export function Studio({ initialView }: { initialView?: string }) {
       format: post.format,
       artwork: post.artwork,
       mediaIds: post.mediaIds,
+      aiGenerated: post.aiGenerated,
       sourceIds: post.sourceIds.filter((id) => state?.sources.some((s) => s.id === id && !s.demo)),
     };
     const next = await commit((d) => {
@@ -561,10 +711,28 @@ export function Studio({ initialView }: { initialView?: string }) {
                       title="Buenas fuentes, mejores historias."
                       description="Tú eliges qué información entra en tu estudio."
                       action={
-                        <button className="button primary" onClick={() => setSourceEditing("new")}>
-                          <Plus size={17} />
-                          Añadir fuente
-                        </button>
+                        <div className="heading-actions">
+                          <button
+                            className="button secondary"
+                            onClick={() => void searchIdeas()}
+                            disabled={searching || !state.sources.some((s) => sourceReadable(s))}
+                            title="n8n lee solo tus sitios propios y RSS autorizados"
+                          >
+                            {searching ? (
+                              <LoaderCircle className="spin" size={17} />
+                            ) : (
+                              <Lightbulb size={17} />
+                            )}
+                            {searching ? "Buscando ideas…" : "Buscar ideas"}
+                          </button>
+                          <button
+                            className="button primary"
+                            onClick={() => setSourceEditing("new")}
+                          >
+                            <Plus size={17} />
+                            Añadir fuente
+                          </button>
+                        </div>
                       }
                     />
                     <div className="source-intro">
@@ -588,10 +756,14 @@ export function Studio({ initialView }: { initialView?: string }) {
                               <h3>{s.name}</h3>
                               {s.demo && <span className="demo-tag">Ejemplo</span>}
                             </div>
-                            <a href={s.url} target="_blank" rel="noreferrer">
-                              {new URL(s.url).hostname}
-                              <ExternalLink size={12} />
-                            </a>
+                            {s.url ? (
+                              <a href={s.url} target="_blank" rel="noreferrer">
+                                {new URL(s.url).hostname}
+                                <ExternalLink size={12} />
+                              </a>
+                            ) : (
+                              <span className="source-nolink">Sin enlace</span>
+                            )}
                             <p>{s.topics}</p>
                             <span
                               className={`badge ${sourceUsable(s) ? "status-approved" : s.status === "paused" ? "status-rejected" : "status-draft"}`}
@@ -605,17 +777,20 @@ export function Studio({ initialView }: { initialView?: string }) {
                                     ? "Necesita revisión"
                                     : "Por verificar"}
                             </span>
-                            <span className="source-kind">
-                              {s.kind === "owned"
-                                ? "Material propio"
-                                : s.kind === "inspiration"
-                                  ? "Solo inspiración"
-                                  : "Información"}
-                            </span>
+                            <span className="source-kind">{sourceKindLabels[s.kind]}</span>
                           </div>
                           <div className="source-last">
                             <small>Última revisión</small>
                             <span>{s.reviewedOn ? displayDate(s.reviewedOn) : "Pendiente"}</span>
+                            {sourceReadable(s) && (
+                              <small className="source-reading">
+                                {ideaData?.sources[s.id]
+                                  ? `Última lectura: ${displayDate(ideaData.sources[s.id].lastReadAt)} · ${ideaData.sources[s.id].ideas} ideas`
+                                  : "Aún sin leer"}
+                                {ideaData?.sources[s.id]?.skipped &&
+                                  ` · omitida: ${ideaData.sources[s.id].skipped}`}
+                              </small>
+                            )}
                             <button className="text-button" onClick={() => setSourceEditing(s)}>
                               Revisar fuente <ArrowUpRight size={14} />
                             </button>
@@ -623,6 +798,127 @@ export function Studio({ initialView }: { initialView?: string }) {
                         </article>
                       ))}
                     </div>
+                    {!!ideaData?.ideas.length && (
+                      <section className="panel ideas-panel">
+                        <div className="section-heading">
+                          <h2>Ideas encontradas</h2>
+                          <span className="muted">{ideaData.ideas.length} por revisar</span>
+                        </div>
+                        {ideaData.ideas.map((idea) => (
+                          <div className="idea-row" key={idea.id}>
+                            <Lightbulb size={17} />
+                            <div>
+                              <a href={idea.url} target="_blank" rel="noreferrer">
+                                {idea.title}
+                                <ExternalLink size={12} />
+                              </a>
+                              <p>
+                                {state.sources.find((s) => s.id === idea.sourceId)?.name ||
+                                  "Fuente eliminada"}
+                                {idea.publishedAt && ` · ${displayDate(idea.publishedAt)}`}
+                              </p>
+                              <div className="idea-note">
+                                <input
+                                  aria-label={`Tu nota sobre «${idea.title}»`}
+                                  maxLength={500}
+                                  placeholder="Tu nota: lo que comprobaste en la fuente (obligatoria para generar)"
+                                  value={notes[idea.id] ?? idea.note}
+                                  onChange={(e) =>
+                                    setNotes((n) => ({ ...n, [idea.id]: e.target.value }))
+                                  }
+                                />
+                                {(notes[idea.id] ?? idea.note) !== idea.note && (
+                                  <button
+                                    className="text-button"
+                                    onClick={() =>
+                                      void markIdea(idea.id, { note: notes[idea.id] ?? "" })
+                                    }
+                                  >
+                                    Guardar nota
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              className="text-button"
+                              onClick={() => void draftFromIdea(idea)}
+                              disabled={busy}
+                            >
+                              Crear borrador
+                            </button>
+                            <button
+                              className="text-button"
+                              onClick={() => void openGenerate(idea)}
+                              disabled={generating || !idea.note.trim()}
+                              title={
+                                idea.note.trim()
+                                  ? "Gemini redacta un borrador con tu nota y tus criterios de marca"
+                                  : "Escribe y guarda «Tu nota» primero"
+                              }
+                            >
+                              {generating ? "Generando…" : "Generar propuesta"}
+                            </button>
+                            <button
+                              className="text-button"
+                              onClick={() => void markIdea(idea.id, { status: "discarded" })}
+                            >
+                              Descartar
+                            </button>
+                          </div>
+                        ))}
+                        {confirming && spend && (
+                          <Dialog
+                            title="¿Generar una propuesta con Gemini?"
+                            subtitle="Un clic, una propuesta. Llega como borrador para que la revises."
+                            onClose={() => setConfirming(null)}
+                          >
+                            <div className="form-stack">
+                              <p>
+                                <strong>Se enviará a {spend.model}:</strong>
+                              </p>
+                              <ul className="confirm-list">
+                                <li>Idea: «{confirming.title}»</li>
+                                <li>Tu nota: «{confirming.note}»</li>
+                                <li>
+                                  Fuente:{" "}
+                                  {state.sources.find((s) => s.id === confirming.sourceId)?.name}
+                                </li>
+                                <li>Tus criterios de «Marca y criterios»</li>
+                              </ul>
+                              <p className="field-hint">
+                                Costo máximo: {money(spend.reservationUsd)} (precio de pago del{" "}
+                                {spend.prices.checkedOn}); en el nivel gratuito, USD 0. Gastado:{" "}
+                                {money(spend.spentUsd)} de {money(spend.capUsd)}.
+                              </p>
+                              <p className="field-hint">
+                                El texto llega como borrador «Generado con IA». No se aprueba ni se
+                                publica solo.
+                              </p>
+                              <div className="dialog-actions">
+                                <button
+                                  className="button secondary"
+                                  onClick={() => setConfirming(null)}
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  className="button primary"
+                                  onClick={() => void generate(confirming)}
+                                  disabled={spend.spentUsd + spend.reservationUsd > spend.capUsd}
+                                >
+                                  <Sparkles size={16} />
+                                  Generar propuesta
+                                </button>
+                              </div>
+                            </div>
+                          </Dialog>
+                        )}
+                        <p className="field-hint">
+                          Solo título y enlace de la fuente; ezrá no copia textos ni imágenes.
+                          Comprueba cada dato en la fuente antes de usarlo.
+                        </p>
+                      </section>
+                    )}
                     {!state.sources.length && (
                       <Empty
                         title="Dale una base a tus ideas"
@@ -630,13 +926,16 @@ export function Studio({ initialView }: { initialView?: string }) {
                       />
                     )}
                     <p className="footnote">
-                      Los sitios de ejemplo no se han consultado. ezrá no rastrea páginas ni obtiene
-                      contenido automáticamente.
+                      Los sitios de ejemplo no se han consultado. ezrá solo lee tus sitios propios y
+                      RSS autorizados cuando pulsas «Buscar ideas», respetando su robots.txt. Nunca
+                      redes sociales.
                     </p>
                   </>
                 )}
                 {view === "brand" && <BrandPage state={state} commit={commit} busy={busy} />}
-                {view === "settings" && <SettingsPage state={state} />}
+                {view === "settings" && (
+                  <SettingsPage state={state} notify={notify} reload={load} />
+                )}
               </>
             )}
             <footer className="page-footer">
@@ -647,7 +946,7 @@ export function Studio({ initialView }: { initialView?: string }) {
             </footer>
           </main>
         </div>
-        {notice && !editing && !sourceEditing && !uploading && !help && (
+        {notice && !editing && !sourceEditing && !uploading && !help && !confirming && (
           <div
             className={`toast ${notice.error ? "error" : ""}`}
             role={notice.error ? "alert" : "status"}
@@ -738,6 +1037,51 @@ export function Studio({ initialView }: { initialView?: string }) {
     </FeedbackContext.Provider>
   );
 }
+
+type SpendSummary = {
+  capUsd: number;
+  spentUsd: number;
+  reservationUsd: number;
+  model: string;
+  prices: { input: number; output: number; checkedOn: string };
+  entries: {
+    jobId: string;
+    requestedAt: string;
+    status: string;
+    ideaTitle: string;
+    inputTokens: number;
+    outputTokens: number;
+    usd: number;
+  }[];
+};
+const money = (value: number) =>
+  `USD ${value.toLocaleString("es-SV", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+type IdeasOverview = {
+  sources: Record<string, { lastReadAt: string; ideas: number; skipped: string }>;
+  ideas: {
+    id: string;
+    sourceId: string;
+    title: string;
+    url: string;
+    publishedAt: string | null;
+    note: string;
+  }[];
+  latestGeneration: {
+    jobId: string;
+    ideaId: string;
+    status: "queued" | "sent" | "delivery_failed" | "completed" | "failed";
+    deliveryError: string;
+    postId: string | null;
+    errorCode: string | null;
+  } | null;
+  latestSearch: {
+    jobId: string;
+    status: "queued" | "sent" | "delivery_failed" | "completed" | "failed";
+    deliveryError: string;
+    accepted: number;
+    rejected: number;
+  } | null;
+};
 
 function PageHeading({
   eyebrow,
@@ -1302,7 +1646,204 @@ function BrandPage({ state, commit, busy }: { state: Workspace; commit: Commit; 
   );
 }
 
-function SettingsPage({ state }: { state: Workspace }) {
+type AutomationStatus = {
+  configured: boolean;
+  latest: {
+    jobId: string;
+    status: "queued" | "sent" | "delivery_failed" | "completed" | "failed";
+    deliveryError: string;
+    requestedAt: string;
+    completedAt: string | null;
+  } | null;
+};
+const jobLabels: Record<NonNullable<AutomationStatus["latest"]>["status"], [string, string]> = {
+  queued: ["En cola", "status-review"],
+  sent: ["Esperando a n8n", "status-review"],
+  delivery_failed: ["No entregado", "status-rejected"],
+  completed: ["Conectado", "status-approved"],
+  failed: ["Falló la prueba", "status-rejected"],
+};
+const shortDateTime: Intl.DateTimeFormatOptions = {
+  day: "numeric",
+  month: "short",
+  hour: "numeric",
+  minute: "2-digit",
+};
+
+/** Gemini spend recorded by ezrá; the cap is enforced on the server. */
+function SpendPanel() {
+  const [spend, setSpend] = useState<SpendSummary | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/automation/spend", { signal: controller.signal })
+      .then(async (res) => (res.ok ? ((await res.json()) as SpendSummary) : null))
+      .then((data) => data && setSpend(data))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  if (!spend) return null;
+  const share = Math.min(100, (spend.spentUsd / spend.capUsd) * 100);
+  return (
+    <section className="panel">
+      <div className="settings-title">
+        <span className="stat-icon lilac">
+          <Sparkles size={22} />
+        </span>
+        <div>
+          <h2>Gasto de IA</h2>
+          <p>
+            {spend.model} · precios del {spend.prices.checkedOn}
+          </p>
+        </div>
+      </div>
+      <div className="storage-meter">
+        <strong>
+          {money(spend.spentUsd)} <small>de {money(spend.capUsd)}</small>
+        </strong>
+        <span>{spend.entries.length} generaciones</span>
+      </div>
+      <div className="storage-track">
+        <span style={{ width: `${Math.max(2, share)}%` }} />
+      </div>
+      <p className="field-hint">
+        Se cuenta el precio de pago aunque uses el nivel gratuito, para que el tope nunca se supere.
+        Al llegar a {money(spend.capUsd)}, ezrá rechaza nuevas propuestas.
+      </p>
+      {!!spend.entries.length && (
+        <dl className="settings-details">
+          {spend.entries.slice(0, 5).map((e) => (
+            <div key={e.jobId}>
+              <dt>
+                {displayDate(e.requestedAt)} · {e.ideaTitle.slice(0, 40)}
+              </dt>
+              <dd>{money(e.usd)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </section>
+  );
+}
+
+/** Simulated round trip with the local n8n. Never publishes or changes a post. */
+function N8nConnection({
+  state,
+  notify,
+  reload,
+}: {
+  state: Workspace;
+  notify: (message: string, error?: boolean) => void;
+  reload: () => Promise<void>;
+}) {
+  const [status, setStatus] = useState<AutomationStatus | null>(null);
+  const [testing, setTesting] = useState(false);
+  const read = async () => {
+    const res = await fetch("/api/automation/jobs");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    setStatus(data);
+    return data as AutomationStatus;
+  };
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/automation/jobs", { signal: controller.signal })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        return data as AutomationStatus;
+      })
+      .then((data) => setStatus(data))
+      .catch((e) => {
+        if (e.name !== "AbortError") setStatus({ configured: false, latest: null });
+      });
+    return () => controller.abort();
+  }, []);
+  const test = async () => {
+    const post = state.posts[0];
+    if (!post) return;
+    setTesting(true);
+    try {
+      const res = await fetch("/api/automation/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId: post.id, action: "connection_test", mode: "simulation" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        await read().catch(() => {});
+        throw new Error(
+          res.status === 502
+            ? "n8n no respondió. Abre «Abrir n8n.command» y vuelve a intentarlo."
+            : data.error,
+        );
+      }
+      // n8n answers in the background; wait a few seconds for its result.
+      let latest = await read();
+      for (let i = 0; i < 20 && latest.latest?.status === "sent"; i++) {
+        await new Promise((r) => setTimeout(r, 500));
+        latest = await read();
+      }
+      if (latest.latest?.status === "completed") {
+        notify("n8n respondió. La conexión funciona (prueba simulada; no se publicó nada).");
+        await reload();
+      } else if (latest.latest?.status === "sent")
+        notify("n8n recibió el encargo pero aún no responde. Revisa su ventana.", true);
+      else notify("La prueba no se completó. Revisa n8n y vuelve a intentarlo.", true);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "No se pudo probar la conexión.", true);
+    } finally {
+      setTesting(false);
+    }
+  };
+  const latest = status?.latest;
+  const [label, tone] = latest ? jobLabels[latest.status] : ["Sin probar", "neutral-badge"];
+  return (
+    <>
+      <div className="connection-row">
+        <span className="gemini-symbol">
+          <Workflow size={18} />
+        </span>
+        <div>
+          <strong>n8n local</strong>
+          <p>
+            {!status
+              ? "Consultando…"
+              : !status.configured
+                ? "Falta configurar los secretos en .env.local."
+                : latest
+                  ? `Última prueba: ${displayDate(latest.completedAt || latest.requestedAt, shortDateTime)}${latest.deliveryError ? ` · ${latest.deliveryError}` : ""}`
+                  : "Aún no has probado la conexión."}
+          </p>
+        </div>
+        <span className={`badge ${status?.configured ? tone : "neutral-badge"}`}>
+          {status?.configured ? label : "Sin configurar"}
+        </span>
+      </div>
+      <button
+        className="button secondary full-width"
+        onClick={() => void test()}
+        disabled={testing || !status?.configured || !state.posts.length}
+      >
+        {testing ? <LoaderCircle className="spin" size={16} /> : <Workflow size={16} />}
+        {testing ? "Probando conexión…" : "Probar conexión con n8n"}
+      </button>
+      <p className="field-hint">
+        Envía un encargo de prueba simulado a n8n en tu computadora. No publica, no gasta y no
+        cambia tus publicaciones; solo deja una nota en el historial.
+      </p>
+    </>
+  );
+}
+
+function SettingsPage({
+  state,
+  notify,
+  reload,
+}: {
+  state: Workspace;
+  notify: (message: string, error?: boolean) => void;
+  reload: () => Promise<void>;
+}) {
   const total = state.media.reduce((sum, m) => sum + m.size, 0);
   const [ack, setAck] = useState(false);
   return (
@@ -1378,8 +1919,8 @@ function SettingsPage({ state }: { state: Workspace }) {
             <span>$</span>0<small>de $20 disponibles este mes</small>
           </div>
           <p>
-            Esta versión no llama a servicios de pago. El presupuesto de $20 se conserva como
-            referencia de planificación.
+            Solo el texto con Gemini puede tener costo, con un tope de USD 5 para la prueba. El
+            presupuesto de $20 se conserva como referencia de planificación.
           </p>
           <dl className="settings-details">
             <div>
@@ -1387,7 +1928,11 @@ function SettingsPage({ state }: { state: Workspace }) {
               <dd>$0</dd>
             </div>
             <div>
-              <dt>API de texto, imagen y video</dt>
+              <dt>Texto con Gemini</dt>
+              <dd>Tope USD 5</dd>
+            </div>
+            <div>
+              <dt>Imagen y video con IA</dt>
               <dd>Desactivadas</dd>
             </div>
             <div>
@@ -1400,6 +1945,7 @@ function SettingsPage({ state }: { state: Workspace }) {
             <span>Los gastos que hagas fuera de ezrá no se consultan ni se contabilizan aquí.</span>
           </div>
         </section>
+        <SpendPanel />
         <section className="panel connections-panel">
           <div className="section-heading">
             <h2>Cuentas e integraciones</h2>
@@ -1436,6 +1982,7 @@ function SettingsPage({ state }: { state: Workspace }) {
             </div>
             <span className="badge neutral-badge">Uso manual</span>
           </div>
+          <N8nConnection state={state} notify={notify} reload={reload} />
           <p className="field-hint">
             Las conexiones requieren configuración y verificación de permisos. Tus suscripciones no
             se conectan automáticamente.

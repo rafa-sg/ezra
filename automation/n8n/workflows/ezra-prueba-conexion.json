@@ -1,0 +1,86 @@
+{
+  "id": "ezraConnTest01",
+  "name": "ezrá · prueba de conexión simulada",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/El_Salvador",
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all"
+  },
+  "nodes": [
+    {
+      "id": "6f0c1b8e-2a43-4c1e-9a51-0e1f5b7d0a01",
+      "name": "Encargo de ezrá",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "4b6a2e0d-8f3c-4f7e-b1a9-3c5d7e9f1a02",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ezra-prueba",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": { "id": "ezraToN8nAuth01", "name": "ezrá → n8n (secreto)" }
+      }
+    },
+    {
+      "id": "6f0c1b8e-2a43-4c1e-9a51-0e1f5b7d0a03",
+      "name": "¿Prueba simulada?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.body.mode }}",
+              "rightValue": "simulation",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.body.action }}",
+              "rightValue": "connection_test",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "6f0c1b8e-2a43-4c1e-9a51-0e1f5b7d0a04",
+      "name": "Devolver resultado simulado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, -80],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3000/api/automation/results",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ jobId: $json.body.jobId, contentRevision: $json.body.contentRevision, mode: 'simulation', status: 'completed', providerId: null, publishedUrl: null, errorCode: null, attempt: 1, completedAt: new Date().toISOString() }) }}",
+        "options": { "timeout": 5000, "redirect": { "redirect": { "followRedirects": false } } }
+      },
+      "credentials": {
+        "httpHeaderAuth": { "id": "n8nToEzraAuth01", "name": "n8n → ezrá (secreto)" }
+      }
+    }
+  ],
+  "connections": {
+    "Encargo de ezrá": { "main": [[{ "node": "¿Prueba simulada?", "type": "main", "index": 0 }]] },
+    "¿Prueba simulada?": {
+      "main": [[{ "node": "Devolver resultado simulado", "type": "main", "index": 0 }], []]
+    }
+  },
+  "pinData": {}
+}

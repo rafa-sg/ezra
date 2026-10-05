@@ -2,7 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
-  if (!/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host))
+  // n8n in Docker reaches the Mac as host.docker.internal. Only the secret-protected
+  // results callback accepts that host; everything else stays loopback-only.
+  const dockerCallback =
+    request.nextUrl.pathname === "/api/automation/results" &&
+    /^host\.docker\.internal(:\d+)?$/.test(host);
+  if (!dockerCallback && !/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host))
     return NextResponse.json(
       { error: "Este piloto solo está disponible en tu computadora." },
       { status: 403 },

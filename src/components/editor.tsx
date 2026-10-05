@@ -20,6 +20,7 @@ import {
   type Source,
   type Workspace,
   today,
+  sourceKindLabels,
 } from "@/lib/model";
 import { Dialog, Network, PostVisual, Checkline, StatusBadge } from "./ui";
 
@@ -281,7 +282,7 @@ export function PostEditor({
                         : s.status === "paused"
                           ? "Pausada"
                           : "Pendiente"}{" "}
-                      · {s.kind === "inspiration" ? "Solo inspiración" : "Información"}
+                      · {sourceKindLabels[s.kind]}
                     </small>
                   </Checkline>
                 ))}
@@ -398,6 +399,7 @@ export function PostEditor({
           </div>
           <div className="preview-meta">
             <StatusBadge status={post.status} />
+            {post.aiGenerated && <span className="badge ai-badge">Texto generado con IA</span>}
             {state.media.filter((m) => post.mediaIds.includes(m.id) && m.origin === "ai").length >
               0 && <span className="badge ai-badge">Contiene medios con IA</span>}
           </div>
@@ -410,6 +412,16 @@ export function PostEditor({
             <ArrowDownToLine size={15} />
             Exportar versión guardada
           </a>
+          {!saved.demo && ["approved", "planned", "published"].includes(saved.status) && (
+            <a
+              className="text-button"
+              href={`/api/export?post=${post.id}&for=site`}
+              title="Paquete para copiar en «Agregar evento» de spotmi-web. No envía nada."
+            >
+              <ArrowDownToLine size={15} />
+              Exportar para el sitio (evento)
+            </a>
+          )}
           <button
             className="text-button"
             disabled={busy || dirty}
@@ -539,7 +551,7 @@ export function SourceEditor({
   return (
     <Dialog
       title={initial ? "Revisar fuente" : "Una fuente para tus historias"}
-      subtitle="El sitio se registra manualmente. No se rastrea ni se consulta automáticamente."
+      subtitle="ezrá solo lee sitios propios y RSS autorizados cuando tú pulsas «Buscar ideas». Nunca redes sociales."
       onClose={onClose}
     >
       <form
@@ -565,25 +577,39 @@ export function SourceEditor({
           />
         </label>
         <label>
-          Dirección del sitio
+          {source.kind === "rss"
+            ? "Dirección del RSS"
+            : source.kind === "inspiration"
+              ? "Enlace (opcional)"
+              : "Dirección del sitio"}
           <input
-            required
+            required={source.kind !== "inspiration"}
             type="url"
             value={source.url}
             onChange={(e) => field("url", e.target.value)}
             placeholder="https://…"
           />
+          <span className="field-hint">
+            {source.kind === "rss"
+              ? "Pega la dirección del canal RSS del sitio, no la de la portada."
+              : source.kind === "owned"
+                ? "Al buscar ideas se lee el RSS que anuncie este sitio, si tiene uno."
+                : source.kind === "inspiration"
+                  ? "Una nota tuya. ezrá nunca la lee ni la usa para verificar hechos."
+                  : "Sitio oficial: se consulta a mano. ezrá no lee páginas web sin RSS."}
+          </span>
         </label>
         <div className="form-row">
           <label>
-            Uso permitido
+            Tipo
             <select
               value={source.kind}
               onChange={(e) => field("kind", e.target.value as Source["kind"])}
             >
-              <option value="information">Fuente de información</option>
-              <option value="owned">Información y material propios</option>
-              <option value="inspiration">Solo inspiración</option>
+              <option value="owned">{sourceKindLabels.owned}</option>
+              <option value="information">{sourceKindLabels.information}</option>
+              <option value="rss">{sourceKindLabels.rss}</option>
+              <option value="inspiration">{sourceKindLabels.inspiration}</option>
             </select>
           </label>
           <label>

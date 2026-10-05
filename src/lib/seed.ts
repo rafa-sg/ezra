@@ -18,6 +18,7 @@ export function createSeed(now = new Date()): Workspace {
     checks: { facts: false, rights: false, brand: false },
     rejectionReason: "",
     demo: true,
+    aiGenerated: false,
     createdAt: at,
     updatedAt: at,
   };

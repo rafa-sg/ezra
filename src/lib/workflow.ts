@@ -23,7 +23,7 @@ const moves: Record<Status, Status[]> = {
   rejected: ["rejected", "draft", "review"],
   published: ["published"],
 };
-function editorial(post: Post) {
+export function editorial(post: Post) {
   return JSON.stringify([
     post.title,
     post.caption,
@@ -108,6 +108,8 @@ export function reconcile(previous: Workspace, raw: unknown, now = new Date()): 
       continue;
     }
     post.createdAt = old.createdAt;
+    // The AI label is sticky: editing an AI draft keeps it labelled.
+    post.aiGenerated = old.aiGenerated || post.aiGenerated;
     const sourceChanged = post.sourceIds.some(
       (id) =>
         JSON.stringify(next.sources.find((s) => s.id === id)) !==

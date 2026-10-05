@@ -100,7 +100,31 @@ test(
       assert.equal(exported.status, 200);
       const packageZip = await JSZip.loadAsync(await exported.arrayBuffer());
       assert.ok(packageZip.file(`media/${media.filename}`));
-      assert.match(await packageZip.file("publicacion.txt")!.async("text"), /Prueba persistida/);
+      const summary = await packageZip.file("publicacion.txt")!.async("text");
+      assert.match(summary, /Prueba persistida/);
+      // The example post is still in review: the package warns it is not approved.
+      assert.match(summary, /VERSIÓN NO APROBADA/);
+      assert.match(exported.headers.get("content-disposition") || "", /-no-aprobada/);
+      assert.equal(
+        await packageZip.file("texto.txt")!.async("text"),
+        `${workspace.posts[0].caption}\n`,
+      );
+      if (workspace.posts[0].channel === "instagram") assert.match(summary, /solo en JPEG/);
+      const approvedPost = workspace.posts.find((p: { status: string }) => p.status === "approved");
+      const approvedExport = await fetch(`${base}/api/export?post=${approvedPost.id}`);
+      assert.doesNotMatch(approvedExport.headers.get("content-disposition") || "", /no-aprobada/);
+      assert.doesNotMatch(
+        await (
+          await JSZip.loadAsync(await approvedExport.arrayBuffer())
+        )
+          .file("publicacion.txt")!
+          .async("text"),
+        /NO APROBADA/,
+      );
+      // Example posts never leave ezrá for the site, approved or not.
+      for (const p of [workspace.posts[0], approvedPost])
+        assert.equal((await fetch(`${base}/api/export?post=${p.id}&for=site`)).status, 422);
+      assert.equal((await fetch(`${base}/api/export?for=site`)).status, 400);
       const backup = await fetch(`${base}/api/export`);
       assert.equal(backup.status, 200);
       const zip = await JSZip.loadAsync(await backup.arrayBuffer());
