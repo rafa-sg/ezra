@@ -18,6 +18,7 @@ import {
 } from "@/lib/catalog";
 import { Checkline, Dialog, Empty } from "./ui";
 import type { Commit, UploadFile } from "./editor";
+import { CampaignWizard } from "./campaign-wizard";
 
 function cents(value: FormDataEntryValue | null) {
   const text = String(value || "").trim();
@@ -187,12 +188,19 @@ export function CatalogPage({
         />
       )}
       {campaign && (
-        <CampaignEditor
+        <CampaignWizard
           product={campaign}
+          businessId={state.businessId}
           busy={busy}
           onClose={() => setCampaign(null)}
-          onCreate={async (variant, channels) => {
-            const posts = createCatalogPosts(campaign, variant, channels);
+          onCreate={async (variant, channels, mediaIds) => {
+            let posts;
+            try {
+              posts = createCatalogPosts(campaign, variant, channels, mediaIds);
+            } catch (e) {
+              notify(e instanceof Error ? e.message : "No se pudo preparar.", true);
+              return;
+            }
             const next = await commit((draft) => {
               draft.posts.unshift(...posts);
             });
@@ -609,75 +617,6 @@ function ProductEditor({
           </button>
         </div>
       </form>
-    </Dialog>
-  );
-}
-function CampaignEditor({
-  product,
-  busy,
-  onClose,
-  onCreate,
-}: {
-  product: CatalogProduct;
-  busy: boolean;
-  onClose: () => void;
-  onCreate: (variant: string, channels: Post["channel"][]) => Promise<void>;
-}) {
-  const [variant, setVariant] = useState(product.variants[0].id);
-  const [channels, setChannels] = useState<Post["channel"][]>(["instagram", "facebook"]);
-  const price = productPrice(product, variant);
-  return (
-    <Dialog
-      title="Crear publicaciones del producto"
-      subtitle={product.name}
-      onClose={() => {
-        if (!busy) onClose();
-      }}
-    >
-      <div className="form-stack">
-        <label>
-          Variante / color
-          <select value={variant} disabled={busy} onChange={(e) => setVariant(e.target.value)}>
-            {product.variants.map((v) => (
-              <option key={v.id} value={v.id}>
-                {[v.name, v.color].filter(Boolean).join(" · ")}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="catalog-price">
-          {price.final === null ? "Precio por confirmar" : formatPrice(price.final)}
-          {price.active && " · Con promoción vigente"}
-        </p>
-        <h3>Redes para preparar</h3>
-        {(["instagram", "facebook"] as const).map((channel) => (
-          <Checkline
-            key={channel}
-            checked={channels.includes(channel)}
-            onChange={(checked) => {
-              if (!busy)
-                setChannels(
-                  checked ? [...channels, channel] : channels.filter((c) => c !== channel),
-                );
-            }}
-          >
-            {channel === "instagram" ? "Instagram" : "Facebook"}
-          </Checkline>
-        ))}
-        <p className="info-note">
-          Cada red tendrá su propio borrador, revisión y exportación. Este paso prepara contenido
-          para publicarlo manualmente.
-        </p>
-        <button
-          className="button primary"
-          disabled={busy || !channels.length}
-          onClick={() => void onCreate(variant, channels)}
-        >
-          {busy
-            ? "Preparando…"
-            : `Preparar ${channels.length} borrador${channels.length === 1 ? "" : "es"}`}
-        </button>
-      </div>
     </Dialog>
   );
 }

@@ -156,3 +156,15 @@ Aprobada por el propietario, con las tres recomendaciones: nivel gratuito, `gemi
 - La instancia usada es desarrollo. Las tres cuentas de prueba usan correos provisionales y una contraseña débil únicamente para esta prueba local; deben sustituirse antes de cualquier entrega.
 - No se habilitaron Organizations de Clerk: el aislamiento actual es una asignación privada de cuentas a organizaciones locales, suficiente para el piloto. Se revisará B2B/Organizations antes de comercializar.
 - La publicación social, WhatsApp, chatbot, Gemini y cobros continúan fuera del hito; el flujo actual prepara y exporta manualmente.
+
+## 2026-10-05 · Enfoque en Sgmotos y asistente de publicación desde el catálogo
+
+- Por decisión del propietario, se termina primero el panel de **Sgmotos**; motoxspress queda aislado y sin cambios funcionales propios hasta validar Sgmotos. Después se conectan las redes oficiales de Sgmotos.
+- **«Crear publicación» en el catálogo es un asistente de 4 pasos:**
+  1. Variante y fotos: solo las fotos del propio producto o variante.
+  2. Promoción: vigente, próxima, vencida o incompleta, mostrada desde el catálogo verificado y no editable en el asistente.
+  3. Redes: Instagram exige al menos una foto.
+  4. Revisión: vista previa del texto exacto por red y avisos (producto sin verificar, sin enlace, sin precio, promoción no vigente).
+- Los avisos no bloquean el borrador, porque nada se publica; las mismas reglas se exigen al aprobar.
+- El formato sale del número de fotos: sin fotos es texto (solo Facebook), una es foto y varias son carrusel.
+- En pantallas de 640 px o menos, los diálogos ocupan toda la pantalla y sus botones quedan fijos abajo.
