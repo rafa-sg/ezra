@@ -104,4 +104,4 @@ n8n está instalado fuera del proyecto, en `~/n8n-local` (versión fija 2.41.6).
 2. Abre ezrá como siempre. Los secretos y la dirección de n8n están en `.env.local`, fuera de Git; el navegador nunca los recibe.
 3. El flujo «ezrá · prueba de conexión simulada» (`automation/n8n/workflows/`) recibe el encargo, comprueba el secreto y devuelve un resultado simulado. En el historial verás «Prueba de conexión simulada». **No publica nada ni cambia ninguna publicación.**
 
-Por ahora la prueba se lanza por HTTP (`POST /api/automation/jobs`); todavía no hay un botón en la interfaz.
+Para probar la conexión: **Ajustes → Cuentas e integraciones → Probar conexión con n8n**. La etiqueta muestra el resultado de la última prueba («Conectado», «No entregado», etc.).

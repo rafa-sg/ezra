@@ -30,6 +30,7 @@ import {
   Sparkles,
   Upload,
   Wallet,
+  Workflow,
   X,
 } from "lucide-react";
 import {
@@ -636,7 +637,9 @@ export function Studio({ initialView }: { initialView?: string }) {
                   </>
                 )}
                 {view === "brand" && <BrandPage state={state} commit={commit} busy={busy} />}
-                {view === "settings" && <SettingsPage state={state} />}
+                {view === "settings" && (
+                  <SettingsPage state={state} notify={notify} reload={load} />
+                )}
               </>
             )}
             <footer className="page-footer">
@@ -1302,7 +1305,149 @@ function BrandPage({ state, commit, busy }: { state: Workspace; commit: Commit; 
   );
 }
 
-function SettingsPage({ state }: { state: Workspace }) {
+type AutomationStatus = {
+  configured: boolean;
+  latest: {
+    jobId: string;
+    status: "queued" | "sent" | "delivery_failed" | "completed" | "failed";
+    deliveryError: string;
+    requestedAt: string;
+    completedAt: string | null;
+  } | null;
+};
+const jobLabels: Record<NonNullable<AutomationStatus["latest"]>["status"], [string, string]> = {
+  queued: ["En cola", "status-review"],
+  sent: ["Esperando a n8n", "status-review"],
+  delivery_failed: ["No entregado", "status-rejected"],
+  completed: ["Conectado", "status-approved"],
+  failed: ["Falló la prueba", "status-rejected"],
+};
+const shortDateTime: Intl.DateTimeFormatOptions = {
+  day: "numeric",
+  month: "short",
+  hour: "numeric",
+  minute: "2-digit",
+};
+
+/** Simulated round trip with the local n8n. Never publishes or changes a post. */
+function N8nConnection({
+  state,
+  notify,
+  reload,
+}: {
+  state: Workspace;
+  notify: (message: string, error?: boolean) => void;
+  reload: () => Promise<void>;
+}) {
+  const [status, setStatus] = useState<AutomationStatus | null>(null);
+  const [testing, setTesting] = useState(false);
+  const read = async () => {
+    const res = await fetch("/api/automation/jobs");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    setStatus(data);
+    return data as AutomationStatus;
+  };
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/automation/jobs", { signal: controller.signal })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        return data as AutomationStatus;
+      })
+      .then((data) => setStatus(data))
+      .catch((e) => {
+        if (e.name !== "AbortError") setStatus({ configured: false, latest: null });
+      });
+    return () => controller.abort();
+  }, []);
+  const test = async () => {
+    const post = state.posts[0];
+    if (!post) return;
+    setTesting(true);
+    try {
+      const res = await fetch("/api/automation/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId: post.id, action: "connection_test", mode: "simulation" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        await read().catch(() => {});
+        throw new Error(
+          res.status === 502
+            ? "n8n no respondió. Abre «Abrir n8n.command» y vuelve a intentarlo."
+            : data.error,
+        );
+      }
+      // n8n answers in the background; wait a few seconds for its result.
+      let latest = await read();
+      for (let i = 0; i < 20 && latest.latest?.status === "sent"; i++) {
+        await new Promise((r) => setTimeout(r, 500));
+        latest = await read();
+      }
+      if (latest.latest?.status === "completed") {
+        notify("n8n respondió. La conexión funciona (prueba simulada; no se publicó nada).");
+        await reload();
+      } else if (latest.latest?.status === "sent")
+        notify("n8n recibió el encargo pero aún no responde. Revisa su ventana.", true);
+      else notify("La prueba no se completó. Revisa n8n y vuelve a intentarlo.", true);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "No se pudo probar la conexión.", true);
+    } finally {
+      setTesting(false);
+    }
+  };
+  const latest = status?.latest;
+  const [label, tone] = latest ? jobLabels[latest.status] : ["Sin probar", "neutral-badge"];
+  return (
+    <>
+      <div className="connection-row">
+        <span className="gemini-symbol">
+          <Workflow size={18} />
+        </span>
+        <div>
+          <strong>n8n local</strong>
+          <p>
+            {!status
+              ? "Consultando…"
+              : !status.configured
+                ? "Falta configurar los secretos en .env.local."
+                : latest
+                  ? `Última prueba: ${displayDate(latest.completedAt || latest.requestedAt, shortDateTime)}${latest.deliveryError ? ` · ${latest.deliveryError}` : ""}`
+                  : "Aún no has probado la conexión."}
+          </p>
+        </div>
+        <span className={`badge ${status?.configured ? tone : "neutral-badge"}`}>
+          {status?.configured ? label : "Sin configurar"}
+        </span>
+      </div>
+      <button
+        className="button secondary full-width"
+        onClick={() => void test()}
+        disabled={testing || !status?.configured || !state.posts.length}
+      >
+        {testing ? <LoaderCircle className="spin" size={16} /> : <Workflow size={16} />}
+        {testing ? "Probando conexión…" : "Probar conexión con n8n"}
+      </button>
+      <p className="field-hint">
+        Envía un encargo de prueba simulado a n8n en tu computadora. No publica, no gasta y no
+        cambia tus publicaciones; solo deja una nota en el historial.
+      </p>
+    </>
+  );
+}
+
+function SettingsPage({
+  state,
+  notify,
+  reload,
+}: {
+  state: Workspace;
+  notify: (message: string, error?: boolean) => void;
+  reload: () => Promise<void>;
+}) {
   const total = state.media.reduce((sum, m) => sum + m.size, 0);
   const [ack, setAck] = useState(false);
   return (
@@ -1436,6 +1581,7 @@ function SettingsPage({ state }: { state: Workspace }) {
             </div>
             <span className="badge neutral-badge">Uso manual</span>
           </div>
+          <N8nConnection state={state} notify={notify} reload={reload} />
           <p className="field-hint">
             Las conexiones requieren configuración y verificación de permisos. Tus suscripciones no
             se conectan automáticamente.

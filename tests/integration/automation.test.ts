@@ -147,6 +147,10 @@ test(
       assert.equal((await post("/api/automation/jobs", request)).status, 503);
       assert.equal((await post("/api/automation/results", {}, { [header]: inbound })).status, 503);
       assert.equal(receiver.state.received.length, 0);
+      assert.deepEqual(await (await fetch(`${base}/api/automation/jobs`)).json(), {
+        configured: false,
+        latest: null,
+      });
     } finally {
       await stop();
     }
@@ -178,6 +182,13 @@ test(
         if (!completed) await new Promise((r) => setTimeout(r, 100));
       }
       assert.ok(completed, "el resultado simulado no regresó");
+      const statusText = await (await fetch(`${base}/api/automation/jobs`)).text();
+      assert.ok(!statusText.includes(outbound) && !statusText.includes(inbound));
+      assert.ok(!statusText.includes("webhook"));
+      const status = JSON.parse(statusText);
+      assert.equal(status.configured, true);
+      assert.equal(status.latest.jobId, job.jobId);
+      assert.equal(status.latest.status, "completed");
       const after = await workspace();
       assert.deepEqual(after.posts, before.posts);
       assert.equal(after.revision, before.revision);
