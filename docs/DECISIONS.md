@@ -47,3 +47,13 @@ El usuario no tenía n8n y aprobó instalarlo en la Mac, sin Docker.
 - Los secretos se generaron al azar en `.env.local` (permisos 600, ignorado por Git). Se importaron en n8n como credenciales cifradas «ezrá → n8n» y «n8n → ezrá», y el archivo temporal se borró.
 - El flujo exportado no contiene secretos, solo referencias a esas credenciales. Si recibe algo que no es una prueba simulada, no responde.
 - Primera ida y vuelta real verificada: encargo completado, un evento en el historial, publicaciones y `revision` sin cambios. Sin llamar a servicios externos ni generar gasto.
+
+## 2026-10-04 · Metricool Free para programar a mano
+
+Decisión del propietario: evaluar Metricool como herramienta de publicación y métricas para Spotmi, sin gastar. Detalle en `docs/METRICOOL.md`.
+
+- La cuenta está en el plan **Free**, sin prueba activa: 1 marca (`spotmi.sv`) con Facebook e Instagram vinculados, 20 publicaciones al mes y métricas de 30 días.
+- Uso manual: ezrá prepara, revisa y aprueba cada versión. Metricool programa a mano la versión exportada y después se registra el enlace real en ezrá.
+- No se conecta n8n con Metricool: eso exige la API, disponible solo en Advanced o Custom. El contrato de automatización de ezrá permite añadir Metricool API o Meta como proveedor más adelante sin reescribir la base.
+- El MCP de Metricool funciona en Free, pero también puede programar y publicar. Se añadió para evaluarlo y se retiró a petición del propietario; la cuenta se verificó con capturas. Volver a conectarlo requiere su aprobación, y cada escritura un sí explícito.
+- No activar pruebas ni planes de pago sin una decisión explícita: las pruebas con código piden tarjeta o PayPal y cobran automáticamente si no se cancelan.
