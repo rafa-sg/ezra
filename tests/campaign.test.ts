@@ -90,3 +90,48 @@ test("un borrador de Facebook sin fotos no pide medios para aprobarse", () => {
   assert.ok(!issues.some((i) => /medios/.test(i)), issues.join(" "));
 });
 
+test("año, cilindrada y especificaciones salen del catálogo; el financiamiento solo si se aprobó", async () => {
+  const { catalogContent } = await import("../src/lib/catalog");
+  const p = product();
+  p.details = {
+    year: "2026",
+    engineCc: 125,
+    specs: "Frenos de disco delanteros.",
+    financing: "Prima de $200 y 12 cuotas.",
+    financingApproved: false,
+  };
+  let caption = catalogContent(p, "roja", "2026-10-05").caption;
+  assert.match(caption, /Año 2026 · 125 cc/);
+  assert.match(caption, /Frenos de disco/);
+  assert.doesNotMatch(caption, /Financiamiento/);
+  assert.ok(
+    campaignIssues(p, "roja", ["foto-roja"], ["facebook"], "2026-10-05").some((i) =>
+      /financiamiento no se incluirá/.test(i),
+    ),
+  );
+  p.details.financingApproved = true;
+  caption = catalogContent(p, "roja", "2026-10-05").caption;
+  assert.match(caption, /Financiamiento: Prima de \$200/);
+});
+
+test("no se puede aprobar un financiamiento vacío ni un año inválido", async () => {
+  const { catalogProductSchema } = await import("../src/lib/model");
+  const p = product();
+  p.details = { year: "", engineCc: null, specs: "", financing: "", financingApproved: true };
+  assert.ok(!catalogProductSchema.safeParse(p).success);
+  p.details = { year: "26", engineCc: null, specs: "", financing: "", financingApproved: false };
+  assert.ok(!catalogProductSchema.safeParse(p).success);
+});
+
+test("la preparación de redes dice qué falta sin conectar nada", async () => {
+  const { socialSetupSteps } = await import("../src/components/social-setup");
+  const steps = socialSetupSteps({
+    instagramProfessional: "yes",
+    instagramLinkedToPage: "no",
+    pageAdmin: "yes",
+    whatsapp: "personal",
+    notes: "",
+  });
+  assert.equal(steps.filter((s) => s.done).length, 2);
+  assert.ok(steps.some((s) => /WhatsApp personal no se puede conectar/.test(s.text)));
+});

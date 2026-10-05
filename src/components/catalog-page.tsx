@@ -385,6 +385,86 @@ function ProductEditor({
               rows={3}
             />
           </label>
+          {product.kind === "motorcycle" && (
+            <div className="form-row">
+              <label>
+                Año (si está verificado)
+                <input
+                  inputMode="numeric"
+                  maxLength={4}
+                  pattern="(19[5-9][0-9]|20[0-9]{2})"
+                  value={product.details.year}
+                  onChange={(e) =>
+                    set("details", { ...product.details, year: e.target.value.trim() })
+                  }
+                  placeholder="Ej. 2026"
+                />
+              </label>
+              <label>
+                Cilindrada (cc)
+                <input
+                  type="number"
+                  min="1"
+                  max="5000"
+                  step="1"
+                  value={product.details.engineCc ?? ""}
+                  onChange={(e) =>
+                    set("details", {
+                      ...product.details,
+                      engineCc: e.target.value ? Math.round(Number(e.target.value)) : null,
+                    })
+                  }
+                  placeholder="Ej. 125"
+                />
+              </label>
+            </div>
+          )}
+          <label>
+            Especificaciones verificadas (opcional)
+            <textarea
+              value={product.details.specs}
+              maxLength={1000}
+              rows={2}
+              onChange={(e) => set("details", { ...product.details, specs: e.target.value })}
+              placeholder="Solo lo que confirmaste en la ficha del fabricante o con el negocio."
+            />
+          </label>
+          {product.kind !== "food" && (
+            <div className="variant-box">
+              <label>
+                Financiamiento (opcional)
+                <textarea
+                  value={product.details.financing}
+                  maxLength={500}
+                  rows={2}
+                  onChange={(e) =>
+                    set("details", {
+                      ...product.details,
+                      financing: e.target.value,
+                      financingApproved: e.target.value.trim()
+                        ? product.details.financingApproved
+                        : false,
+                    })
+                  }
+                  placeholder="Ej. prima, cuotas y condiciones exactas que te dio el negocio."
+                />
+              </label>
+              <Checkline
+                checked={product.details.financingApproved}
+                onChange={(checked) =>
+                  set("details", {
+                    ...product.details,
+                    financingApproved: checked && !!product.details.financing.trim(),
+                  })
+                }
+              >
+                El negocio aprobó publicar este financiamiento
+              </Checkline>
+              <span className="field-hint">
+                Sin esta aprobación, el financiamiento no aparece en ninguna publicación.
+              </span>
+            </div>
+          )}
           <div className="form-row">
             <label>
               Precio base (USD)

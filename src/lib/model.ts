@@ -167,6 +167,20 @@ export const catalogProductSchema = z.object({
   sourceUrl: optionalUrl,
   verified: z.boolean(),
   verifiedOn: z.union([z.literal(""), dateOnly]),
+  // Facts supplied and checked by the business; never filled in automatically.
+  details: z
+    .object({
+      year: z.union([z.literal(""), z.string().regex(/^(19[5-9]\d|20\d\d)$/)]),
+      engineCc: z.number().int().min(1).max(5000).nullable(),
+      specs: z.string().trim().max(1000),
+      financing: z.string().trim().max(500),
+      // Financing is only published when the business explicitly approved it.
+      financingApproved: z.boolean(),
+    })
+    .refine((d) => !d.financingApproved || d.financing.length > 0, {
+      message: "Escribe el financiamiento antes de aprobar que se publique.",
+    })
+    .default({ year: "", engineCc: null, specs: "", financing: "", financingApproved: false }),
 });
 export type Business = z.infer<typeof businessSchema>;
 export type CatalogProduct = z.infer<typeof catalogProductSchema>;
@@ -192,6 +206,22 @@ export const workspaceSchema = z.object({
   media: z.array(mediaSchema).max(1000),
   history: z.array(eventSchema).max(10000),
   catalog: z.array(catalogProductSchema).max(2000).default([]),
+  // What the owner confirmed about each account before an official connection.
+  socialSetup: z
+    .object({
+      instagramProfessional: z.enum(["unknown", "yes", "no"]),
+      instagramLinkedToPage: z.enum(["unknown", "yes", "no"]),
+      pageAdmin: z.enum(["unknown", "yes", "no"]),
+      whatsapp: z.enum(["unknown", "none", "personal", "business_app", "cloud_api"]),
+      notes: z.string().trim().max(1000),
+    })
+    .default({
+      instagramProfessional: "unknown",
+      instagramLinkedToPage: "unknown",
+      pageAdmin: "unknown",
+      whatsapp: "unknown",
+      notes: "",
+    }),
 });
 export type Workspace = z.infer<typeof workspaceSchema>;
 export type Post = z.infer<typeof postSchema>;

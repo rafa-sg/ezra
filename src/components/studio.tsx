@@ -67,6 +67,7 @@ import {
   PostCard,
   StatusBadge,
 } from "./ui";
+import { SocialSetupPanel } from "./social-setup";
 import { type Commit, MediaUpload, PostEditor, SourceEditor, type UploadFile } from "./editor";
 
 const navigation = [
@@ -1011,6 +1012,8 @@ export function Studio({
                 {view === "settings" && (
                   <SettingsPage
                     state={state}
+                    commit={commit}
+                    busy={busy}
                     notify={notify}
                     reload={load}
                     legacyAutomation={legacyAutomation}
@@ -1818,12 +1821,16 @@ function N8nConnection({
 
 function SettingsPage({
   state,
+  commit,
+  busy,
   notify,
   reload,
   legacyAutomation,
   admin,
 }: {
   state: Workspace;
+  commit: Commit;
+  busy: boolean;
   notify: (message: string, error?: boolean) => void;
   reload: () => Promise<void>;
   legacyAutomation: boolean;
@@ -1934,6 +1941,7 @@ function SettingsPage({
           </div>
         </section>
         {legacyAutomation && <SpendPanel />}
+        <SocialSetupPanel key={state.revision} state={state} commit={commit} busy={busy} />
         <section className="panel connections-panel">
           <div className="section-heading">
             <h2>Cuentas e integraciones</h2>

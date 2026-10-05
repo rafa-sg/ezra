@@ -168,3 +168,15 @@ Aprobada por el propietario, con las tres recomendaciones: nivel gratuito, `gemi
 - Los avisos no bloquean el borrador, porque nada se publica; las mismas reglas se exigen al aprobar.
 - El formato sale del número de fotos: sin fotos es texto (solo Facebook), una es foto y varias son carrusel.
 - En pantallas de 640 px o menos, los diálogos ocupan toda la pantalla y sus botones quedan fijos abajo.
+
+## 2026-10-05 · Sgmotos: datos de moto y preparación de redes
+
+- **Acceso:** el panel de Sgmotos pasó a otro correo del propietario, a su pedido, porque el correo inicial no estaba verificado. Copia previa de `data/access.json` en `Documentos/Respaldos-ezra/`. El inicio de sesión de administración y de Sgmotos quedó comprobado: las dos cuentas están enlazadas.
+- **Producto (`details`), compatible con los datos existentes:**
+  - año (si está verificado), cilindrada y especificaciones verificadas;
+  - financiamiento, que solo aparece en una publicación si se marca «El negocio aprobó publicar este financiamiento»; no se puede aprobar un financiamiento vacío;
+  - estos datos forman parte de la revisión del producto: cambiarlos invalida las aprobaciones.
+- **«Preparación para conectar redes» en Ajustes, por negocio (`socialSetup`):**
+  - guarda si Instagram es profesional, si está vinculado a la página, si hay control total de la página y qué WhatsApp se usa;
+  - muestra qué falta;
+  - no conecta, no publica y no envía nada; WhatsApp personal se marca como no conectable.

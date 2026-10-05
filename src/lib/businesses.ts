@@ -77,6 +77,13 @@ async function initializeWorkspace(business: Business) {
     sources: [],
     media: [],
     catalog: [],
+    socialSetup: {
+      instagramProfessional: "unknown" as const,
+      instagramLinkedToPage: "unknown" as const,
+      pageAdmin: "unknown" as const,
+      whatsapp: "unknown" as const,
+      notes: "",
+    },
     history: [
       {
         id: crypto.randomUUID(),

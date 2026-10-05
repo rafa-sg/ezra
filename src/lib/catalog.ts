@@ -30,6 +30,7 @@ export function newProduct(kind: CatalogProduct["kind"] = "motorcycle"): Catalog
     sourceUrl: "",
     verified: false,
     verifiedOn: "",
+    details: { year: "", engineCc: null, specs: "", financing: "", financingApproved: false },
   };
 }
 export function productPrice(product: CatalogProduct, variantId: string, day = today()) {
@@ -58,9 +59,16 @@ export function catalogContent(product: CatalogProduct, variantId: string, day =
   const lines = [
     product.name,
     [product.brand, product.model].filter(Boolean).join(" · "),
+    [
+      product.details.year && `Año ${product.details.year}`,
+      product.details.engineCc && `${product.details.engineCc} cc`,
+    ]
+      .filter(Boolean)
+      .join(" · "),
     variant.name !== "Principal" ? variant.name : "",
     variant.color ? `Color: ${variant.color}` : "",
     product.description,
+    product.details.specs,
     price.final !== null
       ? `Precio${product.kind === "rental" ? " informado" : ""}: ${formatPrice(price.final)}`
       : "",
@@ -69,6 +77,7 @@ export function catalogContent(product: CatalogProduct, variantId: string, day =
       ? `Descuento: ${promotion.kind === "percentage" ? `${promotion.value}%` : formatPrice(promotion.value)}. Vigente del ${promotion.startsOn} al ${promotion.endsOn}.`
       : "",
     price.active ? promotion.conditions : "",
+    product.details.financingApproved ? `Financiamiento: ${product.details.financing}` : "",
     product.availability === "available"
       ? "Disponibilidad informada por el negocio. Consulta antes de comprar."
       : "Consulta disponibilidad con el negocio.",
@@ -127,6 +136,8 @@ export function campaignIssues(
     issues.push("No hay precio: la publicación dirá que se consulte.");
   if (product.availability === "unavailable")
     issues.push("El producto está marcado como no disponible.");
+  if (product.details.financing && !product.details.financingApproved)
+    issues.push("El financiamiento no se incluirá: falta marcar que el negocio lo aprobó.");
   const promo = promotionStatus(product, day);
   if (promo === "incomplete" || promo === "upcoming" || promo === "expired")
     issues.push(`${promotionStatusLabels[promo]}: no se incluirá el descuento.`);
