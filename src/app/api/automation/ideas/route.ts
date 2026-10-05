@@ -13,7 +13,11 @@ export async function GET() {
   }
 }
 const patchSchema = z
-  .object({ id: z.string().uuid(), status: z.enum(["discarded", "used"]) })
+  .object({
+    id: z.string().uuid(),
+    status: z.enum(["discarded", "used"]).optional(),
+    note: z.string().max(500).optional(),
+  })
   .strict();
 export async function PATCH(request: Request) {
   try {
@@ -24,7 +28,8 @@ export async function PATCH(request: Request) {
       throw new WorkflowError("Formato de datos inválido.", 400);
     }
     if (!parsed.success) throw new WorkflowError("Cambio de idea inválido.", 422);
-    return Response.json(await setIdeaStatus(parsed.data.id, parsed.data.status));
+    const { id, ...change } = parsed.data;
+    return Response.json(await setIdeaStatus(id, change));
   } catch (e) {
     return apiError(e);
   }

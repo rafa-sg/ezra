@@ -106,6 +106,7 @@ export function PostCard({
         <div className="post-overline">
           <StatusBadge status={post.status} />
           {post.demo && <span className="demo-tag">Ejemplo</span>}
+          {post.aiGenerated && <span className="badge ai-badge">Generado con IA</span>}
         </div>
         <h3>{post.title}</h3>
         <p>{post.caption || "Una historia por escribir…"}</p>

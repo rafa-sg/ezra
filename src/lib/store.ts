@@ -40,7 +40,10 @@ export async function writeJsonAtomic(target: string, value: unknown) {
   await writeFile(temporary, JSON.stringify(value, null, 2), { mode: 0o600 });
   await rename(temporary, target);
 }
-async function writeWorkspace(change: (current: Workspace) => Workspace | Promise<Workspace>) {
+/** Must run inside enqueueWrite; used by automation to add an AI draft. */
+export async function writeWorkspace(
+  change: (current: Workspace) => Workspace | Promise<Workspace>,
+) {
   const next = workspaceSchema.parse(await change(await readWorkspace()));
   await writeJsonAtomic(file, next);
   return next;

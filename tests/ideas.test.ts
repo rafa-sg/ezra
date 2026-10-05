@@ -102,6 +102,6 @@ test("las ideas de n8n son datos: solo https del mismo sitio, limpias y sin dupl
   assert.deepEqual(after.posts, before.posts);
   assert.equal(after.revision, before.revision);
   assert.equal(after.history.filter((e) => e.id === `job-${job.jobId}`).length, 1);
-  await setIdeaStatus(stored.ideas[0].id, "discarded");
+  await setIdeaStatus(stored.ideas[0].id, { status: "discarded" });
   assert.equal((await readAutomation()).ideas[0].status, "discarded");
 });

@@ -1,5 +1,6 @@
 import {
   automationConfig,
+  createDraftJob,
   createIdeasJob,
   createJob,
   dispatchJob,
@@ -47,20 +48,27 @@ export async function POST(request: Request) {
     }
     if (!parsed.success)
       throw new WorkflowError(
-        "Solo se permiten pruebas de conexión simuladas y búsquedas de ideas.",
+        "Solo se permiten pruebas de conexión, búsquedas de ideas y propuestas con IA.",
         422,
       );
-    const { inbound, outbound, webhook, ideasWebhook } = automationConfig();
-    const target = parsed.data.action === "find_ideas" ? ideasWebhook : webhook;
+    const { inbound, outbound, webhook, ideasWebhook, draftWebhook } = automationConfig();
+    const target = {
+      connection_test: webhook,
+      find_ideas: ideasWebhook,
+      generate_draft: draftWebhook,
+    }[parsed.data.action];
     if (!inbound || !outbound || !target)
       throw new WorkflowError(
         "La automatización no está configurada. Revisa los secretos y la dirección local en .env.local.",
         503,
       );
+    const wanted = parsed.data;
     const created =
-      parsed.data.action === "find_ideas"
+      wanted.action === "find_ideas"
         ? await createIdeasJob()
-        : await createJob(parsed.data.postId);
+        : wanted.action === "generate_draft"
+          ? await createDraftJob(wanted.ideaId)
+          : await createJob(wanted.postId);
     const job = await dispatchJob(created, target, outbound);
     if (job.status === "delivery_failed")
       return Response.json({ error: job.deliveryError, job }, { status: 502 });

@@ -93,6 +93,10 @@ export function Studio({ initialView }: { initialView?: string }) {
   const [contentTab, setContentTab] = useState<"posts" | "library">("posts");
   const [ideaData, setIdeaData] = useState<IdeasOverview | null>(null);
   const [searching, setSearching] = useState(false);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [confirming, setConfirming] = useState<IdeasOverview["ideas"][number] | null>(null);
+  const [spend, setSpend] = useState<SpendSummary | null>(null);
+  const [generating, setGenerating] = useState(false);
   const notify = (message: string, error = false) => setNotice({ message, error });
   const load = async () => {
     try {
@@ -246,12 +250,13 @@ export function Studio({ initialView }: { initialView?: string }) {
       setSearching(false);
     }
   };
-  const markIdea = async (id: string, status: "discarded" | "used") => {
+  const markIdea = async (id: string, change: { status?: "discarded" | "used"; note?: string }) => {
     const res = await fetch("/api/automation/ideas", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status }),
+      body: JSON.stringify({ id, ...change }),
     });
+    if (res.ok && change.note !== undefined) notify("Nota guardada.");
     if (!res.ok) notify((await res.json()).error || "No se pudo actualizar la idea.", true);
     await loadIdeas().catch(() => {});
   };
@@ -268,8 +273,66 @@ export function Studio({ initialView }: { initialView?: string }) {
       d.posts.unshift(post);
     });
     if (!next) return;
-    await markIdea(idea.id, "used");
+    await markIdea(idea.id, { status: "used" });
     setEditing(next.posts.find((p) => p.id === post.id)!);
+  };
+  const openGenerate = async (idea: IdeasOverview["ideas"][number]) => {
+    try {
+      const res = await fetch("/api/automation/spend");
+      if (!res.ok) throw new Error((await res.json()).error);
+      setSpend(await res.json());
+      setConfirming(idea);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "No se pudo consultar el gasto.", true);
+    }
+  };
+  // One Gemini call per confirmed click; the draft arrives labelled «Generado con IA».
+  const generate = async (idea: IdeasOverview["ideas"][number]) => {
+    setConfirming(null);
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/automation/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "generate_draft", mode: "live", ideaId: idea.id }),
+      });
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(
+          res.status === 502
+            ? "n8n no respondió. Abre «Abrir n8n.command» y vuelve a intentarlo."
+            : data.error,
+        );
+      let latest = (await loadIdeas()).latestGeneration;
+      for (
+        let i = 0;
+        i < 45 && latest?.jobId === data.job.jobId && latest?.status === "sent";
+        i++
+      ) {
+        await new Promise((r) => setTimeout(r, 2000));
+        latest = (await loadIdeas()).latestGeneration;
+      }
+      if (latest?.status === "completed" && latest.postId) {
+        const res2 = await fetch("/api/workspace");
+        const next: Workspace = await res2.json();
+        if (res2.ok) {
+          setState(next);
+          const post = next.posts.find((p) => p.id === latest?.postId);
+          notify("Borrador creado con IA. Revísalo y comprueba cada dato antes de aprobar.");
+          if (post) setEditing(post);
+        }
+      } else if (latest?.status === "sent")
+        notify("La propuesta sigue en curso. Revisa Contenido en un momento.");
+      else
+        notify(
+          `No se creó el borrador${latest?.errorCode ? ` (${latest.errorCode})` : ""}. Revisa n8n y la clave de Gemini.`,
+          true,
+        );
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "No se pudo generar la propuesta.", true);
+    } finally {
+      setGenerating(false);
+    }
   };
   const create = async () => {
     const post = newPost();
@@ -287,6 +350,7 @@ export function Studio({ initialView }: { initialView?: string }) {
       format: post.format,
       artwork: post.artwork,
       mediaIds: post.mediaIds,
+      aiGenerated: post.aiGenerated,
       sourceIds: post.sourceIds.filter((id) => state?.sources.some((s) => s.id === id && !s.demo)),
     };
     const next = await commit((d) => {
@@ -753,6 +817,27 @@ export function Studio({ initialView }: { initialView?: string }) {
                                   "Fuente eliminada"}
                                 {idea.publishedAt && ` · ${displayDate(idea.publishedAt)}`}
                               </p>
+                              <div className="idea-note">
+                                <input
+                                  aria-label={`Tu nota sobre «${idea.title}»`}
+                                  maxLength={500}
+                                  placeholder="Tu nota: lo que comprobaste en la fuente (obligatoria para generar)"
+                                  value={notes[idea.id] ?? idea.note}
+                                  onChange={(e) =>
+                                    setNotes((n) => ({ ...n, [idea.id]: e.target.value }))
+                                  }
+                                />
+                                {(notes[idea.id] ?? idea.note) !== idea.note && (
+                                  <button
+                                    className="text-button"
+                                    onClick={() =>
+                                      void markIdea(idea.id, { note: notes[idea.id] ?? "" })
+                                    }
+                                  >
+                                    Guardar nota
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             <button
                               className="text-button"
@@ -763,12 +848,71 @@ export function Studio({ initialView }: { initialView?: string }) {
                             </button>
                             <button
                               className="text-button"
-                              onClick={() => void markIdea(idea.id, "discarded")}
+                              onClick={() => void openGenerate(idea)}
+                              disabled={generating || !idea.note.trim()}
+                              title={
+                                idea.note.trim()
+                                  ? "Gemini redacta un borrador con tu nota y tus criterios de marca"
+                                  : "Escribe y guarda «Tu nota» primero"
+                              }
+                            >
+                              {generating ? "Generando…" : "Generar propuesta"}
+                            </button>
+                            <button
+                              className="text-button"
+                              onClick={() => void markIdea(idea.id, { status: "discarded" })}
                             >
                               Descartar
                             </button>
                           </div>
                         ))}
+                        {confirming && spend && (
+                          <Dialog
+                            title="¿Generar una propuesta con Gemini?"
+                            subtitle="Un clic, una propuesta. Llega como borrador para que la revises."
+                            onClose={() => setConfirming(null)}
+                          >
+                            <div className="form-stack">
+                              <p>
+                                <strong>Se enviará a {spend.model}:</strong>
+                              </p>
+                              <ul className="confirm-list">
+                                <li>Idea: «{confirming.title}»</li>
+                                <li>Tu nota: «{confirming.note}»</li>
+                                <li>
+                                  Fuente:{" "}
+                                  {state.sources.find((s) => s.id === confirming.sourceId)?.name}
+                                </li>
+                                <li>Tus criterios de «Marca y criterios»</li>
+                              </ul>
+                              <p className="field-hint">
+                                Costo máximo: {money(spend.reservationUsd)} (precio de pago del{" "}
+                                {spend.prices.checkedOn}); en el nivel gratuito, USD 0. Gastado:{" "}
+                                {money(spend.spentUsd)} de {money(spend.capUsd)}.
+                              </p>
+                              <p className="field-hint">
+                                El texto llega como borrador «Generado con IA». No se aprueba ni se
+                                publica solo.
+                              </p>
+                              <div className="dialog-actions">
+                                <button
+                                  className="button secondary"
+                                  onClick={() => setConfirming(null)}
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  className="button primary"
+                                  onClick={() => void generate(confirming)}
+                                  disabled={spend.spentUsd + spend.reservationUsd > spend.capUsd}
+                                >
+                                  <Sparkles size={16} />
+                                  Generar propuesta
+                                </button>
+                              </div>
+                            </div>
+                          </Dialog>
+                        )}
                         <p className="field-hint">
                           Solo título y enlace de la fuente; ezrá no copia textos ni imágenes.
                           Comprueba cada dato en la fuente antes de usarlo.
@@ -802,7 +946,7 @@ export function Studio({ initialView }: { initialView?: string }) {
             </footer>
           </main>
         </div>
-        {notice && !editing && !sourceEditing && !uploading && !help && (
+        {notice && !editing && !sourceEditing && !uploading && !help && !confirming && (
           <div
             className={`toast ${notice.error ? "error" : ""}`}
             role={notice.error ? "alert" : "status"}
@@ -894,6 +1038,24 @@ export function Studio({ initialView }: { initialView?: string }) {
   );
 }
 
+type SpendSummary = {
+  capUsd: number;
+  spentUsd: number;
+  reservationUsd: number;
+  model: string;
+  prices: { input: number; output: number; checkedOn: string };
+  entries: {
+    jobId: string;
+    requestedAt: string;
+    status: string;
+    ideaTitle: string;
+    inputTokens: number;
+    outputTokens: number;
+    usd: number;
+  }[];
+};
+const money = (value: number) =>
+  `USD ${value.toLocaleString("es-SV", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
 type IdeasOverview = {
   sources: Record<string, { lastReadAt: string; ideas: number; skipped: string }>;
   ideas: {
@@ -902,7 +1064,16 @@ type IdeasOverview = {
     title: string;
     url: string;
     publishedAt: string | null;
+    note: string;
   }[];
+  latestGeneration: {
+    jobId: string;
+    ideaId: string;
+    status: "queued" | "sent" | "delivery_failed" | "completed" | "failed";
+    deliveryError: string;
+    postId: string | null;
+    errorCode: string | null;
+  } | null;
   latestSearch: {
     jobId: string;
     status: "queued" | "sent" | "delivery_failed" | "completed" | "failed";
@@ -1499,6 +1670,61 @@ const shortDateTime: Intl.DateTimeFormatOptions = {
   minute: "2-digit",
 };
 
+/** Gemini spend recorded by ezrá; the cap is enforced on the server. */
+function SpendPanel() {
+  const [spend, setSpend] = useState<SpendSummary | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/automation/spend", { signal: controller.signal })
+      .then(async (res) => (res.ok ? ((await res.json()) as SpendSummary) : null))
+      .then((data) => data && setSpend(data))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  if (!spend) return null;
+  const share = Math.min(100, (spend.spentUsd / spend.capUsd) * 100);
+  return (
+    <section className="panel">
+      <div className="settings-title">
+        <span className="stat-icon lilac">
+          <Sparkles size={22} />
+        </span>
+        <div>
+          <h2>Gasto de IA</h2>
+          <p>
+            {spend.model} · precios del {spend.prices.checkedOn}
+          </p>
+        </div>
+      </div>
+      <div className="storage-meter">
+        <strong>
+          {money(spend.spentUsd)} <small>de {money(spend.capUsd)}</small>
+        </strong>
+        <span>{spend.entries.length} generaciones</span>
+      </div>
+      <div className="storage-track">
+        <span style={{ width: `${Math.max(2, share)}%` }} />
+      </div>
+      <p className="field-hint">
+        Se cuenta el precio de pago aunque uses el nivel gratuito, para que el tope nunca se supere.
+        Al llegar a {money(spend.capUsd)}, ezrá rechaza nuevas propuestas.
+      </p>
+      {!!spend.entries.length && (
+        <dl className="settings-details">
+          {spend.entries.slice(0, 5).map((e) => (
+            <div key={e.jobId}>
+              <dt>
+                {displayDate(e.requestedAt)} · {e.ideaTitle.slice(0, 40)}
+              </dt>
+              <dd>{money(e.usd)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </section>
+  );
+}
+
 /** Simulated round trip with the local n8n. Never publishes or changes a post. */
 function N8nConnection({
   state,
@@ -1693,8 +1919,8 @@ function SettingsPage({
             <span>$</span>0<small>de $20 disponibles este mes</small>
           </div>
           <p>
-            Esta versión no llama a servicios de pago. El presupuesto de $20 se conserva como
-            referencia de planificación.
+            Solo el texto con Gemini puede tener costo, con un tope de USD 5 para la prueba. El
+            presupuesto de $20 se conserva como referencia de planificación.
           </p>
           <dl className="settings-details">
             <div>
@@ -1702,7 +1928,11 @@ function SettingsPage({
               <dd>$0</dd>
             </div>
             <div>
-              <dt>API de texto, imagen y video</dt>
+              <dt>Texto con Gemini</dt>
+              <dd>Tope USD 5</dd>
+            </div>
+            <div>
+              <dt>Imagen y video con IA</dt>
               <dd>Desactivadas</dd>
             </div>
             <div>
@@ -1715,6 +1945,7 @@ function SettingsPage({
             <span>Los gastos que hagas fuera de ezrá no se consultan ni se contabilizan aquí.</span>
           </div>
         </section>
+        <SpendPanel />
         <section className="panel connections-panel">
           <div className="section-heading">
             <h2>Cuentas e integraciones</h2>

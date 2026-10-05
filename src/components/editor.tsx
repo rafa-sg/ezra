@@ -399,6 +399,7 @@ export function PostEditor({
           </div>
           <div className="preview-meta">
             <StatusBadge status={post.status} />
+            {post.aiGenerated && <span className="badge ai-badge">Texto generado con IA</span>}
             {state.media.filter((m) => post.mediaIds.includes(m.id) && m.origin === "ai").length >
               0 && <span className="badge ai-badge">Contiene medios con IA</span>}
           </div>

@@ -2,13 +2,14 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { sourceReadable, today, type Post, type Workspace } from "./model";
+import { newPost, sourceReadable, today, type Post, type Workspace } from "./model";
 import {
   appendHistoryUnqueued,
   dataDirectory,
   enqueueWrite,
   readWorkspace,
   writeJsonAtomic,
+  writeWorkspace,
 } from "./store";
 import { editorial, WorkflowError } from "./workflow";
 
@@ -25,11 +26,29 @@ const attempt = z.number().int().min(1).max(20);
 export const maxSourcesPerSearch = 10;
 export const maxIdeasPerSource = 5;
 
+// Gemini text (phase B). Prices verified on ai.google.dev/gemini-api/docs/pricing
+// (page dated 2026-10-01), USD per 1M tokens, paid tier. The cap counts this
+// paid-equivalent cost even on the free tier, so switching tiers never lifts it.
+export const geminiModel = "gemini-3.1-flash-lite";
+export const geminiPrices = { input: 0.25, output: 1.5, checkedOn: "2026-10-01" };
+export const spendCapUsd = 5;
+export const maxOutputTokens = 600;
+// Upper bound of a prompt: every brand field at its maximum, plus idea and note.
+const maxInputTokens = 8000;
+const usd = (input: number, output: number) =>
+  Math.round(((input * geminiPrices.input + output * geminiPrices.output) / 1e6) * 1e6) / 1e6;
+export const reservationUsd = usd(maxInputTokens, maxOutputTokens);
+// A generation that never answers stops blocking new clicks after this, but
+// its reservation keeps counting against the cap.
+const pendingWindowMs = 3 * 60 * 1000;
+const maxCaptionChars = 2200;
+
 export const jobRequestSchema = z.discriminatedUnion("action", [
   z
     .object({ postId: id, action: z.literal("connection_test"), mode: z.literal("simulation") })
     .strict(),
   z.object({ action: z.literal("find_ideas"), mode: z.literal("live") }).strict(),
+  z.object({ action: z.literal("generate_draft"), mode: z.literal("live"), ideaId: uuid }).strict(),
 ]);
 export const resultSchema = z
   .object({
@@ -72,6 +91,37 @@ export const ideasResultSchema = z
     completedAt: z.string().datetime(),
   })
   .strict();
+// What n8n returns after asking Gemini. The prompt is kept for the record.
+export const draftResultSchema = z
+  .object({
+    jobId: uuid,
+    mode: z.literal("live"),
+    status: z.enum(["completed", "failed"]),
+    model: z.string().max(80),
+    text: z.string().max(20000),
+    prompt: z.string().max(40000),
+    usage: z
+      .object({
+        inputTokens: z.number().int().min(0).max(1_000_000),
+        outputTokens: z.number().int().min(0).max(100_000),
+      })
+      .strict(),
+    errorCode: errorCode.nullable().optional(),
+    attempt,
+    completedAt: z.string().datetime(),
+  })
+  .strict();
+const storedDraftResult = z.object({
+  status: z.enum(["completed", "failed"]),
+  postId: z.string().nullable(),
+  prompt: z.string().max(40000),
+  inputTokens: z.number().int().min(0),
+  outputTokens: z.number().int().min(0),
+  usd: z.number().min(0),
+  errorCode: errorCode.nullable().optional(),
+  attempt,
+  completedAt: z.string().datetime(),
+});
 const storedIdeasResult = z.object({
   status: z.enum(["completed", "failed"]),
   accepted: z.number().int().min(0),
@@ -107,7 +157,38 @@ const ideasJobSchema = z.object({
     .max(maxSourcesPerSearch),
   result: storedIdeasResult.nullable(),
 });
-const jobSchema = z.discriminatedUnion("action", [connectionJobSchema, ideasJobSchema]);
+const brandSnapshot = z.object({
+  name: z.string(),
+  description: z.string(),
+  audience: z.string(),
+  voice: z.string(),
+  allowedTopics: z.string(),
+  excludedTopics: z.string(),
+  rules: z.string(),
+});
+const draftJobSchema = z.object({
+  ...jobBase,
+  action: z.literal("generate_draft"),
+  mode: z.literal("live"),
+  model: z.string(),
+  maxOutputTokens: z.number().int().positive(),
+  reservedUsd: z.number().min(0),
+  input: z.object({
+    ideaId: uuid,
+    ideaTitle: z.string(),
+    ideaUrl: z.string(),
+    sourceId: id,
+    sourceName: z.string(),
+    note: z.string(),
+    brand: brandSnapshot,
+  }),
+  result: storedDraftResult.nullable(),
+});
+const jobSchema = z.discriminatedUnion("action", [
+  connectionJobSchema,
+  ideasJobSchema,
+  draftJobSchema,
+]);
 export const ideaSchema = z.object({
   id: uuid,
   sourceId: id,
@@ -117,6 +198,8 @@ export const ideaSchema = z.object({
   publishedAt: z.string().datetime().nullable(),
   foundAt: z.string().datetime(),
   status: z.enum(["new", "discarded", "used"]),
+  // What the owner checked; Gemini may only rely on this and the title.
+  note: z.string().max(500).default(""),
 });
 export const automationSchema = z.object({
   schemaVersion: z.literal(1),
@@ -126,6 +209,7 @@ export const automationSchema = z.object({
 export type Job = z.infer<typeof jobSchema>;
 export type ConnectionJob = z.infer<typeof connectionJobSchema>;
 export type IdeasJob = z.infer<typeof ideasJobSchema>;
+export type DraftJob = z.infer<typeof draftJobSchema>;
 export type JobResult = z.infer<typeof resultSchema>;
 export type Idea = z.infer<typeof ideaSchema>;
 export type Automation = z.infer<typeof automationSchema>;
@@ -183,6 +267,7 @@ export function automationConfig() {
     outbound: distinct ? outbound : undefined,
     webhook: loopbackUrl(process.env.N8N_WEBHOOK_URL),
     ideasWebhook: loopbackUrl(process.env.N8N_IDEAS_WEBHOOK_URL),
+    draftWebhook: loopbackUrl(process.env.N8N_DRAFT_WEBHOOK_URL),
   };
 }
 export function secretMatches(received: string | null, expected: string) {
@@ -250,6 +335,64 @@ export function createIdeasJob(now = new Date()) {
   });
 }
 
+/** Paid-equivalent spend so far: settled results plus open reservations. */
+export function spentUsd(automation: Automation) {
+  let total = 0;
+  for (const job of automation.jobs) {
+    if (job.action !== "generate_draft") continue;
+    if (job.result) total += job.result.usd;
+    else if (job.status === "queued" || job.status === "sent") total += job.reservedUsd;
+  }
+  return Math.round(total * 1e6) / 1e6;
+}
+
+/** One Gemini draft per click, from an idea the owner annotated, within the cap. */
+export function createDraftJob(ideaId: string, now = new Date()) {
+  return enqueueWrite(async () => {
+    const state = await readWorkspace();
+    const automation = await readAutomation();
+    const idea = automation.ideas.find((i) => i.id === ideaId);
+    if (!idea || idea.status !== "new") throw new WorkflowError("Idea no encontrada.", 404);
+    if (!idea.note.trim())
+      throw new WorkflowError("Escribe primero «Tu nota» con lo que comprobaste.", 422);
+    const source = state.sources.find((s) => s.id === idea.sourceId && !s.demo);
+    if (!source) throw new WorkflowError("La fuente de esta idea ya no existe.", 422);
+    const pending = automation.jobs.some(
+      (j) =>
+        j.action === "generate_draft" &&
+        (j.status === "queued" || j.status === "sent") &&
+        now.getTime() - Date.parse(j.requestedAt) < pendingWindowMs,
+    );
+    if (pending)
+      throw new WorkflowError("Ya hay una propuesta generándose. Espera a que termine.", 409);
+    if (spentUsd(automation) + reservationUsd > spendCapUsd)
+      throw new WorkflowError(
+        `Se alcanzó el tope de USD ${spendCapUsd} para esta prueba. No se generará nada más.`,
+        422,
+      );
+    const { name, description, audience, voice, allowedTopics, excludedTopics, rules } =
+      state.brand;
+    return persistJob({
+      ...newJobBase(now),
+      action: "generate_draft",
+      mode: "live",
+      model: geminiModel,
+      maxOutputTokens,
+      reservedUsd: reservationUsd,
+      input: {
+        ideaId: idea.id,
+        ideaTitle: idea.title,
+        ideaUrl: idea.url,
+        sourceId: source.id,
+        sourceName: source.name,
+        note: idea.note,
+        brand: { name, description, audience, voice, allowedTopics, excludedTopics, rules },
+      },
+      result: null,
+    });
+  });
+}
+
 /** The contract sent to n8n: the job minus ezrá's own bookkeeping. */
 function jobPayload(job: Job) {
   if (job.action === "connection_test")
@@ -261,6 +404,22 @@ function jobPayload(job: Job) {
       mode: job.mode,
       requestedAt: job.requestedAt,
       media: job.media,
+    };
+  if (job.action === "generate_draft")
+    return {
+      jobId: job.jobId,
+      action: job.action,
+      mode: job.mode,
+      requestedAt: job.requestedAt,
+      model: job.model,
+      maxOutputTokens: job.maxOutputTokens,
+      idea: {
+        title: job.input.ideaTitle,
+        url: job.input.ideaUrl,
+        sourceName: job.input.sourceName,
+        note: job.input.note,
+      },
+      brand: job.input.brand,
     };
   return {
     jobId: job.jobId,
@@ -333,6 +492,19 @@ function cleanText(value: string, max: number) {
     .trim()
     .slice(0, max);
 }
+// Like cleanText, but keeps line breaks: a caption has paragraphs.
+function cleanCaption(value: string) {
+  const invisible = (n: number) =>
+    (n < 32 && n !== 10) ||
+    (n >= 127 && n < 160) ||
+    (n >= 0x200b && n <= 0x200f) ||
+    (n >= 0x202a && n <= 0x202e);
+  return Array.from(value.replace(/\r\n?/g, "\n"), (c) => (invisible(c.codePointAt(0)!) ? " " : c))
+    .join("")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 function sameSite(link: URL, source: URL) {
   const host = (h: string) => h.toLowerCase().replace(/^www\./, "");
   const a = host(link.hostname);
@@ -382,9 +554,46 @@ function acceptIdeas(job: IdeasJob, raw: z.infer<typeof ideasResultSchema>, know
       publishedAt: Number.isFinite(published) ? new Date(published).toISOString() : null,
       foundAt,
       status: "new",
+      note: "",
     });
   }
   return { ideas, rejected };
+}
+
+function draftEvent(job: DraftJob, result: z.infer<typeof storedDraftResult>) {
+  return {
+    id: `job-${job.jobId}`,
+    at: new Date().toISOString(),
+    title:
+      result.status === "completed" ? "Propuesta generada con IA" : "La propuesta con IA falló",
+    detail:
+      result.status === "completed"
+        ? `Borrador «${job.input.ideaTitle.slice(0, 120)}» creado con ${job.model}. Revísalo antes de aprobar. No se publicó nada.`
+        : `${job.model}: ${result.errorCode || "sin código"}. No se creó ningún borrador.`,
+    ...(result.postId ? { postId: result.postId } : {}),
+  };
+}
+/** Creates the AI draft once; must run inside enqueueWrite. Idempotent by post id. */
+async function ensureDraft(job: DraftJob, caption: string) {
+  const result = job.result!;
+  await writeWorkspace((current) => {
+    if (!result.postId || current.posts.some((p) => p.id === result.postId)) return current;
+    const at = new Date().toISOString();
+    const source = current.sources.find((s) => s.id === job.input.sourceId && !s.demo);
+    const post: Post = {
+      ...newPost(),
+      id: result.postId,
+      title: cleanText(job.input.ideaTitle, 180) || "Propuesta generada con IA",
+      caption,
+      sourceIds: source ? [source.id] : [],
+      aiGenerated: true,
+      createdAt: at,
+      updatedAt: at,
+    };
+    // A new post changes the list: open tabs must reload before saving.
+    return { ...current, posts: [post, ...current.posts], revision: current.revision + 1 };
+  });
+  await appendHistoryUnqueued(draftEvent(job, result));
 }
 
 /** Validates the callback against the job it answers; accepts only that job's shape. */
@@ -416,6 +625,47 @@ export function recordResult(raw: unknown) {
       job.updatedAt = new Date().toISOString();
       await saveAutomation(automation);
       await appendHistoryUnqueued(connectionEvent(job, result));
+      return { job, duplicate: false };
+    }
+    if (job.action === "generate_draft") {
+      const parsed = draftResultSchema.safeParse(raw);
+      if (!parsed.success) throw new WorkflowError("Resultado de propuesta inválido.", 422);
+      if (parsed.data.model !== job.model)
+        throw new WorkflowError("El resultado usa un modelo distinto al encargado.", 409);
+      if (job.result) {
+        const same =
+          job.result.status === parsed.data.status &&
+          (job.result.errorCode ?? null) === (parsed.data.errorCode ?? null);
+        if (!same) throw new WorkflowError("Este encargo ya tiene un resultado distinto.", 409);
+        // Repairs a missing draft or event if a previous attempt stopped midway.
+        await ensureDraft(job, cleanCaption(parsed.data.text));
+        return { job, duplicate: true };
+      }
+      const caption = cleanCaption(parsed.data.text);
+      const valid =
+        parsed.data.status === "completed" && caption && caption.length <= maxCaptionChars;
+      const { inputTokens, outputTokens } = parsed.data.usage;
+      job.result = {
+        status: valid ? "completed" : "failed",
+        postId: valid ? crypto.randomUUID() : null,
+        prompt: parsed.data.prompt,
+        inputTokens,
+        outputTokens,
+        usd: usd(inputTokens, outputTokens),
+        errorCode:
+          parsed.data.status === "completed" && !valid
+            ? "texto_invalido"
+            : (parsed.data.errorCode ?? null),
+        attempt: parsed.data.attempt,
+        completedAt: parsed.data.completedAt,
+      };
+      job.status = job.result.status;
+      job.updatedAt = new Date().toISOString();
+      const idea = automation.ideas.find((i) => i.id === job.input.ideaId);
+      if (valid && idea) idea.status = "used";
+      // Job first: a crash before the draft is repaired by a repeated callback.
+      await saveAutomation(automation);
+      await ensureDraft(job, caption);
       return { job, duplicate: false };
     }
     const parsed = ideasResultSchema.safeParse(raw);
@@ -468,6 +718,7 @@ export function ideasOverview(automation: Automation) {
     if (sources[idea.sourceId]) sources[idea.sourceId].ideas++;
     else sources[idea.sourceId] = { lastReadAt: idea.foundAt, ideas: 1, skipped: "" };
   const last = automation.jobs.findLast((j) => j.action === "find_ideas");
+  const generation = automation.jobs.findLast((j) => j.action === "generate_draft");
   return {
     sources,
     ideas: automation.ideas.filter((i) => i.status === "new"),
@@ -482,16 +733,59 @@ export function ideasOverview(automation: Automation) {
             rejected: last.result?.rejected ?? 0,
           }
         : null,
+    latestGeneration:
+      generation && generation.action === "generate_draft"
+        ? {
+            jobId: generation.jobId,
+            ideaId: generation.input.ideaId,
+            status: generation.status,
+            deliveryError: generation.deliveryError,
+            postId: generation.result?.postId ?? null,
+            errorCode: generation.result?.errorCode ?? null,
+          }
+        : null,
   };
 }
 
-export function setIdeaStatus(ideaId: string, status: "discarded" | "used") {
+export function setIdeaStatus(
+  ideaId: string,
+  change: { status?: "discarded" | "used"; note?: string },
+) {
   return enqueueWrite(async () => {
     const automation = await readAutomation();
     const idea = automation.ideas.find((i) => i.id === ideaId);
     if (!idea) throw new WorkflowError("Idea no encontrada.", 404);
-    idea.status = status;
+    if (change.status) idea.status = change.status;
+    if (change.note !== undefined) idea.note = change.note.trim().slice(0, 500);
     await saveAutomation(automation);
     return idea;
   });
+}
+
+/** Spend summary for Settings: cap, totals and each generation's cost. */
+export function spendSummary(automation: Automation) {
+  return {
+    capUsd: spendCapUsd,
+    spentUsd: spentUsd(automation),
+    reservationUsd,
+    model: geminiModel,
+    prices: geminiPrices,
+    entries: automation.jobs
+      .filter((j): j is DraftJob => j.action === "generate_draft")
+      .slice(-20)
+      .reverse()
+      .map((j) => ({
+        jobId: j.jobId,
+        requestedAt: j.requestedAt,
+        status: j.status,
+        ideaTitle: j.input.ideaTitle,
+        inputTokens: j.result?.inputTokens ?? 0,
+        outputTokens: j.result?.outputTokens ?? 0,
+        usd: j.result
+          ? j.result.usd
+          : j.status === "queued" || j.status === "sent"
+            ? j.reservedUsd
+            : 0,
+      })),
+  };
 }

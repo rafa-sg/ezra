@@ -116,3 +116,35 @@ Aprobada por el propietario, con las tres recomendaciones del plan.
   - flujo en `docs/n8n/ezra-buscar-ideas.json`, con webhook propio (`N8N_IDEAS_WEBHOOK_URL`, solo loopback);
   - comparte los dos secretos y credenciales de la prueba de conexión.
 - **Pendiente para la fase B:** el resumen propio de cada idea con Gemini, con tope de gasto.
+
+## 2026-10-04 · Fase B: propuestas de texto con Gemini
+
+Aprobada por el propietario, con las tres recomendaciones: nivel gratuito, `gemini-3.1-flash-lite` y nota obligatoria.
+
+- **Modelo y precio:**
+  - `gemini-3.1-flash-lite`: USD 0.25 por 1M tokens de entrada y USD 1.50 por 1M de salida (ai.google.dev/gemini-api/docs/pricing, página del 2026-10-01);
+  - unos USD 0.001 por propuesta;
+  - en el nivel gratuito Google puede usar los datos para mejorar sus productos; se envían criterios de marca e ideas públicas, sin datos personales.
+- **Tope de USD 5 en ezrá:**
+  - cada encargo reserva el costo máximo posible antes de enviarse (8,000 tokens de entrada y 600 de salida, ≈ USD 0.0029);
+  - al volver el resultado se registra el costo real;
+  - se cuenta el precio de pago aunque se use el nivel gratuito, para que cambiar de nivel nunca quite el tope;
+  - Google no corta el gasto por presupuesto, por eso el tope vive en ezrá;
+  - un envío que no llegó a n8n no reserva nada;
+  - una generación sin respuesta deja de bloquear nuevos clics a los 3 minutos, pero su reserva sigue contando.
+- **Una propuesta por clic:**
+  - requiere «Tu nota», escrita por el propietario con lo que comprobó, porque la idea solo trae título y enlace;
+  - la confirmación muestra qué se envía, el modelo y el costo;
+  - si hay una generación en curso, se rechaza otro clic; nada se programa.
+- **El prompt:**
+  - lo arma n8n (`docs/n8n/ezra-generar-propuesta.json`) con los criterios de marca, la idea y la nota;
+  - el título y el enlace de la idea van entre `<idea>` como datos que no deben obedecerse;
+  - Gemini recibe la instrucción de no inventar precios, fechas, horarios ni nombres y de marcar lo dudoso con `[verificar]`;
+  - el límite es de 600 tokens; n8n solo acepta modelos de su lista.
+- **El borrador:**
+  - llega como borrador «Generado con IA», con su fuente, y el prompt queda guardado en el encargo;
+  - la etiqueta (`post.aiGenerated`) se conserva al editar y el navegador no puede quitarla;
+  - nunca se aprueba ni se publica solo;
+  - si el texto está vacío o supera 2,200 caracteres, el encargo queda «falló» y no se crea borrador;
+  - un resultado repetido no duplica el borrador.
+- **La clave de Gemini:** la crea el propietario y la pega solo en una credencial de n8n de tipo cabecera (`x-goog-api-key`), nunca en ezrá, Git ni el chat. No se usa la credencial «Google Gemini(PaLM) Api» porque envía la clave en la dirección web.

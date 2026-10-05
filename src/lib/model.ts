@@ -70,6 +70,8 @@ export const postSchema = z.object({
   checks: z.object({ facts: z.boolean(), rights: z.boolean(), brand: z.boolean() }),
   rejectionReason: z.string().max(2000),
   demo: z.boolean(),
+  // Set by ezrá when Gemini drafted the text; the browser can never remove it.
+  aiGenerated: z.boolean().default(false),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -240,6 +242,7 @@ export function newPost(): Post {
     checks: { facts: false, rights: false, brand: false },
     rejectionReason: "",
     demo: false,
+    aiGenerated: false,
     createdAt: at,
     updatedAt: at,
   };
