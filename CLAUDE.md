@@ -1,6 +1,54 @@
 # Azra — contexto de continuidad para Claude Code
 
-Actualizado: 6 de octubre de 2026, 23:40 (Stage 2 en curso). Proyecto local: `/Users/rafaelsandoval/Desktop/Spotbot`.
+## Relevo prioritario — menú reducido a «Pregúntale a la IA» (2026-10-07)
+
+- Pedido del propietario: el menú principal del panel `/azra` tiene **solo** «Pregúntale a la IA» (mismo ícono y estado activo); empezar funcionalidad real por Ask AI. Se quitaron AI Suite, Launchpad, Tablero de la agencia, Prospección, Subcuentas, Instantáneas de la cuenta, Ideas, Aplicación móvil y de escritorio. Sin cambios en logo, selector de cuentas, «Configuración», botón de contraer, barra superior ni estilos del menú.
+- Inicio: `/azra` → `/azra/ai/chat`; tras el login, la administración en `/` va a `/azra/ai/chat` (`src/app/page.tsx`), igual que los enlaces del estudio («Panel de administración», antes «Tablero de la agencia») y `AgencyRedirect`. URLs viejas `/azra/agency` y `/azra/prospecting/*` redirigen a Ask AI (`src/app/azra/[[...segments]]/page.tsx`); otras rutas desconocidas siguen en 404. «Volver atrás» de Configuración y el inicio de la miga de Usuarios apuntan a Ask AI.
+- Eliminado (recuperable desde `a607921`): módulo `src/features/azra/prospecting/` completo, `tests/azra-prospecting.test.ts`, componente `Agency` (estado vacío «Conectá Stripe») de `screens.tsx`, sus rutas en `routes.ts`, 90 textos ES/EN sin otro uso y las reglas CSS que solo usaban esas pantallas (se conservaron las clases dinámicas `az-status-*` y `az-priority-*`). Se agregó la clave `mainNavigation`. Los datos locales demo de prospección (`azra:prospecting:demo:v1`) quedan en el navegador, inofensivos.
+- Nota: la página de chat compacta el menú lateral (comportamiento previo, sin cambios); al ser ahora el inicio, la administración entra con el menú en íconos.
+- Verificación: `npm run check` 55/55 (4 pruebas de prospección eliminadas con el módulo), build sin errores ni advertencias, integración 6/6 con redirecciones nuevas, lint sin importaciones sin usar.
+- Siguiente: construir Ask AI real (definir proveedor/costo antes de conectar; hoy el compositor está deshabilitado y dice «Integración pendiente»).
+
+## Relevo prioritario — nuevo login (2026-10-07, noche)
+
+- Pedido del propietario: login con la estructura de su referencia (panel dividido tipo «FocuMinds»: panel de color con logo, frase, descripción y 3 puntos; tarjeta centrada sobre fondo con puntos) y la identidad de ezrá. Hecho en `src/components/access-screen.tsx` + `src/styles/access.css` (nuevo). El panel usa el violeta del piloto (no el azul de la referencia). Se quitaron de `studio.css` solo las reglas del login anterior (`.access-page`, `.access-intro…`, `.access-auth…`). Los tres puntos describen funciones reales (catálogo verificado, revisión antes de publicar, un espacio por negocio). En móvil se ocultan para que la tarjeta aparezca primero (top ≈306 px).
+- Lógica intacta: Clerk `SignIn`/`SignUp` con las mismas rutas y redirecciones; solo `appearance` (clases `ez-clerk-*`) y textos. Localización en `src/app/layout.tsx`: «Inicia sesión», «Bienvenido de vuelta a ezrá.», «o con tu correo», marcadores «tu@correo.com»/«Crea una contraseña», registro «Crea tu cuenta» / «Usa el correo que te asignó la administración.». Etiquetas de campo ocultas visualmente (`ez-sr-only`), accesibles.
+- En esta versión de Clerk (`@clerk/nextjs` 7.9.10) `appearance.layout` se llama `appearance.options`. `options.unsafe_disableDevelopmentModeWarnings` en el `ClerkProvider` oculta el aviso «Development mode»; las claves siguen siendo de desarrollo. «Secured by Clerk» se mantiene (quitarlo es función de pago).
+- Verificado en `/sign-in` y `/sign-up` del 3000 sin iniciar sesión (1440 y 390, sin desbordamiento). 59/59, build, 6/6.
+
+## Relevo prioritario — revisión visual y función 1 del foro (2026-10-07, tarde)
+
+**Este bloque es el más reciente; el bloque «panel por empresa» de abajo sigue vigente.**
+
+- Revisión visual hecha con un arnés propio (`work/business-review-server.mts`, no versionado): Studio real + API real, Clerk offline, datos aislados en `work/business-review-*`, puertos 3127/3128 (Sgmotos) y 3137/3138 (motoxspress), ya detenidos. No se usó 3118 ni `data/`. 1440×900 y 390×844, las 7 vistas de cada empresa.
+- Aislamiento confirmado en ambos: `/api/businesses` solo devuelve su negocio; workspace de la otra empresa → 404; `/api/auth/accounts` → 403; sin selector administrativo. Sin desbordamiento horizontal; Escape cierra el menú móvil.
+- Corregido: texto dañado «publicaciónl» → «historial» (3 lugares de `studio.tsx`, error previo a la migración); mes de Agenda «Octubre De 2026» → «Octubre de 2026» (capitalización en código y `text-transform: none` solo en `.az-business-content`); buscadores de Catálogo/Publicaciones legibles (14 px, ancho 320, sin doble borde); piso de legibilidad de 12 px para el texto del piloto dentro del shell (bloque generado en `azra.css` desde las 146 reglas <12 px de `studio.css`, sin tocar el CSS del piloto); «Cerrar sesión» en móvil solo ícono con `aria-label`.
+- Calendario en móvil: se desplaza horizontalmente dentro de su recuadro (630/356 px); permitido por las reglas, sin cambio.
+- Función 1 del foro **preparada, no implementada**: `docs/features/plantillas-de-marca.md` (qué existe, modelo propuesto, reglas de datos verificados, aislamiento, aceptación, fase GHL con Design Kits/Brand Boards API v3 y lo que falta verificar). Bloqueada por 5 decisiones del propietario listadas ahí.
+- Decisiones que también esperan al propietario (no se cambiaron): (a) voz mezclada en un mismo panel: el piloto usa «tú» («Agrega», «Puedes») y lo nuevo voseo («Prepará»); (b) la tarjeta «Presupuesto del piloto · $20» de Ajustes la ven los clientes; (c) los colores de «Apariencia del panel» ya no tienen efecto visible.
+- Verificación: `npm run check` 59/59, build correcto, `npm run test:integration` 6/6, `git diff --check` limpio. Sin commit.
+- Próximo paso: respuestas del propietario a las decisiones → implementar la fase local de plantillas (modelo, editor en Marca y criterios, paso en el asistente, pruebas de aislamiento). GHL solo tras una lectura de prueba de Brand Boards con su integración.
+
+## Relevo prioritario — panel por empresa (2026-10-07)
+
+**Relevo solicitado explícitamente con «claudeya». Este bloque prevalece sobre los pendientes históricos que aparecen más abajo.**
+
+- Carpeta compartida: `/Users/rafaelsandoval/Desktop/Spotbot`. Rama actual: `feat/migracion-ezra`. Hay numerosos cambios sin commit anteriores a esta sesión: no hacer reset, checkout destructivo ni atribuir todos los cambios a este turno. Leer `git diff` antes de continuar; una sola IA modifica archivos.
+- Aplicación habitual: `http://127.0.0.1:3000`. Vista de verificación aislada: `http://127.0.0.1:3118`, con backend de prueba en 3117 y datos en `work/`. No es la cuenta real del propietario. En ese arnés, crear negocio/cerrar sesión son callbacks sin operación y los bindings cliente de Clerk/Next se sustituyen para la inspección visual; el aislamiento HTTP se prueba aparte con Clerk offline firmado. No copiar el arnés a producción. Puede detenerse al terminar la revisión.
+- Alcance visual: estructura compartida, cabecera/menú y resumen nuevos; las pantallas funcionales de catálogo/editor/agenda se conservan dentro del shell con estilos adaptados. No afirmar que todos sus componentes internos fueron reescritos. Falta aceptación visual del propietario.
+- Meta futura del propietario: redes propias, creación/publicación multicanal, competencia, bot y métricas sobre GHL. El repositorio sigue siendo Next.js local: conexión real a GHL no acreditada ni instalada en este trabajo. Solo preparar ideas realizables; no prometer funciones por aparecer en el foro.
+- Investigación GHL: existe MCP oficial (`https://marketplace.gohighlevel.com/docs/other/mcp/index.html`). La documentación pública y staging difieren; staging describe lectura de definición, catálogo de pasos, validación, creación/edición y cambio de estado, con páginas v3/v4. Verificar scopes realmente concedidos (`workflows.readonly`, escritura y publicación si disponibles) y versión antes de implementar. No se instalaron MCPs ni se habilitaron servicios. Fuentes: `https://staging.marketplace.gohighlevel.com/docs/ghl/workflows/workflows/index.html` y `docs/DECISIONS.md`.
+
+- Pedido vigente: Sgmotos debe usar el diseño nuevo de administración, conservando datos/permisos propios. Implementado compartiendo `AzraShell`; no dar rol admin a clientes ni dirigirlos a ajustes de agencia.
+- Archivos clave: `src/components/studio.tsx` (shell nuevo por defecto, panel anterior retenido con `legacyPanel=false`), `src/features/azra/shell.tsx` (opciones de negocio), `business-overview.tsx` (inicio real), `azra.css`, mensajes ES/EN. Las APIs y autenticación conservan el aislamiento existente. Todos los negocios que usan Studio reciben la estructura nueva.
+- La ruta sigue `/` / `?business=…&view=…`; `/azra` es solo administración. No activar el panel anterior mediante parámetros de URL. El código previo sigue disponible, no se borraron datos.
+- Validación: check (59 unitarias), build y 6 integraciones. Integración ampliada para verificar que Sgmotos no puede consultar/exportar motoxspress ni administrar usuarios. API oculta negocios ajenos con 404.
+- Verificación visual con el componente real Studio y API real en un entorno aislado `work/business-shell-*`: escritorio 1440×900, móvil 390×844; navegación, Escape, borrador guardado y persistente tras recargar, paso a revisión y aprobación bloqueada sin comprobaciones. Agenda móvil sin desbordamiento. Fixture de Clerk offline, no prueba de inicio de sesión real. Herramienta temporal `work/business-preview-server.mts` (no versionada), nunca usa datos reales.
+- Pendiente: revisión del propietario con su sesión real; completar traducción de pantallas heredadas (negocios siguen en español; no se ofrece traductor allí); conexiones GHL y funciones del foro en fases posteriores. Se conservaron cambios ajenos ya presentes, no hay commit nuevo.
+- Comando del propietario: cuando diga «Claudeya», actualizar este archivo y TASKS con todo el contexto útil, pruebas/pendientes y siguiente paso. Regla persistida en AGENTS.md.
+- Próximo paso: revisar la apariencia con el propietario; después especificar una función del foro por vez, empezando por plantillas de marca y datos verificados. No activar APIs ni gasto por leer este relevo.
+
+Actualizado: 7 de octubre de 2026 (migración ezrá en curso). Proyecto local: `/Users/rafaelsandoval/Desktop/Spotbot`.
 
 ## Punto exacto del relevo
 
@@ -15,6 +63,34 @@ La base de Stage 1 está implementada bajo `/azra`. El ciclo de credenciales fun
 El propietario pidió terminar las tareas prioritarias y dejar este relevo. La prioridad implementada fue: fundamentos, ES/EN, navegación, tokens/permisos/rotación/revocación, pruebas y documentación. No se necesita decidir Azra frente a HighLevel para continuar.
 
 **Leer primero:** `AGENTS.md`, `docs/PROJECT_BRIEF.md`, `docs/DECISIONS.md`, `docs/TASKS.md`, este archivo y `docs/design/azra/INVENTORY.md`. `docs/CLAUDE_HANDOFF.md` conserva el contexto histórico del piloto; para la nueva interfaz Azra prevalece este relevo. Antes de usar APIs de Next, leer la guía correspondiente en `node_modules/next/dist/docs/`.
+
+## Migración ezrá (en curso, 2026-10-06)
+
+Pedido del propietario: la estructura nueva (capturas) gana en layout, componentes, navegación y pantallas; la interfaz anterior (piloto ezrá en `/`) gana en identidad: nombre **«ezrá.»** tal como en sus capturas y paleta blanca/lila suave. Conservar la lógica útil (login, sesiones, protección de rutas, API, validaciones, estado). Decisiones confirmadas: negocios = subcuentas; menú lateral blanco con lila.
+
+**Respaldo:** rama `backup/pre-migracion-ezra-2026-10-06`, commit `a607921` (estado completo de ambas interfaces, incluidos cambios locales del piloto). Trabajo actual en `feat/migracion-ezra` sin commit.
+
+**Conservado tal cual (lógica del piloto):** `src/proxy.ts` (solo loopback, origen, Clerk), `src/lib/auth.ts` (`sessionAccount`, `requireAccount/Admin`, correo verificado y vinculación), `access-store`, `businesses` (directorio, creación validada y autorizada por rol), toda la API `/api/*`, catálogo, publicaciones/revisión, exportación, automatización n8n, medios, `data/`, pantallas `/sign-in` y `/sign-up` (`AccessScreen` con Clerk) y el estudio de negocios en `/?business=…`.
+
+**Adaptado a la estructura nueva:**
+
+- Marca: por pedido del propietario (2026-10-07) el sidebar no muestra el texto «ezrá.»: solo un cuadro de logo centrado como en la referencia GHL, con el ícono original de la app (`src/app/icon.svg`, cuadro violeta con flor). El logo propio de Marca Blanca ya se guarda (ver «Logo de agencia») y reemplaza este ícono; al eliminarlo vuelve el ícono por defecto. Título `ezrá · Panel de agencia`; clave i18n `brand` como etiqueta accesible.
+- Tokens: `.azra` usa los valores exactos de `globals.css`/`studio.css` (paper `#fafaf8`, surface `#fff`, ink `#272a2d`, ink secundaria `#4d4a55`, muted `#86888b`, line `#e9e9e6`, sutil `#f7f6f9`, violet `#7760d8`, violet-dark `#624bbe`, lilac `#f0edf9`, green `#52806d` / `#edf5ef`) y la tipografía del sistema del piloto. Se eliminaron azules/navy/dorados de GHL; el sidebar es blanco con activo lila y texto violeta; íconos de cabecera lila; avatar violeta. Gráfico: violeta + verde saturado `#2f8f6b` (el verde del piloto no pasa el umbral de croma).
+- Protección: `src/app/azra/layout.tsx` llama a `sessionAccount()` en el servidor; sin sesión → `/sign-in`; error/cuenta no vinculada → `/`; cliente → `/` (su estudio); solo administración entra. La cabecera muestra el correo y «Cerrar sesión» (`useClerk().signOut`, redirige a `/`).
+- Subcuentas = negocios reales: el selector lista `/api/businesses`; abrir lleva al estudio (`/?business=id`); «Crear» → plantillas → datos obligatorios del piloto (tipo, organización) → `POST /api/businesses`; el pin es preferencia local. «Constructor por subcuenta» también usa negocios reales. Cliente HTTP en `src/features/azra/account/businesses.ts`.
+
+- Entrada de administración (pedido del propietario 2026-10-07): `src/app/page.tsx` verifica la sesión en el servidor y redirige al administrador sin `?business` a `/azra/agency`; el enlace «Mi panel» del estudio ahora dice «Tablero de la agencia» y lleva allí; si el cliente de `/` queda sin negocio seleccionado redirige igual. Clientes y `/?business=…` siguen en el estudio del piloto.
+- «Accesos de tus clientes» → Configuración › Usuarios (#9): tabla con las cuentas reales de `/api/auth/accounts` (admin, clientes y espacios pendientes de Sgmotos/motoxspress), «Editar acceso»/«Asignar correo» con el mismo texto de ayuda y `POST /api/auth/accounts` (el servidor valida, impide duplicados y revincula).
+
+- Logo de agencia (pedido del propietario 2026-10-07): `src/lib/agency-brand.ts` + `/api/agency/logo` (GET imagen o `?meta`, POST multipart, DELETE; solo administración vía `requireAdmin`). Se valida por contenido con `detectMedia` del piloto (PNG/JPG/WebP, ≤2,5 MB, un archivo renombrado se rechaza con 422), se escribe en `data/agency/` dentro de la cola `enqueueWrite` con `writeJsonAtomic` y permisos 0600, y el archivo anterior se borra solo después de actualizar los metadatos. Respuesta con `nosniff` y `no-store`. La sección Logotipo sube/reemplaza/borra con Cancelar/Guardar y el sidebar se actualiza por evento. Pendiente: la exportación/copia del piloto aún no incluye este logo; el logo no se muestra a clientes (el estudio usa la apariencia por negocio).
+
+**Reemplazado:** paleta y nombre «Azra» de la interfaz nueva; subcuentas ficticias del demo como fuente del selector; «Mi panel» del piloto como pantalla de inicio de la administración; usuarios demo derivados del perfil como fuente de la tabla Usuarios.
+
+**Eliminado:** nada del piloto. En la interfaz nueva solo reglas CSS de color muertas (círculos GHL) tras la capa de marca.
+
+**Pendiente de revisión (se conserva, preguntar antes de quitar):** `src/components/owner-dashboard.tsx` («Mi panel», ya no se muestra; sus métricas por negocio —productos/publicaciones/por revisar— aún no tienen lugar en el tablero nuevo); métodos demo `listSubaccounts/createSubaccount/setPinned` y `listUsers` con su esquema (sin uso en UI); la plantilla de instantánea elegida no se aplica al negocio.
+
+**Plan histórico de migración (el bloque prioritario superior registra el shell de negocios ya implementado):** (1) hecho: `/` admin → tablero nuevo y accesos → Usuarios; (2) reacomodar el estudio (`studio.tsx`: Resumen, Catálogo, Publicaciones, Agenda, Fuentes, Marca y criterios, Ajustes) dentro del shell nuevo como vista de subcuenta, con la misma lógica; (3) mover rutas `/azra/*` a la raíz y retirar el aviso «Demostración local» donde ya hay datos reales. Verificación: `tests/integration/azra.test.ts` (puerto 3106) prueba visitante/admin/cliente; la vista con sesión se probó con el Clerk offline (`work/visual-server.mts`, puerto 3107).
 
 ## Reglas del propietario
 

@@ -1,5 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import businessMessages from "@/features/azra/messages/es.json";
+import { AzraShell } from "@/features/azra/shell";
+import { BusinessOverview } from "@/features/azra/business-overview";
+import "@/features/azra/azra.css";
 import { UserButton } from "@clerk/nextjs";
 import {
   ArrowDownToLine,
@@ -83,8 +87,12 @@ const navigation = [
 ] as const;
 type View = (typeof navigation)[number]["id"];
 type Notice = { message: string; error: boolean };
+function LegacyPanelFrame({ children }: { children: React.ReactNode }) {
+  return children;
+}
 
 export function Studio({
+  legacyPanel = false,
   initialView,
   business,
   businesses,
@@ -95,6 +103,7 @@ export function Studio({
   onExpired,
   onOwnerPanel,
 }: {
+  legacyPanel?: boolean;
   initialView?: string;
   business: Business;
   businesses: Business[];
@@ -405,736 +414,834 @@ export function Studio({
   };
   const title = navigation.find((n) => n.id === view)!.label;
 
-  return (
-    <FeedbackContext.Provider value={notice}>
-      <div className="app-shell" style={state ? themeStyle(state.appearance) : undefined}>
-        <a href="#main" className="skip-link">
-          Saltar al contenido
-        </a>
-        {mobile && (
-          <button
-            className="sidebar-overlay"
-            aria-label="Cerrar menú"
-            onClick={() => setMobile(false)}
-          />
-        )}
-        <aside className={`sidebar ${mobile ? "is-open" : ""}`}>
-          <a
-            className="wordmark"
-            href={`?business=${encodeURIComponent(business.id)}&view=overview`}
-            onClick={(e) => {
-              e.preventDefault();
-              navigate("overview");
-            }}
+  // The old panel remains in source, but no route enables it.
+  const PanelShell = legacyPanel ? LegacyPanelFrame : AzraShell;
+  const shellProps = {
+    user: { email: account.email, displayName: account.displayName },
+    business: {
+      name: business.name,
+      logoUrl: state?.appearance.logoMediaId
+        ? api(`/api/media/${state.appearance.logoMediaId}`)
+        : undefined,
+      status: busy ? businessMessages.businessSaving : businessMessages.businessSaved,
+      onHome: () => navigate("overview"),
+      onSettings: () => navigate("settings"),
+      onHelp: () => setHelp(true),
+      onReviews: goReviews,
+      selector: (
+        <div className="az-business-selector">
+          <label htmlFor="business-select">{business.organizationName}</label>
+          <select
+            id="business-select"
+            aria-label={businessMessages.businessSwitch}
+            value={business.id}
+            disabled={busy || searching || generating}
+            onChange={(e) => onBusinessChange(e.target.value)}
           >
-            <Mark />
-            <span>
-              ezrá<span className="wordmark-dot">.</span>
-            </span>
-            <span className="studio-label">ESTUDIO</span>
-          </a>
+            {businesses.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+          <button className="az-button" disabled={busy} onClick={onCreateBusiness}>
+            <Plus size={15} /> {businessMessages.businessCreate}
+          </button>
+        </div>
+      ),
+      navigation: (close: () => void) => (
+        <>
           {account.role === "admin" && (
-            <button className="text-button owner-panel-link" onClick={onOwnerPanel} disabled={busy}>
-              <ChevronLeft size={16} />
-              Mi panel
+            <button className="az-nav-item" onClick={onOwnerPanel}>
+              <ChevronLeft size={20} />
+              <span className="az-nav-label">Panel de administración</span>
             </button>
           )}
-          <div className="business-switch">
-            {state?.appearance.logoMediaId && (
-              <img
-                className="business-logo"
-                src={businessApiUrl(`/api/media/${state.appearance.logoMediaId}`, business.id)}
-                alt={`Logo de ${business.name}`}
-              />
-            )}
-            <label>
-              Negocio activo
-              <select
-                aria-label="Cambiar negocio"
-                value={business.id}
-                disabled={busy || searching || generating}
-                onChange={(e) => onBusinessChange(e.target.value)}
+          {navigation
+            .filter((item) => item.id !== "settings")
+            .map((item) => (
+              <button
+                key={item.id}
+                className={`az-nav-item ${view === item.id ? "is-active" : ""}`}
+                title={item.label}
+                aria-current={view === item.id ? "page" : undefined}
+                onClick={() => {
+                  navigate(item.id);
+                  close();
+                }}
               >
-                {businesses.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <span className="field-hint">{business.organizationName}</span>
-            <button className="text-button" disabled={busy} onClick={onCreateBusiness}>
-              <Plus size={15} />
-              Crear negocio
-            </button>
-          </div>
-          <p className="nav-label">TU ESTUDIO</p>
-          <nav aria-label="Navegación principal">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              return (
+                <item.icon size={20} />
+                <span className="az-nav-label">{item.label}</span>
+              </button>
+            ))}
+        </>
+      ),
+    },
+  };
+  return (
+    <FeedbackContext.Provider value={notice}>
+      <PanelShell {...shellProps}>
+        <div
+          className={legacyPanel ? "app-shell" : "az-business-content"}
+          style={legacyPanel && state ? themeStyle(state.appearance) : undefined}
+        >
+          {legacyPanel && (
+            <>
+              <a href="#main" className="skip-link">
+                Saltar al contenido
+              </a>
+              {mobile && (
+                <button
+                  className="sidebar-overlay"
+                  aria-label="Cerrar menú"
+                  onClick={() => setMobile(false)}
+                />
+              )}
+              <aside className={`sidebar ${mobile ? "is-open" : ""}`}>
                 <a
-                  key={item.id}
-                  href={`?business=${encodeURIComponent(business.id)}&view=${item.id}`}
-                  className={`nav-item ${view === item.id ? "active" : ""}`}
-                  aria-current={view === item.id ? "page" : undefined}
+                  className="wordmark"
+                  href={`?business=${encodeURIComponent(business.id)}&view=overview`}
                   onClick={(e) => {
                     e.preventDefault();
-                    navigate(item.id);
+                    navigate("overview");
                   }}
                 >
-                  <Icon size={19} />
-                  <span>{item.label}</span>
-                  {item.id === "content" && reviews > 0 && (
-                    <span className="nav-count">{reviews}</span>
-                  )}
+                  <Mark />
+                  <span>
+                    ezrá<span className="wordmark-dot">.</span>
+                  </span>
+                  <span className="studio-label">ESTUDIO</span>
                 </a>
-              );
-            })}
-          </nav>
-          <div className="sidebar-bottom">
-            <div className="sidebar-note">
-              <span className="note-spark">
-                <Sparkles size={19} />
-              </span>
-              <h3>Tu comercial, organizada.</h3>
-              <p>Un catálogo verificado ayuda a crear mejores publicaciones.</p>
-              <button onClick={() => setHelp(true)}>
-                Conoce tu estudio <ArrowUpRight size={15} />
-              </button>
-            </div>
-            <button className="local-status" onClick={() => navigate("settings")}>
-              <span className="online-dot" />
-              <span>Estudio local</span>
-              <HardDrive size={14} />
-            </button>
-            <div className="user-profile">
-              <UserButton />
-              <div>
-                <strong>{account.displayName}</strong>
-                <small>
-                  {account.role === "admin"
-                    ? "Administración de clientes"
-                    : "Cuenta de la comercial"}
-                </small>
-              </div>
-              <button
-                className="icon-button"
-                aria-label="Cerrar sesión"
-                onClick={() => void onLogout().catch((e) => notify(e.message, true))}
-              >
-                <LogOut size={19} />
-              </button>
-            </div>
-          </div>
-        </aside>
-        <div className="workspace">
-          <header className="topbar">
-            <div className="breadcrumb">
-              <button
-                className="icon-button mobile-toggle"
-                aria-label="Abrir menú"
-                onClick={() => setMobile(true)}
-              >
-                <Menu size={21} />
-              </button>
-              <span>{business.organizationName}</span>
-              <ChevronRight size={14} />
-              <strong>{title}</strong>
-            </div>
-            <div className="topbar-actions">
-              <span className="save-indicator">
-                {busy ? (
-                  <LoaderCircle className="spin" size={13} />
-                ) : (
-                  <span className="online-dot" />
+                {account.role === "admin" && (
+                  <button
+                    className="text-button owner-panel-link"
+                    onClick={onOwnerPanel}
+                    disabled={busy}
+                  >
+                    <ChevronLeft size={16} />
+                    Panel de administración
+                  </button>
                 )}
-                {busy ? "Guardando…" : "Guardado local"}
-              </span>
-              <button
-                className="icon-button"
-                aria-label="Guía del estudio"
-                onClick={() => setHelp(true)}
-              >
-                <CircleHelp size={19} />
-              </button>
-              <button
-                className="icon-button notification-button"
-                aria-label={`${reviews} publicaciones por revisar`}
-                onClick={goReviews}
-              >
-                <Bell size={19} />
-                {reviews > 0 && <i />}
-              </button>
-              {/* Account menu (Clerk) and an always-visible way to sign out. */}
-              <UserButton />
-              <button
-                className="button secondary topbar-logout"
-                onClick={() => void onLogout().catch((e) => notify(e.message, true))}
-              >
-                <LogOut size={16} aria-hidden="true" />
-                <span>Cerrar sesión</span>
-              </button>
-            </div>
-          </header>
-          <main id="main" className="main-content">
-            {!state ? (
-              <div className="loading-state">
-                {loadError ? (
-                  <>
-                    <h2>No pudimos abrir tu estudio</h2>
-                    <p>{loadError}</p>
-                    <button className="button primary" onClick={() => void load()}>
-                      Volver a intentar
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Mark />
-                    <LoaderCircle className="spin" size={23} />
-                    <p>Preparando tu espacio…</p>
-                  </>
-                )}
-              </div>
-            ) : (
-              <>
-                {view === "overview" && (
-                  <Overview
-                    state={state}
-                    create={() => void create()}
-                    open={setEditing}
-                    navigate={navigate}
-                    goReviews={goReviews}
-                    busy={busy}
-                  />
-                )}
-                {view === "catalog" && (
-                  <CatalogPage
-                    state={state}
-                    business={business}
-                    busy={busy}
-                    commit={commit}
-                    upload={upload}
-                    open={setEditing}
-                    notify={notify}
-                  />
-                )}
-                {view === "content" && (
-                  <>
-                    <PageHeading
-                      eyebrow="DE LA IDEA A LA PUBLICACIÓN"
-                      title="Tu contenido, en un lugar."
-                      description="Dale forma, revísalo y decide cuándo compartirlo."
-                      action={
-                        <button
-                          className="button primary"
-                          disabled={busy}
-                          onClick={() => void create()}
-                        >
-                          <Plus size={17} />
-                          Crear publicación
-                        </button>
-                      }
+                <div className="business-switch">
+                  {state?.appearance.logoMediaId && (
+                    <img
+                      className="business-logo"
+                      src={businessApiUrl(
+                        `/api/media/${state.appearance.logoMediaId}`,
+                        business.id,
+                      )}
+                      alt={`Logo de ${business.name}`}
                     />
-                    <div className="content-tabs">
-                      <button
-                        className={contentTab === "posts" ? "active" : ""}
-                        onClick={() => setContentTab("posts")}
+                  )}
+                  <label>
+                    Negocio activo
+                    <select
+                      aria-label="Cambiar negocio"
+                      value={business.id}
+                      disabled={busy || searching || generating}
+                      onChange={(e) => onBusinessChange(e.target.value)}
+                    >
+                      {businesses.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <span className="field-hint">{business.organizationName}</span>
+                  <button className="text-button" disabled={busy} onClick={onCreateBusiness}>
+                    <Plus size={15} />
+                    Crear negocio
+                  </button>
+                </div>
+                <p className="nav-label">TU ESTUDIO</p>
+                <nav aria-label="Navegación principal">
+                  {navigation.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <a
+                        key={item.id}
+                        href={`?business=${encodeURIComponent(business.id)}&view=${item.id}`}
+                        className={`nav-item ${view === item.id ? "active" : ""}`}
+                        aria-current={view === item.id ? "page" : undefined}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigate(item.id);
+                        }}
                       >
-                        Publicaciones <span>{state.posts.length}</span>
-                      </button>
-                      <button
-                        className={contentTab === "library" ? "active" : ""}
-                        onClick={() => setContentTab("library")}
-                      >
-                        Biblioteca de medios <span>{state.media.length}</span>
-                      </button>
+                        <Icon size={19} />
+                        <span>{item.label}</span>
+                        {item.id === "content" && reviews > 0 && (
+                          <span className="nav-count">{reviews}</span>
+                        )}
+                      </a>
+                    );
+                  })}
+                </nav>
+                <div className="sidebar-bottom">
+                  <div className="sidebar-note">
+                    <span className="note-spark">
+                      <Sparkles size={19} />
+                    </span>
+                    <h3>Tu comercial, organizada.</h3>
+                    <p>Un catálogo verificado ayuda a crear mejores publicaciones.</p>
+                    <button onClick={() => setHelp(true)}>
+                      Conoce tu estudio <ArrowUpRight size={15} />
+                    </button>
+                  </div>
+                  <button className="local-status" onClick={() => navigate("settings")}>
+                    <span className="online-dot" />
+                    <span>Estudio local</span>
+                    <HardDrive size={14} />
+                  </button>
+                  <div className="user-profile">
+                    <UserButton />
+                    <div>
+                      <strong>{account.displayName}</strong>
+                      <small>
+                        {account.role === "admin"
+                          ? "Administración de clientes"
+                          : "Cuenta de la comercial"}
+                      </small>
                     </div>
-                    {contentTab === "posts" ? (
-                      <>
-                        <div className="filter-bar">
-                          <div className="filter-pills">
-                            {(["all", "draft", "review", "approved", "planned"] as const).map(
-                              (s) => (
-                                <button
-                                  key={s}
-                                  className={filter === s ? "active" : ""}
-                                  onClick={() => setFilter(s)}
-                                >
-                                  {s === "all" ? "Todas" : statusLabels[s]}
-                                </button>
-                              ),
-                            )}
-                            <select
-                              aria-label="Más estados"
-                              value={["published", "rejected"].includes(filter) ? filter : ""}
-                              onChange={(e) => setFilter((e.target.value as Status) || "all")}
-                            >
-                              <option value="">Más estados</option>
-                              <option value="published">Publicadas manualmente</option>
-                              <option value="rejected">Rechazadas</option>
-                            </select>
-                          </div>
-                          <label className="search-box">
-                            <Search size={16} />
-                            <input
-                              aria-label="Buscar publicaciones"
-                              value={query}
-                              onChange={(e) => setQuery(e.target.value)}
-                              placeholder="Buscar una publicación…"
-                            />
-                          </label>
-                        </div>
-                        <DemoNote state={state} />
-                        <div className="content-grid">
-                          {state.posts
-                            .filter(
-                              (p) =>
-                                (filter === "all" || p.status === filter) &&
-                                `${p.title} ${p.caption}`
-                                  .toLowerCase()
-                                  .includes(query.toLowerCase()),
-                            )
-                            .map((p) => (
-                              <PostCard key={p.id} post={p} state={state} onOpen={setEditing} />
-                            ))}
-                        </div>
-                        {!state.posts.some(
-                          (p) =>
-                            (filter === "all" || p.status === filter) &&
-                            `${p.title} ${p.caption}`.toLowerCase().includes(query.toLowerCase()),
-                        ) && (
-                          <Empty
-                            title="Aquí empieza una nueva publicación"
-                            description="No hay publicaciones con estos filtros. Prueba otra búsqueda o crea tu primer borrador."
-                            action={
-                              <button
-                                className="button secondary"
-                                onClick={() => {
-                                  setFilter("all");
-                                  setQuery("");
-                                }}
-                              >
-                                Ver todas
-                              </button>
-                            }
-                          />
-                        )}
-                      </>
+                    <button
+                      className="icon-button"
+                      aria-label="Cerrar sesión"
+                      onClick={() => void onLogout().catch((e) => notify(e.message, true))}
+                    >
+                      <LogOut size={19} />
+                    </button>
+                  </div>
+                </div>
+              </aside>
+            </>
+          )}
+          <div className={legacyPanel ? "workspace" : "az-business-workspace"}>
+            {legacyPanel && (
+              <header className="topbar">
+                <div className="breadcrumb">
+                  <button
+                    className="icon-button mobile-toggle"
+                    aria-label="Abrir menú"
+                    onClick={() => setMobile(true)}
+                  >
+                    <Menu size={21} />
+                  </button>
+                  <span>{business.organizationName}</span>
+                  <ChevronRight size={14} />
+                  <strong>{title}</strong>
+                </div>
+                <div className="topbar-actions">
+                  <span className="save-indicator">
+                    {busy ? (
+                      <LoaderCircle className="spin" size={13} />
                     ) : (
-                      <>
-                        <div className="section-row">
-                          <p className="muted">
-                            Material propio, generado con IA o con permiso. Todo queda en tu
-                            carpeta.
-                          </p>
-                          <button className="button secondary" onClick={() => setUploading(true)}>
-                            <Upload size={16} />
-                            Subir archivos
-                          </button>
-                        </div>
-                        {state.media.length ? (
-                          <div className="media-grid">
-                            {state.media.map((m) => (
-                              <article className="media-card" key={m.id}>
-                                <div className="media-preview">
-                                  {m.mime.startsWith("video/") ? (
-                                    <video
-                                      controls
-                                      muted
-                                      src={businessApiUrl(`/api/media/${m.id}`, state.businessId)}
-                                      preload="metadata"
-                                    />
-                                  ) : (
-                                    <img
-                                      src={businessApiUrl(`/api/media/${m.id}`, state.businessId)}
-                                      alt={m.originalName}
-                                    />
-                                  )}
-                                </div>
-                                <div>
-                                  <strong>{m.originalName}</strong>
-                                  <p>
-                                    {m.origin === "ai"
-                                      ? "Generado con IA"
-                                      : m.origin === "licensed"
-                                        ? "Con licencia"
-                                        : "Material propio"}{" "}
-                                    · {(m.size / 1024 / 1024).toFixed(1)} MB
-                                  </p>
-                                  {m.attribution && <small>{m.attribution}</small>}
-                                  <a
-                                    className="text-button"
-                                    href={businessApiUrl(`/api/media/${m.id}`, state.businessId)}
-                                    download={m.originalName}
-                                  >
-                                    <ArrowDownToLine size={14} />
-                                    Descargar
-                                  </a>
-                                </div>
-                              </article>
-                            ))}
-                          </div>
-                        ) : (
-                          <Empty
-                            title="Tu biblioteca está por florecer"
-                            description="Trae las fotos y videos que creaste en Gemini, tu material propio o archivos con licencia."
-                            action={
-                              <button className="button primary" onClick={() => setUploading(true)}>
-                                <Upload size={16} />
-                                Subir mi primer archivo
-                              </button>
-                            }
-                          />
-                        )}
-                      </>
+                      <span className="online-dot" />
                     )}
-                  </>
-                )}
-                {view === "calendar" && (
-                  <Calendar state={state} open={setEditing} create={() => void create()} />
-                )}
-                {view === "sources" && (
-                  <>
-                    <PageHeading
-                      eyebrow="PUBLICACIONES CON RESPALDO"
-                      title="Buenas fuentes, mejores publicaciones."
-                      description="Tú eliges qué información entra en tu estudio."
-                      action={
-                        <div className="heading-actions">
-                          <button
-                            className="button secondary"
-                            onClick={() => void searchIdeas()}
-                            disabled={searching || !state.sources.some((s) => sourceReadable(s))}
-                            hidden={!legacyAutomation}
-                            title="n8n lee solo tus sitios propios y RSS autorizados"
-                          >
-                            {searching ? (
-                              <LoaderCircle className="spin" size={17} />
-                            ) : (
-                              <Lightbulb size={17} />
-                            )}
-                            {searching ? "Buscando ideas…" : "Buscar ideas"}
-                          </button>
+                    {busy ? "Guardando…" : "Guardado local"}
+                  </span>
+                  <button
+                    className="icon-button"
+                    aria-label="Guía del estudio"
+                    onClick={() => setHelp(true)}
+                  >
+                    <CircleHelp size={19} />
+                  </button>
+                  <button
+                    className="icon-button notification-button"
+                    aria-label={`${reviews} publicaciones por revisar`}
+                    onClick={goReviews}
+                  >
+                    <Bell size={19} />
+                    {reviews > 0 && <i />}
+                  </button>
+                  {/* Account menu (Clerk) and an always-visible way to sign out. */}
+                  <UserButton />
+                  <button
+                    className="button secondary topbar-logout"
+                    onClick={() => void onLogout().catch((e) => notify(e.message, true))}
+                  >
+                    <LogOut size={16} aria-hidden="true" />
+                    <span>Cerrar sesión</span>
+                  </button>
+                </div>
+              </header>
+            )}
+            <section
+              id="main"
+              className={legacyPanel ? "main-content" : "az-page az-business-page"}
+            >
+              {!state ? (
+                <div className="loading-state">
+                  {loadError ? (
+                    <>
+                      <h2>No pudimos abrir tu estudio</h2>
+                      <p>{loadError}</p>
+                      <button className="button primary" onClick={() => void load()}>
+                        Volver a intentar
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Mark />
+                      <LoaderCircle className="spin" size={23} />
+                      <p>Preparando tu espacio…</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {view === "overview" &&
+                    (legacyPanel ? (
+                      <Overview
+                        state={state}
+                        create={() => void create()}
+                        open={setEditing}
+                        navigate={navigate}
+                        goReviews={goReviews}
+                        busy={busy}
+                      />
+                    ) : (
+                      <BusinessOverview
+                        state={state}
+                        name={business.name}
+                        navigate={navigate}
+                        open={setEditing}
+                      />
+                    ))}
+                  {view === "catalog" && (
+                    <CatalogPage
+                      state={state}
+                      business={business}
+                      busy={busy}
+                      commit={commit}
+                      upload={upload}
+                      open={setEditing}
+                      notify={notify}
+                    />
+                  )}
+                  {view === "content" && (
+                    <>
+                      <PageHeading
+                        eyebrow="DE LA IDEA A LA PUBLICACIÓN"
+                        title="Tu contenido, en un lugar."
+                        description="Dale forma, revísalo y decide cuándo compartirlo."
+                        action={
                           <button
                             className="button primary"
-                            onClick={() => setSourceEditing("new")}
+                            disabled={busy}
+                            onClick={() => void create()}
                           >
                             <Plus size={17} />
-                            Añadir fuente
+                            Crear publicación
                           </button>
-                        </div>
-                      }
-                    />
-                    <div className="source-intro">
-                      <ShieldCheck size={22} />
-                      <div>
-                        <strong>La confianza empieza con una revisión.</strong>
-                        <p>
-                          Autoriza cada fuente después de consultarla. Las cuentas de inspiración no
-                          autorizan copiar contenido ni usar sus medios.
-                        </p>
+                        }
+                      />
+                      <div className="content-tabs">
+                        <button
+                          className={contentTab === "posts" ? "active" : ""}
+                          onClick={() => setContentTab("posts")}
+                        >
+                          Publicaciones <span>{state.posts.length}</span>
+                        </button>
+                        <button
+                          className={contentTab === "library" ? "active" : ""}
+                          onClick={() => setContentTab("library")}
+                        >
+                          Biblioteca de medios <span>{state.media.length}</span>
+                        </button>
                       </div>
-                    </div>
-                    <div className="source-list">
-                      {state.sources.map((s) => (
-                        <article className="source-card" key={s.id}>
-                          <span className={`source-icon ${s.kind}`}>
-                            <Globe2 size={23} />
-                          </span>
-                          <div className="source-info">
-                            <div>
-                              <h3>{s.name}</h3>
-                              {s.demo && <span className="demo-tag">Ejemplo</span>}
-                            </div>
-                            {s.url ? (
-                              <a href={s.url} target="_blank" rel="noreferrer">
-                                {new URL(s.url).hostname}
-                                <ExternalLink size={12} />
-                              </a>
-                            ) : (
-                              <span className="source-nolink">Sin enlace</span>
-                            )}
-                            <p>{s.topics}</p>
-                            <span
-                              className={`badge ${sourceUsable(s) ? "status-approved" : s.status === "paused" ? "status-rejected" : "status-draft"}`}
-                            >
-                              <span className="status-dot" />
-                              {sourceUsable(s)
-                                ? "Autorizada"
-                                : s.status === "paused"
-                                  ? "Pausada"
-                                  : s.status === "approved"
-                                    ? "Necesita revisión"
-                                    : "Por verificar"}
-                            </span>
-                            <span className="source-kind">{sourceKindLabels[s.kind]}</span>
-                          </div>
-                          <div className="source-last">
-                            <small>Última revisión</small>
-                            <span>{s.reviewedOn ? displayDate(s.reviewedOn) : "Pendiente"}</span>
-                            {sourceReadable(s) && (
-                              <small className="source-reading">
-                                {ideaData?.sources[s.id]
-                                  ? `Última lectura: ${displayDate(ideaData.sources[s.id].lastReadAt)} · ${ideaData.sources[s.id].ideas} ideas`
-                                  : "Aún sin leer"}
-                                {ideaData?.sources[s.id]?.skipped &&
-                                  ` · omitida: ${ideaData.sources[s.id].skipped}`}
-                              </small>
-                            )}
-                            <button className="text-button" onClick={() => setSourceEditing(s)}>
-                              Revisar fuente <ArrowUpRight size={14} />
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                    {!!ideaData?.ideas.length && (
-                      <section className="panel ideas-panel">
-                        <div className="section-heading">
-                          <h2>Ideas encontradas</h2>
-                          <span className="muted">{ideaData.ideas.length} por revisar</span>
-                        </div>
-                        {ideaData.ideas.map((idea) => (
-                          <div className="idea-row" key={idea.id}>
-                            <Lightbulb size={17} />
-                            <div>
-                              <a href={idea.url} target="_blank" rel="noreferrer">
-                                {idea.title}
-                                <ExternalLink size={12} />
-                              </a>
-                              <p>
-                                {state.sources.find((s) => s.id === idea.sourceId)?.name ||
-                                  "Fuente eliminada"}
-                                {idea.publishedAt && ` · ${displayDate(idea.publishedAt)}`}
-                              </p>
-                              <div className="idea-note">
-                                <input
-                                  aria-label={`Tu nota sobre «${idea.title}»`}
-                                  maxLength={500}
-                                  placeholder="Tu nota: lo que comprobaste en la fuente (obligatoria para generar)"
-                                  value={notes[idea.id] ?? idea.note}
-                                  onChange={(e) =>
-                                    setNotes((n) => ({ ...n, [idea.id]: e.target.value }))
-                                  }
-                                />
-                                {(notes[idea.id] ?? idea.note) !== idea.note && (
+                      {contentTab === "posts" ? (
+                        <>
+                          <div className="filter-bar">
+                            <div className="filter-pills">
+                              {(["all", "draft", "review", "approved", "planned"] as const).map(
+                                (s) => (
                                   <button
-                                    className="text-button"
-                                    onClick={() =>
-                                      void markIdea(idea.id, { note: notes[idea.id] ?? "" })
-                                    }
+                                    key={s}
+                                    className={filter === s ? "active" : ""}
+                                    onClick={() => setFilter(s)}
                                   >
-                                    Guardar nota
+                                    {s === "all" ? "Todas" : statusLabels[s]}
                                   </button>
-                                )}
-                              </div>
+                                ),
+                              )}
+                              <select
+                                aria-label="Más estados"
+                                value={["published", "rejected"].includes(filter) ? filter : ""}
+                                onChange={(e) => setFilter((e.target.value as Status) || "all")}
+                              >
+                                <option value="">Más estados</option>
+                                <option value="published">Publicadas manualmente</option>
+                                <option value="rejected">Rechazadas</option>
+                              </select>
                             </div>
-                            <button
-                              className="text-button"
-                              onClick={() => void draftFromIdea(idea)}
-                              disabled={busy}
-                            >
-                              Crear borrador
-                            </button>
-                            <button
-                              className="text-button"
-                              onClick={() => void openGenerate(idea)}
-                              disabled={generating || !idea.note.trim()}
-                              title={
-                                idea.note.trim()
-                                  ? "Gemini redacta un borrador con tu nota y tus criterios de marca"
-                                  : "Escribe y guarda «Tu nota» primero"
-                              }
-                            >
-                              {generating ? "Generando…" : "Generar propuesta"}
-                            </button>
-                            <button
-                              className="text-button"
-                              onClick={() => void markIdea(idea.id, { status: "discarded" })}
-                            >
-                              Descartar
-                            </button>
+                            <label className="search-box">
+                              <Search size={16} />
+                              <input
+                                aria-label="Buscar publicaciones"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Buscar una publicación…"
+                              />
+                            </label>
                           </div>
-                        ))}
-                        {confirming && spend && (
-                          <Dialog
-                            title="¿Generar una propuesta con Gemini?"
-                            subtitle="Un clic, una propuesta. Llega como borrador para que la revises."
-                            onClose={() => setConfirming(null)}
-                          >
-                            <div className="form-stack">
-                              <p>
-                                <strong>Se enviará a {spend.model}:</strong>
-                              </p>
-                              <ul className="confirm-list">
-                                <li>Idea: «{confirming.title}»</li>
-                                <li>Tu nota: «{confirming.note}»</li>
-                                <li>
-                                  Fuente:{" "}
-                                  {state.sources.find((s) => s.id === confirming.sourceId)?.name}
-                                </li>
-                                <li>Tus criterios de «Marca y criterios»</li>
-                              </ul>
-                              <p className="field-hint">
-                                Costo máximo: {money(spend.reservationUsd)} (precio de pago del{" "}
-                                {spend.prices.checkedOn}); en el nivel gratuito, USD 0. Gastado:{" "}
-                                {money(spend.spentUsd)} de {money(spend.capUsd)}.
-                              </p>
-                              <p className="field-hint">
-                                El texto llega como borrador «Generado con IA». No se aprueba ni se
-                                publica solo.
-                              </p>
-                              <div className="dialog-actions">
+                          <DemoNote state={state} />
+                          <div className="content-grid">
+                            {state.posts
+                              .filter(
+                                (p) =>
+                                  (filter === "all" || p.status === filter) &&
+                                  `${p.title} ${p.caption}`
+                                    .toLowerCase()
+                                    .includes(query.toLowerCase()),
+                              )
+                              .map((p) => (
+                                <PostCard key={p.id} post={p} state={state} onOpen={setEditing} />
+                              ))}
+                          </div>
+                          {!state.posts.some(
+                            (p) =>
+                              (filter === "all" || p.status === filter) &&
+                              `${p.title} ${p.caption}`.toLowerCase().includes(query.toLowerCase()),
+                          ) && (
+                            <Empty
+                              title="Aquí empieza una nueva publicación"
+                              description="No hay publicaciones con estos filtros. Prueba otra búsqueda o crea tu primer borrador."
+                              action={
                                 <button
                                   className="button secondary"
-                                  onClick={() => setConfirming(null)}
+                                  onClick={() => {
+                                    setFilter("all");
+                                    setQuery("");
+                                  }}
                                 >
-                                  Cancelar
+                                  Ver todas
                                 </button>
+                              }
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="section-row">
+                            <p className="muted">
+                              Material propio, generado con IA o con permiso. Todo queda en tu
+                              carpeta.
+                            </p>
+                            <button className="button secondary" onClick={() => setUploading(true)}>
+                              <Upload size={16} />
+                              Subir archivos
+                            </button>
+                          </div>
+                          {state.media.length ? (
+                            <div className="media-grid">
+                              {state.media.map((m) => (
+                                <article className="media-card" key={m.id}>
+                                  <div className="media-preview">
+                                    {m.mime.startsWith("video/") ? (
+                                      <video
+                                        controls
+                                        muted
+                                        src={businessApiUrl(`/api/media/${m.id}`, state.businessId)}
+                                        preload="metadata"
+                                      />
+                                    ) : (
+                                      <img
+                                        src={businessApiUrl(`/api/media/${m.id}`, state.businessId)}
+                                        alt={m.originalName}
+                                      />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <strong>{m.originalName}</strong>
+                                    <p>
+                                      {m.origin === "ai"
+                                        ? "Generado con IA"
+                                        : m.origin === "licensed"
+                                          ? "Con licencia"
+                                          : "Material propio"}{" "}
+                                      · {(m.size / 1024 / 1024).toFixed(1)} MB
+                                    </p>
+                                    {m.attribution && <small>{m.attribution}</small>}
+                                    <a
+                                      className="text-button"
+                                      href={businessApiUrl(`/api/media/${m.id}`, state.businessId)}
+                                      download={m.originalName}
+                                    >
+                                      <ArrowDownToLine size={14} />
+                                      Descargar
+                                    </a>
+                                  </div>
+                                </article>
+                              ))}
+                            </div>
+                          ) : (
+                            <Empty
+                              title="Tu biblioteca está por florecer"
+                              description="Trae las fotos y videos que creaste en Gemini, tu material propio o archivos con licencia."
+                              action={
                                 <button
                                   className="button primary"
-                                  onClick={() => void generate(confirming)}
-                                  disabled={spend.spentUsd + spend.reservationUsd > spend.capUsd}
+                                  onClick={() => setUploading(true)}
                                 >
-                                  <Sparkles size={16} />
-                                  Generar propuesta
+                                  <Upload size={16} />
+                                  Subir mi primer archivo
                                 </button>
-                              </div>
-                            </div>
-                          </Dialog>
-                        )}
-                        <p className="field-hint">
-                          Solo título y enlace de la fuente; ezrá no copia textos ni imágenes.
-                          Comprueba cada dato en la fuente antes de usarlo.
-                        </p>
-                      </section>
-                    )}
-                    {!state.sources.length && (
-                      <Empty
-                        title="Dale una base a tus ideas"
-                        description="Registra una primera fuente y comprueba su información antes de autorizarla."
+                              }
+                            />
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                  {view === "calendar" && (
+                    <Calendar state={state} open={setEditing} create={() => void create()} />
+                  )}
+                  {view === "sources" && (
+                    <>
+                      <PageHeading
+                        eyebrow="PUBLICACIONES CON RESPALDO"
+                        title="Buenas fuentes, mejores publicaciones."
+                        description="Tú eliges qué información entra en tu estudio."
+                        action={
+                          <div className="heading-actions">
+                            <button
+                              className="button secondary"
+                              onClick={() => void searchIdeas()}
+                              disabled={searching || !state.sources.some((s) => sourceReadable(s))}
+                              hidden={!legacyAutomation}
+                              title="n8n lee solo tus sitios propios y RSS autorizados"
+                            >
+                              {searching ? (
+                                <LoaderCircle className="spin" size={17} />
+                              ) : (
+                                <Lightbulb size={17} />
+                              )}
+                              {searching ? "Buscando ideas…" : "Buscar ideas"}
+                            </button>
+                            <button
+                              className="button primary"
+                              onClick={() => setSourceEditing("new")}
+                            >
+                              <Plus size={17} />
+                              Añadir fuente
+                            </button>
+                          </div>
+                        }
                       />
-                    )}
-                    {legacyAutomation && (
-                      <p className="footnote">
-                        Los sitios de ejemplo no se han consultado. ezrá solo lee tus sitios propios
-                        y RSS autorizados cuando pulsas «Buscar ideas», respetando su robots.txt.
-                        Nunca redes sociales.
-                      </p>
-                    )}
-                  </>
-                )}
-                {view === "brand" && <BrandPage state={state} commit={commit} busy={busy} />}
-                {view === "settings" && (
-                  <SettingsPage
-                    state={state}
-                    commit={commit}
-                    busy={busy}
-                    notify={notify}
-                    reload={load}
-                    legacyAutomation={legacyAutomation}
-                    admin={account.role === "admin"}
-                  />
-                )}
-              </>
-            )}
-            <footer className="page-footer">
-              <span>Contenido claro para tu negocio.</span>
-              <span>
-                ezrá · piloto local <span className="footer-dot">·</span> El Salvador
-              </span>
-            </footer>
-          </main>
-        </div>
-        {notice && !editing && !sourceEditing && !uploading && !help && !confirming && (
-          <div
-            className={`toast ${notice.error ? "error" : ""}`}
-            role={notice.error ? "alert" : "status"}
-          >
-            {notice.error ? <CircleHelp size={18} /> : <Check size={18} />}
-            <div>
-              {notice.message}
-              {notice.error && notice.message.includes("otra ventana") && (
-                <button onClick={() => window.location.reload()}>Recargar el estudio</button>
+                      <div className="source-intro">
+                        <ShieldCheck size={22} />
+                        <div>
+                          <strong>La confianza empieza con una revisión.</strong>
+                          <p>
+                            Autoriza cada fuente después de consultarla. Las cuentas de inspiración
+                            no autorizan copiar contenido ni usar sus medios.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="source-list">
+                        {state.sources.map((s) => (
+                          <article className="source-card" key={s.id}>
+                            <span className={`source-icon ${s.kind}`}>
+                              <Globe2 size={23} />
+                            </span>
+                            <div className="source-info">
+                              <div>
+                                <h3>{s.name}</h3>
+                                {s.demo && <span className="demo-tag">Ejemplo</span>}
+                              </div>
+                              {s.url ? (
+                                <a href={s.url} target="_blank" rel="noreferrer">
+                                  {new URL(s.url).hostname}
+                                  <ExternalLink size={12} />
+                                </a>
+                              ) : (
+                                <span className="source-nolink">Sin enlace</span>
+                              )}
+                              <p>{s.topics}</p>
+                              <span
+                                className={`badge ${sourceUsable(s) ? "status-approved" : s.status === "paused" ? "status-rejected" : "status-draft"}`}
+                              >
+                                <span className="status-dot" />
+                                {sourceUsable(s)
+                                  ? "Autorizada"
+                                  : s.status === "paused"
+                                    ? "Pausada"
+                                    : s.status === "approved"
+                                      ? "Necesita revisión"
+                                      : "Por verificar"}
+                              </span>
+                              <span className="source-kind">{sourceKindLabels[s.kind]}</span>
+                            </div>
+                            <div className="source-last">
+                              <small>Última revisión</small>
+                              <span>{s.reviewedOn ? displayDate(s.reviewedOn) : "Pendiente"}</span>
+                              {sourceReadable(s) && (
+                                <small className="source-reading">
+                                  {ideaData?.sources[s.id]
+                                    ? `Última lectura: ${displayDate(ideaData.sources[s.id].lastReadAt)} · ${ideaData.sources[s.id].ideas} ideas`
+                                    : "Aún sin leer"}
+                                  {ideaData?.sources[s.id]?.skipped &&
+                                    ` · omitida: ${ideaData.sources[s.id].skipped}`}
+                                </small>
+                              )}
+                              <button className="text-button" onClick={() => setSourceEditing(s)}>
+                                Revisar fuente <ArrowUpRight size={14} />
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                      {!!ideaData?.ideas.length && (
+                        <section className="panel ideas-panel">
+                          <div className="section-heading">
+                            <h2>Ideas encontradas</h2>
+                            <span className="muted">{ideaData.ideas.length} por revisar</span>
+                          </div>
+                          {ideaData.ideas.map((idea) => (
+                            <div className="idea-row" key={idea.id}>
+                              <Lightbulb size={17} />
+                              <div>
+                                <a href={idea.url} target="_blank" rel="noreferrer">
+                                  {idea.title}
+                                  <ExternalLink size={12} />
+                                </a>
+                                <p>
+                                  {state.sources.find((s) => s.id === idea.sourceId)?.name ||
+                                    "Fuente eliminada"}
+                                  {idea.publishedAt && ` · ${displayDate(idea.publishedAt)}`}
+                                </p>
+                                <div className="idea-note">
+                                  <input
+                                    aria-label={`Tu nota sobre «${idea.title}»`}
+                                    maxLength={500}
+                                    placeholder="Tu nota: lo que comprobaste en la fuente (obligatoria para generar)"
+                                    value={notes[idea.id] ?? idea.note}
+                                    onChange={(e) =>
+                                      setNotes((n) => ({ ...n, [idea.id]: e.target.value }))
+                                    }
+                                  />
+                                  {(notes[idea.id] ?? idea.note) !== idea.note && (
+                                    <button
+                                      className="text-button"
+                                      onClick={() =>
+                                        void markIdea(idea.id, { note: notes[idea.id] ?? "" })
+                                      }
+                                    >
+                                      Guardar nota
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                className="text-button"
+                                onClick={() => void draftFromIdea(idea)}
+                                disabled={busy}
+                              >
+                                Crear borrador
+                              </button>
+                              <button
+                                className="text-button"
+                                onClick={() => void openGenerate(idea)}
+                                disabled={generating || !idea.note.trim()}
+                                title={
+                                  idea.note.trim()
+                                    ? "Gemini redacta un borrador con tu nota y tus criterios de marca"
+                                    : "Escribe y guarda «Tu nota» primero"
+                                }
+                              >
+                                {generating ? "Generando…" : "Generar propuesta"}
+                              </button>
+                              <button
+                                className="text-button"
+                                onClick={() => void markIdea(idea.id, { status: "discarded" })}
+                              >
+                                Descartar
+                              </button>
+                            </div>
+                          ))}
+                          {confirming && spend && (
+                            <Dialog
+                              title="¿Generar una propuesta con Gemini?"
+                              subtitle="Un clic, una propuesta. Llega como borrador para que la revises."
+                              onClose={() => setConfirming(null)}
+                            >
+                              <div className="form-stack">
+                                <p>
+                                  <strong>Se enviará a {spend.model}:</strong>
+                                </p>
+                                <ul className="confirm-list">
+                                  <li>Idea: «{confirming.title}»</li>
+                                  <li>Tu nota: «{confirming.note}»</li>
+                                  <li>
+                                    Fuente:{" "}
+                                    {state.sources.find((s) => s.id === confirming.sourceId)?.name}
+                                  </li>
+                                  <li>Tus criterios de «Marca y criterios»</li>
+                                </ul>
+                                <p className="field-hint">
+                                  Costo máximo: {money(spend.reservationUsd)} (precio de pago del{" "}
+                                  {spend.prices.checkedOn}); en el nivel gratuito, USD 0. Gastado:{" "}
+                                  {money(spend.spentUsd)} de {money(spend.capUsd)}.
+                                </p>
+                                <p className="field-hint">
+                                  El texto llega como borrador «Generado con IA». No se aprueba ni
+                                  se publica solo.
+                                </p>
+                                <div className="dialog-actions">
+                                  <button
+                                    className="button secondary"
+                                    onClick={() => setConfirming(null)}
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    className="button primary"
+                                    onClick={() => void generate(confirming)}
+                                    disabled={spend.spentUsd + spend.reservationUsd > spend.capUsd}
+                                  >
+                                    <Sparkles size={16} />
+                                    Generar propuesta
+                                  </button>
+                                </div>
+                              </div>
+                            </Dialog>
+                          )}
+                          <p className="field-hint">
+                            Solo título y enlace de la fuente; ezrá no copia textos ni imágenes.
+                            Comprueba cada dato en la fuente antes de usarlo.
+                          </p>
+                        </section>
+                      )}
+                      {!state.sources.length && (
+                        <Empty
+                          title="Dale una base a tus ideas"
+                          description="Registra una primera fuente y comprueba su información antes de autorizarla."
+                        />
+                      )}
+                      {legacyAutomation && (
+                        <p className="footnote">
+                          Los sitios de ejemplo no se han consultado. ezrá solo lee tus sitios
+                          propios y RSS autorizados cuando pulsas «Buscar ideas», respetando su
+                          robots.txt. Nunca redes sociales.
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {view === "brand" && <BrandPage state={state} commit={commit} busy={busy} />}
+                  {view === "settings" && (
+                    <SettingsPage
+                      state={state}
+                      commit={commit}
+                      busy={busy}
+                      notify={notify}
+                      reload={load}
+                      legacyAutomation={legacyAutomation}
+                      admin={account.role === "admin"}
+                    />
+                  )}
+                </>
               )}
-            </div>
-            <button aria-label="Cerrar aviso" onClick={() => setNotice(null)}>
-              <X size={16} />
-            </button>
+              {legacyPanel && (
+                <footer className="page-footer">
+                  <span>Contenido claro para tu negocio.</span>
+                  <span>
+                    ezrá · piloto local <span className="footer-dot">·</span> El Salvador
+                  </span>
+                </footer>
+              )}
+            </section>
           </div>
-        )}
-        {editing && state && (
-          <PostEditor
-            key={editing.id}
-            initial={editing}
-            state={state}
-            busy={busy}
-            commit={commit}
-            upload={upload}
-            onClose={() => setEditing(null)}
-            onDuplicate={(p) => void duplicate(p)}
-          />
-        )}
-        {sourceEditing && (
-          <SourceEditor
-            initial={sourceEditing === "new" ? undefined : sourceEditing}
-            commit={commit}
-            busy={busy}
-            onClose={() => setSourceEditing(null)}
-          />
-        )}
-        {uploading && (
-          <MediaUpload upload={upload} busy={busy} onClose={() => setUploading(false)} />
-        )}
-        {help && (
-          <Dialog
-            title="Bienvenido a tu estudio"
-            subtitle="Un pequeño recorrido para empezar con intención."
-            onClose={() => setHelp(false)}
-          >
-            <div className="guide-steps">
-              {[
-                [
-                  "01",
-                  "Trae una buena fuente",
-                  "En Fuentes, registra la información que consultaste y autorízala después de revisarla.",
-                ],
-                [
-                  "02",
-                  "Prepara tu publicación",
-                  "Crea un borrador en Publicaciones. Escribe el texto y adjunta medios propios, generados o con licencia.",
-                ],
-                [
-                  "03",
-                  "Revisa y decide",
-                  "Completa las tres comprobaciones y aprueba esa versión. Las ediciones vuelven a necesitar revisión.",
-                ],
-                [
-                  "04",
-                  "Comparte a tu ritmo",
-                  "Elige una fecha prevista y exporta el paquete. Publica tú en la red social y registra el enlace.",
-                ],
-              ].map(([num, title, body]) => (
-                <div key={num}>
-                  <span>{num}</span>
-                  <section>
-                    <h3>{title}</h3>
-                    <p>{body}</p>
-                  </section>
-                </div>
-              ))}
+          {notice && !editing && !sourceEditing && !uploading && !help && !confirming && (
+            <div
+              className={`toast ${notice.error ? "error" : ""}`}
+              role={notice.error ? "alert" : "status"}
+            >
+              {notice.error ? <CircleHelp size={18} /> : <Check size={18} />}
+              <div>
+                {notice.message}
+                {notice.error && notice.message.includes("otra ventana") && (
+                  <button onClick={() => window.location.reload()}>Recargar el estudio</button>
+                )}
+              </div>
+              <button aria-label="Cerrar aviso" onClick={() => setNotice(null)}>
+                <X size={16} />
+              </button>
             </div>
-            <p className="info-note">
-              Empieza con los ejemplos. Tu información se guarda en esta computadora; descarga un
-              respaldo desde Ajustes antes de moverla.
-            </p>
-            <button className="button primary full-width" onClick={() => setHelp(false)}>
-              Vamos a crear <ArrowRight size={16} />
-            </button>
-          </Dialog>
-        )}
-      </div>
+          )}
+          {editing && state && (
+            <PostEditor
+              key={editing.id}
+              initial={editing}
+              state={state}
+              busy={busy}
+              commit={commit}
+              upload={upload}
+              onClose={() => setEditing(null)}
+              onDuplicate={(p) => void duplicate(p)}
+            />
+          )}
+          {sourceEditing && (
+            <SourceEditor
+              initial={sourceEditing === "new" ? undefined : sourceEditing}
+              commit={commit}
+              busy={busy}
+              onClose={() => setSourceEditing(null)}
+            />
+          )}
+          {uploading && (
+            <MediaUpload upload={upload} busy={busy} onClose={() => setUploading(false)} />
+          )}
+          {help && (
+            <Dialog
+              title="Bienvenido a tu estudio"
+              subtitle="Un pequeño recorrido para empezar con intención."
+              onClose={() => setHelp(false)}
+            >
+              <div className="guide-steps">
+                {[
+                  [
+                    "01",
+                    "Trae una buena fuente",
+                    "En Fuentes, registra la información que consultaste y autorízala después de revisarla.",
+                  ],
+                  [
+                    "02",
+                    "Prepara tu publicación",
+                    "Crea un borrador en Publicaciones. Escribe el texto y adjunta medios propios, generados o con licencia.",
+                  ],
+                  [
+                    "03",
+                    "Revisa y decide",
+                    "Completa las tres comprobaciones y aprueba esa versión. Las ediciones vuelven a necesitar revisión.",
+                  ],
+                  [
+                    "04",
+                    "Comparte a tu ritmo",
+                    "Elige una fecha prevista y exporta el paquete. Publica tú en la red social y registra el enlace.",
+                  ],
+                ].map(([num, title, body]) => (
+                  <div key={num}>
+                    <span>{num}</span>
+                    <section>
+                      <h3>{title}</h3>
+                      <p>{body}</p>
+                    </section>
+                  </div>
+                ))}
+              </div>
+              <p className="info-note">
+                Empieza con los ejemplos. Tu información se guarda en esta computadora; descarga un
+                respaldo desde Ajustes antes de moverla.
+              </p>
+              <button className="button primary full-width" onClick={() => setHelp(false)}>
+                Vamos a crear <ArrowRight size={16} />
+              </button>
+            </Dialog>
+          )}
+        </div>
+      </PanelShell>
     </FeedbackContext.Provider>
   );
 }
@@ -1381,11 +1488,13 @@ function Calendar({
     const d = new Date(Date.UTC(y, m - 1 + diff, 1, 12));
     setMonth(d.toISOString().slice(0, 7));
   };
-  const title = new Intl.DateTimeFormat("es-SV", {
+  const monthYear = new Intl.DateTimeFormat("es-SV", {
     month: "long",
     year: "numeric",
     timeZone: zone,
   }).format(first);
+  // «octubre de 2026» → «Octubre de 2026» (sentence case, not «De»).
+  const title = monthYear.charAt(0).toLocaleUpperCase("es-SV") + monthYear.slice(1);
   const planned = state.posts.filter((p) => p.plannedAt.startsWith(month));
   return (
     <>
@@ -1613,8 +1722,7 @@ function BrandPage({ state, commit, busy }: { state: Workspace; commit: Commit; 
             </span>
             <h2>Tu criterio deja huella.</h2>
             <p>
-              Cada aprobación, corrección y motivo de rechazo queda en el publicaciónl de tu
-              estudio.
+              Cada aprobación, corrección y motivo de rechazo queda en el historial de tu estudio.
             </p>
             <p className="field-hint">
               Es memoria editorial guardada. Todavía no se usa para generar contenido ni entrenar
@@ -1830,7 +1938,7 @@ function N8nConnection({
       </button>
       <p className="field-hint">
         Envía un encargo de prueba simulado a n8n en tu computadora. No publica, no gasta y no
-        cambia tus publicaciones; solo deja una nota en el publicaciónl.
+        cambia tus publicaciones; solo deja una nota en el historial.
       </p>
     </>
   );
@@ -1913,8 +2021,8 @@ function SettingsPage({
             Respaldar este negocio
           </a>
           <p className="field-hint">
-            El ZIP incluye borradores, fuentes, marca, publicaciónl y archivos. Incluye
-            instrucciones para restaurarlo.
+            El ZIP incluye borradores, fuentes, marca, historial y archivos. Incluye instrucciones
+            para restaurarlo.
           </p>
         </section>
         <section className="panel budget-card">

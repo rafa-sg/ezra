@@ -3,44 +3,12 @@ import Link from "next/link";
 import { Plus, Search, SlidersHorizontal, Mic, AudioLines, ArrowUp, FileText } from "lucide-react";
 import { useLanguage } from "./i18n";
 import { href, screens, type Screen } from "./routes";
-import { AssetPlaceholder } from "./ui";
 import { CredentialDetail, CredentialEntry, CredentialWizard } from "./credentials/screens";
 import { ProfileGeneral, ProfileSecurity } from "./account/profile";
 import { CompanySettings } from "./account/company";
 import { UsersScreen } from "./account/users";
-import { ProspectAccounts, ProspectAi } from "./prospecting/screens";
-import { ReportBuilder } from "./prospecting/report-builder";
-import { ProspectAnalytics } from "./prospecting/analytics";
-import { ProspectSettings } from "./prospecting/settings";
 import { WorkflowSettingsScreen, WorkflowSubaccounts } from "./workflows/screens";
 import { AnnouncementsScreen } from "./announcements/screens";
-function Agency() {
-  const { t } = useLanguage();
-  return (
-    <section className="az-page az-agency">
-      <h1>{t("agency")}</h1>
-      <div className="az-card az-empty az-agency-empty">
-        <AssetPlaceholder />
-        <h2>{t("stripeTitle")}</h2>
-        <p>{t("stripeDescription")}</p>
-        <button
-          className="az-button az-stripe-button"
-          aria-disabled="true"
-          title={t("integrationPending")}
-        >
-          <span
-            className="az-stripe-mark"
-            role="img"
-            aria-label={t("stripeLogoPending")}
-            title={t("stripeLogoPending")}
-          />
-          {t("connectStripe")}
-        </button>
-        <small className="az-muted">{t("integrationPending")}</small>
-      </div>
-    </section>
-  );
-}
 function Chat() {
   const { t } = useLanguage();
   return (
@@ -124,16 +92,10 @@ function Pending({ screen }: { screen: Screen }) {
   );
 }
 export function AzraScreen({ screen, path }: { screen: Screen; path: string }) {
-  if (path === "agency") return <Agency />;
   if (path === "ai/chat") return <Chat />;
   if (path === "settings/announcements") return <AnnouncementsScreen />;
   if (path === "settings/workflows") return <WorkflowSettingsScreen />;
   if (path === "settings/workflows/subaccounts") return <WorkflowSubaccounts />;
-  if (path === "prospecting/accounts") return <ProspectAccounts />;
-  if (path === "prospecting/ai") return <ProspectAi />;
-  if (path === "prospecting/report-builder") return <ReportBuilder />;
-  if (path === "prospecting/analytics") return <ProspectAnalytics />;
-  if (path === "prospecting/settings") return <ProspectSettings />;
   if (path === "settings/profile/general") return <ProfileGeneral />;
   if (path === "settings/profile/security") return <ProfileSecurity />;
   if (path === "settings/company") return <CompanySettings />;

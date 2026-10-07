@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ChevronRight, Network, Search, UsersRound, Workflow } from "lucide-react";
 import { useLanguage, type MessageKey } from "../i18n";
 import { href } from "../routes";
-import { getAccountService } from "../account/service";
-import type { Subaccount } from "../account/model";
+import type { Business } from "@/lib/model";
+import { listBusinesses } from "../account/businesses";
 import { builders, WorkflowError, type Builder, type WorkflowSettings } from "./model";
 import { getWorkflowService } from "./service";
 
@@ -125,16 +125,19 @@ export function WorkflowSettingsScreen() {
 export function WorkflowSubaccounts() {
   const { t } = useLanguage();
   const { settings, error, saved, save } = useWorkflowSettings();
-  const [items, setItems] = useState<Subaccount[] | null>(null);
+  const [items, setItems] = useState<Business[] | null>(null);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [pageSize, setPageSize] = useState(20);
   const [page, setPage] = useState(1);
   useEffect(() => {
-    getAccountService()
-      .listSubaccounts()
+    const controller = new AbortController();
+    listBusinesses(controller.signal)
       .then(setItems)
-      .catch(() => setItems([]));
+      .catch((e) => {
+        if ((e as Error).name !== "AbortError") setItems([]);
+      });
+    return () => controller.abort();
   }, []);
   const needle = query.trim().toLocaleLowerCase();
   const matches = (items ?? []).filter((item) => item.name.toLocaleLowerCase().includes(needle));

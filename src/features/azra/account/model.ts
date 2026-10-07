@@ -214,6 +214,7 @@ export const accountStoreSchema = z.object({
   company: companySchema.nullable(),
   subaccounts: z.array(subaccountSchema).default([]),
   companySettings: companySettingsSchema.default(companySettingsSchema.parse({})),
+  pinnedBusinesses: z.array(z.string().max(100)).max(100).default([]),
 });
 export type AccountStore = z.infer<typeof accountStoreSchema>;
 export type AccountErrorCode = "storage" | "invalidData" | "notConnected" | "duplicate";

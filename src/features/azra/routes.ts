@@ -15,13 +15,7 @@ const screen = (
   tab?: MessageKey,
 ): Screen => ({ path, title, references, status, tab });
 export const screens: Screen[] = [
-  screen("agency", "agency", [2], "in-progress"),
   screen("ai/chat", "chat", [1], "in-progress"),
-  screen("prospecting/accounts", "prospecting", [38], "in-progress", "accounts"),
-  screen("prospecting/ai", "prospecting", [3], "in-progress", "prospectAi"),
-  screen("prospecting/report-builder", "prospecting", [5], "in-progress", "reportBuilder"),
-  screen("prospecting/analytics", "prospecting", [4], "in-progress", "analytics"),
-  screen("prospecting/settings", "prospecting", [39], "in-progress", "settings"),
   screen("settings/profile/general", "profile", [6], "done", "general"),
   screen("settings/profile/security", "profile", [7], "in-progress", "security"),
   screen("settings/company", "company", [8], "in-progress"),

@@ -1,0 +1,194 @@
+/* Sign-in / sign-up screen. Structure from the owner's reference (split panel,
+   centered card); identity from the pilot tokens (violet, lilac, paper). */
+.access-page {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  background: var(--paper);
+}
+.access-intro {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 48px 64px;
+  color: #fff;
+  background-color: var(--violet);
+  background-image: radial-gradient(#ffffff2e 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+.access-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  color: #fff;
+}
+.access-brand-tile {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #fff;
+}
+.access-brand-tile .brand-mark {
+  color: var(--violet);
+}
+.access-brand-dot {
+  color: #d7f2b8;
+}
+.access-copy {
+  margin: auto 0;
+  max-width: 540px;
+  padding: 40px 0;
+}
+.access-copy h1 {
+  font-size: clamp(32px, 3.4vw, 44px);
+  line-height: 1.1;
+  letter-spacing: -1.4px;
+  margin: 0 0 16px;
+}
+.access-copy > p {
+  font-size: 17px;
+  line-height: 1.6;
+  color: #ffffffd9;
+  margin: 0;
+}
+.access-highlights {
+  list-style: none;
+  margin: 40px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.access-highlights li {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.access-highlights li > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  background: #ffffff26;
+}
+.access-highlights strong {
+  display: block;
+  font-size: 17px;
+}
+.access-highlights p {
+  margin: 2px 0 0;
+  color: #ffffffcc;
+  font-size: 15px;
+}
+.access-auth {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 48px 24px;
+  min-width: 0;
+  background-image: radial-gradient(#d9d6e0 1.1px, transparent 1.1px);
+  background-size: 22px 22px;
+}
+.access-auth .ez-clerk-root,
+.access-auth .ez-clerk-card {
+  width: 100%;
+  max-width: 440px;
+}
+.access-auth .ez-clerk-card {
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  box-shadow: 0 14px 50px #3e2b6914;
+  overflow: hidden;
+}
+.access-auth .ez-clerk-inner {
+  box-shadow: none;
+  border: 0;
+  border-radius: 0;
+  padding: 40px 40px 34px;
+  gap: 26px;
+}
+.access-auth .ez-clerk-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+}
+.access-auth .ez-clerk-subtitle {
+  font-size: 15px;
+  color: #6f6a78;
+}
+.access-auth .ez-clerk-social,
+.access-auth .ez-clerk-input,
+.access-auth .ez-clerk-primary {
+  min-height: 48px;
+  font-size: 15px;
+}
+.access-auth .ez-clerk-social {
+  font-weight: 600;
+}
+.access-auth .ez-clerk-divider {
+  font-size: 13px;
+  color: #908a99;
+}
+.access-auth .ez-clerk-primary {
+  box-shadow: none;
+  font-weight: 600;
+}
+.access-auth .ez-clerk-footer {
+  background: #f7f6f9;
+}
+.ez-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+}
+.access-note {
+  margin: 0;
+  max-width: 440px;
+  text-align: center;
+  font-size: 13px;
+  color: #827b8c;
+}
+@media (max-width: 1000px) {
+  .access-intro {
+    padding: 40px 36px;
+  }
+}
+@media (max-width: 760px) {
+  .access-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .access-intro {
+    padding: 24px 20px 28px;
+  }
+  .access-copy {
+    padding: 24px 0 0;
+  }
+  .access-copy h1 {
+    font-size: 30px;
+  }
+  .access-copy > p {
+    font-size: 15px;
+  }
+  /* On phones the sign-in form comes first; the highlights stay on larger screens. */
+  .access-highlights {
+    display: none;
+  }
+  .access-auth {
+    padding: 28px 16px 40px;
+  }
+  .access-auth .ez-clerk-inner {
+    padding: 28px 22px 24px;
+  }
+}

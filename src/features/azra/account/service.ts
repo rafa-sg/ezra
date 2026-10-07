@@ -28,6 +28,8 @@ export interface AccountService {
   /** Demo: records the name and template only; nothing is provisioned. */
   createSubaccount(input: { name: string; snapshot: SnapshotId }): Promise<Subaccount>;
   setPinned(id: string, pinned: boolean): Promise<Subaccount>;
+  listPinnedBusinesses(): Promise<string[]>;
+  setPinnedBusiness(id: string, pinned: boolean): Promise<string[]>;
   /** Not available without an authentication backend: always rejects. */
   changePassword(input: { current: string; next: string }): Promise<void>;
   /** Not available without an authentication backend: always rejects. */

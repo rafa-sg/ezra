@@ -1,6 +1,19 @@
 # Estado y relevo
 
-Actualizado: 6 de octubre de 2026.
+## Relevo prioritario — panel por empresa (2026-10-07)
+
+Relevo «claudeya» solicitado. Leer primero el bloque prioritario de `CLAUDE.md`; los apartados inferiores conservan el historial. Aplicación real en 3000; vista de prueba aislada en 3118, no confundir con datos reales. Rama `feat/migracion-ezra`, cambios sin commit conservados.
+
+- Pedido vigente: Sgmotos debe usar el diseño nuevo de administración, conservando datos/permisos propios. Implementado compartiendo `AzraShell`; no dar rol admin a clientes ni dirigirlos a ajustes de agencia.
+- Archivos clave: `src/components/studio.tsx` (shell nuevo por defecto, panel anterior retenido con `legacyPanel=false`), `src/features/azra/shell.tsx` (opciones de negocio), `business-overview.tsx` (inicio real), `azra.css`, mensajes ES/EN. Las APIs y autenticación conservan el aislamiento existente. Todos los negocios que usan Studio reciben la estructura nueva.
+- La ruta sigue `/` / `?business=…&view=…`; `/azra` es solo administración. No activar el panel anterior mediante parámetros de URL. El código previo sigue disponible, no se borraron datos.
+- Validación: check (59 unitarias), build y 6 integraciones. Integración ampliada para verificar que Sgmotos no puede consultar/exportar motoxspress ni administrar usuarios. API oculta negocios ajenos con 404.
+- Verificación visual con el componente real Studio y API real en un entorno aislado `work/business-shell-*`: escritorio 1440×900, móvil 390×844; navegación, Escape, borrador guardado y persistente tras recargar, paso a revisión y aprobación bloqueada sin comprobaciones. Agenda móvil sin desbordamiento. Fixture de Clerk offline, no prueba de inicio de sesión real. Herramienta temporal `work/business-preview-server.mts` (no versionada), nunca usa datos reales.
+- Pendiente: revisión del propietario con su sesión real; completar traducción de pantallas heredadas (negocios siguen en español; no se ofrece traductor allí); conexiones GHL y funciones del foro en fases posteriores. Se conservaron cambios ajenos ya presentes, no hay commit nuevo.
+- Comando del propietario: cuando diga «Claudeya», actualizar este archivo y TASKS con todo el contexto útil, pruebas/pendientes y siguiente paso. Regla persistida en AGENTS.md.
+- Próximo paso: revisar la apariencia con el propietario; después especificar una función del foro por vez, empezando por plantillas de marca y datos verificados. No activar APIs ni gasto por leer este relevo.
+
+Actualizado: 7 de octubre de 2026.
 
 ## Current design handoff — 2026-10-06
 
@@ -53,6 +66,19 @@ Terminar el panel de Sgmotos antes que el de motoxspress. Hecho: asistente de 4 
 
 No activar API, despliegue ni publicación externa por leer esta lista. Los USD 20 adicionales siguen disponibles. La carpeta `data/` es privada y no se versiona.
 
+## Ahora (2026-10-07, noche)
+
+- Hecho: menú de administración reducido a «Pregúntale a la IA», inicio y login redirigen ahí; tablero y Prospección eliminados. Siguiente: Ask AI real (elegir proveedor y costo, dentro del techo de USD 20).
+
+- Hecho: nuevo diseño de inicio de sesión y registro según referencia del propietario. Falta su revisión con su cuenta real (iniciar sesión de punta a punta).
+
+## Ahora (2026-10-07, tarde)
+
+- Hecho: revisión visual de Sgmotos y motoxspress (escritorio y móvil) y correcciones de texto, legibilidad, buscadores y cabecera móvil. Aislamiento verificado. 59/59, build, 6/6.
+- Preparado: `docs/features/plantillas-de-marca.md`.
+- Espera al propietario: 5 decisiones de plantillas; voz «tú» vs voseo en el panel de negocios; mostrar o no «Presupuesto del piloto» a clientes; uso de los colores de Apariencia.
+- Siguiente: implementar la fase local de plantillas tras esas respuestas. Integración GHL solo tras lectura de prueba autorizada de Brand Boards.
+
 ## Relevo actual — Azra Stage 1 (2026-10-07)
 
 - Hecho: base aislada `/azra`, manifiesto de 40 referencias, navegación, ES/EN y componentes de modal/formulario/estados; agencia/chat base con placeholders explícitos.
@@ -64,7 +90,9 @@ No activar API, despliegue ni publicación externa por leer esta lista. Los USD 
 - Hecho: sin «Nueva» en menú global; premium eliminado en prospección (mapas de calor editables). 56 unitarias.
 - Pendiente del propietario: video de las funciones a agregar (guardar en Escritorio; la ruta temporal no es legible).
 - Hecho (video del propietario): flujos #10 + por subcuenta, 2FA, Empresa completa (marca blanca, avanzada, SSO, dirección, funciones) y Avisos #20. 59 unitarias, build e integración correctos.
-- Siguiente: migración pedida por el propietario (marca ezrá + paleta del piloto sobre la estructura nueva, conservar login/sesiones/protección).
+- Hecho fase 1 de migración (2026-10-07): marca/paleta ezrá, login Clerk protegiendo `/azra`, negocios reales como subcuentas; prueba de integración nueva (6/6).
+- Siguiente fase de migración: `/` admin → tablero nuevo; accesos de clientes → Usuarios; estudio dentro del shell; rutas a la raíz.
+- (Original) migración pedida por el propietario (marca ezrá + paleta del piloto sobre la estructura nueva, conservar login/sesiones/protección).
 - Antes previsto: workflows #10, teléfono #11 y correo #12–#17; extraer tabla/filtros/paginación de `account/users.tsx` cuando se reutilicen. Las rutas existentes con aviso NO cuentan como pantallas implementadas.
 - Relevo obligatorio y siempre actualizado: `CLAUDE.md`. Inventario/mapa/pendientes por pantalla: `docs/design/azra/INVENTORY.md`.
 - Pendientes externos: proveedor y catálogo completo de permisos; assets/fuente/datos y contratos de otros servicios. No bloquear avances demo por esas decisiones. No desplegar ni activar gastos.

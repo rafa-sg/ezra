@@ -41,6 +41,14 @@ import {
 } from "./model";
 import { getAccountService } from "./service";
 import { accountErrorKey, CopyButton, Field, issueKeys } from "./fields";
+import {
+  agencyLogoUrl,
+  BusinessApiError,
+  deleteAgencyLogo,
+  getAgencyLogo,
+  uploadAgencyLogo,
+  type AgencyLogoMeta,
+} from "./businesses";
 
 const fill = (text: string, values: Record<string, string>) =>
   text.replace(/\{(\w+)\}/g, (_, key: string) => values[key] ?? "");
@@ -338,33 +346,62 @@ export function FeaturesSection() {
   );
 }
 
-const LOGO_TYPES = ["image/png", "image/jpeg", "image/svg+xml", "image/webp"];
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+/** Saved on the local server (admin only); shown in the sidebar logo tile. */
 function LogoSection() {
   const { t } = useLanguage();
-  const [logo, setLogo] = useState<string | null>(null);
-  const [draft, setDraft] = useState<string | null | undefined>(undefined);
-  const [error, setError] = useState<MessageKey | null>(null);
+  const [saved, setSaved] = useState<AgencyLogoMeta | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  // undefined = no change; File = replace; null = delete.
+  const [draft, setDraft] = useState<{ file: File; url: string } | null | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<MessageKey | null>(null);
+  const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const shown = draft === undefined ? logo : draft;
+  useEffect(() => {
+    const controller = new AbortController();
+    getAgencyLogo(controller.signal)
+      .then((logo) => {
+        setSaved(logo);
+        setLoaded(true);
+      })
+      .catch((e) => {
+        if ((e as Error).name !== "AbortError") setError(errorText(e, t("errorGeneric")));
+      });
+    return () => controller.abort();
+  }, [t]);
+  useEffect(() => () => void (draft && URL.revokeObjectURL(draft.url)), [draft]);
+  const shown = draft === undefined ? (saved ? agencyLogoUrl(saved) : null) : (draft?.url ?? null);
   function pick(file: File | undefined) {
     if (!file) return;
-    if (!LOGO_TYPES.includes(file.type)) return setError("errorImageType");
-    if (file.size > 2.5 * 1024 * 1024) return setError("errorImageSize");
+    if (!LOGO_TYPES.includes(file.type)) return setError(t("errorImageType"));
+    if (file.size > 2.5 * 1024 * 1024) return setError(t("errorImageSize"));
     setError(null);
     setStatus(null);
-    setDraft(URL.createObjectURL(file));
+    setDraft({ file, url: URL.createObjectURL(file) });
+  }
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (draft === undefined || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      if (draft) setSaved(await uploadAgencyLogo(draft.file));
+      else {
+        await deleteAgencyLogo();
+        setSaved(null);
+      }
+      setDraft(undefined);
+      setStatus(draft ? "logoSaved" : "logoDeleted");
+    } catch (e) {
+      setError(errorText(e, t("errorGeneric")));
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <Section title="logoTitle" description="logoDescription">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setLogo(draft ?? null);
-          setDraft(undefined);
-          setStatus("logoLocal");
-        }}
-      >
+      <form onSubmit={submit}>
         <div className="az-card-body">
           <div
             className="az-dropzone"
@@ -379,18 +416,22 @@ function LogoSection() {
             </div>
             <div>
               <p>{t("logoDrop")}</p>
-              <p className="az-hint">{t("logoHint")}</p>
+              <p className="az-hint">{t("logoHintSaved")}</p>
               <div className="az-card-actions az-start">
                 <input
                   ref={inputRef}
                   type="file"
                   hidden
                   accept={LOGO_TYPES.join(",")}
-                  onChange={(e) => pick(e.target.files?.[0])}
+                  onChange={(e) => {
+                    pick(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
                 />
                 <button
                   type="button"
                   className="az-button"
+                  disabled={!loaded || busy}
                   onClick={() => inputRef.current?.click()}
                 >
                   {shown ? t("replace") : t("uploadLogo")}
@@ -400,8 +441,9 @@ function LogoSection() {
                     type="button"
                     className="az-button az-danger az-square-small"
                     aria-label={t("deleteLogo")}
+                    disabled={busy}
                     onClick={() => {
-                      setDraft(null);
+                      setDraft(saved ? null : undefined);
                       setStatus(null);
                     }}
                   >
@@ -409,19 +451,36 @@ function LogoSection() {
                   </button>
                 )}
               </div>
-              <ErrorLine error={error} />
+              {error && (
+                <p className="az-error" role="alert">
+                  {error}
+                </p>
+              )}
             </div>
           </div>
         </div>
-        <Footer
-          dirty={draft !== undefined && draft !== logo}
-          status={status}
-          onCancel={() => setDraft(undefined)}
-        />
+        <div className="az-card-footer">
+          <p className="az-muted" role="status">
+            {busy ? t("loading") : status ? t(status) : ""}
+          </p>
+          <button
+            type="button"
+            className="az-button"
+            disabled={draft === undefined || busy}
+            onClick={() => setDraft(undefined)}
+          >
+            {t("cancel")}
+          </button>
+          <button className="az-button az-primary" disabled={draft === undefined || busy}>
+            {t("saveCompany")}
+          </button>
+        </div>
       </form>
     </Section>
   );
 }
+const errorText = (error: unknown, fallback: string) =>
+  error instanceof BusinessApiError && error.message ? error.message : fallback;
 type WhiteLabel = CompanySettings["whiteLabel"];
 function DomainField({
   id,

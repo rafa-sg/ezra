@@ -16,9 +16,63 @@ import {
 } from "lucide-react";
 import { useLanguage, type MessageKey } from "../i18n";
 import { href } from "../routes";
-import type { AccountUser } from "./model";
-import { getAccountService } from "./service";
-import { accountErrorKey, CopyButton, initials, useAccount } from "./fields";
+import { Modal } from "../ui";
+import { CopyButton } from "./fields";
+import {
+  BusinessApiError,
+  clientOrganizations,
+  listAccessAccounts,
+  saveClientAccess,
+  type AccessAccount,
+  type ClientOrganization,
+} from "./businesses";
+
+/** One row per pilot access slot: the administrator and each client organization. */
+type Row = {
+  id: string;
+  name: string;
+  email: string;
+  type: "agencyOwner" | "clientUser" | "pendingAccess";
+  role: string | null;
+  subaccount: string | null;
+  organizationId: AccessAccount["organizationId"];
+  linked: boolean;
+};
+const orgName: Record<ClientOrganization, string> = {
+  sgmotos: "Sgmotos",
+  motoxspress: "motoxspress",
+};
+function toRows(accounts: AccessAccount[]): Row[] {
+  const rows: Row[] = accounts.map((a) => ({
+    id: a.username,
+    name: a.displayName,
+    email: a.email,
+    type: a.role === "admin" ? "agencyOwner" : "clientUser",
+    role: null,
+    subaccount: a.organizationId === "owner" ? null : orgName[a.organizationId],
+    organizationId: a.organizationId,
+    linked: a.linked,
+  }));
+  for (const org of clientOrganizations)
+    if (!accounts.some((a) => a.organizationId === org))
+      rows.push({
+        id: org,
+        name: orgName[org],
+        email: "",
+        type: "pendingAccess",
+        role: null,
+        subaccount: orgName[org],
+        organizationId: org,
+        linked: false,
+      });
+  return rows;
+}
+const initialsOf = (name: string) =>
+  name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
 
 const PAGE_SIZES = [10, 20, 50];
 type FilterKey = "type" | "role" | "subaccount";
@@ -29,9 +83,9 @@ const filterMeta: { key: FilterKey; label: MessageKey; icon: LucideIcon }[] = [
 ];
 export function UsersScreen() {
   const { t } = useLanguage();
-  const { snapshot } = useAccount();
-  const [users, setUsers] = useState<AccountUser[] | null>(null);
-  const [error, setError] = useState<MessageKey | null>(null);
+  const [users, setUsers] = useState<Row[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Row | null>(null);
   const [filters, setFilters] = useState<Record<FilterKey, string>>({
     type: "",
     role: "",
@@ -41,12 +95,15 @@ export function UsersScreen() {
   const [pageSize, setPageSize] = useState(20);
   const [page, setPage] = useState(1);
   useEffect(() => {
-    if (!snapshot) return;
-    getAccountService()
-      .listUsers()
-      .then(setUsers)
-      .catch((e) => setError(accountErrorKey(e)));
-  }, [snapshot]);
+    const controller = new AbortController();
+    listAccessAccounts(controller.signal)
+      .then((accounts) => setUsers(toRows(accounts)))
+      .catch((e) => {
+        if ((e as Error).name !== "AbortError")
+          setError(e instanceof BusinessApiError && e.message ? e.message : t("errorGeneric"));
+      });
+    return () => controller.abort();
+  }, [t]);
   // Filter options come from loaded data only; no role or sub-account is invented.
   const options = useMemo(() => {
     const unique = (values: (string | null)[]) => [
@@ -66,9 +123,7 @@ export function UsersScreen() {
     if (filters.subaccount && user.subaccount !== filters.subaccount) return false;
     const needle = query.trim().toLowerCase();
     if (!needle) return true;
-    return [`${user.firstName} ${user.lastName}`, user.email, user.phone, user.id].some((field) =>
-      field.toLowerCase().includes(needle),
-    );
+    return [user.name, user.email, user.id].some((field) => field.toLowerCase().includes(needle));
   });
   const pages = Math.max(1, Math.ceil(matches.length / pageSize));
   const current = Math.min(page, pages);
@@ -141,7 +196,7 @@ export function UsersScreen() {
         </div>
         {error && (
           <p className="az-error" role="alert">
-            {t(error)}
+            {error}
           </p>
         )}
         <div className="az-table-scroll" role="region" aria-label={t("users")}>
@@ -168,16 +223,7 @@ export function UsersScreen() {
               ) : visible.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="az-table-empty">
-                    {users?.length ? (
-                      t("noMatches")
-                    ) : (
-                      <>
-                        {t("noUsers")}{" "}
-                        <Link className="az-text-button" href={href("settings/profile/general")}>
-                          {t("goToProfile")}
-                        </Link>
-                      </>
-                    )}
+                    {t("noMatches")}
                   </td>
                 </tr>
               ) : (
@@ -186,32 +232,47 @@ export function UsersScreen() {
                     <td>
                       <span className="az-user-name">
                         <span className="az-user-avatar" aria-hidden="true">
-                          {initials(user.firstName, user.lastName)}
+                          {initialsOf(user.name)}
                         </span>
-                        {user.firstName} {user.lastName}
+                        {user.name}
                       </span>
                     </td>
                     <td>
-                      <span className="az-user-email">{user.email}</span>
+                      <span className="az-user-email">{user.email || t("emailPending")}</span>
                       <span className="az-user-id">
                         {t("id")}: {user.id}
                         <CopyButton value={user.id} />
                       </span>
                     </td>
-                    <td>{user.phone || "-"}</td>
+                    <td>-</td>
                     <td>
-                      <span className="az-pill az-pill-green">{t(user.type)}</span>
+                      <span
+                        className={`az-pill ${user.type === "pendingAccess" ? "az-priority-warning" : "az-pill-green"}`}
+                      >
+                        {t(user.type)}
+                      </span>
                     </td>
                     <td>{user.subaccount ?? "-"}</td>
                     <td className="az-col-action">
-                      <Link
-                        className="az-icon"
-                        href={href("settings/profile/general")}
-                        aria-label={t("editUser")}
-                        title={t("editUser")}
-                      >
-                        <SquarePen size={18} />
-                      </Link>
+                      {user.organizationId === "owner" ? (
+                        <Link
+                          className="az-icon"
+                          href={href("settings/profile/general")}
+                          aria-label={t("editUser")}
+                          title={t("editUser")}
+                        >
+                          <SquarePen size={18} />
+                        </Link>
+                      ) : (
+                        <button
+                          className="az-icon"
+                          aria-label={`${t(user.email ? "editAccess" : "assignEmail")}: ${user.name}`}
+                          title={t(user.email ? "editAccess" : "assignEmail")}
+                          onClick={() => setEditing(user)}
+                        >
+                          <SquarePen size={18} />
+                        </button>
+                      )}
                       <button
                         className="az-icon"
                         aria-disabled="true"
@@ -229,7 +290,7 @@ export function UsersScreen() {
         </div>
         <div className="az-table-footer">
           <nav className="az-breadcrumb" aria-label={t("breadcrumb")}>
-            <Link href={href("agency")} aria-label={t("home")}>
+            <Link href={href("ai/chat")} aria-label={t("home")}>
               <House size={18} />
             </Link>
             <span aria-hidden="true">/</span>
@@ -287,6 +348,97 @@ export function UsersScreen() {
           </nav>
         </div>
       </div>
+      <AccessDialog
+        key={editing?.id ?? "closed"}
+        row={editing}
+        onClose={() => setEditing(null)}
+        onSaved={(account) => {
+          setUsers((rows) =>
+            toRows([
+              ...(rows ?? [])
+                .filter(
+                  (r) => r.type !== "pendingAccess" && r.organizationId !== account.organizationId,
+                )
+                .map((r) => ({
+                  username: r.id,
+                  organizationId: r.organizationId,
+                  displayName: r.name,
+                  email: r.email,
+                  role: r.type === "agencyOwner" ? ("admin" as const) : ("client" as const),
+                  linked: r.linked,
+                })),
+              account,
+            ]),
+          );
+          setEditing(null);
+        }}
+      />
     </section>
+  );
+}
+
+/** Same rules as the pilot «Accesos de tus clientes»; the server validates again. */
+function AccessDialog({
+  row,
+  onClose,
+  onSaved,
+}: {
+  row: Row | null;
+  onClose: () => void;
+  onSaved: (account: AccessAccount) => void;
+}) {
+  const { t } = useLanguage();
+  const [email, setEmail] = useState(row?.email ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!row || row.organizationId === "owner" || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      onSaved(await saveClientAccess(row.organizationId, email));
+    } catch (e) {
+      setError(e instanceof BusinessApiError && e.message ? e.message : t("errorGeneric"));
+    } finally {
+      setSaving(false);
+    }
+  }
+  const title = row ? `${t(row.email ? "editAccess" : "assignEmail")} · ${row.name}` : "";
+  return (
+    <Modal open={!!row} onClose={() => !saving && onClose()} label={title}>
+      <form className="az-stack" onSubmit={submit}>
+        <h2>{title}</h2>
+        <p className="az-muted">{t("accessSubtitle")}</p>
+        <div className="az-field">
+          <label htmlFor="az-access-email">{t("emailField")}</label>
+          <input
+            id="az-access-email"
+            type="email"
+            required
+            maxLength={254}
+            autoComplete="off"
+            disabled={saving}
+            value={email}
+            placeholder="cliente@email.com"
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <small className="az-hint">{t("accessHint")}</small>
+        </div>
+        {error && (
+          <p className="az-error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="az-card-actions">
+          <button type="button" className="az-button" disabled={saving} onClick={onClose}>
+            {t("cancel")}
+          </button>
+          <button className="az-button az-primary" disabled={saving || !email.trim()}>
+            {saving ? t("loading") : t("saveAccess")}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

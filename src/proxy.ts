@@ -1,10 +1,13 @@
 import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server";
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
-const authenticate = clerkMiddleware(() => NextResponse.next(), (request: NextRequest) => {
-  const host = request.headers.get("host") || "";
-  return { authorizedParties: [`http://${host}`, `https://${host}`] };
-});
+const authenticate = clerkMiddleware(
+  () => NextResponse.next(),
+  (request: NextRequest) => {
+    const host = request.headers.get("host") || "";
+    return { authorizedParties: [`http://${host}`, `https://${host}`] };
+  },
+);
 
 export default async function proxy(request: NextRequest, event: NextFetchEvent) {
   const host = request.headers.get("host") || "";

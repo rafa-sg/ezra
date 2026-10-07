@@ -22,6 +22,10 @@ Piloto local de marketing para los clientes Sgmotos y motoxspress, con un panel 
 
 Esta carpeta es la fuente compartida de verdad. Una IA modifica archivos a la vez; otra puede revisar en lectura. Documentar cambios relevantes en DECISIONS y el relevo en TASKS. No reescribir trabajo ajeno sin leerlo. Claude y Gemini deben usar estas mismas reglas.
 
+### Comando de relevo «Claudeya»
+
+Cuando el propietario diga «Claudeya» (sin importar mayúsculas), preparar o actualizar `CLAUDE.md` en esta misma carpeta para que Claude Code continúe. Incluir objetivo vigente, decisiones del usuario, estructura y archivos relevantes, cambios hechos y preexistentes, pruebas ejecutadas con resultados, pendientes priorizados, limitaciones y próximo paso concreto. Actualizar también `docs/TASKS.md` y las decisiones relevantes. Conservar el contexto anterior útil, no copiar secretos ni datos privados y no borrar código o `data/`. Entregar el enlace al archivo y un mensaje breve listo para pegar en Claude Code. Es un relevo documental; no instalar, desplegar ni conceder accesos por este comando.
+
 ## Verificación
 
 `npm run check`, `npm run build`, `npm run test:integration`. Pruebas de integración usan una carpeta independiente en `work/`, nunca los datos reales. Verificar navegación, revisión, persistencia, exportación, teclado y tamaño móvil. No añadir pruebas triviales para estilos.

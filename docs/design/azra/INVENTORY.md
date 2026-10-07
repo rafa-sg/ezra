@@ -248,6 +248,10 @@ Dependencias: Frontend: tabla. Backend: habilitación; encabezado asumido por na
 
 No están en la carpeta de diseño ni se copian al repositorio; contienen datos reales. (a) Sidebar GHL en español y selector abierto con una subcuenta; (b) búsqueda sin coincidencia con «Borrar la búsqueda» y tarjeta «Crear «nombre»»; (c) modal «Select Snapshot Template» con pestañas Templates (123)/My (0)/Imported (0), búsqueda y tarjetas con etiqueta; (d) hover con «Seleccionar y continuar» y «Guía de configuración»; (e) perfil en español. Implementados en `account/switcher.tsx` y textos ES. Segunda fila de plantillas recortada: no implementada.
 
+### Cambio 2026-10-07
+
+El menú principal solo muestra «Pregúntale a la IA» (#1). `/azra/agency` (#2) y `/azra/prospecting/*` (#3, #4, #5, #38, #39) se eliminaron por decisión del propietario y redirigen a `/azra/ai/chat`; la tabla siguiente es histórica para esas filas.
+
 ## Mapa de navegación
 
 Todas las rutas nuevas tienen prefijo `/azra`. `/azra` redirige a `/azra/agency`. El piloto existente permanece en `/`. Las rutas son decisiones locales documentadas; las imágenes no prueban URLs.

@@ -43,6 +43,7 @@ export class DemoAccountService implements AccountService {
         company: null,
         subaccounts: [],
         companySettings: companySettingsSchema.parse({}),
+        pinnedBusinesses: [],
       };
     }
     try {
@@ -139,6 +140,16 @@ export class DemoAccountService implements AccountService {
     item.pinned = pinned;
     this.write(store);
     return item;
+  }
+  async listPinnedBusinesses() {
+    return this.read().pinnedBusinesses;
+  }
+  async setPinnedBusiness(id: string, pinned: boolean) {
+    const store = this.read();
+    const rest = store.pinnedBusinesses.filter((value) => value !== id);
+    store.pinnedBusinesses = pinned ? [...rest, id] : rest;
+    this.write(store);
+    return store.pinnedBusinesses;
   }
   async changePassword(): Promise<void> {
     throw new AccountError("notConnected");

@@ -255,3 +255,34 @@ Fuente: grabación «2026-10-06 11.25.42 p. m.» exportada desde Fotos al scratc
 - Empresa: pestañas funcionales. Detalles básicos con Cancelar (confirma el botón Guardar antes provisional), dirección (país, zona horaria de `Intl`), funciones con interruptores (Configurar enlaza a sus pantallas; «Más información» externo fuera). Marca blanca: logotipo con vista previa local, dominios de marca blanca/API validados y guardados como «pendiente de DNS», URLs de políticas, JS/CSS personalizados **solo guardados como texto, nunca ejecutados**, tema claro/oscuro guardado (tema oscuro de UI pendiente). Avanzada: seguridad mejorada, interrupción de sesión (4 h–3 días/Nunca; la opción entre 8 h y 1 día estaba tapada, se asumió 12 h), acceso de soporte de 90 días con ampliar/revocar y modal, interruptores de experiencia con modal «No se recomienda deshabilitar…» y casilla obligatoria. SSO: «Habilitar SSO» informa que falta proveedor de identidad. Se omite «Biblioteca de plantillas para clientes» (sección excluida por el propietario) y la palabra prémium.
 - Avisos (#20 + video): 22 avisos legibles (sin los de reventa), pestañas por prioridad, búsqueda, orden por columna, interruptores (bloqueados con candado no cambian), paginación. Añadir/editar avisos sin captura. El demo no envía avisos.
 - Los ajustes de empresa se guardan combinando cada sección con datos recién leídos para que ninguna sección pise a otra.
+
+## 2026-10-07 — Migración: estructura nueva + identidad y lógica del piloto
+
+El propietario decidió que la estructura nueva gana en layout/navegación/pantallas y la interfaz anterior gana en identidad (nombre «ezrá.», paleta blanca/lila exacta del piloto) y en lógica (Clerk, sesiones, protección, API, validaciones). Negocios del piloto = subcuentas; sidebar blanco con lila. Respaldo en `backup/pre-migracion-ezra-2026-10-06` (`a607921`). Fase 1 hecha: tokens y marca, protección server-side de `/azra` con `sessionAccount()` (solo admin), correo y cerrar sesión, selector y flujos con negocios reales vía `/api/businesses`. Nada del piloto se eliminó; detalle de lo conservado/adaptado/reemplazado/pendiente en CLAUDE.md.
+
+## 2026-10-07 — Logo de agencia persistente
+
+El propietario pidió que el logo de Marca Blanca se guarde. Se guarda en el servidor local (`data/agency/`) con la lógica del piloto: solo administración, detección por contenido (PNG/JPG/WebP, 2,5 MB), cola de escritura y escritura atómica. Sustituye al ícono por defecto en el sidebar. SVG no se acepta (riesgo de scripts). Las pruebas usan un directorio aislado en `work/`.
+
+## 2026-10-07 · Panel nuevo por empresa y comando Claudeya
+
+El propietario confirmó: mismo diseño que la cuenta administrativa rafasanguti69, pero datos y permisos diferentes por empresa. No autoriza acceso administrativo a clientes.
+
+- `Studio` usa por defecto `AzraShell` compartido con opciones de negocio. El panel anterior y `Overview` quedan conservados detrás de `legacyPanel`, desactivado por defecto y sin ruta/query pública para activarlo. No se duplicó ni migró `data/`.
+- Inicio nuevo en `src/features/azra/business-overview.tsx`: catálogo, pendientes, fechas previstas y publicaciones reales del negocio. Redes explícitamente sin conectar. Se conserva la lógica de catálogo, revisión, biblioteca, agenda, fuentes, marca, exportación y respaldo.
+- Cada empresa usa su propio logo; la apariencia del panel usa la paleta compartida blanco/lila. Los colores personalizados guardados no se borran pero ya no cambian el shell. Los clientes no montan el selector administrativo ni leen el logo/perfil demo del administrador. Avatar derivado de la sesión.
+- Administración sigue protegida en `/azra`; clientes permanecen en `/` con el shell nuevo. El selector de negocios sigue limitado por la API. Sin nuevas conexiones, mensajes ni publicaciones.
+- «Claudeya» queda definido en AGENTS.md como comando para actualizar CLAUDE.md y TASKS con el relevo completo, sin secretos, y entregar un mensaje listo para Claude Code.
+- Ideas del foro seleccionadas para fases posteriores: plantillas/colores/logo; valores de catálogo para contenido; asistencia de texto; conocimiento aprobado para bot y respuestas sugeridas; workflows solo tras verificar permisos reales de GHL. Esta tarea implementa el panel, no esas integraciones.
+
+## 2026-10-07 — Revisión visual de Sgmotos/motoxspress y función 1 del foro
+
+Revisión con arnés aislado (datos en `work/`, Clerk offline). Corregidos: «publicaciónl» → «historial», mes de Agenda en mayúscula de oración, buscadores legibles, piso de 12 px para textos del piloto dentro del shell (sin tocar `studio.css`) y botón de cerrar sesión compacto en móvil. Aislamiento verificado por HTTP para ambas empresas. Plantillas de marca: especificación en `docs/features/plantillas-de-marca.md`; no se implementa hasta que el propietario decida imagen o texto, uso de colores, quién edita, marcadores permitidos y sincronización con GHL. GHL Design Kits API documentada públicamente; scopes, token y plan sin confirmar: no se integra.
+
+## 2026-10-07 — Nuevo login
+
+Estructura de la referencia del propietario (panel dividido + tarjeta centrada) con identidad ezrá (violeta del piloto, logo, tuteo como el login anterior). Clerk conserva toda la lógica; solo cambian apariencia y textos. Aviso de desarrollo oculto con la opción oficial de Clerk; marca «Secured by Clerk» se mantiene. En móvil se priorizó el formulario ocultando los tres puntos.
+
+## 2026-10-07 — Menú del panel: solo «Pregúntale a la IA»
+
+El propietario decidió empezar la funcionalidad real por Ask AI. El menú principal de `/azra` queda con un solo elemento y Ask AI es la página de inicio y el destino tras el login. Se borraron el tablero de la agencia (Stripe), Prospección completa y sus textos/estilos; las URLs viejas redirigen a Ask AI. Elementos sin página (AI Suite, Launchpad, Subcuentas, Instantáneas, Ideas, apps) solo se quitaron del menú. El selector de cuentas, Configuración y la barra superior no cambian. Todo lo borrado se puede recuperar del commit de respaldo `a607921`.

@@ -5,7 +5,6 @@ import { LoaderCircle } from "lucide-react";
 import type { Account } from "@/lib/auth";
 import { businessTypeLabels, type Business } from "@/lib/model";
 import { Studio } from "./studio";
-import { OwnerDashboard } from "./owner-dashboard";
 import { AccessScreen } from "./access-screen";
 import { Dialog, Mark } from "./ui";
 
@@ -205,23 +204,12 @@ function BusinessApp({
           }}
           onLogout={onLogout}
           onExpired={onExpired}
-          onOwnerPanel={() => {
-            setSelected("");
-            window.history.pushState(null, "", "/");
-          }}
+          onOwnerPanel={() => window.location.assign("/azra/ai/chat")}
         />
       ) : (
-        <OwnerDashboard
-          account={account}
-          businesses={businesses}
-          onOpen={switchBusiness}
-          onCreate={() => {
-            setError("");
-            setCreating(true);
-          }}
-          onLogout={onLogout}
-          onExpired={onExpired}
-        />
+        // «Mi panel» (OwnerDashboard) was replaced by the new admin panel; the
+        // component is kept unused pending the owner's review.
+        <AgencyRedirect />
       )}
       {creating && (
         <Dialog
@@ -284,5 +272,16 @@ function BusinessApp({
         </Dialog>
       )}
     </>
+  );
+}
+
+function AgencyRedirect() {
+  useEffect(() => {
+    window.location.replace("/azra/ai/chat");
+  }, []);
+  return (
+    <main className="loading-state">
+      <LoaderCircle className="spin" aria-label="Abriendo el panel de administración" />
+    </main>
   );
 }
