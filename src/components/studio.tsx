@@ -566,7 +566,15 @@ export function Studio({
                 <Bell size={19} />
                 {reviews > 0 && <i />}
               </button>
-              <span className="user-avatar small">{account.displayName.slice(0, 1)}</span>
+              {/* Account menu (Clerk) and an always-visible way to sign out. */}
+              <UserButton />
+              <button
+                className="button secondary topbar-logout"
+                onClick={() => void onLogout().catch((e) => notify(e.message, true))}
+              >
+                <LogOut size={16} aria-hidden="true" />
+                <span>Cerrar sesión</span>
+              </button>
             </div>
           </header>
           <main id="main" className="main-content">

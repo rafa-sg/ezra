@@ -11,6 +11,8 @@
   flex-direction: column;
   padding: 30px 19px 0;
   z-index: 25;
+  /* Taller content (e.g. a business logo) must never hide the account controls. */
+  overflow-y: auto;
 }
 .wordmark {
   display: flex;
@@ -4106,4 +4108,22 @@
   height: 6px;
   border-radius: 3px;
   background: var(--brand-secondary, var(--violet));
+}
+
+.topbar-logout {
+  padding: 8px 12px;
+  font-size: 12px;
+  gap: 6px;
+}
+@media (max-width: 640px) {
+  .topbar-logout span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .topbar-logout {
+    padding: 8px;
+  }
 }

@@ -1,5 +1,9 @@
 # ezrá · panel comercial para Sgmotos y motoxspress
 
+## 2026-10-06 · Future product design extension
+
+The owner has requested a design-stage expansion using Spotmi: authorized information collection, branded creative generation, and automatic inbound replies on Instagram, Facebook Messenger, and WhatsApp. The reviewable proposal is in `docs/design/spotmi/README.md`, with an isolated local prototype. This is the new design direction; it does not activate external services or replace the currently running commercial pilot described below. Spotmi's historical data and both client workspaces remain preserved.
+
 Fecha de definición: 4 de octubre de 2026. Zona horaria: America/El_Salvador. Presupuesto: USD 20 adicionales al mes, independientes de las suscripciones de IA existentes. Gasto objetivo del piloto: USD 0.
 
 ## Resultado
