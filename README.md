@@ -83,7 +83,7 @@ npm run test:integration
 
 ## Límites importantes
 
-- Ejecutar solo en esta computadora, con los comandos incluidos. No exponer a Internet ni usar túneles: aún no hay inicio de sesión.
+- Ejecutar solo en esta computadora, con los comandos incluidos. No exponer a Internet ni usar túneles: el inicio de sesión con Google protege el acceso local, pero no sustituye aislamiento de datos ni permisos para varios usuarios.
 - Los archivos se validan por firma básica, no se transcodifican ni se analiza su contenido. HEIC, AVIF y MOV deben convertirse antes de subirlos. Revisa los requisitos reales de cada red al publicar.
 - La memoria registra decisiones; no entrena ni llama a modelos. Ninguna cuenta de IA comparte su memoria con otra automáticamente.
 - El presupuesto de USD 20 en Ajustes es informativo: esta versión no genera gastos ni consulta facturas externas.
@@ -105,3 +105,13 @@ n8n está instalado fuera del proyecto, en `~/n8n-local` (versión fija 2.41.6).
 3. El flujo «ezrá · prueba de conexión simulada» (`automation/n8n/workflows/`) recibe el encargo, comprueba el secreto y devuelve un resultado simulado. En el historial verás «Prueba de conexión simulada». **No publica nada ni cambia ninguna publicación.**
 
 Para probar la conexión: **Ajustes → Cuentas e integraciones → Probar conexión con n8n**. La etiqueta muestra el resultado de la última prueba («Conectado», «No entregado», etc.).
+
+## Inicio de sesión con Google
+
+El estudio pide entrar con una cuenta de Google autorizada. Las claves viven en `.env.local` (fuera de Git); la plantilla está en `.env.example`.
+
+1. En Google Cloud Console crea un cliente OAuth de tipo «Aplicación web» y agrega estos URI de redirección: `http://127.0.0.1:3000/api/auth/callback/google` y `http://localhost:3000/api/auth/callback/google`.
+2. En `.env.local` pon `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_SECRET` (32+ caracteres aleatorios) y `AUTH_ALLOWED_EMAILS` (correos permitidos, separados por comas). Reinicia `npm run dev`.
+3. Abre http://127.0.0.1:3000 y pulsa **Continuar con Google**. Usa siempre la misma dirección (`127.0.0.1` o `localhost`): cada una guarda su propia sesión. Si Google dice `redirect_uri_mismatch`, falta registrar esa dirección en el paso 1.
+
+Google solo comparte nombre y correo. Quitar un correo de `AUTH_ALLOWED_EMAILS` o cambiar `AUTH_SECRET` cierra las sesiones. La ruta que usa n8n para devolver resultados no usa sesión: se protege con su propio secreto. Las pruebas de integración usan `EZRA_AUTH=off`, solo para servidores temporales de prueba; no lo pongas en `.env.local`.

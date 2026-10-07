@@ -3379,3 +3379,16 @@
   line-height: 1.8;
   color: #4d4a55;
 }
+.user-profile > div {
+  min-width: 0;
+}
+.user-profile strong,
+.user-profile small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-profile .icon-button {
+  width: 28px;
+  flex-shrink: 0;
+}

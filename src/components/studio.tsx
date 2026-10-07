@@ -21,8 +21,8 @@ import {
   Leaf,
   Lightbulb,
   LoaderCircle,
+  LogOut,
   Menu,
-  MoreHorizontal,
   Plus,
   Search,
   Settings2,
@@ -97,10 +97,12 @@ export function Studio({ initialView }: { initialView?: string }) {
   const [confirming, setConfirming] = useState<IdeasOverview["ideas"][number] | null>(null);
   const [spend, setSpend] = useState<SpendSummary | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const notify = (message: string, error = false) => setNotice({ message, error });
   const load = async () => {
     try {
       const res = await fetch("/api/workspace");
+      if (res.status === 401) return window.location.assign("/login");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setLoadError("");
@@ -113,14 +115,22 @@ export function Studio({ initialView }: { initialView?: string }) {
     const controller = new AbortController();
     fetch("/api/workspace", { signal: controller.signal })
       .then(async (res) => {
+        if (res.status === 401) {
+          window.location.assign("/login");
+          return null;
+        }
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         return data as Workspace;
       })
-      .then((data) => setState(data))
+      .then((data) => data && setState(data))
       .catch((e) => {
         if (e.name !== "AbortError") setLoadError(e.message);
       });
+    fetch("/api/auth/session", { signal: controller.signal })
+      .then(async (res) => (res.ok ? await res.json() : null))
+      .then((data) => data?.user && setUser(data.user))
+      .catch(() => {});
     const sync = () => {
       const v = new URLSearchParams(window.location.search).get("view");
       if (navigation.some((n) => n.id === v)) setView(v as View);
@@ -137,6 +147,10 @@ export function Studio({ initialView }: { initialView?: string }) {
     const id = setTimeout(() => setNotice(null), 4500);
     return () => clearTimeout(id);
   }, [notice]);
+  const signOut = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    window.location.assign("/login");
+  };
   const navigate = (next: View) => {
     setView(next);
     setMobile(false);
@@ -445,17 +459,20 @@ export function Studio({ initialView }: { initialView?: string }) {
               <HardDrive size={14} />
             </button>
             <div className="user-profile">
-              <span className="user-avatar">R</span>
+              <span className="user-avatar">
+                {(user?.name || "R").trim().charAt(0).toUpperCase()}
+              </span>
               <div>
-                <strong>Mi espacio personal</strong>
-                <small>Spotmi · El Salvador</small>
+                <strong>{user?.name || "Mi espacio personal"}</strong>
+                <small>{user?.email || "Spotmi · El Salvador"}</small>
               </div>
               <button
                 className="icon-button"
-                aria-label="Abrir ajustes"
-                onClick={() => navigate("settings")}
+                aria-label="Cerrar sesión"
+                title="Cerrar sesión"
+                onClick={signOut}
               >
-                <MoreHorizontal size={19} />
+                <LogOut size={17} />
               </button>
             </div>
           </div>

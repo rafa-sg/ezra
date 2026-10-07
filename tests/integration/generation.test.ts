@@ -17,7 +17,7 @@ async function startEzra(env: Record<string, string>) {
   const server = spawn(
     process.execPath,
     ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", "3104"],
-    { env: { ...process.env, ...env }, stdio: "pipe" },
+    { env: { ...process.env, EZRA_AUTH: "off", ...env }, stdio: "pipe" },
   );
   let logs = "";
   server.stderr.on("data", (chunk) => (logs += chunk.toString()));
