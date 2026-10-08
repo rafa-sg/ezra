@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DemoAccountService } from "../src/features/azra/account/demo";
-import { AccountError, type Company, type Profile } from "../src/features/azra/account/model";
+import {
+  AccountError,
+  companySchema,
+  type Company,
+  type Profile,
+} from "../src/features/azra/account/model";
+import { categories, nichesFor } from "../src/features/azra/account/catalog";
 function fixture(initial: string | null = null) {
   let raw = initial;
   let sequence = 0;
@@ -27,10 +33,14 @@ const company: Company = {
   email: "empresa@example.com",
   phone: { country: "SV", number: "" },
   website: "",
-  category: "creative",
-  niche: "",
-  primaryUse: "other",
-  primaryUseDetail: "",
+  audience: "own_business",
+  audienceDetail: "",
+  primaryGoal: "create_content",
+  primaryGoalDetail: "",
+  category: "vehicles",
+  categoryDetail: "",
+  niche: "motorcycle_sales",
+  nicheDetail: "",
 };
 const error = (code: string) => (e: unknown) => e instanceof AccountError && e.code === code;
 test("account demo starts without people, companies or users and keeps a stable DEMO id", async () => {
@@ -99,4 +109,71 @@ test("stores written before sub-accounts existed still load", async () => {
   });
   const { service } = fixture(legacy);
   assert.deepEqual(await service.listSubaccounts(), []);
+});
+
+test("older company records load: «Creativo» and the old main use are mapped, not discarded", async () => {
+  const legacy = JSON.stringify({
+    version: 1,
+    relationshipId: "DEMO-000-000",
+    ownerId: "o",
+    profile: null,
+    company: {
+      name: "Estudio",
+      email: "estudio@example.com",
+      phone: { country: "SV", number: "" },
+      website: "",
+      category: "creative",
+      niche: "",
+      primaryUse: "other",
+      primaryUseDetail: "Portafolio",
+    },
+  });
+  const { service } = fixture(legacy);
+  const loaded = (await service.get()).company!;
+  assert.equal(loaded.category, "arts_design");
+  assert.equal(loaded.primaryGoal, "other");
+  assert.equal(loaded.primaryGoalDetail, "Portafolio");
+  // Unknown before: the audience is left for the user to choose, never invented.
+  assert.equal(loaded.audience, "");
+  assert.ok(!("primaryUse" in loaded));
+  // Saving it requires the new questions.
+  const issues = companySchema.safeParse(loaded).error!.issues.map((i) => `${i.path}:${i.message}`);
+  assert.deepEqual(issues, ["audience:errorRequired", "niche:errorRequired"]);
+});
+
+test("company validation: «Otro» details, personal use and category-dependent niches", () => {
+  const check = (patch: Partial<Company>) => {
+    const result = companySchema.safeParse({ ...company, ...patch });
+    return result.success ? [] : result.error.issues.map((i) => `${i.path}:${i.message}`);
+  };
+  assert.deepEqual(check({}), []);
+  assert.deepEqual(check({ audience: "other" }), ["audienceDetail:errorOtherDetail"]);
+  assert.deepEqual(check({ audience: "other", audienceDetail: "Mi club" }), []);
+  assert.deepEqual(check({ primaryGoal: "other" }), ["primaryGoalDetail:errorOtherDetail"]);
+  assert.deepEqual(check({ category: "other", niche: "" }), ["categoryDetail:errorOtherDetail"]);
+  assert.deepEqual(check({ niche: "other" }), ["nicheDetail:errorOtherDetail"]);
+  // A niche from another category is rejected.
+  assert.deepEqual(check({ niche: "restaurant" }), ["niche:errorNicheInvalid"]);
+  assert.deepEqual(check({ category: "", niche: "" }), ["category:errorRequired"]);
+  // Personal use needs no business classification; «No aplica» is valid there.
+  assert.deepEqual(check({ audience: "own_social", category: "", niche: "" }), []);
+  assert.deepEqual(check({ category: "personal", niche: "" }), []);
+  assert.deepEqual(check({ category: "personal", niche: "not_applicable" }), []);
+  // Details are kept only while «Otro» is selected.
+  const saved = companySchema.parse({ ...company, audienceDetail: "sobrante", nicheDetail: "x" });
+  assert.equal(saved.audienceDetail, "");
+  assert.equal(saved.nicheDetail, "");
+});
+
+test("the niche catalog covers every category and ends with «Otro»", () => {
+  assert.equal(categories.length, 17);
+  for (const category of categories) {
+    const niches = nichesFor(category.id);
+    if (category.id === "other") assert.deepEqual(niches, []);
+    else {
+      assert.ok(niches.length >= 4, category.id);
+      assert.equal(niches.at(-1)!.id, "other");
+      assert.equal(new Set(niches.map((n) => n.id)).size, niches.length, category.id);
+    }
+  }
 });

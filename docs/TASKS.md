@@ -1,5 +1,48 @@
 # Estado y relevo
 
+## 2026-10-07 · «Spotmi» y formulario de Empresa — HECHO
+
+- [x] `owner-main` «Mi negocio» → «Spotmi» (registro y marca del workspace; copia en `work/backup-rename-spotmi-20261007-193054/`). Histórico `spotmi` intacto.
+- [x] Empresa: audiencia y objetivo separados, 17 categorías, nichos dependientes, «Otro» con detalle, uso personal, validación y compatibilidad con registros viejos.
+- [ ] Empresa sigue en almacenamiento local del navegador (demo); pasar al servidor cuando se defina el backend de cuenta.
+
+## 2026-10-07 · Bot de atención (etapa local) — HECHO
+
+- [x] Menú principal: «Bot de atención» bajo Creación de contenido; submenú de 7 secciones + Conexiones.
+- [x] Configuración, conocimiento, reglas, conversaciones de prueba y actividad persistentes por negocio (`bot.json`, API `/api/bot`, revisión optimista, respaldo).
+- [x] Simulador determinista «Prueba local: no envía mensajes»; control humano detiene respuestas.
+- [x] Conexiones compartidas con Creación de contenido: todo «Sin conectar».
+- [ ] Verificar MCP/API/webhooks de GHL y diseñar el adaptador real (ver `docs/features/bot-de-atencion.md`).
+- [ ] Traducción EN del módulo; revisión visual del propietario.
+- [ ] Confirmación del propietario para borrar el acceso `rafasanguti11@gmail.com` (Sgmotos).
+
+## 2026-10-07 · Herramientas de contenido: Conexiones
+
+- A petición del propietario, el lateral de Creación de contenido ahora contiene solo «Conexiones». Nuevo chat, Buscar, Plantillas y Personalizar se retiran de esta pantalla; el apartado de IA no cambia.
+- Conexiones abre un diálogo para el futuro MCP de GHL, explícitamente pendiente de configurar. No se agregan credenciales, llamadas externas ni conexiones simuladas. Se conserva la creación de paneles locales y todo el contenido guardado.
+- Verificación: check, build y 6 integraciones correctos; navegador aislado confirma menú con solo Conexiones, apertura del diálogo y cierre con Escape.
+- Próximo paso: especificar la integración real de GHL y verificar sus capacidades antes de activarla.
+
+## 2026-10-07 · Creación de contenido según capturas del propietario
+
+- Nueva pantalla real `/azra/content` para administración y clientes, integrada en `AzraShell`; Ask AI y el login existentes se conservan. Implementación: `src/features/azra/content.tsx` y `content.css`.
+- Inicio sin paneles ni conexiones. `socialPanels` opcional en el workspace (Facebook/Instagram, únicos, máximo dos); guardado por API con aislamiento y revisión optimista. Quitar un panel conserva publicaciones y medios. Contenido demo oculto, nunca borrado.
+- Diseño blanco/lila con herramientas, pestañas, tarjetas seleccionables, búsqueda, tres estructuras de texto y personalización de voz/criterios. Editor local con medios propios, fuentes existentes, revisión y exportación ZIP manual usando APIs y reglas editoriales existentes. Cambio de marca invalida aprobaciones según la lógica del servidor.
+- Métricas sin datos, conexiones sin activar y orden por rendimiento deshabilitado. Una cuenta por red y negocio en esta fase. No existe OAuth ni importación/publicación social; no se activó gasto.
+- Limitaciones pendientes: alta/revisión de fuentes desde la nueva interfaz (el editor selecciona fuentes existentes), vista previa específica por formato, gestión de múltiples cuentas de una misma red y traducción de esta nueva pantalla a inglés. Notificaciones/ayuda globales conservan su disponibilidad anterior. No se restauró el estudio retirado.
+- Validación: `npm run check` (55 pruebas), `npm run build`, `npm run test:integration` (6 pruebas) correctos. Prueba nueva de paneles, preservación de datos y conflictos; ruta de contenido accesible por cliente autorizado. Navegador con fixture aislado en `work/`, API real: panel vacío, creación/persistencia de borrador, revisión y aprobación bloqueada sin fuente/comprobaciones, exportación solicitada, Escape y foco visible. Escritorio 1440 y móvil 390 sin desbordamiento del documento. No se probó sesión Clerk real.
+- Arnés temporal `work/content-preview-server.mts`, puertos loopback 3127/3128; captura `work/content-design/desktop.png`. No contiene datos reales y no sustituye la aplicación de 3000.
+- Próximo paso: revisión visual del propietario en `/azra/content`; completar alta de fuentes y vista previa antes de ampliar integraciones.
+
+## Ask AI con Gemini (2026-10-07) — HECHO
+
+- [x] `POST /api/ask` con `@google/genai`, clave solo en servidor (`GEMINI_API_KEY`, `GEMINI_MODEL`, por defecto `gemini-3.5-flash-lite`).
+- [x] Herramientas de solo lectura: programadas, por estado, por plataforma; métricas y mensajes → «no conectado».
+- [x] Instrucción de sistema en español; límites de largo y 5 preguntas/min por cuenta.
+- [x] Chat activo con historial, carga y errores en español; «Integración pendiente» eliminado.
+- [ ] Propietario: agregar `GEMINI_API_KEY` en `.env.local`, reiniciar y probar con su cuenta.
+- [ ] Futuro: fuentes reales de métricas y mensajes (Meta/GHL); consultas al catálogo verificado si se pide.
+
 ## Relevo prioritario — panel por empresa (2026-10-07)
 
 Relevo «claudeya» solicitado. Leer primero el bloque prioritario de `CLAUDE.md`; los apartados inferiores conservan el historial. Aplicación real en 3000; vista de prueba aislada en 3118, no confundir con datos reales. Rama `feat/migracion-ezra`, cambios sin commit conservados.
@@ -67,6 +110,11 @@ Terminar el panel de Sgmotos antes que el de motoxspress. Hecho: asistente de 4 
 No activar API, despliegue ni publicación externa por leer esta lista. Los USD 20 adicionales siguen disponibles. La carpeta `data/` es privada y no se versiona.
 
 ## Ahora (2026-10-07, noche)
+
+- Hecho: login arcade EZRA sobre el login existente (Clerk intacto). Pendiente: que el propietario lo pruebe e inicie sesión con su cuenta.
+
+- Hecho: un solo panel para todas las cuentas; estudio de negocios eliminado del código (respaldo `0767994`); clientes con Ask AI + Mi perfil; selector = negocio activo. 54/54, build, 6/6.
+- Pendiente del propietario: probar con su cuenta y con un cliente real; decidir si también se borran las APIs del estudio.
 
 - Hecho: menú de administración reducido a «Pregúntale a la IA», inicio y login redirigen ahí; tablero y Prospección eliminados. Siguiente: Ask AI real (elegir proveedor y costo, dentro del techo de USD 20).
 

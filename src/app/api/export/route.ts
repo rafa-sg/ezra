@@ -6,6 +6,7 @@ import { Readable } from "node:stream";
 import path from "node:path";
 import { mediaDirectoryFor, readWorkspace } from "@/lib/store";
 import { readAutomation } from "@/lib/automation";
+import { readBot } from "@/lib/bot/store";
 import { siteEventPackage } from "@/lib/site-event";
 import { approvalIssues, defaultBusinessId, formatLabels, statusLabels } from "@/lib/model";
 import { apiError } from "@/lib/http";
@@ -64,13 +65,15 @@ export async function GET(request: Request) {
       );
     } else {
       zip.file("workspace.json", JSON.stringify(state, null, 2));
+      // «Bot de atención» configuration, knowledge, rules, local tests and activity.
+      zip.file("bot.json", JSON.stringify(await readBot(businessId), null, 2));
       if (businessId === defaultBusinessId)
         zip.file("automation.json", JSON.stringify(await readAutomation(), null, 2));
       const business = (await readBusinessDirectory()).businesses.find((b) => b.id === businessId);
       zip.file("negocio.json", JSON.stringify(business, null, 2));
       zip.file(
         "LEEME.txt",
-        `Respaldo del negocio ${state.brand.name}.\nDetén el servidor y conserva una copia de data/ completa, incluyendo businesses.json y accounts.json. Restaura workspace.json y media/ en ${businessId === defaultBusinessId ? "data/ (y automation.json si está incluido)" : `data/businesses/${businessId}/`}. negocio.json describe este negocio; conserva su registro en businesses.json. Las cuentas y otros negocios no están incluidos en este paquete. Reinicia con npm run dev.\nNo subas el respaldo a un repositorio público.\n`,
+        `Respaldo del negocio ${state.brand.name}.\nDetén el servidor y conserva una copia de data/ completa, incluyendo businesses.json y accounts.json. Restaura workspace.json, bot.json y media/ en ${businessId === defaultBusinessId ? "data/ (y automation.json si está incluido)" : `data/businesses/${businessId}/`}. negocio.json describe este negocio; conserva su registro en businesses.json. Las cuentas y otros negocios no están incluidos en este paquete. Reinicia con npm run dev.\nNo subas el respaldo a un repositorio público.\n`,
       );
     }
     const missing: string[] = [];

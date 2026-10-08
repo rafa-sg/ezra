@@ -37,15 +37,28 @@ export interface AccountService {
   /** Not available without an authentication backend: always rejects. */
   setupTwoFactor(): Promise<void>;
 }
-export const ACCOUNT_STORAGE_KEY = "azra:account:demo:v1";
+const BASE_KEY = "azra:account:demo:v1";
+let storageKey = BASE_KEY;
+/** Demo data lives in this browser. Administration keeps the original key;
+ * each client gets its own, so a shared browser never shows another account's
+ * demo profile. Call before rendering account screens. */
+export function setAccountScope(scope: { role: "admin" | "client"; email: string }) {
+  const next =
+    scope.role === "admin" ? BASE_KEY : `${BASE_KEY}:client:${scope.email.toLowerCase()}`;
+  if (next !== storageKey) {
+    storageKey = next;
+    service = undefined;
+  }
+}
+export const accountStorageKey = () => storageKey;
 export const ACCOUNT_CHANGE_EVENT = "azra-account";
 let service: AccountService | undefined;
 export function getAccountService(): AccountService {
   // Single provider selection point for account data.
   return (service ??= new DemoAccountService({
-    read: () => localStorage.getItem(ACCOUNT_STORAGE_KEY),
+    read: () => localStorage.getItem(storageKey),
     write: (value) => {
-      localStorage.setItem(ACCOUNT_STORAGE_KEY, value);
+      localStorage.setItem(storageKey, value);
       window.dispatchEvent(new Event(ACCOUNT_CHANGE_EVENT));
     },
   }));

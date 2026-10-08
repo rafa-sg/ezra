@@ -16,7 +16,13 @@ async function start(directory: string) {
     process.execPath,
     ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", "3106"],
     {
-      env: { ...process.env, ...(await clerkTestEnvironment(directory)), EZRA_DATA_DIR: directory },
+      env: {
+        ...process.env,
+        ...(await clerkTestEnvironment(directory)),
+        EZRA_DATA_DIR: directory,
+        // Never reach Gemini from tests, even if .env.local has a real key.
+        GEMINI_API_KEY: "",
+      },
       stdio: "pipe",
     },
   );
@@ -64,16 +70,28 @@ test(
       // Sub-accounts are the pilot's real businesses, served by its authorized API.
       const businesses = (await (await get("/api/businesses", admin)).json()).businesses;
       assert.ok(businesses.length >= 3);
-      // A client account is sent back to its own studio, never to the admin panel.
+      // Clients use the same panel: Ask AI and their own profile, never agency settings.
       const configure = await fetch(`${base}/api/auth/accounts`, {
         method: "POST",
         headers: { "Content-Type": "application/json", authorization: `Bearer ${admin}` },
         body: JSON.stringify({ organizationId: "sgmotos", email: "sgmotos@example.test" }),
       });
       assert.equal(configure.status, 200);
-      const client = await get("/azra/ai/chat", sessionToken("sgmotos", base, 180));
-      assert.ok([303, 307, 308].includes(client.status));
-      assert.equal(new URL(client.headers.get("location")!, base).pathname, "/");
+      const clientToken = sessionToken("sgmotos", base, 180);
+      assert.equal((await get("/azra/content", clientToken)).status, 200);
+      const clientChat = await get("/azra/ai/chat", clientToken);
+      assert.equal(clientChat.status, 200);
+      assert.match(await clientChat.text(), /sgmotos@example\.test/);
+      assert.equal((await get("/azra/settings/profile/general", clientToken)).status, 200);
+      for (const adminOnly of ["/azra/settings/company", "/azra/settings/users"]) {
+        const blocked = await get(adminOnly, clientToken);
+        assert.ok([303, 307, 308].includes(blocked.status), adminOnly);
+        assert.equal(
+          new URL(blocked.headers.get("location")!, base).pathname,
+          "/azra/ai/chat",
+          adminOnly,
+        );
+      }
       // Shared presentation must not widen the client organization boundary.
       const sgToken = sessionToken("sgmotos", base, 180);
       const ownBusinesses = (await (await get("/api/businesses", sgToken)).json()).businesses;
@@ -85,6 +103,78 @@ test(
       assert.equal((await get("/api/workspace?business=motoxspress-main", sgToken)).status, 404);
       assert.equal((await get("/api/auth/accounts", sgToken)).status, 403);
       assert.equal((await get("/api/export?business=motoxspress-main", sgToken)).status, 404);
+      // Ask AI: session required, business scoped to the account, key stays server-side.
+      const ask = (business: string, token: string, history: unknown) =>
+        fetch(`${base}/api/ask${business ? `?business=${business}` : ""}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ history }),
+        });
+      const question = [{ role: "user", text: "¿Qué hay programado hoy?" }];
+      assert.equal((await ask("sgmotos-main", "", question)).status, 401);
+      assert.equal((await ask("", sgToken, question)).status, 400);
+      assert.equal((await ask("motoxspress-main", sgToken, question)).status, 404);
+      assert.equal((await ask("sgmotos-main", sgToken, [])).status, 400);
+      const noKey = await ask("sgmotos-main", sgToken, question);
+      assert.equal(noKey.status, 503);
+      assert.match((await noKey.json()).error, /GEMINI_API_KEY/);
+      // «Bot de atención»: empty start, per-business storage, optimistic revision, isolation.
+      const bot = (business: string, token: string, body?: unknown) =>
+        fetch(`${base}/api/bot${business ? `?business=${business}` : ""}`, {
+          method: body ? "POST" : "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { authorization: `Bearer ${token}` } : {}),
+          },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+      assert.equal((await bot("sgmotos-main", "")).status, 401);
+      assert.equal((await bot("motoxspress-main", sgToken)).status, 404);
+      assert.equal((await bot("", sgToken)).status, 400);
+      const fresh = await (await bot("sgmotos-main", sgToken)).json();
+      assert.equal(fresh.bot.revision, 0);
+      assert.deepEqual(fresh.bot.conversations, []);
+      assert.ok(fresh.connections.channels.every((c: { botEnabled: boolean }) => !c.botEnabled));
+      assert.equal(fresh.connections.ghl, "not_connected");
+      const created = await bot("sgmotos-main", sgToken, {
+        revision: 0,
+        op: "saveKnowledge",
+        entry: {
+          title: "Garantía",
+          content: "Prueba de integración.",
+          category: "policies",
+          keywords: ["garantía"],
+          reviewBy: "",
+        },
+      });
+      assert.equal(created.status, 200);
+      assert.equal((await created.json()).bot.knowledge[0].status, "draft");
+      // A stale revision never overwrites newer changes.
+      assert.equal(
+        (await bot("sgmotos-main", sgToken, { revision: 0, op: "setPaused", paused: true })).status,
+        409,
+      );
+      assert.equal((await bot("sgmotos-main", sgToken, { revision: 1, op: "nope" })).status, 400);
+      // Writing another business is refused; its bot stays empty.
+      assert.equal(
+        (await bot("motoxspress-main", sgToken, { revision: 0, op: "setPaused", paused: true }))
+          .status,
+        404,
+      );
+      const other = await (await bot("motoxspress-main", admin)).json();
+      assert.deepEqual(other.bot.knowledge, []);
+      const persisted = await (await bot("sgmotos-main", admin)).json();
+      assert.equal(persisted.bot.knowledge[0].title, "Garantía");
+      for (const page of [
+        "/azra/bot",
+        "/azra/bot/conversations",
+        "/azra/bot/test",
+        "/azra/bot/connections",
+      ])
+        assert.equal((await get(page, sgToken)).status, 200, page);
       // The pilot entry and its login keep working.
       assert.equal((await get("/sign-in")).status, 200);
       // Administration no longer lands on the old «Mi panel»: it opens «Pregúntale a la IA».
@@ -102,10 +192,45 @@ test(
         assert.ok([303, 307, 308].includes(moved.status), old);
         assert.equal(new URL(moved.headers.get("location")!, base).pathname, "/azra/ai/chat", old);
       }
+      // Settings keeps only Mi perfil, Empresa and Usuarios; removed sections open Mi perfil.
+      for (const old of [
+        "/azra/settings",
+        "/azra/settings/billing",
+        "/azra/settings/workflows",
+        "/azra/settings/workflows/premium",
+        "/azra/settings/phone",
+        "/azra/settings/email/services",
+        "/azra/settings/system-email/templates",
+        "/azra/settings/announcements",
+        "/azra/settings/domain-purchase",
+        "/azra/settings/integrations",
+        "/azra/settings/integrations/abc",
+        "/azra/settings/api-keys",
+        "/azra/settings/affiliates",
+        "/azra/settings/menu-links",
+        "/azra/settings/audit/logs",
+        "/azra/settings/storage",
+      ]) {
+        const moved = await get(old, admin);
+        assert.ok([303, 307, 308].includes(moved.status), old);
+        assert.equal(
+          new URL(moved.headers.get("location")!, base).pathname,
+          "/azra/settings/profile/general",
+          old,
+        );
+      }
+      for (const kept of ["/azra/settings/company", "/azra/settings/users"])
+        assert.equal((await get(kept, admin)).status, 200, kept);
       assert.equal((await get("/azra/no-existe", admin)).status, 404);
-      // A business studio (sub-account) still opens, and clients keep their entry.
-      assert.equal((await get("/?business=sgmotos-main", admin)).status, 200);
-      assert.equal((await get("/", sessionToken("sgmotos", base, 180))).status, 200);
+      // The old studio is gone: every signed-in entry opens Ask AI; visitors get the login.
+      for (const [route, token] of [
+        ["/?business=sgmotos-main", admin],
+        ["/", clientToken],
+      ] as const) {
+        const entry = await get(route, token);
+        assert.ok([303, 307, 308].includes(entry.status), route);
+        assert.equal(new URL(entry.headers.get("location")!, base).pathname, "/azra/ai/chat");
+      }
       assert.equal((await get("/")).status, 200);
       // The Users screen reads the real access accounts through the pilot API.
       const accounts = (await (await get("/api/auth/accounts", admin)).json()).accounts;

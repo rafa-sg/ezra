@@ -7,31 +7,31 @@ export const metadata: Metadata = {
   description: "Catálogo y publicaciones para Sgmotos y motoxspress.",
   robots: { index: false, follow: false },
 };
-// Clerk's Spanish texts, adjusted to the ezrá sign-in design (same «tú» voice).
+// Clerk's Spanish texts for the EZRA sign-in design (Salvadoran «vos»).
 const localization = {
   ...esMX,
   dividerText: "o con tu correo",
   formFieldInputPlaceholder__emailAddress: "tu@correo.com",
   formFieldInputPlaceholder__password: "Tu contraseña",
-  formFieldInputPlaceholder__signUpPassword: "Crea una contraseña",
+  formFieldInputPlaceholder__signUpPassword: "Creá una contraseña",
   signIn: {
     ...esMX.signIn,
     start: {
       ...esMX.signIn?.start,
-      title: "Inicia sesión",
-      subtitle: "Bienvenido de vuelta a ezrá.",
-      actionText: "¿No tienes cuenta?",
-      actionLink: "Regístrate",
+      title: "Iniciá sesión",
+      subtitle: "Bienvenido a EZRA.",
+      actionText: "¿No tenés cuenta?",
+      actionLink: "Registrate",
     },
   },
   signUp: {
     ...esMX.signUp,
     start: {
       ...esMX.signUp?.start,
-      title: "Crea tu cuenta",
-      subtitle: "Usa el correo que te asignó la administración.",
-      actionText: "¿Ya tienes cuenta?",
-      actionLink: "Inicia sesión",
+      title: "Creá tu cuenta",
+      subtitle: "Usá el correo que te asignó la administración.",
+      actionText: "¿Ya tenés cuenta?",
+      actionLink: "Iniciá sesión",
     },
   },
 };

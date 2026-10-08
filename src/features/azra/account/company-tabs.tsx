@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -23,7 +22,6 @@ import {
   X,
 } from "lucide-react";
 import { useLanguage, type MessageKey } from "../i18n";
-import { href } from "../routes";
 import { AssetPlaceholder, Modal } from "../ui";
 import {
   addressCountries,
@@ -273,25 +271,19 @@ export function AddressSection() {
   );
 }
 
-const featureMeta: Record<
-  FeatureToggle,
-  { title: MessageKey; description: MessageKey; path?: string }
-> = {
+const featureMeta: Record<FeatureToggle, { title: MessageKey; description: MessageKey }> = {
   aiEmployee: { title: "aiEmployee", description: "aiEmployeeDescription" },
   workflowFeatures: {
     title: "workflowFeatures",
     description: "workflowFeaturesDescription",
-    path: "settings/workflows/premium",
   },
   externalAi: {
     title: "externalAiFeature",
     description: "externalAiDescription",
-    path: "settings/workflows/external-ai",
   },
   domainPurchase: {
     title: "domainPurchaseFeature",
     description: "domainPurchaseDescription",
-    path: "settings/domain-purchase",
   },
 };
 export function FeaturesSection() {
@@ -325,17 +317,10 @@ export function FeaturesSection() {
                     <Lightbulb size={16} />
                     {t("moreInfo")}
                   </button>
-                  {meta.path ? (
-                    <Link className="az-button" href={href(meta.path)}>
-                      <Wrench size={16} />
-                      {t("configure")}
-                    </Link>
-                  ) : (
-                    <button className="az-button" aria-disabled="true" title={t("outside")}>
-                      <Wrench size={16} />
-                      {t("configure")}
-                    </button>
-                  )}
+                  <button className="az-button" aria-disabled="true" title={t("outside")}>
+                    <Wrench size={16} />
+                    {t("configure")}
+                  </button>
                 </div>
               </li>
             );

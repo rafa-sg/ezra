@@ -1,4 +1,14 @@
 import { z } from "zod";
+import {
+  audienceIds,
+  categoryIds,
+  goalIds,
+  legacyCategories,
+  nicheValid,
+  nichesFor,
+  personalAudiences,
+  type Audience,
+} from "./catalog";
 
 // Dial codes offered by the phone selector. Only the El Salvador flag is visible
 // in the references (#6/#8); the rest are a documented local convenience.
@@ -16,10 +26,6 @@ export const dialCodes: Record<CountryCode, string> = {
   ES: "+34",
 };
 export const languages = ["es-SV", "en-US"] as const;
-// Catalogs only contain values readable in #8. The full lists are pending.
-export const businessCategories = ["creative"] as const;
-export const businessNiches = [] as const;
-export const primaryUses = ["other"] as const;
 
 const phoneSchema = z.object({
   country: z.enum(countryCodes),
@@ -42,22 +48,93 @@ export const profileSchema = z.object({
   language: z.enum(languages),
 });
 export type Profile = z.infer<typeof profileSchema>;
-export const companySchema = z.object({
+const detail = z.string().trim().max(120);
+/** Shape stored in the browser demo; empty selections are allowed so older records load. */
+const companyFields = z.object({
   name: z.string().trim().min(1).max(200),
   email: z.email().max(254),
   phone: phoneSchema,
   website: z.union([z.literal(""), z.url({ protocol: /^https?$/ }).max(500)]),
-  category: z.enum(businessCategories),
-  // No niche option is visible in #8, so the value cannot be required yet.
-  niche: z.string().max(100),
-  primaryUse: z.enum(primaryUses),
-  primaryUseDetail: z.string().trim().max(200),
+  audience: z.union([z.literal(""), z.enum(audienceIds)]),
+  audienceDetail: detail,
+  primaryGoal: z.union([z.literal(""), z.enum(goalIds)]),
+  primaryGoalDetail: detail,
+  category: z.union([z.literal(""), z.enum(categoryIds)]),
+  categoryDetail: detail,
+  niche: z.string().max(60),
+  nicheDetail: detail,
 });
-export type Company = z.infer<typeof companySchema>;
-export type CompanyDraft = Omit<Company, "category" | "primaryUse"> & {
-  category: Company["category"] | "";
-  primaryUse: Company["primaryUse"] | "";
-};
+/**
+ * Older demo records used `category: "creative"`, an unused `niche` and
+ * `primaryUse/primaryUseDetail`. They are mapped explicitly, never discarded:
+ * «Creativo» → «Arte, diseño y creatividad»; the old use becomes the main goal.
+ */
+export function migrateCompany(raw: unknown) {
+  if (!raw || typeof raw !== "object") return raw;
+  const old = raw as Record<string, unknown>;
+  const category = typeof old.category === "string" ? old.category : "";
+  const next: Record<string, unknown> = {
+    audience: "",
+    audienceDetail: "",
+    categoryDetail: "",
+    nicheDetail: "",
+    ...old,
+    category: legacyCategories[category] ?? category,
+  };
+  if ("primaryUse" in old && !("primaryGoal" in old)) {
+    next.primaryGoal = old.primaryUse === "other" ? "other" : "";
+    next.primaryGoalDetail = typeof old.primaryUseDetail === "string" ? old.primaryUseDetail : "";
+  }
+  delete next.primaryUse;
+  delete next.primaryUseDetail;
+  // A niche that does not belong to the (mapped) category cannot be kept silently valid.
+  if (
+    typeof next.niche === "string" &&
+    next.niche &&
+    !nicheValid(String(next.category), next.niche)
+  )
+    next.niche = "";
+  return next;
+}
+export const storedCompanySchema = z.preprocess(migrateCompany, companyFields);
+export const isPersonal = (audience: string, category: string) =>
+  personalAudiences.includes(audience as Audience) || category === "personal";
+/**
+ * Rules applied when saving. Messages are interface keys. «Otro» details are required
+ * only while «Otro» is selected and are cleared otherwise; personal use does not
+ * require a business category or niche.
+ */
+export const companySchema = companyFields
+  .transform((c) => ({
+    ...c,
+    audienceDetail: c.audience === "other" ? c.audienceDetail : "",
+    primaryGoalDetail: c.primaryGoal === "other" ? c.primaryGoalDetail : "",
+    categoryDetail: c.category === "other" ? c.categoryDetail : "",
+    niche: c.category && c.category !== "other" ? c.niche : "",
+    nicheDetail: c.niche === "other" && c.category !== "other" ? c.nicheDetail : "",
+  }))
+  .superRefine((c, ctx) => {
+    const fail = (path: string, message: string) =>
+      ctx.addIssue({ code: "custom", path: [path], message });
+    const personal = isPersonal(c.audience, c.category);
+    if (!c.audience) fail("audience", "errorRequired");
+    else if (c.audience === "other" && !c.audienceDetail)
+      fail("audienceDetail", "errorOtherDetail");
+    if (!c.primaryGoal) fail("primaryGoal", "errorRequired");
+    else if (c.primaryGoal === "other" && !c.primaryGoalDetail)
+      fail("primaryGoalDetail", "errorOtherDetail");
+    if (!c.category) {
+      if (!personal) fail("category", "errorRequired");
+    } else if (c.category === "other") {
+      if (!c.categoryDetail) fail("categoryDetail", "errorOtherDetail");
+    } else if (!c.niche) {
+      if (!personal) fail("niche", "errorRequired");
+    } else if (!nicheValid(c.category, c.niche)) fail("niche", "errorNicheInvalid");
+    else if (c.niche === "other" && !c.nicheDetail) fail("nicheDetail", "errorOtherDetail");
+  });
+export type Company = z.infer<typeof companyFields>;
+export type CompanyDraft = Company;
+export { nichesFor };
 export const userTypes = ["agencyOwner"] as const;
 export const accountUserSchema = z.object({
   id: z.string(),
@@ -211,7 +288,7 @@ export const accountStoreSchema = z.object({
   relationshipId: z.string().startsWith("DEMO-"),
   ownerId: z.string(),
   profile: profileSchema.nullable(),
-  company: companySchema.nullable(),
+  company: storedCompanySchema.nullable(),
   subaccounts: z.array(subaccountSchema).default([]),
   companySettings: companySettingsSchema.default(companySettingsSchema.parse({})),
   pinnedBusinesses: z.array(z.string().max(100)).max(100).default([]),
@@ -236,10 +313,14 @@ export const emptyCompany: CompanyDraft = {
   email: "",
   phone: { country: "SV", number: "" },
   website: "",
+  audience: "",
+  audienceDetail: "",
+  primaryGoal: "",
+  primaryGoalDetail: "",
   category: "",
+  categoryDetail: "",
   niche: "",
-  primaryUse: "",
-  primaryUseDetail: "",
+  nicheDetail: "",
 };
 export const formatPhone = (phone: Profile["phone"]) =>
   phone.number ? `${dialCodes[phone.country]} ${phone.number}` : "";

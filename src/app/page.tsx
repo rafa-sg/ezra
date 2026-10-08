@@ -1,20 +1,19 @@
 import { redirect } from "next/navigation";
-import { CommercialApp } from "@/components/commercial-app";
+import { AccessScreen } from "@/components/access-screen";
+import { AccessIssue } from "@/components/access-issue";
 import { sessionAccount, type Account } from "@/lib/auth";
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<{ view?: string; business?: string }>;
-}) {
-  const params = await searchParams;
+export const dynamic = "force-dynamic";
+/** Single entry: every signed-in account (administration and clients) opens
+ * the same panel at «Pregúntale a la IA»; the role limits what it shows. */
+export default async function Page() {
   let account: Account | null = null;
+  let issue = "";
   try {
     account = await sessionAccount();
-  } catch {
-    // The client entry explains blocked or unverifiable accounts.
+  } catch (error) {
+    issue = error instanceof Error ? error.message : "No se pudo verificar tu cuenta.";
   }
-  // Administration starts in «Pregúntale a la IA»; a business studio is
-  // still opened here with ?business=… (sub-account = pilot business).
-  if (account?.role === "admin" && !params.business) redirect("/azra/ai/chat");
-  return <CommercialApp initialView={params.view} initialBusiness={params.business} />;
+  if (account) redirect("/azra/ai/chat");
+  if (issue) return <AccessIssue message={issue} />;
+  return <AccessScreen mode="sign-in" inline />;
 }

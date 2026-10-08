@@ -122,16 +122,3 @@ test("no se puede aprobar un financiamiento vacío ni un año inválido", async 
   p.details = { year: "26", engineCc: null, specs: "", financing: "", financingApproved: false };
   assert.ok(!catalogProductSchema.safeParse(p).success);
 });
-
-test("la preparación de redes dice qué falta sin conectar nada", async () => {
-  const { socialSetupSteps } = await import("../src/components/social-setup");
-  const steps = socialSetupSteps({
-    instagramProfessional: "yes",
-    instagramLinkedToPage: "no",
-    pageAdmin: "yes",
-    whatsapp: "personal",
-    notes: "",
-  });
-  assert.equal(steps.filter((s) => s.done).length, 2);
-  assert.ok(steps.some((s) => /WhatsApp personal no se puede conectar/.test(s.text)));
-});

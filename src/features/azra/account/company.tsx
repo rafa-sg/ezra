@@ -1,15 +1,10 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { ChevronDown } from "lucide-react";
+import { useRef } from "react";
 import { useLanguage, type MessageKey } from "../i18n";
-import {
-  businessCategories,
-  businessNiches,
-  companySchema,
-  emptyCompany,
-  primaryUses,
-  type CompanyDraft,
-} from "./model";
+import { companySchema, emptyCompany, isPersonal, nichesFor, type CompanyDraft } from "./model";
+import { audiences, categories, goals } from "./catalog";
 import { getAccountService } from "./service";
 import { accountErrorKey, CopyButton, Field, issueKeys, PhoneInput, useAccount } from "./fields";
 import {
@@ -30,43 +25,61 @@ export function CompanySettings() {
   const [failure, setFailure] = useState<MessageKey | null>(null);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("basic");
+  const [attempted, setAttempted] = useState(false);
+  const [nicheCleared, setNicheCleared] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const saved: CompanyDraft | null = snapshot ? (snapshot.company ?? emptyCompany) : null;
   const value = form ?? saved;
   const dirty = !!form && JSON.stringify(form) !== JSON.stringify(saved);
+  const personal = !!value && isPersonal(value.audience, value.category);
+  function validate(draft: CompanyDraft) {
+    const trimmed = {
+      ...draft,
+      name: draft.name.trim(),
+      email: draft.email.trim(),
+      website: draft.website.trim(),
+      phone: { ...draft.phone, number: draft.phone.number.trim() },
+    };
+    const parsed = companySchema.safeParse(trimmed);
+    if (parsed.success) return { parsed: parsed.data, found: {} };
+    const found = issueKeys(parsed.error.issues, {
+      email: "errorEmail",
+      website: "errorUrl",
+      "phone.number": "errorPhone",
+    });
+    if (!trimmed.email) found.email = "errorRequired";
+    return { parsed: null, found };
+  }
   function update(patch: Partial<CompanyDraft>) {
     if (!value) return;
-    setForm({ ...value, ...patch });
+    const next = { ...value, ...patch };
+    setForm(next);
     setStatus(null);
+    // Errors appear after a save attempt and then follow the user's corrections.
+    if (attempted) setErrors(validate(next).found);
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!value || busy) return;
-    const trimmed = {
-      ...value,
-      name: value.name.trim(),
-      email: value.email.trim(),
-      website: value.website.trim(),
-      primaryUseDetail: value.primaryUseDetail.trim(),
-      phone: { ...value.phone, number: value.phone.number.trim() },
-    };
-    const parsed = companySchema.safeParse(trimmed);
-    if (!parsed.success) {
-      const found = issueKeys(parsed.error.issues, {
-        email: "errorEmail",
-        website: "errorUrl",
-        "phone.number": "errorPhone",
-        category: "errorRequired",
-        primaryUse: "errorRequired",
-      });
-      if (!trimmed.email) found.email = "errorRequired";
-      return setErrors(found);
+    setAttempted(true);
+    const { parsed, found } = validate(value);
+    if (!parsed) {
+      setErrors(found);
+      // Move focus to the first invalid field, in visual order.
+      const first = [
+        ...(formRef.current?.querySelectorAll<HTMLElement>("[id^='az-company-']") ?? []),
+      ].find((el) => found[el.id.replace("az-company-", "")]);
+      first?.focus();
+      return;
     }
     setErrors({});
     setBusy(true);
     setFailure(null);
     try {
-      await getAccountService().updateCompany(parsed.data);
+      await getAccountService().updateCompany(parsed);
       setForm(null);
+      setAttempted(false);
+      setNicheCleared(false);
       setStatus("companySaved");
     } catch (e) {
       setFailure(accountErrorKey(e));
@@ -128,7 +141,7 @@ export function CompanySettings() {
                   <h3>{t("companyDetails")}</h3>
                   <p className="az-muted">{t("companyDetailsDescription")}</p>
                 </div>
-                <form className="az-card" onSubmit={submit} noValidate>
+                <form className="az-card" onSubmit={submit} noValidate ref={formRef}>
                   <div className="az-card-body az-stack">
                     <Field id="az-company-name" label="companyName" required error={errors.name}>
                       <input
@@ -172,89 +185,71 @@ export function CompanySettings() {
                         onChange={(e) => update({ website: e.target.value })}
                       />
                     </Field>
+                    <ChoiceField
+                      field="audience"
+                      label="audienceQuestion"
+                      required
+                      options={audiences}
+                      value={value.audience}
+                      detail={value.audienceDetail}
+                      errors={errors}
+                      onChange={(audience) => update({ audience })}
+                      onDetail={(audienceDetail) => update({ audienceDetail })}
+                    />
+                    <ChoiceField
+                      field="primaryGoal"
+                      label="primaryGoalQuestion"
+                      required
+                      options={goals}
+                      value={value.primaryGoal}
+                      detail={value.primaryGoalDetail}
+                      errors={errors}
+                      onChange={(primaryGoal) => update({ primaryGoal })}
+                      onDetail={(primaryGoalDetail) => update({ primaryGoalDetail })}
+                    />
                     <div className="az-form-grid">
-                      <Field
-                        id="az-company-category"
+                      <ChoiceField
+                        field="category"
                         label="businessCategory"
-                        required
-                        error={errors.category}
-                      >
-                        <span className="az-select">
-                          <select
-                            id="az-company-category"
-                            value={value.category}
-                            {...aria("category")}
-                            onChange={(e) =>
-                              update({ category: e.target.value as CompanyDraft["category"] })
-                            }
-                          >
-                            <option value="" disabled>
-                              {t("businessCategoryPlaceholder")}
-                            </option>
-                            {businessCategories.map((item) => (
-                              <option key={item} value={item}>
-                                {t(item)}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown size={18} aria-hidden="true" />
-                        </span>
-                      </Field>
-                      <Field
-                        id="az-company-niche"
-                        label="businessNiche"
-                        required
-                        hint="catalogPending"
-                      >
-                        <span className="az-select">
-                          <select
-                            id="az-company-niche"
-                            value=""
-                            disabled={businessNiches.length === 0}
-                          >
-                            <option value="">{t("businessNichePlaceholder")}</option>
-                          </select>
-                          <ChevronDown size={18} aria-hidden="true" />
-                        </span>
-                      </Field>
+                        required={!personal}
+                        hint={personal ? "personalOptional" : undefined}
+                        options={categories}
+                        value={value.category}
+                        detail={value.categoryDetail}
+                        errors={errors}
+                        onChange={(category) => {
+                          // Keep the niche only if it still belongs to the new category.
+                          const keep = nichesFor(category).some((n) => n.id === value.niche);
+                          setNicheCleared(!!value.niche && !keep);
+                          update({ category, niche: keep ? value.niche : "" });
+                        }}
+                        onDetail={(categoryDetail) => update({ categoryDetail })}
+                      />
+                      {value.category !== "other" && (
+                        <ChoiceField
+                          field="niche"
+                          label="businessNiche"
+                          required={!personal && !!value.category}
+                          hint={
+                            !value.category
+                              ? "nicheNeedsCategory"
+                              : nicheCleared
+                                ? "nicheCleared"
+                                : undefined
+                          }
+                          disabled={!value.category}
+                          options={nichesFor(value.category)}
+                          value={value.niche}
+                          detail={value.nicheDetail}
+                          errors={errors}
+                          onChange={(niche) => {
+                            setNicheCleared(false);
+                            update({ niche });
+                          }}
+                          onDetail={(nicheDetail) => update({ nicheDetail })}
+                        />
+                      )}
                     </div>
-                    <Field
-                      id="az-company-primaryUse"
-                      label="primaryUse"
-                      hint="catalogPending"
-                      error={errors.primaryUse ?? errors.primaryUseDetail}
-                    >
-                      <div className="az-joined">
-                        <span className="az-select">
-                          <select
-                            id="az-company-primaryUse"
-                            value={value.primaryUse}
-                            {...aria("primaryUse")}
-                            onChange={(e) =>
-                              update({ primaryUse: e.target.value as CompanyDraft["primaryUse"] })
-                            }
-                          >
-                            <option value="" disabled>
-                              {t("primaryUsePlaceholder")}
-                            </option>
-                            {primaryUses.map((item) => (
-                              <option key={item} value={item}>
-                                {t(item)}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown size={18} aria-hidden="true" />
-                        </span>
-                        {value.primaryUse === "other" && (
-                          <input
-                            aria-label={t("primaryUseDetail")}
-                            value={value.primaryUseDetail}
-                            maxLength={200}
-                            onChange={(e) => update({ primaryUseDetail: e.target.value })}
-                          />
-                        )}
-                      </div>
-                    </Field>
                   </div>
                   <div className="az-card-footer">
                     <p className="az-muted" role="status">
@@ -272,6 +267,8 @@ export function CompanySettings() {
                       onClick={() => {
                         setForm(null);
                         setErrors({});
+                        setAttempted(false);
+                        setNicheCleared(false);
                       }}
                     >
                       {t("cancel")}
@@ -289,5 +286,74 @@ export function CompanySettings() {
         )}
       </div>
     </section>
+  );
+}
+
+/** Single-select with the shared placeholder and an «Especificá cuál» field for «Otro». */
+function ChoiceField<T extends string>({
+  field,
+  label,
+  required = false,
+  hint,
+  disabled = false,
+  options,
+  value,
+  detail,
+  errors,
+  onChange,
+  onDetail,
+}: {
+  field: string;
+  label: MessageKey;
+  required?: boolean;
+  hint?: MessageKey;
+  disabled?: boolean;
+  options: readonly { id: T; label: { es: string; en: string } }[];
+  value: string;
+  detail: string;
+  errors: Record<string, MessageKey>;
+  onChange: (value: T | "") => void;
+  onDetail: (value: string) => void;
+}) {
+  const { t, locale } = useLanguage();
+  const id = `az-company-${field}`;
+  const detailField = `${field}Detail`;
+  const detailId = `az-company-${detailField}`;
+  const describe = (key: string) => (errors[key] ? `az-company-${key}-error` : undefined);
+  return (
+    <div className="az-stack-tight">
+      <Field id={id} label={label} required={required} error={errors[field]} hint={hint}>
+        <span className="az-select">
+          <select
+            id={id}
+            value={value}
+            disabled={disabled}
+            aria-invalid={!!errors[field] || undefined}
+            aria-describedby={describe(field)}
+            onChange={(e) => onChange(e.target.value as T | "")}
+          >
+            <option value="">{t("selectOption")}</option>
+            {options.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label[locale]}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={18} aria-hidden="true" />
+        </span>
+      </Field>
+      {value === "other" && (
+        <Field id={detailId} label="specifyOther" required error={errors[detailField]}>
+          <input
+            id={detailId}
+            maxLength={120}
+            value={detail}
+            aria-invalid={!!errors[detailField] || undefined}
+            aria-describedby={describe(detailField)}
+            onChange={(e) => onDetail(e.target.value)}
+          />
+        </Field>
+      )}
+    </div>
   );
 }

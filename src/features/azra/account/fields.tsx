@@ -5,7 +5,7 @@ import { useLanguage, type MessageKey } from "../i18n";
 import { AccountError, countryCodes, dialCodes, type CountryCode } from "./model";
 import {
   ACCOUNT_CHANGE_EVENT,
-  ACCOUNT_STORAGE_KEY,
+  accountStorageKey,
   getAccountService,
   type AccountSnapshot,
 } from "./service";
@@ -36,7 +36,7 @@ export function useAccount() {
   useEffect(() => {
     load();
     const onStorage = (event: StorageEvent) => {
-      if (event.key === ACCOUNT_STORAGE_KEY) load();
+      if (event.key === accountStorageKey()) load();
     };
     window.addEventListener(ACCOUNT_CHANGE_EVENT, load);
     window.addEventListener("storage", onStorage);
@@ -176,6 +176,11 @@ export function issueKeys(
   for (const issue of issues) {
     const field = issue.path.map(String).join(".");
     if (result[field]) continue;
+    // Custom rules already carry the interface key of their message.
+    if (issue.code === "custom" && issue.message.startsWith("error")) {
+      result[field] = issue.message as MessageKey;
+      continue;
+    }
     result[field] =
       issue.code === "too_big"
         ? "errorTooLong"

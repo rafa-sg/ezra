@@ -857,6 +857,95 @@
   font-size: 12px;
   text-align: center;
 }
+.az-chat-sidebar button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.az-chat-content.has-turns {
+  padding-top: 32px;
+}
+.az-chat-log {
+  width: 100%;
+  max-width: 800px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 20px;
+}
+.az-chat-turn {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.az-chat-turn.is-user {
+  align-self: flex-end;
+  background: var(--az-primary);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.az-chat-turn.is-model {
+  align-self: flex-start;
+  background: var(--az-subtle);
+  border: 1px solid var(--az-border);
+  border-bottom-left-radius: 4px;
+}
+.az-chat-turn.is-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--az-muted);
+}
+.az-chat-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+.az-chat-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: az-chat-dot 1s infinite ease-in-out;
+}
+.az-chat-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.az-chat-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes az-chat-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .az-chat-dots i {
+    animation: none;
+  }
+}
+.az-chat-error {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fef3f2;
+  color: var(--az-danger);
+  font-size: 13px;
+}
+.az-composer .az-send:not(:disabled) {
+  background: var(--az-primary);
+  color: #fff;
+  border-radius: 50%;
+}
 @media (min-width: 768px) and (max-width: 1100px) {
   .azra {
     --az-sidebar-width: 210px;
@@ -1119,9 +1208,7 @@
     flex-wrap: wrap;
   }
 }
-/* Account module: profile (#6/#7),
-company (#8),
-users (#9). */
+/* Account module: profile (#6/#7), company (#8), users (#9). */
 .azra .az-card {
   background: #fff;
   border: 1px solid var(--az-border);
@@ -1681,11 +1768,7 @@ users (#9). */
     flex: 1;
   }
 }
-/* Agency dashboard (#2),
-header and sidebar fidelity {
-  font-size: 32px;
-  margin-bottom: 20px;
-}
+/* Header and sidebar fidelity, account switcher (#4–#7). */
 .azra .az-new {
   background: var(--az-lilac);
   color: var(--az-primary);
@@ -1995,7 +2078,7 @@ header and sidebar fidelity {
     width: 100%;
   }
   .az-snapshot-body,
-.az-snapshot-footer {
+  .az-snapshot-footer {
     padding-left: 16px;
     padding-right: 16px;
   }
@@ -2025,11 +2108,7 @@ header and sidebar fidelity {
 .azra .az-pin.is-pinned {
   color: var(--az-primary);
 }
-/* Prospecting (#38,
-#3,
-#5,
-#4,
-#39). */
+/* Shared helpers (checkbox rows, report-style card heads) kept after removing prospecting. */
 .az-prospecting-head {
   display: flex;
   justify-content: space-between;
@@ -2075,9 +2154,7 @@ header and sidebar fidelity {
     font-size: 24px;
   }
 }
-/* Workflows (#10 + video). Shared choice cards,
-segmented control,
-back title. */
+/* Workflows (#10 + video). Shared choice cards, segmented control, back title. */
 .az-choice-grid {
   border: 0;
   margin: 0 0 20px;
@@ -2246,11 +2323,7 @@ back title. */
 .az-inline-title svg {
   color: var(--az-muted);
 }
-/* Company tabs from the owner's video: address,
-features,
-white label,
-advanced,
-SSO. */
+/* Company tabs from the owner's video: address, features, white label, advanced, SSO. */
 .az-company-section {
   margin-top: 28px;
 }
@@ -2466,9 +2539,6 @@ SSO. */
   background: #fff;
   border-right: 1px solid var(--az-border);
 }
-.az-theme-preview.is-dark .az-theme-side {
-  background: var(--az-sidebar);
-}
 .az-theme-main {
   flex: 1;
 }
@@ -2638,11 +2708,8 @@ SSO. */
   }
 }
 
-/* Brand layer (owner decision 2026-10-06): new structure,
-pilot identity.
-   White sidebar with soft lilac selection,
-violet accents,
-lilac header icons. */
+/* Brand layer (owner decision 2026-10-06): new structure, pilot identity.
+   White sidebar with soft lilac selection, violet accents, lilac header icons. */
 .az-sidebar {
   border-right: 1px solid var(--az-border);
 }
@@ -2723,327 +2790,6 @@ lilac header icons. */
   max-height: 44px;
 }
 
-/* Business workspaces share the agency shell; their data stays API-scoped. */
-.az-business-content {
-  --paper: var(--az-bg);
-  --surface: var(--az-surface);
-  --ink: var(--az-text);
-  --muted: var(--az-muted);
-  --line: var(--az-border);
-  --violet: var(--az-primary);
-  --violet-dark: var(--az-primary-dark);
-  --lilac: var(--az-lilac);
-  min-width: 0;
-}
-.az-business-selector {
-  padding: 12px;
-  display: grid;
-  gap: 8px;
-}
-.az-business-selector label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.az-business-selector select {
-  width: 100%;
-  min-width: 0;
-  padding: 8px;
-  border: 1px solid var(--az-border);
-  border-radius: 6px;
-  background: white;
-}
-.az-is-collapsed .az-business-selector {
-  display: none;
-}
-.az-business-dashboard {
-  display: grid;
-  gap: 24px;
-}
-.az-business-heading,
-.az-business-connection {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-.az-business-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-.az-business-summary > button {
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  text-align: left;
-  gap: 12px;
-  padding: 20px;
-  color: var(--az-text);
-}
-.az-business-summary svg {
-  color: var(--az-primary);
-}
-.az-business-summary strong {
-  grid-column: 2;
-  font-size: 28px;
-  font-weight: 600;
-}
-.az-business-posts,
-.az-business-connection {
-  padding: 24px;
-}
-.az-business-posts ul {
-  padding: 0;
-  margin: 16px 0 0;
-  list-style: none;
-}
-.az-business-posts li + li {
-  border-top: 1px solid var(--az-border);
-}
-.az-business-posts li button {
-  width: 100%;
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  text-align: left;
-  border: 0;
-  padding: 16px 0;
-  background: transparent;
-  color: var(--az-text);
-}
-.az-business-posts li button > span:first-child {
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-.az-business-page .page-heading {
-  margin-bottom: 24px;
-}
-.az-business-page .eyebrow {
-  display: none;
-}
-.az-business-content .button,
-.az-business-content .post-card,
-.az-business-content .panel,
-.az-business-content .empty-state {
-  border-radius: 6px;
-  box-shadow: none;
-}
-.az-business-content .button {
-  font-weight: 500;
-}
-.az-business-content .button.primary {
-  background: var(--az-primary);
-}
-.az-business-content .button.secondary {
-  border-color: var(--az-border);
-  background: var(--az-surface);
-}
-@media (max-width: 700px) {
-  .az-business-heading,
-  .az-business-connection {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .az-business-summary {
-    grid-template-columns: 1fr;
-  }
-  .az-business-posts,
-  .az-business-connection {
-    padding: 16px;
-  }
-  .az-business-posts li button {
-    flex-wrap: wrap;
-  }
-}
-
-.az-business-status {
-  color: var(--az-text-2);
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-.az-business-content .dialog {
-  border-color: var(--az-border);
-  border-radius: 6px;
-  box-shadow: 0 20px 60px #29243f22;
-}
-
-/* Readability floor (2026-10-07): pilot screens rendered inside the new shell
-   keep their layout,
-but text below 12px is raised to 12px. Generated from the
-   font-size rules under 12px in src/styles/studio.css; the pilot CSS is untouched. */
-.azra .az-business-content .studio-label,
-.azra .az-business-content .workspace-switch div > span,
-.azra .az-business-content .nav-label,
-.azra .az-business-content .nav-count,
-.azra .az-business-content .sidebar-note h3,
-.azra .az-business-content .sidebar-note p,
-.azra .az-business-content .sidebar-note button,
-.azra .az-business-content .local-status,
-.azra .az-business-content .user-avatar.small,
-.azra .az-business-content .user-profile strong,
-.azra .az-business-content .user-profile small,
-.azra .az-business-content .breadcrumb,
-.azra .az-business-content .save-indicator,
-.azra .az-business-content .hero-pill,
-.azra .az-business-content .hero-copy p,
-.azra .az-business-content .hero-button,
-.azra .az-business-content .photo-back > span,
-.azra .az-business-content .hero-sticker > span,
-.azra .az-business-content .art-caption,
-.azra .az-business-content .section-overline,
-.azra .az-business-content .focus-card > p,
-.azra .az-business-content .focus-card > .text-button,
-.azra .az-business-content .focus-bottom,
-.azra .az-business-content .stat-card h3,
-.azra .az-business-content .stat-card p,
-.azra .az-business-content .section-heading .eyebrow,
-.azra .az-business-content .section-heading h2 > span,
-.azra .az-business-content .section-heading > .text-button,
-.azra .az-business-content .format-tag,
-.azra .az-business-content .illustration-label,
-.azra .az-business-content .post-card .badge,
-.azra .az-business-content .post-card .demo-tag,
-.azra .az-business-content .post-body > p,
-.azra .az-business-content .post-bottom,
-.azra .az-business-content .demo-note,
-.azra .az-business-content .demo-note > span:last-child,
-.azra .az-business-content .agenda-subtitle,
-.azra .az-business-content .date-tile small,
-.azra .az-business-content .agenda-item h4,
-.azra .az-business-content .agenda-item > div > span,
-.azra .az-business-content .agenda-note p,
-.azra .az-business-content .agenda-card > .button,
-.azra .az-business-content .agenda-empty,
-.azra .az-business-content .recent-activity,
-.azra .az-business-content .recent-activity strong,
-.azra .az-business-content .page-footer,
-.azra .az-business-content .content-tabs button span,
-.azra .az-business-content .filter-pills button,
-.azra .az-business-content .filter-pills select,
-.azra .az-business-content .search-box input,
-.azra .az-business-content .content-grid .post-body > p,
-.azra .az-business-content .content-grid .post-card .badge,
-.azra .az-business-content .content-grid .post-bottom,
-.azra .az-business-content .content-grid .illustration-label,
-.azra .az-business-content .media-card p,
-.azra .az-business-content .media-card small,
-.azra .az-business-content .media-card .text-button,
-.azra .az-business-content .source-intro p,
-.azra .az-business-content .source-info > a,
-.azra .az-business-content .source-info p,
-.azra .az-business-content .source-kind,
-.azra .az-business-content .source-last > small,
-.azra .az-business-content .source-last .text-button,
-.azra .az-business-content .calendar-legend,
-.azra .az-business-content .calendar-weekdays span,
-.azra .az-business-content .day-number,
-.azra .az-business-content .calendar-event > span,
-.azra .az-business-content .calendar-event strong,
-.azra .az-business-content .calendar-event small,
-.azra .az-business-content .schedule-list button,
-.azra .az-business-content .memory-card > .field-hint,
-.azra .az-business-content .history-item strong,
-.azra .az-business-content .history-item p,
-.azra .az-business-content .history-item small,
-.azra .az-business-content .settings-title p,
-.azra .az-business-content .storage-meter,
-.azra .az-business-content .storage-meter strong small,
-.azra .az-business-content .settings-details > div,
-.azra .az-business-content .budget-total small,
-.azra .az-business-content .budget-card > p,
-.azra .az-business-content .connection-row p,
-.azra .az-business-content .handoff-note p,
-.azra .az-business-content .version-label,
-.azra .az-business-content .toast > div > button,
-.azra .az-business-content .dialog-heading p,
-.azra .az-business-content .editor-tabs > button > span,
-.azra .az-business-content .preview-label,
-.azra .az-business-content .preview-label span,
-.azra .az-business-content .preview-account strong,
-.azra .az-business-content .preview-account small,
-.azra .az-business-content .preview-caption,
-.azra .az-business-content .editor-preview > .text-button,
-.azra .az-business-content .editor-preview > .field-hint,
-.azra .az-business-content .field-heading span:last-child,
-.azra .az-business-content .media-option > span,
-.azra .az-business-content .upload-box label,
-.azra .az-business-content .upload-box input,
-.azra .az-business-content .upload-box select,
-.azra .az-business-content .upload-box > small,
-.azra .az-business-content .file-button,
-.azra .az-business-content .checkline > span:last-child,
-.azra .az-business-content .checkline small,
-.azra .az-business-content .check-issues,
-.azra .az-business-content .editor-memory p,
-.azra .az-business-content .save-note,
-.azra .az-business-content .footer-actions .button,
-.azra .az-business-content .rejection-box .button,
-.azra .az-business-content .dropzone > input,
-.azra .az-business-content .dropzone > span,
-.azra .az-business-content .guide-steps p,
-.azra .az-business-content .nav-item,
-.azra .az-business-content .workspace-switch > div > span,
-.azra .az-business-content .page-heading > div > p:last-child,
-.azra .az-business-content .page-heading > .button,
-.azra .az-business-content .post-body h3,
-.azra .az-business-content .page-heading .eyebrow,
-.azra .az-business-content .photo-front > span,
-.azra .az-business-content .content-grid .post-body h3,
-.azra .az-business-content .content-tabs button,
-.azra .az-business-content .source-intro strong,
-.azra .az-business-content .source-last > span,
-.azra .az-business-content .source-last > .text-button,
-.azra .az-business-content .calendar-toolbar .button,
-.azra .az-business-content .schedule-list button > span:nth-child(2),
-.azra .az-business-content .schedule-list button > strong,
-.azra .az-business-content .schedule-list button > .badge,
-.azra .az-business-content .brand-layout .panel label,
-.azra .az-business-content .form-bottom .button,
-.azra .az-business-content .form-bottom > .muted,
-.azra .az-business-content .media-card strong,
-.azra .az-business-content .section-row > .muted,
-.azra .az-business-content .section-row .button,
-.azra .az-business-content .connections-panel .connection-row .badge,
-.azra .az-business-content .toast,
-.azra .az-business-content .editor-tabs > button,
-.azra .az-business-content .form-stack label,
-.azra .az-business-content .field-hint,
-.azra .az-business-content .dialog-notice,
-.azra .az-business-content .source-nolink,
-.azra .az-business-content .source-reading,
-.azra .az-business-content .idea-row p,
-.azra .az-business-content .idea-note input,
-.azra .az-business-content .wizard-steps li,
-.azra .az-business-content .wizard-steps li span,
-.azra .az-business-content .variant-option small,
-.azra .az-business-content .wizard-steps li:not(.current) span {
-  font-size: 12px;
-}
-.azra .az-business-content .calendar-toolbar h2 {
-  /* The month name is sentence-cased in code; the pilot capitalised every word. */
-  text-transform: none;
-}
-.azra .az-business-content .search-box {
-  max-width: 320px;
-  width: 100%;
-  min-height: 40px;
-  padding: 0 12px;
-  color: var(--az-muted);
-}
-.azra .az-business-content .search-box:focus-within {
-  outline: 2px solid var(--az-focus);
-  border-color: var(--az-primary);
-}
-.azra .az-business-content .search-box input {
-  border: 0;
-  box-shadow: none;
-  background: transparent;
-  padding: 8px 0;
-  font-size: 14px;
-  outline: none;
-}
 @media (max-width: 767px) {
   .azra .az-signout-button .az-nav-label {
     display: none;
@@ -3052,10 +2798,15 @@ but text below 12px is raised to 12px. Generated from the
     width: 38px;
     padding: 0;
   }
-  .azra .az-business-content .search-box {
-    max-width: none;
-  }
 }
-.azra .az-business-content :is(.badge, .footnote) {
-  font-size: 12px;
+.azra .az-account-row.is-active {
+  border-color: var(--az-primary);
+  background: var(--az-lilac);
+}
+/* Company form: a choice and its «Especificá cuál» field stay together. */
+.az-stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
 }

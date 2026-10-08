@@ -6,7 +6,9 @@ import { useLanguage } from "../i18n";
 import { AssetPlaceholder, Modal } from "../ui";
 import { snapshotTemplates, type SnapshotId } from "./model";
 import { getAccountService } from "./service";
-import { BusinessApiError, createBusiness, listBusinesses, studioUrl } from "./businesses";
+import { BusinessApiError, createBusiness } from "./businesses";
+import { useActiveBusiness } from "./active-business";
+import type { ShellUser } from "../shell";
 
 const fill = (text: string, name: string) => text.replace("{name}", name);
 // Organizations accepted by the pilot API for an administrator (src/lib/businesses.ts).
@@ -17,33 +19,33 @@ const organizations = [
 ] as const;
 const apiMessage = (error: unknown) =>
   error instanceof BusinessApiError && error.message ? error.message : null;
-/** Sub-account picker (#4, #21, #5): sub-accounts are the pilot's real businesses. */
-export function AccountSwitcher({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** Sub-account picker (#4, #21, #5): sub-accounts are the pilot's real businesses.
+ * Choosing one sets the business Ask AI works for; the server scopes the list. */
+export function AccountSwitcher({
+  user,
+  open,
+  onClose,
+}: {
+  user: ShellUser;
+  open: boolean;
+  onClose: () => void;
+}) {
   const { t } = useLanguage();
+  const { businesses: items, active, setActive, reload, failed } = useActiveBusiness();
   const [query, setQuery] = useState("");
-  const [items, setItems] = useState<Business[] | null>(null);
   const [pinned, setPinned] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState<string | null>(null);
   const [step, setStep] = useState<"snapshot" | "details">("snapshot");
   const load = useCallback(() => {
-    const controller = new AbortController();
-    listBusinesses(controller.signal)
-      .then((value) => {
-        setItems(value);
-        setError(null);
-      })
-      .catch((e) => {
-        if ((e as Error).name !== "AbortError") setError(apiMessage(e) ?? t("errorGeneric"));
-      });
+    reload();
     getAccountService()
       .listPinnedBusinesses()
       .then(setPinned)
       .catch(() => setPinned([]));
-    return () => controller.abort();
-  }, [t]);
+  }, [reload]);
   useEffect(() => {
-    if (open) return load();
+    if (open) load();
   }, [open, load]);
   const needle = query.trim().toLocaleLowerCase();
   const matches = (items ?? [])
@@ -57,7 +59,8 @@ export function AccountSwitcher({ open, onClose }: { open: boolean; onClose: () 
     }
   }
   function open_(item: Business) {
-    window.location.assign(studioUrl(item.id));
+    setActive(item.id);
+    onClose();
   }
   return (
     <>
@@ -80,21 +83,25 @@ export function AccountSwitcher({ open, onClose }: { open: boolean; onClose: () 
             />
           </label>
           <p className="az-overline">{t("allAccounts")}</p>
-          {error && (
+          {(error || failed) && (
             <p className="az-error" role="alert">
-              {error}
+              {error ?? t("errorGeneric")}
             </p>
           )}
-          {items === null && !error ? (
+          {items === null && !error && !failed ? (
             <p className="az-muted">{t("loading")}</p>
           ) : matches.length ? (
             <ul className="az-account-list">
               {matches.map((item) => (
-                <li className="az-account-row" key={item.id}>
+                <li
+                  className={`az-account-row ${active?.id === item.id ? "is-active" : ""}`}
+                  key={item.id}
+                >
                   <button
                     onClick={() => open_(item)}
                     className="az-account-select"
-                    title={t("openStudio")}
+                    aria-current={active?.id === item.id ? "true" : undefined}
+                    title={t("useBusiness")}
                   >
                     <span className="az-account-avatar" aria-hidden="true">
                       {item.name.charAt(0).toUpperCase()}
@@ -160,10 +167,12 @@ export function AccountSwitcher({ open, onClose }: { open: boolean; onClose: () 
         name={creating ?? ""}
         open={open && !!creating && step === "details"}
         onCancel={() => setCreating(null)}
+        organizationId={user.role === "admin" ? null : user.organizationId}
         onCreated={(business) => {
           setCreating(null);
           setQuery("");
-          window.location.assign(studioUrl(business.id));
+          reload();
+          setActive(business.id);
         }}
       />
     </>
@@ -173,17 +182,21 @@ export function AccountSwitcher({ open, onClose }: { open: boolean; onClose: () 
 function BusinessDetails({
   name,
   open,
+  organizationId: fixedOrganization,
   onCancel,
   onCreated,
 }: {
   name: string;
   open: boolean;
+  /** Clients always create inside their own organization (server-enforced). */
+  organizationId: string | null;
   onCancel: () => void;
   onCreated: (business: Business) => void;
 }) {
   const { t } = useLanguage();
   const [type, setType] = useState<Business["type"] | "">("");
-  const [organizationId, setOrganizationId] = useState("owner");
+  const [chosenOrganization, setOrganizationId] = useState("owner");
+  const organizationId = fixedOrganization ?? chosenOrganization;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function submit(event: FormEvent) {
@@ -233,23 +246,25 @@ function BusinessDetails({
             <ChevronDown size={18} aria-hidden="true" />
           </span>
         </div>
-        <div className="az-field">
-          <label htmlFor="az-new-org">{t("organizationField")}</label>
-          <span className="az-select">
-            <select
-              id="az-new-org"
-              value={organizationId}
-              onChange={(e) => setOrganizationId(e.target.value)}
-            >
-              {organizations.map((org) => (
-                <option key={org.id} value={org.id}>
-                  {org.label === "organizationOwner" ? t("organizationOwner") : org.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={18} aria-hidden="true" />
-          </span>
-        </div>
+        {!fixedOrganization && (
+          <div className="az-field">
+            <label htmlFor="az-new-org">{t("organizationField")}</label>
+            <span className="az-select">
+              <select
+                id="az-new-org"
+                value={organizationId}
+                onChange={(e) => setOrganizationId(e.target.value)}
+              >
+                {organizations.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.label === "organizationOwner" ? t("organizationOwner") : org.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={18} aria-hidden="true" />
+            </span>
+          </div>
+        )}
         <p className="az-hint">{t("snapshotNotApplied")}</p>
         {error && (
           <p className="az-error" role="alert">

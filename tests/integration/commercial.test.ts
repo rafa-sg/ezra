@@ -252,6 +252,11 @@ test(
         await (await get("/api/export?business=sgmotos-main", sgmotos)).arrayBuffer(),
       );
       assert.ok(backup.file("negocio.json"));
+      // The support bot's configuration travels with the business backup.
+      assert.equal(
+        JSON.parse(await backup.file("bot.json")!.async("text")).businessId,
+        "sgmotos-main",
+      );
       assert.ok(!backup.file("accounts.json"));
       assert.ok(!backup.file("automation.json"));
       assert.equal(

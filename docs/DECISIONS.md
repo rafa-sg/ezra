@@ -1,5 +1,51 @@
 # Decisiones
 
+## 2026-10-07 · «Spotmi» y formulario de Empresa
+
+- El nombre visible de un negocio vive en `data/businesses.json`; se cambió solo `owner-main` («Mi negocio» → «Spotmi») y la marca de su workspace, sin tocar el archivo histórico `spotmi` ni la semilla de instalaciones nuevas.
+- «Para quién» y «para qué» son preguntas separadas; categoría y nicho salen de un catálogo tipado compartido. Son preferencias que no habilitan funciones.
+- Registros guardados con valores viejos se migran explícitamente al leerlos («Creativo» → «Arte, diseño y creatividad»; uso principal → objetivo principal); nada se descarta en silencio.
+
+## 2026-10-07 · Bot de atención
+
+- Datos del bot en `bot.json` propio por negocio, no dentro de `workspace.json`: Creación de contenido guarda el workspace completo con revisión optimista, y mezclar ambos provocaría conflictos 409 entre pestañas. Se incluye en el respaldo ZIP del negocio.
+- Motor de simulación determinista y sin proveedor: el simulador no llama a Gemini ni a ninguna IA. Sus respuestas se rotulan como simuladas.
+- Reglas obligatorias fijas antes de las reglas del usuario: derivar pedidos de persona, reclamos, pagos y temas restringidos; no inventar; aclarar cuando falta información (segunda vez, derivar). El texto del cliente nunca cambia reglas.
+- Sin reglas habilitadas, el bot no responde con conocimiento. Reglas nuevas o editadas quedan desactivadas hasta una prueba en la que se apliquen.
+- Editar conocimiento aprobado lo devuelve a borrador; fecha de revisión vencida lo excluye. No se copian catálogo, precios ni horarios: solo un botón para copiar la descripción de Marca a un borrador.
+- Conexiones: un solo panel compartido; GHL y cada canal tienen estados independientes; hoy solo se muestra lo verificable («Sin conectar»). No se asume que el MCP de GHL reciba eventos o mantenga un bot activo.
+- Horarios en America/El_Salvador; horario del bot separado del horario del equipo.
+
+## 2026-10-07 · Configuración reducida
+
+- Configuración conserva Mi perfil, Empresa y Usuarios; el resto se eliminó del código y sus URLs redirigen a Mi perfil (pedido del propietario).
+
+## 2026-10-07 · Herramientas de contenido: Conexiones
+
+- A petición del propietario, el lateral de Creación de contenido ahora contiene solo «Conexiones». Nuevo chat, Buscar, Plantillas y Personalizar se retiran de esta pantalla; el apartado de IA no cambia.
+- Conexiones abre un diálogo para el futuro MCP de GHL, explícitamente pendiente de configurar. No se agregan credenciales, llamadas externas ni conexiones simuladas. Se conserva la creación de paneles locales y todo el contenido guardado.
+- Próximo paso: especificar la integración real de GHL y verificar sus capacidades antes de activarla.
+
+## 2026-10-07 · Creación de contenido según capturas del propietario
+
+- Nueva pantalla real `/azra/content` para administración y clientes, integrada en `AzraShell`; Ask AI y el login existentes se conservan. Implementación: `src/features/azra/content.tsx` y `content.css`.
+- Inicio sin paneles ni conexiones. `socialPanels` opcional en el workspace (Facebook/Instagram, únicos, máximo dos); guardado por API con aislamiento y revisión optimista. Quitar un panel conserva publicaciones y medios. Contenido demo oculto, nunca borrado.
+- Diseño blanco/lila con herramientas, pestañas, tarjetas seleccionables, búsqueda, tres estructuras de texto y personalización de voz/criterios. Editor local con medios propios, fuentes existentes, revisión y exportación ZIP manual usando APIs y reglas editoriales existentes. Cambio de marca invalida aprobaciones según la lógica del servidor.
+- Métricas sin datos, conexiones sin activar y orden por rendimiento deshabilitado. Una cuenta por red y negocio en esta fase. No existe OAuth ni importación/publicación social; no se activó gasto.
+- Limitaciones pendientes: alta/revisión de fuentes desde la nueva interfaz (el editor selecciona fuentes existentes), vista previa específica por formato, gestión de múltiples cuentas de una misma red y traducción de esta nueva pantalla a inglés. Notificaciones/ayuda globales conservan su disponibilidad anterior. No se restauró el estudio retirado.
+- Validación: `npm run check` (55 pruebas), `npm run build`, `npm run test:integration` (6 pruebas) correctos. Prueba nueva de paneles, preservación de datos y conflictos; ruta de contenido accesible por cliente autorizado. Navegador con fixture aislado en `work/`, API real: panel vacío, creación/persistencia de borrador, revisión y aprobación bloqueada sin fuente/comprobaciones, exportación solicitada, Escape y foco visible. Escritorio 1440 y móvil 390 sin desbordamiento del documento. No se probó sesión Clerk real.
+- Arnés temporal `work/content-preview-server.mts`, puertos loopback 3127/3128; captura `work/content-design/desktop.png`. No contiene datos reales y no sustituye la aplicación de 3000.
+- Próximo paso: revisión visual del propietario en `/azra/content`; completar alta de fuentes y vista previa antes de ampliar integraciones.
+
+## 2026-10-07 · Ask AI con Gemini
+
+- Gemini solo desde el servidor (`/api/ask`) con el SDK oficial; la clave se lee de `GEMINI_API_KEY` en cada solicitud y nunca llega al navegador. Modelo configurable con `GEMINI_MODEL`, por defecto el Flash-Lite estable vigente (`gemini-3.5-flash-lite`).
+- Respuestas solo desde herramientas de solo lectura sobre el workspace del negocio autorizado. Sin archivo estático de contexto. Campos mínimos; sin textos completos, correos ni teléfonos. Publicaciones `demo` excluidas.
+- Métricas y mensajes no existen en la app: las herramientas lo declaran «no conectado» en lugar de estimar.
+- Fechas en America/El_Salvador (no hay zona por negocio en el modelo); «esta semana» = lunes a domingo.
+- Límites para el plan gratuito: 5 preguntas/min por cuenta (en memoria, servidor local único), ≤4 llamadas al modelo por pregunta, `maxOutputTokens` 800, historial ≤20 turnos.
+- La conversación vive en memoria del navegador y se reinicia al cambiar de negocio, para no mezclar datos de dos negocios.
+
 ## 2026-10-06 · Spotmi automation design scope
 
 - Owner feedback: the visual design is not approved. The owner requested a screen-by-screen explanation and more control over its appearance. The sidebar now stays within viewport height, with its own navigation scroll and compact footer on short screens; further visual changes remain proposals.
@@ -286,3 +332,11 @@ Estructura de la referencia del propietario (panel dividido + tarjeta centrada) 
 ## 2026-10-07 — Menú del panel: solo «Pregúntale a la IA»
 
 El propietario decidió empezar la funcionalidad real por Ask AI. El menú principal de `/azra` queda con un solo elemento y Ask AI es la página de inicio y el destino tras el login. Se borraron el tablero de la agencia (Stripe), Prospección completa y sus textos/estilos; las URLs viejas redirigen a Ask AI. Elementos sin página (AI Suite, Launchpad, Subcuentas, Instantáneas, Ideas, apps) solo se quitaron del menú. El selector de cuentas, Configuración y la barra superior no cambian. Todo lo borrado se puede recuperar del commit de respaldo `a607921`.
+
+## 2026-10-07 — Un solo panel; estudio eliminado
+
+El propietario eligió eliminar del código las funciones del estudio (Resumen, Catálogo, Publicaciones, Agenda, Fuentes, Marca y criterios) y usar un único panel con «Pregúntale a la IA» para todas las cuentas. Clientes solo ven su perfil en Configuración; el selector de cuentas elige el negocio activo de Ask AI. APIs y librerías del servidor se conservan (lógica y datos), `data/` intacta. Respaldo en `0767994` / `backup/pre-eliminar-estudio-2026-10-07`. Consecuencia: hasta que Ask AI funcione, los clientes no tienen pantalla para ver o preparar contenido.
+
+## 2026-10-07 — Login arcade EZRA
+
+Se rediseñó el login existente (sin pantalla ni app paralela) con el panel arcade de la referencia del propietario y el formulario de Clerk restilizado. Se omitió el aviso de «demo sin autenticación» porque la autenticación es real. El juego es opcional, accesible, solo capta teclado con el panel enfocado y se desactiva con movimiento reducido o poco espacio (móvil).

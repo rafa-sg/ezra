@@ -214,6 +214,11 @@ export const workspaceSchema = z.object({
       logoMediaId: z.union([z.literal(""), id]),
     })
     .default({ primary: "", secondary: "", logoMediaId: "" }),
+  socialPanels: z
+    .array(z.enum(["facebook", "instagram"]))
+    .max(2)
+    .refine((v) => new Set(v).size === v.length)
+    .optional(),
   // What the owner confirmed about each account before an official connection.
   socialSetup: z
     .object({

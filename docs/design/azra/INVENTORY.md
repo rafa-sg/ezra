@@ -259,7 +259,7 @@ Todas las rutas nuevas tienen prefijo `/azra`. `/azra` redirige a `/azra/agency`
 | Ruta                                    | Capturas           | Estado al relevo                                          |
 | --------------------------------------- | ------------------ | --------------------------------------------------------- |
 | `/azra/agency`                          | #2                 | EN PROGRESO: base visible; assets/fidelidad pendientes    |
-| `/azra/ai/chat`                         | #1                 | EN PROGRESO: base visible; assets/fidelidad pendientes    |
+| `/azra/ai/chat`                         | #1                 | HECHO: Gemini real vía /api/ask; voz/adjuntos pendientes  |
 | `/azra/prospecting/accounts`            | #38                | DEMO: vacío, checklist; añadir/filtros sin datos          |
 | `/azra/prospecting/ai`                  | #3                 | DEMO: textos/tarjetas; ilustraciones y agente pend.       |
 | `/azra/prospecting/report-builder`      | #5                 | DEMO: orden/casillas persistentes; vista previa pend.     |

@@ -189,3 +189,28 @@ test("los rangos de video admiten intervalos, sufijos y rangos abiertos y rechaz
   assert.equal(byteRange("bytes=20-10", 100), null);
   assert.equal(byteRange("bytes=0-1,4-5", 100), null);
 });
+
+test("los paneles locales empiezan vacíos y eliminarlos conserva contenido y medios", () => {
+  const state = createSeed(now);
+  assert.deepEqual(state.socialPanels ?? [], []);
+  const added = change(state, (next) => {
+    next.socialPanels = ["facebook", "instagram"];
+  });
+  assert.deepEqual(added.socialPanels, ["facebook", "instagram"]);
+  const removed = change(added, (next) => {
+    next.socialPanels = [];
+  });
+  assert.deepEqual(removed.posts, added.posts);
+  assert.deepEqual(removed.media, added.media);
+  assert.throws(
+    () =>
+      change(removed, (next) => {
+        next.socialPanels = ["facebook", "facebook"];
+      }),
+    /Datos inválidos/,
+  );
+  assert.throws(
+    () => reconcile(added, { ...state, socialPanels: [] }, now),
+    /cambios más recientes/,
+  );
+});

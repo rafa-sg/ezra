@@ -15,9 +15,13 @@ import {
   type CompanySettings,
 } from "./model";
 import type { AccountService } from "./service";
-import type { DemoStorage } from "../credentials/demo";
 
 /** Browser-only demo. Starts empty: no person, company or user is seeded. */
+export interface DemoStorage {
+  read(): string | null;
+  write(value: string): void;
+}
+
 export class DemoAccountService implements AccountService {
   readonly mode = "demo" as const;
   constructor(
