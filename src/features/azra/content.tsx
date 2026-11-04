@@ -539,7 +539,9 @@ function Studio({ businessId, name }: { businessId: string; name: string }) {
               <Plug size={26} />
             </span>
             <h2>Conexiones</h2>
-            <p>Desde acá gestionaremos los servicios de tus redes sociales mediante GHL.</p>
+            <p>
+              Prepara tus publicaciones con las IA del estudio y conserva el control de cada cuenta.
+            </p>
             <ConnectionsPanel />
             <p>
               Todavía no hay servicios conectados. Los paneles de Facebook e Instagram preparan

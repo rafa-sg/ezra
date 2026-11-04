@@ -55,14 +55,14 @@ test(
     const stop = await start(directory);
     const admin = sessionToken("owner", base, 180);
     try {
-      const anonymous = await get("/azra/ai/chat");
+      const anonymous = await get("/azra/produccion");
       assert.ok([303, 307, 308].includes(anonymous.status), String(anonymous.status));
       assert.match(anonymous.headers.get("location") ?? "", /\/sign-in$/);
       for (const token of [sessionToken("outsider", base), admin + "tampered"]) {
         const denied = await get("/azra/settings/company", token);
         assert.ok([303, 307, 308].includes(denied.status));
       }
-      const page = await get("/azra/ai/chat", admin);
+      const page = await get("/azra/produccion", admin);
       assert.equal(page.status, 200);
       const html = await page.text();
       assert.match(html, /ezrá/);
@@ -70,7 +70,7 @@ test(
       // Sub-accounts are the pilot's real businesses, served by its authorized API.
       const businesses = (await (await get("/api/businesses", admin)).json()).businesses;
       assert.ok(businesses.length >= 3);
-      // Clients use the same panel: Ask AI and their own profile, never agency settings.
+      // Ambas cuentas ven la interfaz nueva; los clientes no reciben encargos privados ni funciones de administración.
       const configure = await fetch(`${base}/api/auth/accounts`, {
         method: "POST",
         headers: { "Content-Type": "application/json", authorization: `Bearer ${admin}` },
@@ -78,18 +78,27 @@ test(
       });
       assert.equal(configure.status, 200);
       const clientToken = sessionToken("sgmotos", base, 180);
-      assert.equal((await get("/azra/content", clientToken)).status, 200);
-      const clientChat = await get("/azra/ai/chat", clientToken);
-      assert.equal(clientChat.status, 200);
-      assert.match(await clientChat.text(), /sgmotos@example\.test/);
-      assert.equal((await get("/azra/settings/profile/general", clientToken)).status, 200);
-      for (const adminOnly of ["/azra/settings/company", "/azra/settings/users"]) {
-        const blocked = await get(adminOnly, clientToken);
-        assert.ok([303, 307, 308].includes(blocked.status), adminOnly);
+      const clientStudio = await get("/azra/produccion", clientToken);
+      assert.equal(clientStudio.status, 200);
+      const clientHtml = await clientStudio.text();
+      assert.match(clientHtml, /sgmotos@example\.test/);
+      assert.match(clientHtml, /Esta es la nueva interfaz/);
+      assert.match(clientHtml, /Cazador de eventos/);
+      assert.doesNotMatch(clientHtml, /Iniciá tu primer chat/);
+      for (const retirada of [
+        "/azra/content",
+        "/azra/ai/chat",
+        "/azra/bot",
+        "/azra/settings/profile/general",
+        "/azra/settings/company",
+        "/azra/settings/users",
+      ]) {
+        const respuesta = await get(retirada, clientToken);
+        assert.ok([303, 307, 308].includes(respuesta.status), retirada);
         assert.equal(
-          new URL(blocked.headers.get("location")!, base).pathname,
-          "/azra/ai/chat",
-          adminOnly,
+          new URL(respuesta.headers.get("location")!, base).pathname,
+          "/azra/produccion",
+          retirada,
         );
       }
       // Shared presentation must not widen the client organization boundary.
@@ -121,6 +130,169 @@ test(
       const noKey = await ask("sgmotos-main", sgToken, question);
       assert.equal(noKey.status, 503);
       assert.match((await noKey.json()).error, /GEMINI_API_KEY/);
+      // Estudio Spotmi: solo administración, persistencia y revisión por versión.
+      assert.equal((await get("/api/produccion")).status, 401);
+      assert.equal((await get("/api/produccion", sgToken)).status, 403);
+      for (const ruta of [
+        "/api/granjas",
+        "/api/granjas/conexiones",
+        "/api/granjas/almacenamiento",
+      ]) {
+        assert.equal((await get(ruta)).status, 401);
+        assert.equal((await get(ruta, sgToken)).status, 403);
+      }
+      const guardarGranja = (token: string) =>
+        fetch(`${base}/api/granjas`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            accion: "crear",
+            datos: {
+              nombre: "Prueba aislada de granjas",
+              objetivo: "Sin servicios externos",
+              formato: "publicacion",
+              canales: ["spotmi"],
+              politicaFuentes: { dominios: ["example.test"], maxFuentesPorPaso: 1 },
+              ajustes: { zonaHoraria: "America/El_Salvador" },
+            },
+          }),
+        });
+      assert.equal((await guardarGranja(sgToken)).status, 403);
+      const granjaCreada = await guardarGranja(admin);
+      assert.equal(granjaCreada.status, 200);
+      const idGranja = (await granjaCreada.json()).granja.id;
+      assert.equal((await get(`/api/granjas/${idGranja}`, admin)).status, 200);
+      assert.equal((await get(`/api/granjas/${idGranja}`, sgToken)).status, 403);
+      const almacenamientoGranja = await (await get("/api/granjas/almacenamiento", admin)).json();
+      assert.ok(almacenamientoGranja.rutas.base.startsWith(directory));
+      assert.equal(almacenamientoGranja.remotos.length, 0);
+
+      assert.equal((await get("/api/produccion/exportar", sgToken)).status, 403);
+      assert.equal((await get("/api/produccion/spotmi", sgToken)).status, 403);
+      assert.equal((await get("/azra/produccion", admin)).status, 200);
+      assert.equal((await get("/azra/produccion", sgToken)).status, 200);
+      const estudio = await (await get("/api/produccion", admin)).json();
+      assert.deepEqual(estudio.produccion.encargos, []);
+      assert.equal(estudio.conexiones.geminiHabilitado, false);
+      const operar = (body: unknown, token = admin, ruta = "/api/produccion") =>
+        fetch(`${base}${ruta}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+      const contenido = {
+        titulo: "Historia de prueba",
+        agente: "guion",
+        proveedor: "gemini",
+        canales: ["spotmi", "tiktok"],
+        encargo: "Nota verificada para la prueba",
+        resultado: "Resultado para revisar",
+        fuentes: [
+          {
+            nombre: "Fuente de prueba",
+            url: "https://example.test/evento",
+            imagen: "",
+            nota: "Permiso revisado en prueba",
+          },
+        ],
+        fechaPrevista: "2026-11-01T18:00",
+      };
+      assert.equal(
+        (await operar({ accion: "crear", revision: 0, contenido }, sgToken)).status,
+        403,
+      );
+      assert.equal(
+        (await operar({ accion: "crear", revision: 0, contenido: { ...contenido, titulo: "" } }))
+          .status,
+        422,
+      );
+      const creada = await operar({ accion: "crear", revision: 0, contenido });
+      assert.equal(creada.status, 200);
+      let estado = await creada.json();
+      const id = estado.encargoId;
+      assert.equal(estado.produccion.encargos[0].estado, "pendiente");
+      assert.equal((await operar({ accion: "crear", revision: 0, contenido })).status, 409);
+      const checks = { hechos: true, derechos: true, marca: true };
+      assert.equal(
+        (
+          await operar({
+            accion: "estado",
+            revision: estado.produccion.revision,
+            id,
+            estado: "aprobado",
+            comprobaciones: checks,
+          })
+        ).status,
+        422,
+      );
+      estado = await (
+        await operar({
+          accion: "estado",
+          revision: estado.produccion.revision,
+          id,
+          estado: "revision",
+          comprobaciones: checks,
+        })
+      ).json();
+      estado = await (
+        await operar({
+          accion: "estado",
+          revision: estado.produccion.revision,
+          id,
+          estado: "aprobado",
+          comprobaciones: checks,
+        })
+      ).json();
+      assert.equal(estado.produccion.encargos[0].estado, "aprobado");
+      estado = await (
+        await operar({
+          accion: "derivar",
+          revision: estado.produccion.revision,
+          id,
+          agente: "edicion",
+        })
+      ).json();
+      assert.equal(estado.produccion.encargos[0].dependencia.id, id);
+      const paquete = await get(`/api/produccion/exportar?id=${id}`, admin);
+      assert.equal(paquete.status, 200);
+      assert.equal(paquete.headers.get("content-type"), "application/zip");
+      estado = await (
+        await operar({
+          accion: "editar",
+          revision: estado.produccion.revision,
+          id,
+          contenido: { ...contenido, resultado: "Corrección nueva" },
+        })
+      ).json();
+      assert.equal(
+        estado.produccion.encargos.find((e: { id: string }) => e.id === id).estado,
+        "pendiente",
+      );
+      assert.equal(
+        (
+          await operar(
+            { id, revision: estado.produccion.revision, confirmar: true },
+            admin,
+            "/api/produccion/generar",
+          )
+        ).status,
+        503,
+      );
+      assert.equal(
+        (
+          await operar(
+            { id, revision: estado.produccion.revision, confirmar: true },
+            sgToken,
+            "/api/produccion/generar",
+          )
+        ).status,
+        403,
+      );
+      assert.equal(
+        (await (await get("/api/produccion", admin)).json()).produccion.encargos.length,
+        2,
+      );
+
       // «Bot de atención»: empty start, per-business storage, optimistic revision, isolation.
       const bot = (business: string, token: string, body?: unknown) =>
         fetch(`${base}/api/bot${business ? `?business=${business}` : ""}`, {
@@ -138,7 +310,7 @@ test(
       assert.equal(fresh.bot.revision, 0);
       assert.deepEqual(fresh.bot.conversations, []);
       assert.ok(fresh.connections.channels.every((c: { botEnabled: boolean }) => !c.botEnabled));
-      assert.equal(fresh.connections.ghl, "not_connected");
+      assert.equal(fresh.connections.integration, "not_connected");
       const created = await bot("sgmotos-main", sgToken, {
         revision: 0,
         op: "saveKnowledge",
@@ -173,14 +345,21 @@ test(
         "/azra/bot/conversations",
         "/azra/bot/test",
         "/azra/bot/connections",
-      ])
-        assert.equal((await get(page, sgToken)).status, 200, page);
+      ]) {
+        const respuesta = await get(page, sgToken);
+        assert.ok([303, 307, 308].includes(respuesta.status), page);
+        assert.equal(
+          new URL(respuesta.headers.get("location")!, base).pathname,
+          "/azra/produccion",
+          page,
+        );
+      }
       // The pilot entry and its login keep working.
       assert.equal((await get("/sign-in")).status, 200);
       // Administration no longer lands on the old «Mi panel»: it opens «Pregúntale a la IA».
       const home = await get("/", admin);
       assert.ok([303, 307, 308].includes(home.status));
-      assert.equal(new URL(home.headers.get("location")!, base).pathname, "/azra/ai/chat");
+      assert.equal(new URL(home.headers.get("location")!, base).pathname, "/azra/produccion");
       // «Pregúntale a la IA» is the panel home; removed pages redirect there.
       for (const old of [
         "/azra",
@@ -190,9 +369,13 @@ test(
       ]) {
         const moved = await get(old, admin);
         assert.ok([303, 307, 308].includes(moved.status), old);
-        assert.equal(new URL(moved.headers.get("location")!, base).pathname, "/azra/ai/chat", old);
+        assert.equal(
+          new URL(moved.headers.get("location")!, base).pathname,
+          "/azra/produccion",
+          old,
+        );
       }
-      // Settings keeps only Mi perfil, Empresa and Usuarios; removed sections open Mi perfil.
+      // Todas las pantallas del diseño retirado redirigen, incluidas las de configuración.
       for (const old of [
         "/azra/settings",
         "/azra/settings/billing",
@@ -215,23 +398,27 @@ test(
         assert.ok([303, 307, 308].includes(moved.status), old);
         assert.equal(
           new URL(moved.headers.get("location")!, base).pathname,
-          "/azra/settings/profile/general",
+          "/azra/produccion",
           old,
         );
       }
       for (const kept of ["/azra/settings/company", "/azra/settings/users"])
-        assert.equal((await get(kept, admin)).status, 200, kept);
+        assert.ok([303, 307, 308].includes((await get(kept, admin)).status), kept);
       assert.equal((await get("/azra/no-existe", admin)).status, 404);
-      // The old studio is gone: every signed-in entry opens Ask AI; visitors get the login.
+      // Todas las entradas autenticadas abren el mismo estudio; los visitantes conservan el acceso.
       for (const [route, token] of [
         ["/?business=sgmotos-main", admin],
         ["/", clientToken],
       ] as const) {
         const entry = await get(route, token);
         assert.ok([303, 307, 308].includes(entry.status), route);
-        assert.equal(new URL(entry.headers.get("location")!, base).pathname, "/azra/ai/chat");
+        assert.equal(new URL(entry.headers.get("location")!, base).pathname, "/azra/produccion");
       }
-      assert.equal((await get("/")).status, 200);
+      const acceso = await get("/");
+      assert.equal(acceso.status, 200);
+      const accesoHtml = await acceso.text();
+      assert.match(accesoHtml, /Tu estudio de contenido para Spotmi/);
+      assert.doesNotMatch(accesoHtml, /arcade-panel|AUTOMATIZA TU PRESENCIA/);
       // The Users screen reads the real access accounts through the pilot API.
       const accounts = (await (await get("/api/auth/accounts", admin)).json()).accounts;
       assert.ok(accounts.some((a: { email: string }) => a.email === "sgmotos@example.test"));

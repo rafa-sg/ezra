@@ -142,8 +142,8 @@ export async function authorizedDirectory() {
     ...directory,
     businesses: directory.businesses.filter(
       (b) =>
-        b.id !== defaultBusinessId &&
-        (account.role === "admin" || b.organizationId === account.organizationId),
+        account.role === "admin" ||
+        (b.id !== defaultBusinessId && b.organizationId === account.organizationId),
     ),
   };
 }

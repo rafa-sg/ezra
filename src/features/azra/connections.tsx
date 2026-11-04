@@ -1,58 +1,53 @@
 "use client";
-import { connectionStateLabels, currentConnections, type Connections } from "@/lib/bot/connections";
+import { currentConnections, type Connections } from "@/lib/bot/connections";
+import { useLanguage, type MessageKey } from "./i18n";
 import "./content.css";
 
-/** Shared «Conexiones» view (content creation and the support bot). It only shows
- * verifiable states: with no adapter in place, everything reads «Sin conectar». */
 export function ConnectionsPanel({
   connections = currentConnections(),
 }: {
   connections?: Connections;
 }) {
-  const unknown = (value: boolean | null) =>
-    value === null ? "Sin verificar" : value ? "Sí" : "No";
+  const { t } = useLanguage();
+  const estado = (clave: string) => t(`c_estado_${clave}` as MessageKey);
+  const conocido = (valor: boolean | null) =>
+    t(valor === null ? "c_sinVerificar" : valor ? "c_si" : "c_no");
   return (
     <div className="az-connections">
       <div className="ec-connection-service">
         <div>
-          <strong>GoHighLevel</strong>
-          <p>Integración mediante MCP</p>
+          <strong>{t("c_directa")}</strong>
+          <p>{t("c_control")}</p>
         </div>
-        <span className="ec-connection">{connectionStateLabels[connections.ghl]}</span>
+        <span className="ec-connection">{estado(connections.integration)}</span>
       </div>
       <div className="az-connections-table">
         <table>
           <thead>
             <tr>
-              <th scope="col">Canal</th>
-              <th scope="col">Integración GHL</th>
-              <th scope="col">Canal disponible</th>
-              <th scope="col">Cuenta autorizada</th>
-              <th scope="col">Habilitado para el bot</th>
+              <th scope="col">{t("c_canal")}</th>
+              <th scope="col">{t("c_conexion")}</th>
+              <th scope="col">{t("c_disponible")}</th>
+              <th scope="col">{t("c_autorizada")}</th>
+              <th scope="col">{t("c_habilitado")}</th>
             </tr>
           </thead>
           <tbody>
-            {connections.channels.map((channel) => (
-              <tr key={channel.key}>
-                <th scope="row">{channel.name}</th>
+            {connections.channels.map((canal) => (
+              <tr key={canal.key}>
+                <th scope="row">{canal.name}</th>
                 <td>
-                  <span className="ec-connection">
-                    {connectionStateLabels[channel.ghlIntegration]}
-                  </span>
+                  <span className="ec-connection">{estado(canal.integration)}</span>
                 </td>
-                <td>{unknown(channel.channelAvailable)}</td>
-                <td>{unknown(channel.accountAuthorized)}</td>
-                <td>{channel.botEnabled ? "Sí" : "No"}</td>
+                <td>{conocido(canal.channelAvailable)}</td>
+                <td>{conocido(canal.accountAuthorized)}</td>
+                <td>{conocido(canal.botEnabled)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="az-muted">
-        Conectar GHL no marcará todas las redes como conectadas: cada canal necesitará su cuenta
-        autorizada y habilitarse para el bot por separado. ezrá no pide ni guarda tokens en el
-        navegador.
-      </p>
+      <p className="az-muted">{t("c_ayuda")}</p>
     </div>
   );
 }

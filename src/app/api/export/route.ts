@@ -5,6 +5,7 @@ import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
 import path from "node:path";
 import { mediaDirectoryFor, readWorkspace } from "@/lib/store";
+import { leerProduccion } from "@/lib/produccion/almacen";
 import { readAutomation } from "@/lib/automation";
 import { readBot } from "@/lib/bot/store";
 import { siteEventPackage } from "@/lib/site-event";
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
         "El respaldo supera 1 GB. Detén el servidor y copia la carpeta data/ completa para conservar todos tus archivos.",
         413,
       );
-    // Only an approved version may be scheduled by hand (e.g. in Metricool).
+    // Una versión se revisa antes de prepararla para publicar.
     const approved = post
       ? ["approved", "planned", "published"].includes(post.status) &&
         (!post.productId || post.status === "published" || !approvalIssues(post, state).length)
@@ -67,8 +68,10 @@ export async function GET(request: Request) {
       zip.file("workspace.json", JSON.stringify(state, null, 2));
       // «Bot de atención» configuration, knowledge, rules, local tests and activity.
       zip.file("bot.json", JSON.stringify(await readBot(businessId), null, 2));
-      if (businessId === defaultBusinessId)
+      if (businessId === defaultBusinessId) {
         zip.file("automation.json", JSON.stringify(await readAutomation(), null, 2));
+        zip.file("produccion-spotmi.json", JSON.stringify(await leerProduccion(), null, 2));
+      }
       const business = (await readBusinessDirectory()).businesses.find((b) => b.id === businessId);
       zip.file("negocio.json", JSON.stringify(business, null, 2));
       zip.file(

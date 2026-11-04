@@ -1,5 +1,21 @@
 # Estado y relevo
 
+## 2026-10-27 · Granjas Spotmi — HECHO (salvo lo externo)
+
+- [x] Granjas con lienzo, recetas, cola durable, personajes ligados al estado real, vista previa, autorización y recibos (ver `docs/ESTUDIO_SPOTMI.md` › Granjas, con la tabla de capacidades).
+- [x] Primera prueba con datos reales: granja «Primera prueba · Noche de Catrinas (Ataco)». Ficha oficial leída, encargo v2 importado, hechos y texto en modo manual. **Detenida en «Tu revisión»**: no se aprobó ni se publicó nada.
+- [x] Verificación: 82/82 pruebas unitarias, lint, tipos, compilación en `.next-verificar` y 7/7 integraciones. Navegador aislado a 1440, 390 y 360 px sin desbordamiento, incluido el recorrido completo hasta la simulación.
+- [ ] Propietario: revisar y aprobar «Tu revisión»; decidir la imagen (propia o con permiso), las cuentas de destino y el texto exacto; después autorizar.
+- [ ] Propietario: apps de Meta/TikTok, `EZRA_TOKEN_KEY` y las credenciales en `.env.local`; aplicar (o no) la migración de spotmi-web y habilitar la cuenta editorial.
+- [ ] Spotmi web: la bandeja del equipo muestra el origen `ezra` como «analizador»; corregirlo al aplicar la migración. Quitar el «San Miguel» repetido en la lista de departamentos.
+
+## 2026-10-07 · Navegación más fluida (solo interacción) — HECHO
+
+- [x] Capa `src/features/azra/motion.css` (cargada después de `azra.css`): estados normal/hover/activo/presionado/foco/deshabilitado en menú, submenú del bot, herramientas de contenido y lateral del chat; halo lila/violeta del acceso «Pregúntale a la IA» (barra superior) al pasar el cursor o con foco de teclado; transición de la barra lateral al contraer/expandir con íconos fijos y etiquetas que aparecen sin cortarse; tooltips propios en modo compacto; cajón móvil y fondo atenuado; diálogos que aparecen y se cierran suavemente; entrada breve del contenido al cambiar de vista; botones, campos, pestañas y tarjetas clicables con transiciones.
+- [x] Sin funciones, rutas, opciones ni textos nuevos. Cambios de marcado mínimos: `title` → `data-tooltip` solo en modo compacto (`shell.tsx`), import en `src/app/azra/layout.tsx`, envoltorio `az-view` con `key` en las secciones del bot.
+- [x] Evidencia: `work/azra-validation/motion/` (`navegacion-fluida.mp4/.gif`, `halo-ia.png`, `tooltip-compacto.png`, `hover-y-activo.png`).
+- [ ] El video de referencia no llegó adjunto; se siguió la especificación escrita. Ajustar duraciones si el propietario lo pide tras verlo.
+
 ## 2026-10-07 · «Spotmi» y formulario de Empresa — HECHO
 
 - [x] `owner-main` «Mi negocio» → «Spotmi» (registro y marca del workspace; copia en `work/backup-rename-spotmi-20261007-193054/`). Histórico `spotmi` intacto.
@@ -144,3 +160,66 @@ No activar API, despliegue ni publicación externa por leer esta lista. Los USD 
 - Antes previsto: workflows #10, teléfono #11 y correo #12–#17; extraer tabla/filtros/paginación de `account/users.tsx` cuando se reutilicen. Las rutas existentes con aviso NO cuentan como pantallas implementadas.
 - Relevo obligatorio y siempre actualizado: `CLAUDE.md`. Inventario/mapa/pendientes por pantalla: `docs/design/azra/INVENTORY.md`.
 - Pendientes externos: proveedor y catálogo completo de permisos; assets/fuente/datos y contratos de otros servicios. No bloquear avances demo por esas decisiones. No desplegar ni activar gastos.
+
+## 2026-10-27 · Dirección vigente: Estudio Spotmi
+
+El propietario confirmó que el centro de producción vive en Ezra y se conecta a Spotmi; Astra es el modelo de Codex. Se añade /azra/produccion para administración, con 11 especialidades, encargos persistentes, cadena por versiones, revisión, calendario y exportación. Los otros negocios conservan sus datos y permisos.
+
+El propietario pidió desvincular Metricool y HighLevel: no reintroducirlos como dependencia del producto. El plugin Metricool se desvinculó de Codex; GoHighLevel no estaba instalado. En el código solo había un contrato futuro de GHL: se sustituyó por estados de conexión directa. No se revocaron accesos sociales en Meta ni se cancelaron suscripciones.
+
+La lectura de Spotmi usa sus fichas públicas y la clave anónima, nunca service role. Dominio confirmado: https://spotmi.com.sv. Los adaptadores locales de Codex y Claude usan la sesión del propietario, con comandos/archivos/plugins desactivados y búsqueda pública solo para el cazador. No activar una API facturada automáticamente. Gemini sigue detrás de configuración explícita. Toda entrega vuelve a revisión; no se publica en redes desde esta versión.
+
+Guía vigente y límites: docs/ESTUDIO_SPOTMI.md. La documentación anterior conserva el historial; las decisiones de este apartado prevalecen para el nuevo estudio.
+
+## 2026-10-27 · Interfaz anterior deshabilitada
+
+El propietario pidió una sola interfaz. Se retiraron del catálogo y del bundle visible Chat, Contenido, Bot y Configuración anteriores. Sus URLs redirigen a /azra/produccion para todas las cuentas, incluidos los clientes. El marco anterior (sidebar blanco/lila y sus hojas azra.css/motion.css) dejó de importarse; se utiliza únicamente el marco del Estudio Spotmi. Las cuentas de cliente ven el nuevo diseño en modo de vista sin llamadas a las APIs privadas, sin encargos de administración y sin nuevas autorizaciones. Crear, editar y ejecutar sigue protegido por requireAdmin en el servidor. La información y las APIs del piloto se conservan, pero su interfaz anterior no se monta.
+
+El acceso también usa el estilo oscuro del Estudio Spotmi. La presentación arcade, los estilos globales heredados y las pantallas anteriores ya no se importan. Clerk conserva sus flujos y permisos.
+
+
+## 2026-10-27 · Solicitud siguiente: Granjas y conexiones directas
+
+Pendiente de implementación por Claude, según `CLAUDE_GRANJAS_SPOTMI.md`: renombrar Producción a Granjas; editor persistente de agentes y conexiones; personajes animados según trabajo real; ejecución configurable y reanudable; medios/video reales; tarjetas OAuth separadas de Instagram, Facebook, TikTok y Spotmi web; autorización del envío ligada a una versión y destinos concretos. No se han agregado estas funciones en esta sesión.
+
+Se auditó el estado: datos en `data/produccion-spotmi.json`, backend local Next.js; sin publicador social ni escritura a Spotmi. Lectura real de Spotmi comprobada el 27/10/2026: 25 eventos, 37 spots, 37 fichas con imagen. No se transfieren autorizaciones antiguas de Metricool.
+
+El propietario eligió el encargo `ae58cf22-6697-497a-8b95-5a26cc2c3f41` para la primera prueba. Se guardó investigación parcial manual y un borrador, versión 2, en revisión, con las comprobaciones sin aprobar. La ficha de El Salvador Travel enlaza a Instagram, pero el anuncio original no pudo leerse. Fecha/año del original, imagen y derechos quedan pendientes. No se ejecutó un adaptador ni se publicó nada. Ver `docs/relevos/granjas-spotmi-20261027/PRIMERA_PUBLICACION.md`.
+
+La API de Direct Post de TikTok tiene restricciones de elegibilidad para herramientas internas. Claude debe verificar la vía permitida y no prometer publicación directa sin aprobación de plataforma. Preparar una vista previa no autoriza enviarla: la primera publicación real requiere autorización final de la versión y las cuentas concretas.
+
+
+## Cierre verificado · Granjas · 27 de octubre de 2026
+
+La interfaz de Granjas está integrada en el estudio: recetas, lienzo de agentes, conexiones entre pasos, inspector, encargos vinculados, ejecución manual, revisión y vista previa. Se conserva el código reciente del otro editor; no se sobrescribió el backend de Claude ni la integración concurrente. Conexiones incluye Instagram, Facebook, TikTok y Spotmi, con requisitos y estados reales; una tarjeta visible no acredita una cuenta conectada.
+
+Verificación final de la versión integrada en copia aislada: `npm run check` pasó (lint, TypeScript y 82 pruebas); build con Webpack y `EZRA_DIST_DIR=.next-verificar` pasó; integración HTTP pasó 7/7, incluidas autenticación, roles y Granjas. Navegador a 1440 px: lienzo e inspector visibles; Alt+flecha y Guardar comprobados. A 390 y 360 px, ancho de documento igual al viewport y sin claves g_* visibles. La regla CSS de movimiento reducido se revisó; no se emuló la preferencia del sistema. La build temporal y los servidores de QA se retiran al cerrar.
+
+La comprobación local adicional del encargo `ae58cf22-6697-497a-8b95-5a26cc2c3f41` creó la granja `baa6585d-ee21-4ccf-be0b-67532e722216` («Primera prueba · Instagram»), ejecución `6d697f57-e00f-40a7-9699-0e85eae7d6ec` y pieza `f4470a71-bd41-450c-84d6-808ba36c9cd8`. Se leyó la ficha oficial (HTTP 200), se importó el encargo y se preparó el texto manualmente. Estado: esperando al dueño, 0 autorizaciones y 0 recibos. No se ejecutó IA, no se subieron medios y no se publicó. Informe: `work/primera-prueba-granjas-real.json`. La granja preparada antes por Claude se conserva también; no se borraron datos.
+
+Los registros de la app viven en `data/granjas/granjas.sqlite`; medios en `data/granjas/medios`; encargos previos en `data/produccion-spotmi.json`. No es almacenamiento remoto ni una subida a Spotmi. La migración y sus ataques están preparados en spotmi-web (`20261103_propuestas_ezra.sql` y `supabase/tests/propuestas_ezra.sql`), SIN aplicar ni ejecutar; falta validarlos en una base aislada. No se regeneraron tipos de una migración sin aplicar.
+
+Pendiente externo: conectar y comprobar cuentas reales y permisos, contrastar el anuncio original de Instagram, aportar imagen autorizada si el canal la exige, y aprobación explícita del contenido exacto y de cada cuenta. TikTok queda en envío de borrador y exige video. Spotmi exige migración aplicada y cuenta editorial habilitada. Gemini y servicios de pago no se activaron; no hubo push, merge ni despliegue.
+
+Matriz de capacidades y uso: `docs/GRANJAS_CAPACIDADES.md`. Contenido exacto: `docs/relevos/granjas-spotmi-20261027/PRIMERA_PUBLICACION.md`. El siguiente paso del propietario es revisar ese texto y elegir cuentas; ninguna aprobación documental sustituye la autorización por versión y destinos en la app.
+
+
+## 2026-10-27 · Prueba de conexión con n8n Cloud
+
+Se añade scripts/probar-n8n.mjs para probar únicamente accion=probar_conexion con el webhook autenticado de spotmi.app.n8n.cloud. Configuración privada en .env.n8n.local, excluida por .gitignore. No cambia el trabajador ni publica, programa o envía contenido editorial. Valida la respuesta y el id de solicitud, limita el destino HTTPS y rechaza redirecciones. Ejecución: node --env-file=.env.n8n.local scripts/probar-n8n.mjs. Tres pruebas con respuestas simuladas pasaron; la prueba real sigue pendiente de configurar el secreto y activar la escucha en n8n.
+
+
+## 2026-10-27 · Integración de Granjas con n8n Cloud
+
+Se añade tarjeta n8n en Conexiones, prueba autenticada desde administración y descarga del flujo docs/n8n/ezra-meta.json. El publicador existente conserva aprobación por hash, autorización por cuenta y recibos; con EZRA_N8N_PUBLICACION=1 sus llamadas publicar/confirmar de Facebook/Instagram pasan por n8n, sin reintentos automáticos. El flujo limita destinos Meta, acepta bytes/formularios hasta 8 MB y no persiste ejecuciones. OAuth continúa en Ezra con regreso HTTPS opcional por n8n al callback fijo local y state de sesión. .env.meta.local se carga al arrancar.
+
+Pruebas: lint/TypeScript y 88 pruebas locales, compilación aislada; la prueba real previa solo confirmó la conexión de prueba. Pendiente importar/publicar el nuevo flujo, completar claves de Meta de forma privada, autorizar cuentas y probar publicación con versión/destinos autorizados. No se publicó, no hubo despliegue ni cambio en la base de Spotmi. Límites y pasos: docs/N8N_META.md.
+
+Validación adicional: integración HTTP aislada de Granjas pasó con fixture local de Clerk (incluye denegación sin sesión, lectura de estado sin secreto, descarga del flujo y rechazo de acción publicar en el endpoint de prueba). La revisión visual automatizada quedó pendiente: el navegador no permitió completar la navegación. El video del propietario muestra la app Meta Ezra con dos casos de anuncios y Facebook Login; no muestra Instagram configurado. Próximo paso externo: abrir Agregar casos de uso y habilitar publicación de Instagram/Páginas según opciones disponibles.
+
+## 2026-10-28 · n8n de producción verificado; falta la app de Meta
+
+- [x] Flujo «Ezra — Meta y conexión» publicado en n8n Cloud: `probar_conexion` con clave → 200 y respuesta correcta; sin clave → 403; `ezra-oauth-facebook` y `ezra-oauth-instagram` activos (sin state redirigen a Conexiones). No se publicó nada.
+- [x] `EZRA_TOKEN_KEY` generada en `.env.meta.local` (no había conexiones guardadas). No cambiarla después de conectar cuentas.
+- [ ] Propietario: en Meta, agregar casos de uso de Instagram (API con inicio de sesión de Instagram) y de Páginas; registrar las dos URI de retorno de n8n; copiar App ID/secreto de Meta y de Instagram en `.env.meta.local`; reiniciar `npm run dev`; conectar desde Conexiones en 127.0.0.1:3000.
+- [ ] Después de verificar ambas cuentas: `EZRA_N8N_PUBLICACION=1` en `.env.n8n.local` y una primera publicación solo con versión y destinos autorizados.

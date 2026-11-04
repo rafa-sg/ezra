@@ -136,8 +136,8 @@ export function Inbox() {
         <div className="bt-empty">
           <h2>Sin conversaciones reales</h2>
           <p>
-            Los canales no están conectados. Cuando exista la integración con GHL, las
-            conversaciones reales aparecerán aquí, separadas de las pruebas.
+            Los canales no están conectados. Las conversaciones reales aparecerán aquí cuando
+            autorices una conexión directa con cada plataforma.
           </p>
         </div>
       ) : list.length === 0 ? (

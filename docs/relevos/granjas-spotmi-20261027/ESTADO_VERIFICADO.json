@@ -1,0 +1,93 @@
+{
+  "fecha": "2026-10-27T18:27:02.364336+00:00",
+  "proyecto": "/Users/rafaelsandoval/Desktop/Spotbot",
+  "cambios_esta_sesion": {
+    "interfaz_granjas_implementada": false,
+    "oauth_implementado": false,
+    "prompt_ingles_preparado": true,
+    "resultado_de_prueba_guardado": true
+  },
+  "almacenamiento": {
+    "tipo": "JSON local gestionado por backend Next.js",
+    "archivo": "/Users/rafaelsandoval/Desktop/Spotbot/data/produccion-spotmi.json",
+    "variable_opcional": "EZRA_DATA_DIR",
+    "revision": 3,
+    "respaldo_de_esta_edicion": "/Users/rafaelsandoval/Desktop/Spotbot/work/respaldo-primera-prueba-6e39c9ea-eb41-4662-9647-e863a6ae4ba2",
+    "sincronizado_a_supabase": false,
+    "sincronizado_a_redes": false,
+    "escritura": "validada, atómica y con revisión optimista; la cola actual es por proceso"
+  },
+  "primera_prueba": {
+    "encargo_id": "ae58cf22-6697-497a-8b95-5a26cc2c3f41",
+    "titulo": "Buscar proximos eventos en instagram",
+    "version": 2,
+    "estado": "revision",
+    "proveedor_asignado": "gemini",
+    "origen_resultado": "manual",
+    "fuentes": 5,
+    "aprobaciones": {
+      "hechos": false,
+      "derechos": false,
+      "marca": false
+    },
+    "adaptador_ejecutado": false,
+    "publicada": false,
+    "tipo": "investigación parcial manual y borrador con pendientes",
+    "archivo_de_lectura": "PRIMERA_PUBLICACION.md"
+  },
+  "conexiones": {
+    "instagram": {
+      "estado": "no configurada en Ezra",
+      "oauth_implementado": false,
+      "publicador_implementado": false,
+      "cuenta_verificada": false,
+      "publicacion_probada": false
+    },
+    "facebook": {
+      "estado": "no configurada en Ezra",
+      "oauth_implementado": false,
+      "publicador_implementado": false,
+      "pagina_verificada": false,
+      "publicacion_probada": false
+    },
+    "tiktok": {
+      "estado": "no configurada en Ezra",
+      "oauth_implementado": false,
+      "publicador_implementado": false,
+      "cuenta_verificada": false,
+      "publicacion_probada": false,
+      "elegibilidad_direct_post": "pendiente; las guías excluyen herramientas limitadas a cuentas propias/internas"
+    },
+    "spotmi": {
+      "canal": "spotmi",
+      "comprobado": "2026-10-27T18:22:53.744Z",
+      "lectura": true,
+      "escrituraImplementada": false,
+      "publicacionProbada": false,
+      "eventos": 25,
+      "spots": 37,
+      "conImagen": 37,
+      "error": ""
+    }
+  },
+  "ia": {
+    "gemini": "clave presente; ejecución del estudio deshabilitada; no se activó",
+    "astra_claude": "adaptadores locales presentes; esta sesión no ejecutó sus modelos"
+  },
+  "publicacion": {
+    "envios_realizados": 0,
+    "autorizacion_final_del_borrador": false,
+    "motivos_no_listo": [
+      "Instagram original no leído directamente; falta confirmar año/autor",
+      "imagen y derechos pendientes",
+      "adaptadores de publicación y OAuth pendientes"
+    ]
+  },
+  "secretos_incluidos": false,
+  "fuentes_de_documentacion": [
+    "https://www.postman.com/meta/instagram/folder/1z5vxzu/instagram-api-with-instagram-login",
+    "https://www.postman.com/meta/facebook/documentation/r56bjfd/facebook-api",
+    "https://developers.tiktok.com/docs/en/content-sharing-guidelines",
+    "https://developers.tiktok.com/docs/en/content-posting-api-get-started-upload-content"
+  ]
+}

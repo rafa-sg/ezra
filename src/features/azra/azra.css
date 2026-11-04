@@ -2810,3 +2810,70 @@
   gap: 10px;
   min-width: 0;
 }
+
+/* El espacio activo permanece visible incluso cuando el menú está oculto en móvil. */
+.azra .az-context-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--az-border);
+  background: #fff;
+  min-height: 64px;
+}
+.azra .az-context-home,
+.azra .az-context-account {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 8px 13px;
+  border: 1px solid #d9d0f5;
+  border-radius: 7px;
+  background: #f0edf9;
+  color: #5841ae;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.azra .az-context-arrow {
+  transform: rotate(180deg);
+}
+.azra .az-context-note,
+.azra .az-context-name > span {
+  color: #686371;
+  font-size: 12px;
+}
+.azra .az-context-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.azra .az-context-name strong {
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.azra .az-context-explanation {
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #686371;
+}
+@media (max-width: 767px) {
+  .azra .az-context-strip {
+    padding: 10px 12px;
+    gap: 7px 12px;
+  }
+  .azra .az-context-note {
+    font-size: 12px;
+  }
+  .azra .az-context-account {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+}

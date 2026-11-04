@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
+  // Las verificaciones compilan en otra carpeta para no pisar el servidor de desarrollo.
+  distDir: process.env.EZRA_DIST_DIR || ".next",
   poweredByHeader: false,
   devIndicators: false,
   async headers() {

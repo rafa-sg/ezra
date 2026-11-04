@@ -1,0 +1,29 @@
+import { administrador, errorApi } from "@/lib/granjas/api";
+import { guardarMedio, LIMITE_MEDIO } from "@/lib/granjas/medios";
+import { WorkflowError } from "@/lib/workflow";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 120;
+
+/** Subida de medios propios o con permiso. La nota de permiso es obligatoria. */
+export async function POST(request: Request) {
+  try {
+    await administrador();
+    if (Number(request.headers.get("content-length") || 0) > LIMITE_MEDIO + 100_000)
+      throw new WorkflowError("El archivo supera 200 MB.", 413);
+    const formulario = await request.formData();
+    const archivo = formulario.get("archivo");
+    const licencia = String(formulario.get("licencia") ?? "").trim();
+    if (!(archivo instanceof File)) throw new WorkflowError("Adjunta un archivo.", 422);
+    if (!licencia) throw new WorkflowError("Indica de quién es el archivo o qué permiso tienes para usarlo.", 422);
+    const medio = await guardarMedio(Buffer.from(await archivo.arrayBuffer()), {
+      nombre: archivo.name || "archivo",
+      procedencia: { origen: "subida", nota: "Subido por el propietario." },
+      licencia,
+      generado: formulario.get("generado") === "1",
+    });
+    return Response.json({ medio: { id: medio.id, mime: medio.mime, nombre: medio.nombre, ancho: medio.ancho, alto: medio.alto, duracion: medio.duracion, licencia: medio.licencia, generado: medio.generado, bytes: medio.bytes } });
+  } catch (error) {
+    return errorApi(error);
+  }
+}

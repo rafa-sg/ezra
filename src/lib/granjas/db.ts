@@ -1,0 +1,306 @@
+import { DatabaseSync } from "node:sqlite";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+import { dataDirectory } from "../store";
+
+/**
+ * Base local de las granjas. SQLite en modo WAL con transacciones inmediatas:
+ * a diferencia del JSON con cola por proceso, protege también al trabajador
+ * que corre en otro proceso. Sigue siendo almacenamiento local de esta Mac.
+ */
+// Rutas de datos del usuario: el empaquetador no debe rastrearlas (podría recorrer todo el proyecto).
+export const carpetaGranjas = path.join(/* turbopackIgnore: true */ dataDirectory, "granjas");
+export const archivoBase = path.join(/* turbopackIgnore: true */ carpetaGranjas, "granjas.sqlite");
+export const carpetaMedios = path.join(/* turbopackIgnore: true */ carpetaGranjas, "medios");
+export const carpetaRespaldos = path.join(/* turbopackIgnore: true */ carpetaGranjas, "respaldos");
+
+const migraciones: string[] = [
+  `
+  create table granjas (
+    id text primary key,
+    nombre text not null,
+    objetivo text not null default '',
+    formato text not null,
+    canales text not null,
+    politica_fuentes text not null,
+    ajustes text not null,
+    grafo text not null,
+    estado text not null check (estado in ('activa', 'pausada', 'archivada')),
+    revision integer not null,
+    receta text,
+    creado text not null,
+    actualizado text not null
+  );
+  create table granja_revisiones (
+    granja_id text not null references granjas(id),
+    revision integer not null,
+    grafo text not null,
+    motivo text not null,
+    creado text not null,
+    primary key (granja_id, revision)
+  );
+  create table ejecuciones (
+    id text primary key,
+    granja_id text not null references granjas(id),
+    revision_granja integer not null,
+    instantanea text not null,
+    estado text not null,
+    alcance text not null,
+    consentimiento text not null,
+    creado text not null,
+    actualizado text not null,
+    terminado text
+  );
+  create index ejecuciones_granja on ejecuciones (granja_id, creado desc);
+  create table pasos (
+    id text primary key,
+    ejecucion_id text not null references ejecuciones(id),
+    nodo_id text not null,
+    estado text not null,
+    proveedor text not null,
+    intentos integer not null default 0,
+    entradas text not null default '[]',
+    salidas text not null default '[]',
+    error text not null default '',
+    detalle text not null default '',
+    pieza_id text,
+    inicio text,
+    fin text,
+    actualizado text not null,
+    unique (ejecucion_id, nodo_id)
+  );
+  create table medios (
+    id text primary key,
+    sha256 text not null unique,
+    mime text not null,
+    bytes integer not null,
+    archivo text not null,
+    ancho integer,
+    alto integer,
+    duracion real,
+    procedencia text not null,
+    licencia text not null default '',
+    generado integer not null default 0,
+    nombre text not null default '',
+    creado text not null
+  );
+  create table artefactos (
+    id text primary key,
+    granja_id text not null references granjas(id),
+    ejecucion_id text references ejecuciones(id),
+    paso_id text references pasos(id),
+    nodo_id text not null,
+    tipo text not null,
+    version integer not null,
+    contenido text not null default '',
+    medio_id text references medios(id),
+    procedencia text not null,
+    config_nodo text not null,
+    hash text not null,
+    reemplaza text,
+    estado text not null default 'vigente' check (estado in ('vigente', 'reemplazado')),
+    creado text not null
+  );
+  create index artefactos_nodo on artefactos (granja_id, nodo_id, creado desc);
+  create table aprobaciones (
+    id text primary key,
+    objeto text not null check (objeto in ('paso', 'pieza')),
+    objeto_id text not null,
+    hash text not null,
+    comprobaciones text not null,
+    estado text not null check (estado in ('vigente', 'invalidada')),
+    motivo text not null default '',
+    creado text not null,
+    invalidada text
+  );
+  create index aprobaciones_objeto on aprobaciones (objeto, objeto_id);
+  create table trabajos (
+    id text primary key,
+    tipo text not null,
+    carga text not null,
+    ejecucion_id text,
+    estado text not null check (estado in ('pendiente', 'tomado', 'hecho', 'fallido', 'cancelado')),
+    disponible_desde text not null,
+    intentos integer not null default 0,
+    max_intentos integer not null default 3,
+    arrendatario text,
+    arriendo_hasta text,
+    error text not null default '',
+    clave text unique,
+    creado text not null,
+    actualizado text not null
+  );
+  create index trabajos_cola on trabajos (estado, disponible_desde);
+  create table usos_ia (
+    id text primary key,
+    fecha text not null,
+    paso_id text not null,
+    proveedor text not null
+  );
+  create table conexiones (
+    canal text primary key,
+    estado text not null,
+    identidad text not null default '{}',
+    capacidades text not null default '[]',
+    permisos text not null default '[]',
+    opciones text not null default '[]',
+    token_cifrado text,
+    expira text,
+    verificado text,
+    ultimo_error text not null default '',
+    ultimo_error_fecha text,
+    actualizado text not null
+  );
+  create table estados_oauth (
+    estado text primary key,
+    canal text not null,
+    usuario text not null,
+    creado text not null,
+    expira text not null
+  );
+  create table piezas (
+    id text primary key,
+    granja_id text not null references granjas(id),
+    ejecucion_id text references ejecuciones(id),
+    paso_id text references pasos(id),
+    version integer not null,
+    contenido text not null,
+    hash text not null,
+    creado text not null,
+    actualizado text not null
+  );
+  create table pieza_versiones (
+    pieza_id text not null references piezas(id),
+    version integer not null,
+    contenido text not null,
+    hash text not null,
+    creado text not null,
+    primary key (pieza_id, version)
+  );
+  create table autorizaciones (
+    id text primary key,
+    pieza_id text not null references piezas(id),
+    hash text not null,
+    destinos text not null,
+    estado text not null check (estado in ('vigente', 'usada', 'revocada', 'vencida')),
+    usuario text not null,
+    creado text not null,
+    expira text not null,
+    motivo text not null default ''
+  );
+  create table recibos (
+    id text primary key,
+    autorizacion_id text not null references autorizaciones(id),
+    pieza_id text not null references piezas(id),
+    hash text not null,
+    canal text not null,
+    cuenta_id text not null,
+    cuenta_nombre text not null,
+    clave_idempotencia text not null unique,
+    estado text not null,
+    remoto_id text,
+    contenedor_id text,
+    enlace text,
+    error text not null default '',
+    intentos integer not null default 0,
+    creado text not null,
+    actualizado text not null
+  );
+  create table auditoria (
+    id integer primary key autoincrement,
+    fecha text not null,
+    accion text not null,
+    objeto text not null,
+    detalle text not null default '{}'
+  );
+  `,
+];
+
+export const versionEsquema = migraciones.length;
+type Globales = typeof globalThis & {
+  ezraGranjasBases?: Map<string, DatabaseSync>;
+  ezraGranjasProfundidad?: number;
+};
+const globales = globalThis as Globales;
+
+function migrar(db: DatabaseSync) {
+  const actual = Number(
+    (db.prepare("pragma user_version").get() as { user_version: number }).user_version,
+  );
+  if (actual > migraciones.length)
+    throw new Error("La base de granjas es de una versión más nueva de Ezra. Se dejó intacta.");
+  if (actual === migraciones.length) return;
+  // Antes de cambiar una base existente se guarda una copia recuperable.
+  if (actual > 0) {
+    mkdirSync(carpetaRespaldos, { recursive: true, mode: 0o700 });
+    const destino = path.join(
+      carpetaRespaldos,
+      `granjas-v${actual}-${new Date().toISOString().replace(/[:.]/g, "-")}.sqlite`,
+    );
+    db.prepare("vacuum into ?").run(destino);
+  }
+  for (let version = actual; version < migraciones.length; version++) {
+    db.exec("begin immediate");
+    try {
+      db.exec(migraciones[version]);
+      db.exec(`pragma user_version = ${version + 1}`);
+      db.exec("commit");
+    } catch (error) {
+      db.exec("rollback");
+      throw error;
+    }
+  }
+}
+
+export function base(): DatabaseSync {
+  const bases = (globales.ezraGranjasBases ??= new Map());
+  const abierta = bases.get(archivoBase);
+  if (abierta) return abierta;
+  mkdirSync(carpetaGranjas, { recursive: true, mode: 0o700 });
+  mkdirSync(carpetaMedios, { recursive: true, mode: 0o700 });
+  const db = new DatabaseSync(archivoBase);
+  db.exec(
+    "pragma journal_mode = wal; pragma busy_timeout = 8000; pragma foreign_keys = on; pragma synchronous = normal;",
+  );
+  migrar(db);
+  bases.set(archivoBase, db);
+  return db;
+}
+
+/** Transacción inmediata: dos procesos nunca intercalan una lectura y su escritura. */
+export function transaccion<T>(trabajo: (db: DatabaseSync) => T): T {
+  const db = base();
+  if (globales.ezraGranjasProfundidad) return trabajo(db);
+  db.exec("begin immediate");
+  globales.ezraGranjasProfundidad = 1;
+  try {
+    const resultado = trabajo(db);
+    db.exec("commit");
+    return resultado;
+  } catch (error) {
+    db.exec("rollback");
+    throw error;
+  } finally {
+    globales.ezraGranjasProfundidad = 0;
+  }
+}
+
+export const ahoraIso = () => new Date().toISOString();
+export const json = <T>(texto: string | null | undefined, defecto: T): T => {
+  if (!texto) return defecto;
+  try {
+    return JSON.parse(texto) as T;
+  } catch {
+    return defecto;
+  }
+};
+export function auditar(accion: string, objeto: string, detalle: object = {}) {
+  base()
+    .prepare("insert into auditoria (fecha, accion, objeto, detalle) values (?, ?, ?, ?)")
+    .run(ahoraIso(), accion, objeto, JSON.stringify(detalle));
+}
+
+/** Copia consistente de la base para respaldos, sin detener el servidor. */
+export function copiarBase(destino: string) {
+  base().prepare("vacuum into ?").run(destino);
+}

@@ -332,7 +332,7 @@ export function setupSteps(bot: Bot, day = today()): SetupStep[] {
       key: "channels",
       title: "Conectar canales en una etapa posterior",
       done: false,
-      detail: "Pendiente de la integración con GHL. Hoy no hay canales conectados.",
+      detail: "Hoy no hay canales conectados. Su autorización directa se configura por separado.",
       href: "bot/connections",
     },
   ];

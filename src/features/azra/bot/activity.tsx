@@ -64,7 +64,7 @@ export function ActivityScreen() {
           <li>Respetar los límites de cada canal, como la ventana de 24 horas de WhatsApp.</li>
         </ul>
         <p className="az-muted bt-small">
-          Estas capacidades se implementarán y verificarán con el adaptador de GHL.
+          Estas capacidades se comprobarán con conexiones directas a las plataformas autorizadas.
         </p>
       </div>
     </div>

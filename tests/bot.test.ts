@@ -54,7 +54,7 @@ test("inicio limpio: sin configurar, sin canales conectados y pasos sin avance s
   assert.ok(setupSteps(bot, "2026-10-08").every((s) => !s.done));
   assert.deepEqual(bot.conversations, []);
   const connections = currentConnections();
-  assert.equal(connections.ghl, "not_connected");
+  assert.equal(connections.integration, "not_connected");
   assert.ok(connections.channels.every((c) => !c.botEnabled && c.accountAuthorized === null));
 });
 

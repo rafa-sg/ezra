@@ -1,0 +1,878 @@
+/* Granjas: mismo lenguaje visual del Estudio Spotmi (azul noche, lima, cuadrícula y personajes). */
+.azra .eg-pestanas {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--ep-borde, #2b3b4d);
+}
+.azra .eg-pestanas button {
+  min-height: 44px;
+  padding: 8px 14px;
+  color: #c9d4de;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.azra .eg-pestanas button.eg-pestana-activa {
+  color: #d7ee9c;
+  border-bottom-color: #d7ee9c;
+}
+.azra .eg-pestanas button span {
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: #2a3a4b;
+  font-size: 12px;
+}
+.azra .eg-granjas,
+.azra .eg-conexiones,
+.azra .eg-guia,
+.azra .eg-colocar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.azra .eg-granjas input,
+.azra .eg-granjas select,
+.azra .eg-granjas textarea,
+.azra .eg-conexiones input,
+.azra .eg-conexiones select,
+.azra .eg-colocar select {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 11px;
+  color: #f3f3e9;
+  background: #0d1928;
+  border: 1px solid #3c4c5c;
+  border-radius: 7px;
+  font: inherit;
+  min-width: 0;
+}
+.azra .eg-granjas textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+.azra .eg-granjas input[type="checkbox"],
+.azra .eg-granjas input[type="radio"],
+.azra .eg-granjas input[type="file"] {
+  width: auto;
+  min-height: 0;
+}
+.azra .eg-granjas input[type="file"] {
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+}
+.azra .eg-granjas input:focus-visible,
+.azra .eg-granjas select:focus-visible,
+.azra .eg-granjas textarea:focus-visible,
+.azra .eg-conexiones select:focus-visible,
+.azra .eg-colocar select:focus-visible {
+  outline: 3px solid #d7ee9c;
+  outline-offset: 1px;
+}
+.azra .eg-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.azra .eg-subtitulo {
+  font-size: 19px;
+  margin-bottom: 12px !important;
+}
+.azra .eg-recetas,
+.azra .eg-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+.azra .eg-receta,
+.azra .eg-tarjeta-granja {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 150px;
+  padding: 18px;
+  color: #f3f3e9;
+  text-align: left;
+  background: #172638;
+  border: 1px solid #2f4052;
+  border-radius: 10px;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+}
+.azra .eg-receta:hover,
+.azra .eg-tarjeta-granja:hover {
+  border-color: #d7ee9c;
+}
+.azra .eg-receta svg {
+  color: #d7ee9c;
+}
+.azra .eg-receta span,
+.azra .eg-tarjeta-granja span:not(.ep-pill) {
+  color: #a9b6c4;
+  font-size: 13px;
+}
+.azra .eg-receta small,
+.azra .eg-tarjeta-granja small {
+  margin-top: auto;
+  color: #8193a4;
+  font-size: 12px;
+}
+.azra .eg-tarjeta-granja.eg-archivada {
+  opacity: 0.6;
+}
+.azra .eg-barra,
+.azra .eg-ejecucion,
+.azra .eg-agregar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.azra .eg-nombre {
+  flex: 1 1 220px;
+  max-width: 420px;
+}
+.azra .eg-nombre input {
+  font-size: 17px;
+  font-weight: 600;
+}
+.azra .eg-ejecucion {
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #142233;
+  border: 1px solid #2f4052;
+  border-radius: 10px;
+}
+.azra .eg-agregar > span {
+  color: #a9b6c4;
+  font-size: 13px;
+}
+.azra .eg-agregar .ep-boton {
+  min-height: 40px;
+  padding: 8px 12px;
+}
+.azra .eg-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 16px;
+  align-items: start;
+}
+
+/* Lienzo */
+.azra .eg-lienzo-marco {
+  position: relative;
+  min-width: 0;
+}
+/* Los controles van sobre el lienzo, no encima de los pasos. */
+.azra .eg-lienzo-controles {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.azra .eg-lienzo-controles .ep-boton {
+  min-height: 36px;
+  width: 36px;
+  padding: 0;
+  background: #142233;
+}
+.azra .eg-zoom {
+  min-width: 46px;
+  color: #a9b6c4;
+  font-size: 12px;
+  text-align: right;
+}
+.azra .eg-lienzo {
+  position: relative;
+  height: 560px;
+  overflow: hidden;
+  border: 1px solid #2f4052;
+  border-radius: 12px;
+  cursor: grab;
+  touch-action: none;
+  background-color: #0e1a29;
+  background-image:
+    linear-gradient(#1a2a3c 1px, transparent 1px),
+    linear-gradient(90deg, #1a2a3c 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.azra .eg-lienzo.eg-moviendo {
+  cursor: grabbing;
+}
+.azra .eg-lienzo-capa {
+  position: absolute;
+  inset: 0 auto auto 0;
+  transform-origin: 0 0;
+}
+.azra .eg-aristas {
+  position: absolute;
+  inset: 0 auto auto 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.azra .eg-arista {
+  fill: none;
+  stroke: #5c7186;
+  stroke-width: 2.5;
+}
+.azra .eg-arista-espera {
+  stroke-dasharray: 7 6;
+}
+.azra .eg-arista-activa {
+  stroke: #d7ee9c;
+}
+.azra .eg-arista-nueva {
+  stroke: #d7ee9c;
+  stroke-dasharray: 5 5;
+}
+.azra .eg-token {
+  fill: #d7ee9c;
+  stroke: #0e1a29;
+  stroke-width: 2;
+}
+.azra .eg-nodo {
+  position: absolute;
+}
+/* Personaje y tipo arriba; el nombre usa todo el ancho para no cortarse. */
+.azra .eg-nodo-boton {
+  position: relative;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  grid-template-rows: 46px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "arte tipo"
+    "titulo titulo"
+    "estado estado";
+  gap: 6px 8px;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  color: #f3f3e9;
+  text-align: left;
+  background: #172638;
+  border: 1px solid #36495d;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px #0007;
+  cursor: pointer;
+}
+.azra .eg-nodo-revision .eg-nodo-boton {
+  border-color: #6b6234;
+}
+.azra .eg-nodo-publicacion .eg-nodo-boton {
+  border-color: #5e7340;
+}
+.azra .eg-nodo.eg-seleccionado .eg-nodo-boton {
+  border-color: #d7ee9c;
+  box-shadow:
+    0 0 0 2px #d7ee9c55,
+    0 10px 24px #0007;
+}
+.azra .eg-nodo-arte {
+  grid-area: arte;
+}
+.azra .eg-nodo-arte .ep-pixel {
+  width: 46px;
+  height: 46px;
+}
+.azra .eg-nodo-texto {
+  display: contents;
+}
+.azra .eg-nodo-texto strong {
+  grid-area: titulo;
+  align-self: start;
+  font-size: 13px;
+  line-height: 1.25;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.azra .eg-nodo-tipo {
+  grid-area: tipo;
+  align-self: center;
+  padding-right: 22px;
+  color: #a9b6c4;
+  font-size: 10px;
+  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.azra .eg-nodo-texto .eg-estado {
+  grid-area: estado;
+  justify-self: start;
+}
+.azra .eg-falta {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  padding: 2px 6px;
+  color: #ffd9a8;
+  background: #4a3a24;
+  border-radius: 10px;
+  font-size: 11px;
+}
+.azra .eg-asa {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border: 2px solid #0e1a29;
+  border-radius: 50%;
+  background: #5c7186;
+}
+.azra .eg-asa-entrada {
+  left: -8px;
+}
+.azra .eg-asa-salida {
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  margin-top: -10px;
+  background: #d7ee9c;
+  cursor: crosshair;
+}
+.azra .eg-ayuda-lienzo {
+  margin-top: 8px !important;
+}
+
+/* Estados de los pasos, siempre con texto además del color. */
+.azra .eg-estado {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: #24364a;
+  color: #c9d4de;
+}
+.azra .eg-estado-recolectando,
+.azra .eg-estado-generando,
+.azra .eg-estado-en_cola {
+  background: #2c4255;
+  color: #bfe3f2;
+}
+.azra .eg-estado-esperando_manual,
+.azra .eg-estado-en_revision,
+.azra .eg-estado-esperando_autorizacion,
+.azra .eg-estado-desactualizado {
+  background: #4a4224;
+  color: #f4e3a6;
+}
+.azra .eg-estado-aprobado,
+.azra .eg-estado-completado,
+.azra .eg-rec-publicado,
+.azra .eg-rec-propuesta_enviada,
+.azra .eg-rec-borrador_subido {
+  background: #2f4a2c;
+  color: #d7ee9c;
+}
+.azra .eg-estado-bloqueado,
+.azra .eg-estado-fallido,
+.azra .eg-rec-fallido,
+.azra .eg-rec-desconocido {
+  background: #4b2d2a;
+  color: #ffcfc4;
+}
+.azra .eg-estado-cancelado,
+.azra .eg-rec-cancelado {
+  background: #2a2f36;
+  color: #9aa6b2;
+}
+
+/* Personajes: solo se mueven si el paso está trabajando de verdad. */
+.azra .eg-trabajando .eg-cuerpo {
+  animation: eg-respira 1.2s steps(2) infinite;
+}
+.azra .eg-pixel-generando .eg-lineas {
+  animation: eg-teclea 0.6s steps(2) infinite;
+}
+.azra .eg-pixel-generando .eg-pantalla {
+  fill: #2b4a35;
+}
+.azra .eg-pixel-recolectando .eg-lupa {
+  animation: eg-busca 1.4s steps(4) infinite;
+}
+.azra .eg-pixel-esperando .eg-antena,
+.azra .eg-pixel-esperando_manual .eg-antena,
+.azra .eg-pixel-en_revision .eg-antena {
+  fill: #f1c775;
+}
+.azra .eg-pixel-cancelado,
+.azra .eg-pixel-desactualizado {
+  opacity: 0.6;
+}
+@keyframes eg-respira {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@keyframes eg-teclea {
+  50% {
+    opacity: 0.25;
+  }
+}
+@keyframes eg-busca {
+  25% {
+    transform: translate(3px, -2px);
+  }
+  50% {
+    transform: translate(6px, 0);
+  }
+  75% {
+    transform: translate(3px, 2px);
+  }
+}
+
+/* Inspector */
+.azra .eg-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  max-height: 760px;
+  overflow-y: auto;
+  padding: 18px;
+  background: #142233;
+  border: 1px solid #2f4052;
+  border-radius: 12px;
+}
+.azra .eg-inspector.eg-vacio {
+  color: #a9b6c4;
+}
+.azra .eg-orden {
+  margin: 0;
+  padding-left: 18px;
+}
+.azra .eg-orden .ep-boton {
+  min-height: 36px;
+  text-align: left;
+}
+.azra .eg-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: #c9d4de;
+  font-size: 13px;
+}
+.azra .eg-campo legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+.azra .eg-dos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.azra .eg-fuente {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.azra .eg-fuente input,
+.azra .eg-fuente select {
+  flex: 1 1 140px;
+}
+.azra .eg-inspector .eg-fuente input {
+  flex: 1 1 100%;
+}
+.azra .eg-subida {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed #3c4c5c;
+  border-radius: 8px;
+}
+.azra .eg-inspector .ep-checkbox span {
+  display: flex;
+  flex-direction: column;
+}
+.azra .eg-inspector .ep-checkbox small {
+  color: #8193a4;
+}
+.azra .eg-conexiones-nodo ul,
+.azra .eg-faltantes ul,
+.azra .eg-artefactos,
+.azra .eg-recibos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.azra .eg-conexiones-nodo li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+.azra .eg-conexiones-nodo .ep-icono,
+.azra .eg-fuente .ep-icono {
+  min-height: 36px;
+  width: 36px;
+  padding: 0;
+}
+.azra .eg-faltantes {
+  margin: 0;
+  padding: 12px 14px;
+  color: #ffe2b8;
+  background: #3b3022;
+  border: 1px solid #6e5634;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.azra ul.eg-faltantes {
+  list-style: disc;
+  padding-left: 30px;
+}
+.azra .eg-paso {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #2f4052;
+}
+.azra .eg-paso h3,
+.azra .eg-paso h4,
+.azra .eg-bloque h4 {
+  font-size: 14px;
+  margin: 0;
+}
+.azra .eg-paso p {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.azra .eg-datos {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+.azra .eg-datos dt {
+  color: #8193a4;
+}
+.azra .eg-datos dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.azra .eg-artefacto {
+  padding: 10px;
+  background: #0f1c2b;
+  border: 1px solid #2b3b4d;
+  border-radius: 8px;
+}
+.azra .eg-artefacto.eg-reemplazado {
+  opacity: 0.6;
+}
+.azra .eg-artefacto-cabecera {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.azra .eg-procedencia {
+  color: #c3d6a6;
+  font-size: 12px;
+}
+.azra .eg-contenido {
+  max-height: 260px;
+  overflow: auto;
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: #dbe3ea;
+}
+.azra .eg-medio {
+  display: block;
+  max-width: 100%;
+  max-height: 340px;
+  margin-top: 8px;
+  border-radius: 8px;
+  background: #0b1520;
+}
+.azra .eg-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: #101d2d;
+  border: 1px solid #2b3b4d;
+  border-radius: 8px;
+}
+.azra .ep-boton.eg-peligro {
+  border-color: #8b5a4d;
+  color: #ffd9cf;
+}
+.azra .ep-boton.eg-peligro:hover {
+  background: #4b2d2a;
+}
+
+/* Vista previa y publicación */
+.azra .eg-vista {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: #142233;
+  border: 1px solid #3f5531;
+  border-radius: 12px;
+}
+.azra .eg-vista-cabecera {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+.azra .eg-vista-cabecera h3 {
+  font-size: 19px;
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+.azra .ep-pill.eg-ok {
+  background: #2f4a2c;
+  color: #d7ee9c;
+}
+.azra .eg-canales-vista {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+.azra .eg-tarjeta-canal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  background: #0f1c2b;
+  border: 1px solid #2b3b4d;
+  border-radius: 10px;
+}
+.azra .eg-tarjeta-canal header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.azra .eg-sin-medio {
+  padding: 26px 12px;
+  color: #8193a4;
+  text-align: center;
+  border: 1px dashed #3c4c5c;
+  border-radius: 8px;
+}
+.azra .eg-simulacion {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.azra .eg-sim-bien,
+.azra .eg-sim-mal {
+  padding: 12px;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.azra .eg-sim-bien {
+  background: #1e3324;
+  border: 1px solid #3f6a45;
+}
+.azra .eg-sim-mal {
+  background: #3b2622;
+  border: 1px solid #7a4a3e;
+}
+.azra .eg-sim-mal ul,
+.azra .eg-simulacion ol {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+.azra .eg-autorizar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #2f4052;
+}
+.azra .eg-recibos li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  background: #0f1c2b;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.azra .eg-recibos a {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: #d7ee9c;
+}
+.azra .eg-recibos code,
+.azra .eg-vista code,
+.azra .eg-almacen code,
+.azra .eg-guia code {
+  font-size: 12px;
+  color: #c3d6a6;
+  overflow-wrap: anywhere;
+}
+.azra .eg-historial {
+  color: #c9d4de;
+}
+.azra .eg-historial ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
+/* Conexiones y almacenamiento */
+.azra .eg-conexiones {
+  margin-top: 40px;
+}
+.azra .eg-conexiones h2 {
+  font-size: 24px;
+}
+.azra .eg-conexion-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.azra .ep-pill.eg-con-conectada_publicacion {
+  background: #2f4a2c;
+  color: #d7ee9c;
+}
+.azra .ep-pill.eg-con-vencida,
+.azra .ep-pill.eg-con-verificacion_fallida {
+  background: #4b2d2a;
+  color: #ffcfc4;
+  border-color: #7a4a3e;
+}
+.azra .ep-pill.eg-con-restringida,
+.azra .ep-pill.eg-con-conectada_lectura {
+  background: #4a4224;
+  color: #f4e3a6;
+  border-color: #6e5634;
+}
+.azra .ep-pill.eg-con-sin_configurar,
+.azra .ep-pill.eg-con-requiere_oauth {
+  background: #24364a;
+  color: #c9d4de;
+  border-color: #3c4c5c;
+}
+.azra .eg-almacen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  background: #142233;
+  border: 1px solid #2f4052;
+  border-radius: 12px;
+}
+.azra .eg-almacen h2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 19px;
+}
+.azra .eg-almacen .ep-boton {
+  align-self: flex-start;
+}
+.azra .eg-guia h2 {
+  font-size: 22px;
+}
+.azra .eg-guia h3 {
+  font-size: 15px;
+  margin: 0;
+}
+.azra .eg-guia ul {
+  margin: 0;
+  padding-left: 20px;
+}
+.azra .eg-bloque-codigo {
+  display: block;
+  padding: 10px;
+  background: #0b1520;
+  border-radius: 6px;
+}
+.azra .eg-colocar {
+  gap: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+  border: 1px solid #3f5531;
+  border-radius: 8px;
+}
+
+@media (max-width: 1100px) {
+  .azra .eg-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .azra .eg-inspector {
+    max-height: none;
+  }
+}
+@media (max-width: 600px) {
+  .azra .eg-lienzo {
+    height: 420px;
+  }
+  .azra .eg-vista,
+  .azra .eg-almacen {
+    padding: 14px;
+  }
+  .azra .eg-ejecucion {
+    padding: 12px;
+  }
+  .azra .eg-agregar .ep-boton {
+    flex: 1 1 calc(50% - 12px);
+  }
+  .azra .eg-datos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .azra .eg-datos dt {
+    margin-top: 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .eg-trabajando .eg-cuerpo,
+  .azra .eg-pixel .eg-lineas,
+  .azra .eg-pixel .eg-lupa {
+    animation: none !important;
+  }
+  .azra .eg-token {
+    display: none;
+  }
+}
+.azra .eg-conexion-cuerpo .ep-pill {
+  align-self: flex-start;
+}
+/* Cada fuente (nombre + enlace) se agrupa para distinguirla de la siguiente. */
+.azra .eg-inspector .eg-fuente:has(input + input) {
+  padding: 10px;
+  border: 1px solid #2b3b4d;
+  border-radius: 8px;
+}

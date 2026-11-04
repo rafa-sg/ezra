@@ -1,4 +1,36 @@
+## Relevo vigente · Granjas Spotmi implementadas · 27 de octubre de 2026 (tarde)
+
+Implementado por Claude Code y verificado: granjas en `src/lib/granjas/` (SQLite, cola y trabajador, adaptadores de Instagram, Facebook, TikTok y Spotmi web, vista previa, autorización y recibos), API en `src/app/api/granjas/**` (la respuesta OAuth vuelve a `src/app/conexiones/[canal]/callback`) e interfaz en `src/features/azra/granjas/` integrada en `estudio.tsx` (pestaña «Granjas» y tarjetas de Conexiones).
+
+- Pruebas: `tests/granjas.test.ts` (11) y `tests/integration/granjas.test.ts`. Resultado: check 82/82, compilación en `.next-verificar` y 7/7 integraciones.
+- Primera prueba con datos reales: granja «Primera prueba · Noche de Catrinas (Ataco)», detenida en «Tu revisión». Nada se aprobó ni se publicó. Siguiente paso: que el propietario revise, defina la imagen y las cuentas, y apruebe.
+- Codex preparó en spotmi-web `supabase/migrations/20261103_propuestas_ezra.sql` y su prueba de ataques, sin aplicarlas.
+- Guía y tabla de capacidades: `docs/ESTUDIO_SPOTMI.md` › Granjas. Decisiones: `docs/DECISIONS.md`. Pendientes: `docs/TASKS.md`.
+- Arneses visuales sin versionar: `work/granjas-visual.mts` y `work/granjas-flujo.mts`. Usan Clerk sin red, datos en `work/` y una compilación en `.next-visual`. Al terminar, restaurar `tsconfig.json` y `next-env.d.ts` y borrar `.next-visual`.
+
+## Relevo anterior · Granjas Spotmi · 27 de octubre de 2026 (mañana)
+
+El propietario pidió un prompt en inglés para que Claude construya las granjas visuales y las conexiones directas. Lee `CLAUDE_GRANJAS_SPOTMI.md` y `docs/relevos/granjas-spotmi-20261027/ESTADO_VERIFICADO.json` antes de continuar. Este nuevo alcance aún no se ha implementado. La interfaz vigente sigue siendo el Estudio Spotmi oscuro; no reactivar diseños anteriores.
+
+El encargo de Instagram seleccionado tiene un resultado parcial manual guardado como versión 2, en revisión. No se ejecutó Gemini, no hay aprobación ni publicación y faltan verificaciones. Las conexiones sociales de publicación todavía no existen; la lectura pública de Spotmi sí respondió. Relee el estado vivo antes de editar: el propietario puede seguir trabajando.
+
+El contenido siguiente conserva el relevo anterior como historial.
+
+---
+
+# Estado vigente · 27 de octubre de 2026
+
+El propietario decidió continuar con Codex; este archivo conserva el relevo para futuras sesiones. Lee primero docs/ESTUDIO_SPOTMI.md y el apartado 2026-10-27 de AGENTS.md. El foco actual es Ezra para Spotmi, sin dependencia de Metricool/HighLevel.
+
+---
+
 # Azra — contexto de continuidad para Claude Code
+
+## Relevo prioritario — navegación más fluida (2026-10-07, noche)
+
+- Solo interacción/movimiento, sin funciones nuevas: `src/features/azra/motion.css` (+ import en `src/app/azra/layout.tsx`), tooltips `data-tooltip` en modo compacto en `shell.tsx`, envoltorio `az-view` en `bot/module.tsx`. Detalle en DECISIONS. Evidencia en `work/azra-validation/motion/`. El video de referencia no llegó adjunto.
+- Nota previa (no cambiada): en `/azra/content` y `/azra/ai/chat` la barra lateral está forzada a compacta; en contenido el botón de expandir no tiene efecto.
+- Verificación: check 64/64, build, integración 6/6; navegador (3107, Clerk offline): hover sin borrar el activo ni mover filas, halo con entrada/salida graduales y con foco de teclado sin mover vecinos, tooltips compactos, íconos fijos al contraer, diálogo con Escape, cambio de sección inmediato, cajón móvil, movimiento reducido.
 
 ## Relevo prioritario — «Spotmi» y formulario de Empresa (2026-10-07, noche)
 
@@ -337,3 +369,18 @@ Stage 2 cuenta (2026-10-06): `npm run check` 50/50 (4 nuevas), build y 5/5 integ
 Última pasada sobre el código final: `npm run check` correcto (46/46), `npm run build` correcto, `npm run test:integration` correcto (5/5), `git diff --check` sin errores. No se hicieron commits ni despliegues. Se dejaron los cambios locales para revisar. Los cambios preexistentes del piloto y su documentación siguen en el árbol de trabajo; no atribuirlos a Azra ni revertirlos.
 
 Se detuvo después de completar y verificar las prioridades de Stage 1 y escribir INVENTORY/NEXT_STEPS. Actualización 2026-10-06: módulo de cuenta (#6–#9) implementado y verificado; sidebar sin las 8 secciones descartadas. Después: tablero y shell ajustados a las capturas nuevas del propietario (52/52, build, 5/5; headless 1440/390 sin desbordamiento; crear subcuenta, pin, Escape, idioma). Prospección hecha después (55/55, build, 5/5; headless 1440/900/390). Videos/capturas nuevas del propietario: si llegan, revisarlas antes de seguir (ffmpeg disponible para extraer fotogramas; la grabación anterior estaba en una carpeta temporal inaccesible). El siguiente cambio de código es workflows #10 / teléfono #11 / correo #12–#17. Empezar por inspeccionar #10 y #11; extraer de `account/users.tsx` tabla/filtros/paginación a un módulo compartido cuando teléfono (#11) los reutilice. Ninguna clave o decisión externa bloquea ese siguiente paso.
+
+
+## Cierre verificado · Granjas · 27 de octubre de 2026
+
+La interfaz de Granjas está integrada en el estudio: recetas, lienzo de agentes, conexiones entre pasos, inspector, encargos vinculados, ejecución manual, revisión y vista previa. Se conserva el código reciente del otro editor; no se sobrescribió el backend de Claude ni la integración concurrente. Conexiones incluye Instagram, Facebook, TikTok y Spotmi, con requisitos y estados reales; una tarjeta visible no acredita una cuenta conectada.
+
+Verificación final de la versión integrada en copia aislada: `npm run check` pasó (lint, TypeScript y 82 pruebas); build con Webpack y `EZRA_DIST_DIR=.next-verificar` pasó; integración HTTP pasó 7/7, incluidas autenticación, roles y Granjas. Navegador a 1440 px: lienzo e inspector visibles; Alt+flecha y Guardar comprobados. A 390 y 360 px, ancho de documento igual al viewport y sin claves g_* visibles. La regla CSS de movimiento reducido se revisó; no se emuló la preferencia del sistema. La build temporal y los servidores de QA se retiran al cerrar.
+
+La comprobación local adicional del encargo `ae58cf22-6697-497a-8b95-5a26cc2c3f41` creó la granja `baa6585d-ee21-4ccf-be0b-67532e722216` («Primera prueba · Instagram»), ejecución `6d697f57-e00f-40a7-9699-0e85eae7d6ec` y pieza `f4470a71-bd41-450c-84d6-808ba36c9cd8`. Se leyó la ficha oficial (HTTP 200), se importó el encargo y se preparó el texto manualmente. Estado: esperando al dueño, 0 autorizaciones y 0 recibos. No se ejecutó IA, no se subieron medios y no se publicó. Informe: `work/primera-prueba-granjas-real.json`. La granja preparada antes por Claude se conserva también; no se borraron datos.
+
+Los registros de la app viven en `data/granjas/granjas.sqlite`; medios en `data/granjas/medios`; encargos previos en `data/produccion-spotmi.json`. No es almacenamiento remoto ni una subida a Spotmi. La migración y sus ataques están preparados en spotmi-web (`20261103_propuestas_ezra.sql` y `supabase/tests/propuestas_ezra.sql`), SIN aplicar ni ejecutar; falta validarlos en una base aislada. No se regeneraron tipos de una migración sin aplicar.
+
+Pendiente externo: conectar y comprobar cuentas reales y permisos, contrastar el anuncio original de Instagram, aportar imagen autorizada si el canal la exige, y aprobación explícita del contenido exacto y de cada cuenta. TikTok queda en envío de borrador y exige video. Spotmi exige migración aplicada y cuenta editorial habilitada. Gemini y servicios de pago no se activaron; no hubo push, merge ni despliegue.
+
+Matriz de capacidades y uso: `docs/GRANJAS_CAPACIDADES.md`. Contenido exacto: `docs/relevos/granjas-spotmi-20261027/PRIMERA_PUBLICACION.md`. El siguiente paso del propietario es revisar ese texto y elegir cuentas; ninguna aprobación documental sustituye la autorización por versión y destinos en la app.

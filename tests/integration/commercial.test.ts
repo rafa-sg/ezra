@@ -101,9 +101,9 @@ test(
       const businesses = (await directoryResponse.json()).businesses;
       assert.deepEqual(
         businesses.map((b: { id: string }) => b.id),
-        ["sgmotos-main", "motoxspress-main", "owner-main"],
+        ["spotmi", "sgmotos-main", "motoxspress-main", "owner-main"],
       );
-      assert.ok(!businesses.some((b: { id: string }) => b.id === "spotmi"));
+      assert.ok(businesses.some((b: { id: string }) => b.id === "spotmi"));
       for (const organizationId of ["sgmotos", "motoxspress"]) {
         assert.equal(
           (

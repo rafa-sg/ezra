@@ -6,7 +6,7 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 export default tseslint.config(
   {
     ignores: [
-      ".next/**",
+      ".next/**", ".next-*/**",
       "next-env.d.ts",
       "work/**",
       "data/**",

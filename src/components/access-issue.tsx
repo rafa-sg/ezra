@@ -1,30 +1,29 @@
 "use client";
 import { useState } from "react";
 import { useClerk } from "@clerk/nextjs";
-import { Mark } from "./ui";
+import { Sparkles } from "lucide-react";
+import textos from "@/features/azra/messages/es.json";
+import "@/styles/access.css";
 
-/** Shown when Clerk has a session but the account cannot open the panel
- * (unlinked, blocked or temporarily unverifiable). Same texts as the pilot entry. */
+/** La sesión existe, pero la cuenta necesita resolver su acceso al estudio. */
 export function AccessIssue({ message }: { message: string }) {
   const { signOut } = useClerk();
   const [error, setError] = useState(message);
   return (
-    <main className="loading-state">
-      <Mark />
-      <h1>Revisa tu acceso</h1>
+    <main className="access-issue">
+      <Sparkles size={32} aria-hidden="true" />
+      <h1>{textos.p_accesoRevisar}</h1>
       <p role="alert">{error}</p>
-      <button className="button secondary" onClick={() => window.location.reload()}>
-        Volver a intentar
+      <button className="access-reintentar" onClick={() => window.location.reload()}>
+        {textos.p_accesoReintentar}
       </button>
       <button
-        className="text-button"
+        className="access-otro"
         onClick={() =>
-          void signOut({ redirectUrl: "/" }).catch(() =>
-            setError("No se pudo cerrar la sesión. Vuelve a intentar."),
-          )
+          void signOut({ redirectUrl: "/" }).catch(() => setError(textos.p_accesoErrorSalir))
         }
       >
-        Usar otro correo
+        {textos.p_accesoOtroCorreo}
       </button>
     </main>
   );

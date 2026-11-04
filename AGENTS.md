@@ -43,3 +43,23 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## 2026-10-27 · Dirección vigente: Estudio Spotmi
+
+El propietario confirmó que el centro de producción vive en Ezra y se conecta a Spotmi; Astra es el modelo de Codex. Se añade /azra/produccion para administración, con 11 especialidades, encargos persistentes, cadena por versiones, revisión, calendario y exportación. Los otros negocios conservan sus datos y permisos.
+
+El propietario pidió desvincular Metricool y HighLevel: no reintroducirlos como dependencia del producto. El plugin Metricool se desvinculó de Codex; GoHighLevel no estaba instalado. En el código solo había un contrato futuro de GHL: se sustituyó por estados de conexión directa. No se revocaron accesos sociales en Meta ni se cancelaron suscripciones.
+
+La lectura de Spotmi usa sus fichas públicas y la clave anónima, nunca service role. Dominio confirmado: https://spotmi.com.sv. Los adaptadores locales de Codex y Claude usan la sesión del propietario, con comandos/archivos/plugins desactivados y búsqueda pública solo para el cazador. No activar una API facturada automáticamente. Gemini sigue detrás de configuración explícita. Toda entrega vuelve a revisión; no se publica en redes desde esta versión.
+
+Guía vigente y límites: docs/ESTUDIO_SPOTMI.md. La documentación anterior conserva el historial; las decisiones de este apartado prevalecen para el nuevo estudio.
+
+## 2026-10-27 · Una sola interfaz activa
+
+Por solicitud expresa del propietario, Estudio Spotmi es la única interfaz. Todas las cuentas entran en `/azra/produccion`; las cuentas de negocio ven el nuevo diseño en modo de vista y administración mantiene las funciones privadas. Las rutas anteriores de chat, contenido, bot, agencia y configuración redirigen al estudio. No reactivar el shell, CSS ni presentación arcade anteriores. La pantalla de acceso también usa la nueva paleta. Los datos y permisos originales se conservan.
+
+Verificado: 71 pruebas locales, 6 integraciones, lint, TypeScript y build. Las integraciones cubren las redirecciones, el acceso nuevo y el aislamiento entre cuentas con datos de prueba.
+
+## 2026-10-27 · Granjas
+
+Por pedido del propietario (`CLAUDE_GRANJAS_SPOTMI.md`), Ezra puede publicar, pero solo así: el trabajador local envía una versión cuya huella el propietario aprobó, a las cuentas que autorizó escribiendo `PUBLICAR`. Conectar una cuenta, aprobar un contenido o que un modelo lo pida no publica nada. Las granjas guardan sus datos en SQLite local (`data/granjas/`). Las verificaciones se compilan con `EZRA_DIST_DIR=.next-verificar`; después hay que restaurar `tsconfig.json` y `next-env.d.ts`. Detalle en `docs/DECISIONS.md` y `docs/ESTUDIO_SPOTMI.md`.

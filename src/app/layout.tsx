@@ -1,37 +1,38 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { esMX } from "@clerk/localizations";
 import type { Metadata } from "next";
+import textos from "@/features/azra/messages/es.json";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "ezrá · Marketing para tu comercial",
-  description: "Catálogo y publicaciones para Sgmotos y motoxspress.",
+  title: "ezrá · Spotmi",
+  description: textos.p_metaDescripcion,
   robots: { index: false, follow: false },
 };
-// Clerk's Spanish texts for the EZRA sign-in design (Salvadoran «vos»).
+// El acceso comparte el tono y los textos del Estudio Spotmi.
 const localization = {
   ...esMX,
-  dividerText: "o con tu correo",
-  formFieldInputPlaceholder__emailAddress: "tu@correo.com",
-  formFieldInputPlaceholder__password: "Tu contraseña",
-  formFieldInputPlaceholder__signUpPassword: "Creá una contraseña",
+  dividerText: textos.p_clerkDivider,
+  formFieldInputPlaceholder__emailAddress: textos.p_clerkEmail,
+  formFieldInputPlaceholder__password: textos.p_clerkPassword,
+  formFieldInputPlaceholder__signUpPassword: textos.p_clerkNewPassword,
   signIn: {
     ...esMX.signIn,
     start: {
       ...esMX.signIn?.start,
-      title: "Iniciá sesión",
-      subtitle: "Bienvenido a EZRA.",
-      actionText: "¿No tenés cuenta?",
-      actionLink: "Registrate",
+      title: textos.p_clerkInTitle,
+      subtitle: textos.p_clerkInSubtitle,
+      actionText: textos.p_clerkNoAccount,
+      actionLink: textos.p_clerkRegister,
     },
   },
   signUp: {
     ...esMX.signUp,
     start: {
       ...esMX.signUp?.start,
-      title: "Creá tu cuenta",
-      subtitle: "Usá el correo que te asignó la administración.",
-      actionText: "¿Ya tenés cuenta?",
-      actionLink: "Iniciá sesión",
+      title: textos.p_clerkUpTitle,
+      subtitle: textos.p_clerkUpSubtitle,
+      actionText: textos.p_clerkHasAccount,
+      actionLink: textos.p_clerkInTitle,
     },
   },
 };
@@ -48,7 +49,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           appearance={{
             // Official Clerk option; development keys stay in use, only the banner is hidden.
             options: { unsafe_disableDevelopmentModeWarnings: true },
-            variables: { colorPrimary: "#7860db", fontFamily: "inherit", borderRadius: "0.75rem" },
+            variables: {
+              colorPrimary: "#d7ee9c",
+              colorPrimaryForeground: "#172224",
+              colorBackground: "#172638",
+              colorForeground: "#f3f3e9",
+              colorMutedForeground: "#a9b6c4",
+              colorInput: "#101d2d",
+              colorInputForeground: "#f3f3e9",
+              colorBorder: "#405165",
+              colorRing: "#d7ee9c",
+              fontFamily: "inherit",
+              borderRadius: "0.5rem",
+            },
           }}
         >
           {children}

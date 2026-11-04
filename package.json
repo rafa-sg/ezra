@@ -13,6 +13,7 @@
     "check": "npm run lint && npm run typecheck && npm test",
     "test:integration": "tsx --test tests/integration/*.test.ts",
     "access:owner": "tsx scripts/configure-owner.ts",
+    "granjas:trabajador": "node --env-file-if-exists=.env.local --import tsx scripts/granjas-trabajador.ts",
     "format": "prettier --write ."
   },
   "engines": {

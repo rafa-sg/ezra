@@ -113,7 +113,10 @@ function Layout({ path, name }: { path: string; name: string }) {
         ) : !bot ? (
           <p role="status">Cargando el bot…</p>
         ) : (
-          <Section path={path} />
+          // Keyed by section: only the content fades in; the submenu stays put.
+          <div key={path} className="az-view">
+            <Section path={path} />
+          </div>
         )}
       </section>
     </div>
@@ -148,18 +151,21 @@ function ConnectionsScreen() {
       <div className="bt-card">
         <h2>Canales del bot</h2>
         <p className="az-muted">
-          El bot responderá por WhatsApp, Facebook Messenger e Instagram mediante GHL en una etapa
-          posterior. Hoy no hay conexiones: todo funciona solo en el simulador local.
+          Las respuestas se preparan y revisan en Ezra. Hoy no hay canales sociales conectados: el
+          bot funciona en el simulador local.
         </p>
         <ConnectionsPanel connections={connections} />
       </div>
       <div className="bt-card">
         <h2>Qué falta para conectarlo</h2>
         <ul className="bt-list">
-          <li>Verificar qué herramientas y permisos ofrece realmente el MCP de GHL.</li>
           <li>
-            Recibir mensajes requiere webhooks o API de GHL y un proceso siempre activo; un MCP por
-            sí solo no mantiene un bot funcionando.
+            Verificar los permisos oficiales de cada plataforma y autorizar únicamente las cuentas
+            que elijas.
+          </li>
+          <li>
+            Recibir mensajes requiere la API oficial de la plataforma y un proceso que atienda los
+            mensajes. Las respuestas con IA necesitan revisión y límites claros.
           </li>
           <li>Autorizar cada cuenta por separado y habilitarla para el bot.</li>
           <li>
