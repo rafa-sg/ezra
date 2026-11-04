@@ -2,7 +2,7 @@
   "name": "ezra-spotmi",
   "version": "0.1.0",
   "private": true,
-  "description": "Estudio editorial local para Spotmi · ezrá",
+  "description": "Panel comercial para Sgmotos y motoxspress · ezrá",
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
@@ -12,12 +12,17 @@
     "test": "tsx --test tests/*.test.ts",
     "check": "npm run lint && npm run typecheck && npm test",
     "test:integration": "tsx --test tests/integration/*.test.ts",
+    "access:owner": "tsx scripts/configure-owner.ts",
+    "granjas:trabajador": "node --env-file-if-exists=.env.local --import tsx scripts/granjas-trabajador.ts",
     "format": "prettier --write ."
   },
   "engines": {
     "node": ">=22"
   },
   "dependencies": {
+    "@clerk/localizations": "^4.21.2",
+    "@clerk/nextjs": "^7.9.10",
+    "@google/genai": "^2.27.0",
     "jszip": "^3.10.2",
     "lucide-react": "^1.52.0",
     "next": "^16.3.8",

@@ -1,3 +1,15 @@
+# Ezra · Estudio Spotmi
+
+El centro de producción para tu web Spotmi y piezas de Instagram, TikTok y Facebook vive en `/azra/produccion`. Todas las cuentas entran allí al iniciar sesión; los negocios lo ven en modo de vista y administración mantiene las herramientas privadas. Incluye 11 especialidades, encargos guardados, revisión por versión, planificación local y exportación.
+
+El chat, el panel de contenido, el bot y la configuración del diseño anterior están deshabilitados y sus enlaces redirigen al estudio. La pantalla de acceso también usa el nuevo diseño.
+
+Consulta [la guía del estudio](docs/ESTUDIO_SPOTMI.md) para configurar las IA, leer eventos y spots reales y conocer el alcance de publicación y video. No depende de Metricool ni HighLevel.
+
+El material siguiente documenta el piloto anterior y se conserva como historial. Los negocios y sus datos no se borraron.
+
+---
+
 # ezrá · el estudio editorial de Spotmi
 
 Un piloto local para preparar, revisar y organizar contenido turístico de El Salvador. **Gasto adicional de esta versión: USD 0.** No necesita claves de API ni cuentas nuevas.

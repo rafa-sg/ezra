@@ -1,0 +1,523 @@
+/* Interaction and motion layer for the ezrá panel (2026-10-07).
+   Same modules, routes and controls; only how they respond. Loaded after azra.css.
+   Rules: animate only the properties that change, hover effects only on devices with a
+   real pointer, no permanent animations, and nothing moves under reduced motion. */
+.azra {
+  --az-dur-hover: 140ms;
+  --az-dur-panel: 210ms;
+  --az-dur-halo-in: 220ms;
+  --az-dur-halo-out: 360ms;
+  --az-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --az-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --az-hover-bg: #f5f2fd;
+  --az-hover-text: #3f3a4d;
+  --az-hover-icon: #6b55cf;
+  --az-pressed-bg: #ebe5fb;
+  --az-input-hover: #d9d2f1;
+  --az-ring: 0 0 0 3px #7760d83d;
+  --az-focus-outline: 2px solid var(--az-primary);
+  --az-halo: 0 0 0 4px #b9a8f62e, 0 0 16px 4px #8f78ff47, 0 0 30px 8px #b69cff29;
+  --az-card-hover-shadow: 0 4px 14px #29243f0f;
+  --az-tooltip-bg: #2b2540;
+}
+
+/* ---------- Navigation rows (sidebar, bot submenu, content tools, chat sidebar) ---------- */
+.azra .az-nav-item,
+.azra .az-back,
+.azra .az-switch,
+.azra .bt-nav nav a,
+.azra .ec-tools > button,
+.azra .ec-tools > a,
+.azra .az-chat-sidebar > button {
+  transition:
+    background-color var(--az-dur-hover) var(--az-ease),
+    color var(--az-dur-hover) var(--az-ease),
+    border-color var(--az-dur-hover) var(--az-ease),
+    box-shadow var(--az-dur-hover) var(--az-ease);
+}
+.azra .az-nav-item svg,
+.azra .az-back svg,
+.azra .bt-nav nav a svg,
+.azra .ec-tools > button svg,
+.azra .az-chat-sidebar > button svg {
+  transition: color var(--az-dur-hover) var(--az-ease);
+}
+/* Active section: lilac background, violet text/icon and a left bar, so the
+   selection never depends on color alone. Hovering other rows never clears it. */
+.azra .az-nav-item.is-active,
+.azra .bt-nav nav a.is-active {
+  background: var(--az-lilac);
+  color: var(--az-primary);
+  box-shadow: inset 3px 0 0 var(--az-primary);
+}
+.azra .az-nav-item.is-active svg,
+.azra .bt-nav nav a.is-active svg {
+  color: var(--az-primary);
+}
+@media (hover: hover) and (pointer: fine) {
+  .azra .az-nav-item:not(.is-active):not([aria-disabled="true"]):hover,
+  .azra .az-back:hover,
+  .azra .bt-nav nav a:not(.is-active):hover,
+  .azra .ec-tools > button:not(:disabled):hover,
+  .azra .ec-tools > a:hover,
+  .azra .az-chat-sidebar > button:not(:disabled):not([aria-disabled="true"]):hover {
+    background: var(--az-hover-bg);
+    color: var(--az-hover-text);
+  }
+  .azra .az-nav-item:not(.is-active):not([aria-disabled="true"]):hover svg,
+  .azra .az-back:hover svg,
+  .azra .bt-nav nav a:not(.is-active):hover svg,
+  .azra .ec-tools > button:not(:disabled):hover svg,
+  .azra .az-chat-sidebar > button:not(:disabled):not([aria-disabled="true"]):hover svg {
+    color: var(--az-hover-icon);
+  }
+  .azra .az-switch:hover {
+    border-color: var(--az-input-hover);
+    background: var(--az-hover-bg);
+  }
+}
+/* Pressed: a brief, quiet response (also the touch feedback). */
+.azra .az-nav-item:not([aria-disabled="true"]):active,
+.azra .az-back:active,
+.azra .az-switch:active,
+.azra .bt-nav nav a:active,
+.azra .ec-tools > button:not(:disabled):active,
+.azra .az-chat-sidebar > button:not(:disabled):not([aria-disabled="true"]):active {
+  background: var(--az-pressed-bg);
+}
+.azra .az-nav-item[aria-disabled="true"],
+.azra .az-chat-sidebar > button[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+}
+/* Keyboard focus: inside the row so the sidebar never clips it. */
+.azra .az-nav-item:focus-visible,
+.azra .az-back:focus-visible,
+.azra .az-switch:focus-visible,
+.azra .bt-nav nav a:focus-visible,
+.azra .ec-tools > button:focus-visible,
+.azra .az-chat-sidebar > button:focus-visible {
+  outline: var(--az-focus-outline);
+  outline-offset: -2px;
+}
+
+/* Touch screens: no sticky hover from the older rules. */
+@media (hover: none) {
+  .azra .az-nav-item:not(.is-active):hover,
+  .azra .bt-nav nav a:not(.is-active):hover,
+  .azra .ec-tools > button:hover,
+  .azra .ec-tools > a:hover,
+  .azra .az-chat-sidebar > button:hover,
+  .azra .az-language-options button:hover {
+    background: transparent;
+  }
+  .azra .az-button:not(.az-primary):hover {
+    background: #fff;
+  }
+  .azra .az-primary:hover {
+    background: var(--az-primary);
+  }
+  .azra .az-circle:hover {
+    background: var(--az-lilac);
+  }
+}
+
+/* ---------- Sidebar: smooth expand/collapse without moving icons ---------- */
+@media (min-width: 768px) {
+  .azra .az-sidebar {
+    transition: width var(--az-dur-panel) var(--az-ease);
+  }
+  .azra .az-workspace {
+    transition: margin-left var(--az-dur-panel) var(--az-ease);
+  }
+  .azra .az-logo-tile {
+    transition:
+      width var(--az-dur-panel) var(--az-ease),
+      height var(--az-dur-panel) var(--az-ease);
+  }
+  /* Labels fade in once the sidebar has room; they never show cut mid-animation. */
+  .azra .az-sidebar .az-nav-label {
+    transition: opacity 120ms var(--az-ease) 110ms;
+  }
+  /* Compact: labels stay readable for screen readers (no title needed). */
+  .azra.az-is-collapsed .az-sidebar .az-nav-label {
+    display: inline;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    opacity: 0;
+    transition: none;
+  }
+  /* Same icon position expanded and compact: (64px - 20px icon) / 2. */
+  .azra.az-is-collapsed .az-nav-item {
+    justify-content: flex-start;
+    padding-left: 22px;
+    padding-right: 0;
+  }
+  .azra.az-is-collapsed .az-nav {
+    overflow: visible;
+  }
+
+  /* Tooltips for the compact icons, on hover or keyboard focus, beside the sidebar. */
+  .azra.az-is-collapsed .az-sidebar [data-tooltip] {
+    position: relative;
+  }
+  .azra.az-is-collapsed .az-sidebar [data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translate(-4px, -50%);
+    background: var(--az-tooltip-bg);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+    padding: 6px 9px;
+    border-radius: 6px;
+    white-space: nowrap;
+    box-shadow: 0 6px 16px #1018282e;
+    pointer-events: none;
+    opacity: 0;
+    transition:
+      opacity var(--az-dur-hover) var(--az-ease),
+      transform var(--az-dur-hover) var(--az-ease);
+    z-index: 60;
+  }
+  .azra.az-is-collapsed .az-sidebar .az-collapse[data-tooltip]::after {
+    left: calc(100% + 8px);
+  }
+  .azra.az-is-collapsed .az-sidebar [data-tooltip]:focus-visible::after {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+}
+@media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+  .azra.az-is-collapsed .az-sidebar [data-tooltip]:hover::after {
+    opacity: 1;
+    transform: translate(0, -50%);
+    transition-delay: 80ms;
+  }
+}
+.azra .az-collapse {
+  transition:
+    background-color var(--az-dur-hover) var(--az-ease),
+    border-color var(--az-dur-hover) var(--az-ease),
+    color var(--az-dur-hover) var(--az-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .azra .az-collapse:not(:disabled):hover {
+    background: var(--az-lilac);
+    border-color: var(--az-primary);
+  }
+}
+
+/* Mobile drawer: slides from its side and the scrim fades; hidden again only after
+   the slide, so it is still unreachable by keyboard while closed. */
+@media (max-width: 767px) {
+  .azra .az-sidebar {
+    transition:
+      transform var(--az-dur-panel) var(--az-ease-out),
+      visibility 0s linear var(--az-dur-panel);
+  }
+  .azra.az-mobile-open .az-sidebar {
+    transition:
+      transform var(--az-dur-panel) var(--az-ease-out),
+      visibility 0s;
+    box-shadow: 8px 0 24px #10182824;
+  }
+  .azra.az-mobile-open .az-scrim {
+    animation: az-fade-in var(--az-dur-panel) var(--az-ease) both;
+  }
+}
+
+/* ---------- «Pregúntale a la IA» access: soft lilac/violet halo ---------- */
+.azra .az-circle.az-ai {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid transparent;
+  transition:
+    background-color var(--az-dur-halo-out) var(--az-ease),
+    border-color var(--az-dur-halo-out) var(--az-ease),
+    color var(--az-dur-halo-out) var(--az-ease);
+}
+.azra .az-circle.az-ai::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  box-shadow: var(--az-halo);
+  opacity: 0;
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity var(--az-dur-halo-out) var(--az-ease);
+}
+.azra .az-circle.az-ai svg {
+  transition:
+    color var(--az-dur-halo-out) var(--az-ease),
+    transform var(--az-dur-halo-out) var(--az-ease);
+}
+.azra .az-circle.az-ai:focus-visible {
+  outline: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .azra .az-circle.az-ai:hover {
+    background: #fbfaff;
+    border-color: #c9bbf7;
+    color: #6a4fd8;
+    transition-duration: var(--az-dur-halo-in);
+  }
+  .azra .az-circle.az-ai:hover::before {
+    opacity: 1;
+    transition-duration: var(--az-dur-halo-in);
+  }
+  .azra .az-circle.az-ai:hover svg {
+    transform: rotate(-8deg);
+    transition-duration: var(--az-dur-halo-in);
+  }
+}
+.azra .az-circle.az-ai:focus-visible {
+  background: #fbfaff;
+  border-color: var(--az-primary);
+  color: #6a4fd8;
+}
+.azra .az-circle.az-ai:focus-visible::before {
+  opacity: 1;
+}
+
+/* ---------- Header circles and the language menu ---------- */
+.azra .az-circle {
+  transition:
+    background-color var(--az-dur-hover) var(--az-ease),
+    color var(--az-dur-hover) var(--az-ease);
+}
+.azra .az-circle[aria-disabled="true"] {
+  opacity: 0.55;
+}
+.azra .az-circle[aria-disabled="true"]:hover {
+  background: var(--az-lilac);
+}
+.azra .az-circle:not([aria-disabled="true"]):active {
+  background: var(--az-pressed-bg);
+}
+.azra .az-language-options {
+  animation: az-pop-in var(--az-dur-panel) var(--az-ease-out) both;
+  transform-origin: top right;
+}
+.azra .az-language-options button {
+  transition:
+    background-color var(--az-dur-hover) var(--az-ease),
+    color var(--az-dur-hover) var(--az-ease);
+}
+
+/* ---------- Buttons, tabs, fields and clickable cards ---------- */
+.azra .az-button,
+.azra .az-icon,
+.azra .az-text-button,
+.azra .az-tabs > a,
+.azra .az-tabs > button,
+.azra .bt-segment button,
+.azra .ec-tabs > div > button {
+  transition:
+    background-color var(--az-dur-hover) var(--az-ease),
+    border-color var(--az-dur-hover) var(--az-ease),
+    color var(--az-dur-hover) var(--az-ease),
+    box-shadow var(--az-dur-hover) var(--az-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .azra .az-button:not(.az-primary):not(:disabled):not([aria-disabled="true"]):hover {
+    background: var(--az-hover-bg);
+    border-color: var(--az-input-hover);
+    color: var(--az-hover-text);
+  }
+  .azra .az-primary:not(:disabled):hover {
+    box-shadow: 0 4px 12px #7760d838;
+  }
+  .azra .az-icon:not(:disabled):not([aria-disabled="true"]):hover {
+    color: var(--az-primary);
+  }
+  .azra .az-tabs > a:not(.is-active):hover,
+  .azra .az-tabs > button:not(.is-active):hover {
+    color: var(--az-text);
+  }
+  .azra .bt-segment button:not(.is-active):not(:disabled):hover,
+  .azra .ec-tabs > div > button:not(.is-active):hover {
+    background: var(--az-hover-bg);
+  }
+}
+.azra .az-button:disabled:hover,
+.azra .az-button[aria-disabled="true"]:hover {
+  background: #fff;
+}
+.azra .az-primary:disabled:hover {
+  background: var(--az-primary);
+}
+.azra .az-button:not(:disabled):not([aria-disabled="true"]):active {
+  background: var(--az-pressed-bg);
+}
+.azra .az-primary:not(:disabled):active {
+  background: var(--az-primary-dark);
+  box-shadow: none;
+}
+.azra .az-button:focus-visible,
+.azra .az-icon:focus-visible {
+  outline: var(--az-focus-outline);
+  outline-offset: 2px;
+}
+
+.azra input:not([type="checkbox"]):not([type="radio"]),
+.azra textarea,
+.azra select {
+  transition:
+    border-color var(--az-dur-hover) var(--az-ease),
+    box-shadow var(--az-dur-hover) var(--az-ease),
+    background-color var(--az-dur-hover) var(--az-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .azra input:not([type="checkbox"]):not([type="radio"]):not(:disabled):not(:focus):hover,
+  .azra textarea:not(:disabled):not(:focus):hover,
+  .azra select:not(:disabled):not(:focus):hover {
+    border-color: var(--az-input-hover);
+  }
+}
+.azra input:not([type="checkbox"]):not([type="radio"]):focus,
+.azra textarea:focus {
+  outline: none;
+  border-color: var(--az-primary);
+  box-shadow: var(--az-ring);
+}
+.azra select:focus-visible {
+  outline: none;
+  border-color: var(--az-primary);
+  box-shadow: var(--az-ring);
+}
+/* Composer boxes already show their own frame: keep the inner field unframed. */
+.azra .az-composer textarea:focus,
+.azra .az-composer textarea:hover {
+  border-color: transparent;
+  box-shadow: none;
+}
+.azra .az-composer {
+  transition:
+    border-color var(--az-dur-hover) var(--az-ease),
+    box-shadow var(--az-dur-hover) var(--az-ease);
+}
+.azra .az-composer:focus-within {
+  border-color: #c9bbf7;
+  box-shadow: var(--az-ring);
+}
+
+/* Only cards that really do something when clicked. */
+.azra .az-account-row,
+.azra .bt-inbox-list button,
+.azra .ec-post {
+  transition:
+    background-color var(--az-dur-hover) var(--az-ease),
+    border-color var(--az-dur-hover) var(--az-ease),
+    box-shadow var(--az-dur-hover) var(--az-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .azra .az-account-row:not(.is-active):hover,
+  .azra .bt-inbox-list button:not(.is-active):hover {
+    background: var(--az-hover-bg);
+  }
+  .azra .ec-post:not(.is-selected):hover {
+    border-color: var(--az-input-hover);
+    box-shadow: var(--az-card-hover-shadow);
+  }
+}
+.azra .az-account-select:focus-visible,
+.azra .bt-inbox-list button:focus-visible,
+.azra .ec-post:focus-visible {
+  outline: var(--az-focus-outline);
+  outline-offset: 2px;
+}
+
+/* ---------- Dialogs: open and close softly; Escape and focus stay native ---------- */
+.azra .az-dialog {
+  opacity: 0;
+  transform: translateY(6px) scale(0.985);
+  transition:
+    opacity var(--az-dur-panel) var(--az-ease-out),
+    transform var(--az-dur-panel) var(--az-ease-out),
+    overlay var(--az-dur-panel) allow-discrete,
+    display var(--az-dur-panel) allow-discrete;
+}
+.azra .az-dialog[open] {
+  opacity: 1;
+  transform: none;
+}
+.azra .az-dialog::backdrop {
+  opacity: 0;
+  transition:
+    opacity var(--az-dur-panel) var(--az-ease),
+    overlay var(--az-dur-panel) allow-discrete,
+    display var(--az-dur-panel) allow-discrete;
+}
+.azra .az-dialog[open]::backdrop {
+  opacity: 1;
+}
+/* The account switcher is anchored to the sidebar: it comes from that side. */
+.azra .az-switcher-dialog {
+  transform: translateX(-8px);
+}
+.azra .az-switcher-dialog[open] {
+  transform: none;
+}
+@starting-style {
+  .azra .az-dialog[open] {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  .azra .az-switcher-dialog[open] {
+    transform: translateX(-8px);
+  }
+  .azra .az-dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/* ---------- Views: short fade when a screen or section mounts ---------- */
+.azra .az-main > *,
+.azra .az-view {
+  animation: az-view-in var(--az-dur-panel) var(--az-ease-out) both;
+}
+@keyframes az-view-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes az-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes az-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+/* ---------- Reduced motion: keep states, drop movement and animation ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .azra *,
+  .azra *::before,
+  .azra *::after,
+  .azra .az-dialog,
+  .azra .az-dialog::backdrop {
+    animation: none !important;
+    transition: none !important;
+  }
+  .azra .az-dialog,
+  .azra .az-switcher-dialog {
+    transform: none;
+  }
+  .azra .az-circle.az-ai:hover svg {
+    transform: none;
+  }
+}

@@ -29,6 +29,16 @@ export function createSeed(now = new Date()): Workspace {
   };
   return {
     schemaVersion: 1,
+    businessId: "spotmi",
+    catalog: [],
+    appearance: { primary: "", secondary: "", logoMediaId: "" },
+    socialSetup: {
+      instagramProfessional: "unknown" as const,
+      instagramLinkedToPage: "unknown" as const,
+      pageAdmin: "unknown" as const,
+      whatsapp: "unknown" as const,
+      notes: "",
+    },
     revision: 0,
     brand: {
       name: "Spotmi",

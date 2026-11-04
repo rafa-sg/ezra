@@ -1,0 +1,1208 @@
+"use client";
+import { useEffect, useState, type CSSProperties } from "react";
+import {
+  ArrowUpRight,
+  ArrowRight,
+  Plus,
+  Search,
+  CalendarDays,
+  Workflow,
+  Cable,
+  Sparkles,
+  Download,
+  Copy,
+  RefreshCw,
+  Check,
+  Globe,
+  ImageOff,
+  MapPin,
+  X,
+  ShieldCheck,
+  ChevronRight,
+} from "lucide-react";
+import { useLanguage, type MessageKey } from "../i18n";
+import { useClerk } from "@clerk/nextjs";
+import { Modal } from "../ui";
+import {
+  agentes,
+  canales,
+  estados,
+  proveedores,
+  construirEncargo,
+  contenidoEncargoSchema,
+  comprobacionesVacias,
+  type Agente,
+  type Encargo,
+  type ContenidoEncargo,
+  type Produccion,
+} from "@/lib/produccion/modelo";
+import type { FichaSpotmi } from "@/lib/produccion/spotmi";
+import { Pixel, colores } from "../granjas/pixel";
+import { SeccionGranjas } from "../granjas/granjas";
+import { ConexionesGranjas } from "../granjas/conexiones";
+import { ColocarEnGranja } from "../granjas/colocar";
+import "./estudio.css";
+
+type Seccion = "equipo" | "cola" | "fuentes" | "calendario" | "conexiones";
+type Conexiones = {
+  spotmi: string;
+  geminiConfigurado: boolean;
+  geminiHabilitado: boolean;
+  modelo: string | null;
+  astraLocal: boolean;
+  claudeLocal: boolean;
+};
+const nombresCanales = {
+  spotmi: "Spotmi web",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  facebook: "Facebook",
+};
+const vacio = (agente: Agente = "cazador"): ContenidoEncargo => ({
+  titulo: "",
+  agente,
+  proveedor: "astra",
+  canales: ["spotmi", "instagram"],
+  encargo: "",
+  resultado: "",
+  fuentes: [],
+  fechaPrevista: "",
+});
+async function datosRespuesta(respuesta: Response) {
+  const datos = await respuesta.json();
+  if (!respuesta.ok) throw new Error(datos.error || String(respuesta.status));
+  return datos;
+}
+export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boolean }) {
+  const { signOut } = useClerk();
+  const { t, locale } = useLanguage();
+  const tr = (clave: string) => t(clave as MessageKey);
+  const g = (clave: string) => t(`g_${clave}` as MessageKey);
+  const [seccion, setSeccion] = useState<Seccion>("equipo");
+  const [vistaGranjas, setVistaGranjas] = useState<"granjas" | "encargos">("granjas");
+  const [avisoOAuth, setAvisoOAuth] = useState<string | null>(null);
+  const [produccion, setProduccion] = useState<Produccion | null>(null);
+  const [conexiones, setConexiones] = useState<Conexiones | null>(null);
+  const [error, setError] = useState("");
+  const [aviso, setAviso] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const [consulta, setConsulta] = useState(false);
+  const [fichas, setFichas] = useState<FichaSpotmi[] | null>(null);
+  const [consultado, setConsultado] = useState("");
+  const [busqueda, setBusqueda] = useState("");
+  const [sinImagen, setSinImagen] = useState(false);
+  const [editor, setEditor] = useState<ContenidoEncargo | null>(null);
+  const [seleccionado, setSeleccionado] = useState<string | null>(null);
+  const [comprobaciones, setComprobaciones] = useState(comprobacionesVacias());
+  const [siguienteAgente, setSiguienteAgente] = useState<Agente>("guion");
+  const [confirmarIA, setConfirmarIA] = useState(false);
+  const actual = produccion?.encargos.find((e) => e.id === seleccionado);
+  const modificado =
+    editor &&
+    (!actual || JSON.stringify(contenidoEncargoSchema.parse(actual)) !== JSON.stringify(editor));
+  const encargos = produccion?.encargos ?? [];
+  const fecha = (valor: string) =>
+    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "America/El_Salvador",
+    }).format(new Date(valor.length === 16 ? `${valor}:00-06:00` : valor));
+
+  async function cargar() {
+    setError("");
+    try {
+      const datos = await datosRespuesta(await fetch("/api/produccion"));
+      setProduccion(datos.produccion);
+      setConexiones(datos.conexiones);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  useEffect(() => {
+    if (soloLectura) return;
+    const controlador = new AbortController();
+    fetch("/api/produccion", { signal: controlador.signal })
+      .then(datosRespuesta)
+      .then((datos) => {
+        setProduccion(datos.produccion);
+        setConexiones(datos.conexiones);
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setError(error.message);
+      });
+    return () => controlador.abort();
+  }, [soloLectura]);
+  useEffect(() => {
+    if (soloLectura) return;
+    const parametros = new URLSearchParams(window.location.search);
+    const pedida = parametros.get("seccion");
+    if (pedida !== "conexiones" && pedida !== "cola") return;
+    const resultado = parametros.get("conexion");
+    window.history.replaceState(null, "", window.location.pathname);
+    queueMicrotask(() => {
+      setSeccion(pedida);
+      if (resultado && /^(instagram|facebook|tiktok):(ok|error)$/.test(resultado)) setAvisoOAuth(resultado);
+    });
+  }, [soloLectura]);
+  function navegar(nueva: Seccion) {
+    setSeccion(nueva);
+    setBusqueda("");
+    setAviso("");
+  }
+  function crear(agente: Agente = "cazador", ficha?: FichaSpotmi) {
+    if (soloLectura) return;
+    setSeleccionado(null);
+    setComprobaciones(comprobacionesVacias());
+    setConfirmarIA(false);
+    const contenido = vacio(agente);
+    if (agente === "cazador" && !ficha) {
+      contenido.titulo = tr("p_cazaTitulo");
+      contenido.encargo = tr("p_cazaNota");
+      contenido.fuentes = [
+        {
+          nombre: "Agenda de turismo de El Salvador (MITUR)",
+          url: "https://elsalvador.travel/esp/eventos/",
+          imagen: "",
+          nota: "",
+        },
+        {
+          nombre: "Ministerio de Cultura",
+          url: "https://www.cultura.gob.sv/feed/",
+          imagen: "",
+          nota: "",
+        },
+        {
+          nombre: "Instituto Salvadoreño de Turismo (ISTU)",
+          url: "https://istu.gob.sv/feed/",
+          imagen: "",
+          nota: "",
+        },
+      ];
+    }
+    if (ficha && conexiones) {
+      contenido.titulo = ficha.titulo;
+      contenido.encargo = [ficha.descripcion, ficha.fecha, ficha.lugar, ficha.departamento]
+        .filter(Boolean)
+        .join("\n");
+      contenido.fuentes = [
+        {
+          nombre: ficha.titulo,
+          url: ficha.fuente || `${conexiones.spotmi}${ficha.ruta}`,
+          imagen: ficha.imagen || "",
+          nota: ficha.imagenGenerada ? tr("p_ilustracion") : "",
+        },
+      ];
+    }
+    setEditor(contenido);
+  }
+  function abrir(encargo: Encargo) {
+    setSeleccionado(encargo.id);
+    setEditor(contenidoEncargoSchema.parse(encargo));
+    setComprobaciones(encargo.comprobaciones);
+    setConfirmarIA(false);
+  }
+  function cerrar() {
+    if (modificado && !window.confirm(tr("p_salirCambios"))) return;
+    setEditor(null);
+    setSeleccionado(null);
+  }
+  async function mutar(accion: object, ruta = "/api/produccion") {
+    if (!produccion) return null;
+    setOcupado(true);
+    setError("");
+    setAviso("");
+    try {
+      const datos = await datosRespuesta(
+        await fetch(ruta, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...accion, revision: produccion.revision }),
+        }),
+      );
+      setProduccion(datos.produccion);
+      setAviso(tr("p_guardado"));
+      return datos as { produccion: Produccion; encargoId?: string };
+    } catch (e) {
+      setError((e as Error).message);
+      return null;
+    } finally {
+      setOcupado(false);
+    }
+  }
+  async function guardar() {
+    if (!editor) return;
+    const datos = await mutar({
+      accion: seleccionado ? "editar" : "crear",
+      ...(seleccionado ? { id: seleccionado } : {}),
+      contenido: editor,
+    });
+    if (datos)
+      abrir(
+        seleccionado
+          ? datos.produccion.encargos.find((e) => e.id === seleccionado)!
+          : datos.produccion.encargos[0],
+      );
+  }
+  async function estado(nuevo: Encargo["estado"]) {
+    const datos = await mutar({
+      accion: "estado",
+      id: seleccionado,
+      estado: nuevo,
+      comprobaciones,
+    });
+    if (datos)
+      abrir(datos.produccion.encargos.find((e) => e.id === (datos.encargoId || seleccionado))!);
+  }
+  async function derivar() {
+    const datos = await mutar({ accion: "derivar", id: seleccionado, agente: siguienteAgente });
+    if (datos) abrir(datos.produccion.encargos.find((e) => e.id === datos.encargoId)!);
+  }
+  async function copiar() {
+    if (!actual) return;
+    try {
+      await navigator.clipboard.writeText(construirEncargo(actual));
+      setAviso(tr("p_copiado"));
+    } catch {
+      setError(tr("p_error"));
+    }
+  }
+  async function generar() {
+    const datos = await mutar(
+      { id: seleccionado, confirmar: confirmarIA },
+      "/api/produccion/generar",
+    );
+    if (datos)
+      abrir(datos.produccion.encargos.find((e) => e.id === (datos.encargoId || seleccionado))!);
+    else {
+      const datos = await datosRespuesta(await fetch("/api/produccion"));
+      setProduccion(datos.produccion);
+    }
+  }
+  async function consultar() {
+    setConsulta(true);
+    setError("");
+    try {
+      const datos = await datosRespuesta(await fetch("/api/produccion/spotmi"));
+      setFichas(datos.fichas);
+      setConsultado(datos.consultado);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setConsulta(false);
+    }
+  }
+  const filtrar = (texto: string) =>
+    texto.toLocaleLowerCase(locale).includes(busqueda.toLocaleLowerCase(locale));
+  const filtrados = encargos.filter((e) => filtrar(`${e.titulo} ${e.encargo} ${e.resultado}`));
+  function tarjetaEncargo(encargo: Encargo) {
+    return (
+      <button className="ep-tarea" key={encargo.id} onClick={() => abrir(encargo)}>
+        <span className="ep-tarea-meta">
+          <span>{tr(`p_${encargo.agente}_titulo`)}</span>
+          <ArrowUpRight size={16} />
+        </span>
+        <strong>{encargo.titulo}</strong>
+        <span className="ep-chips">
+          {encargo.canales.map((c) => (
+            <span key={c}>{nombresCanales[c]}</span>
+          ))}
+        </span>
+        <span className="ep-tarea-pie">
+          <span>{tr(`p_${encargo.proveedor}`)}</span>
+          <span>{encargo.fechaPrevista ? fecha(encargo.fechaPrevista) : tr("p_sinFecha")}</span>
+        </span>
+      </button>
+    );
+  }
+  const navegacion = [
+    { id: "equipo", icono: Sparkles },
+    { id: "cola", icono: Workflow },
+    { id: "fuentes", icono: Search },
+    { id: "calendario", icono: CalendarDays },
+    { id: "conexiones", icono: Cable },
+  ] as const;
+  return (
+    <div className="ep-estudio">
+      <header className="ep-cabecera">
+        <a
+          className="ep-marca"
+          href={conexiones?.spotmi || "https://spotmi.com.sv"}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <MapPin size={25} />
+          spotmi<span>·</span>
+        </a>
+        <span className="ep-local">
+          <span />
+          {tr("p_estudioLocal")}
+        </span>
+        <button
+          className="ep-boton ep-primario"
+          disabled={!produccion || soloLectura}
+          onClick={() => crear()}
+        >
+          <Plus size={17} />
+          {tr("p_nuevo")}
+        </button>
+      </header>
+      <nav className="ep-nav" aria-label={tr("productionStudio")}>
+        {navegacion.map(({ id, icono: Icono }) => (
+          <button
+            key={id}
+            aria-current={seccion === id ? "page" : undefined}
+            disabled={soloLectura && id !== "equipo"}
+            onClick={() => navegar(id)}
+          >
+            <Icono size={17} />
+            {tr(`p_${id}`)}
+          </button>
+        ))}
+      </nav>
+      <div className="ep-cuerpo">
+        {soloLectura ? (
+          <div className="ep-acceso-nuevo">
+            <div>
+              <strong>{tr("p_vistaNueva")}</strong>
+              <p>{tr("p_vistaNuevaAyuda")}</p>
+            </div>
+            <button
+              className="ep-boton"
+              onClick={() =>
+                signOut({ redirectUrl: "/sign-in" }).catch(() => setError(tr("signOutFailed")))
+              }
+            >
+              {tr("switchAccount")}
+              <ArrowUpRight size={16} />
+            </button>
+          </div>
+        ) : null}
+        {error && (
+          <div className="ep-alerta" role="alert">
+            {error}
+            <button onClick={() => void cargar()}>{tr("p_reintentar")}</button>
+          </div>
+        )}
+        {aviso && (
+          <p className="ep-aviso" role="status">
+            <Check size={16} />
+            {aviso}
+          </p>
+        )}
+        {!soloLectura && !produccion && !error && <p role="status">{tr("p_cargando")}</p>}
+        {seccion === "equipo" && (
+          <>
+            <section className="ep-hero">
+              <div className="ep-hero-copy">
+                <p className="ep-eyebrow">
+                  <span />
+                  {tr("p_kicker")}
+                </p>
+                <h1>
+                  {tr("p_titulo")}
+                  <br />
+                  <em>{tr("p_destino")}</em>
+                </h1>
+                <p className="ep-intro">{tr("p_intro")}</p>
+                <div className="ep-acciones">
+                  <button
+                    className="ep-boton ep-primario"
+                    disabled={!produccion || soloLectura}
+                    onClick={() => crear("cazador")}
+                  >
+                    <Plus size={17} />
+                    {tr("p_nuevo")}
+                  </button>
+                  <button
+                    className="ep-boton ep-texto"
+                    disabled={soloLectura}
+                    onClick={() => navegar("fuentes")}
+                  >
+                    {tr("p_fuentesCta")}
+                    <ArrowUpRight size={16} />
+                  </button>
+                </div>
+                <div className="ep-datos">
+                  <span>
+                    <b>11</b> {tr("p_roles")}
+                  </span>
+                  <span>
+                    <b>04</b> {tr("p_canales")}
+                  </span>
+                  <span>
+                    <ShieldCheck size={15} />
+                    {tr("p_control")}
+                  </span>
+                </div>
+              </div>
+              <div className="ep-hero-ilustracion" aria-hidden="true">
+                <div className="ep-orbita" />
+                <div className="ep-terminal">
+                  <span>SPOTMI CREATIVE LAB</span>
+                  <span className="ep-terminal-luz" />
+                </div>
+                <div className="ep-personajes">
+                  <Pixel indice={1} />
+                  <Pixel indice={0} grande />
+                  <Pixel indice={5} />
+                </div>
+                <div className="ep-ruta">
+                  {["p_paso1", "p_paso2", "p_paso3", "p_paso4"].map((p, i) => (
+                    <span key={p}>
+                      <b>0{i + 1}</b>
+                      {tr(p)}
+                      {i < 3 && <ChevronRight size={12} />}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </section>
+            <section>
+              <div className="ep-seccion-cabecera">
+                <div>
+                  <p className="ep-eyebrow">01 / {tr("p_equipo")}</p>
+                  <h2>{tr("p_equipoTitulo")}</h2>
+                  <p>{tr("p_equipoAyuda")}</p>
+                </div>
+                <span className="ep-numero">11</span>
+              </div>
+              <div className="ep-agentes">
+                {agentes.map((agente, i) => (
+                  <button
+                    className="ep-agente"
+                    key={agente}
+                    onClick={() => crear(agente)}
+                    disabled={!produccion || soloLectura}
+                    style={{ "--agente": colores[i] } as CSSProperties}
+                  >
+                    <div className="ep-agente-arriba">
+                      <span>{String(i + 1).padStart(2, "0")}</span>
+                      <ArrowUpRight size={19} />
+                    </div>
+                    <div className="ep-agente-arte">
+                      <Pixel indice={i} />
+                    </div>
+                    <h3>{tr(`p_${agente}_titulo`)}</h3>
+                    <p>{tr(`p_${agente}_texto`)}</p>
+                    <span className="ep-agente-entrega">{tr(`p_${agente}_entrega`)}</span>
+                    <span className="ep-agente-accion">
+                      {tr("p_asignar")}
+                      <ArrowRight size={15} />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+            {!soloLectura && (
+              <section className="ep-recientes">
+                <div className="ep-seccion-cabecera">
+                  <h2>{tr("p_recientes")}</h2>
+                  <button className="ep-boton ep-texto" onClick={() => navegar("cola")}>
+                    {tr("p_mas")}
+                    <ArrowRight size={16} />
+                  </button>
+                </div>
+                {encargos.length ? (
+                  <div className="ep-recientes-lista">
+                    {encargos.slice(0, 3).map(tarjetaEncargo)}
+                  </div>
+                ) : (
+                  <div className="ep-vacio">
+                    <Workflow size={29} />
+                    <h3>{tr("p_sinEncargos")}</h3>
+                    <p>{tr("p_vacioAyuda")}</p>
+                    <button
+                      className="ep-boton"
+                      disabled={!produccion || soloLectura}
+                      onClick={() => crear()}
+                    >
+                      <Plus size={17} />
+                      {tr("p_nuevo")}
+                    </button>
+                  </div>
+                )}
+              </section>
+            )}
+          </>
+        )}
+        {!soloLectura && seccion === "cola" && (
+          <>
+            <div className="ep-seccion-cabecera">
+              <div>
+                <p className="ep-eyebrow">02 / {tr("p_cola")}</p>
+                <h1>{tr("p_cola")}</h1>
+                <p>{tr("p_colaAyuda")}</p>
+              </div>
+            </div>
+            <div className="eg-pestanas" role="tablist" aria-label={tr("p_cola")}>
+              {(["granjas", "encargos"] as const).map((v) => (
+                <button
+                  key={v}
+                  role="tab"
+                  aria-selected={vistaGranjas === v}
+                  className={vistaGranjas === v ? "eg-pestana-activa" : ""}
+                  onClick={() => setVistaGranjas(v)}
+                >
+                  {g(`pestana_${v}`)}
+                  {v === "encargos" && <span>{encargos.length}</span>}
+                </button>
+              ))}
+            </div>
+            {vistaGranjas === "granjas" ? (
+              <SeccionGranjas g={g} tr={tr} fecha={fecha} />
+            ) : (
+              <>
+            <label className="ep-busqueda">
+              <Search size={18} />
+              <input
+                aria-label={tr("p_buscar")}
+                placeholder={tr("p_buscar")}
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+              />
+            </label>
+            <div className="ep-kanban">
+              {estados.map((estado) => (
+                <section key={estado} className="ep-columna">
+                  <h2>
+                    <span className={`ep-estado ep-${estado}`} />
+                    {tr(`p_${estado}`)}
+                    <span>{filtrados.filter((e) => e.estado === estado).length}</span>
+                  </h2>
+                  {filtrados.filter((e) => e.estado === estado).map(tarjetaEncargo)}
+                  {estado === "pendiente" && (
+                    <button
+                      className="ep-agregar"
+                      disabled={!produccion || soloLectura}
+                      onClick={() => crear()}
+                    >
+                      <Plus size={17} />
+                      {tr("p_nuevo")}
+                    </button>
+                  )}
+                </section>
+              ))}
+            </div>
+            {busqueda && !filtrados.length && <p>{tr("p_sinResultados")}</p>}
+              </>
+            )}
+          </>
+        )}
+        {!soloLectura && seccion === "fuentes" && (
+          <>
+            <div className="ep-seccion-cabecera">
+              <div>
+                <p className="ep-eyebrow">03 / {tr("p_fuentes")}</p>
+                <h1>{tr("p_fuentesTitulo")}</h1>
+                <p>{tr("p_fuentesAyuda")}</p>
+              </div>
+              <button
+                className="ep-boton ep-primario"
+                onClick={() => void consultar()}
+                disabled={consulta || soloLectura}
+              >
+                <RefreshCw size={17} />
+                {tr(consulta ? "p_consultando" : "p_consultar")}
+              </button>
+            </div>
+            <div className="ep-acciones ep-links">
+              <a
+                href={`${conexiones?.spotmi || "https://spotmi.com.sv"}/es/admin/analizador`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {tr("p_analizador")}
+                <ArrowUpRight size={15} />
+              </a>
+              <a
+                href={`${conexiones?.spotmi || "https://spotmi.com.sv"}/es/admin/analizador/propuestas`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {tr("p_propuestas")}
+                <ArrowUpRight size={15} />
+              </a>
+            </div>
+            <div className="ep-filtros">
+              <label className="ep-busqueda">
+                <Search size={18} />
+                <input
+                  aria-label={tr("p_buscar")}
+                  placeholder={tr("p_buscar")}
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                />
+              </label>
+              <label className="ep-checkbox">
+                <input
+                  type="checkbox"
+                  checked={sinImagen}
+                  onChange={(e) => setSinImagen(e.target.checked)}
+                />
+                {tr("p_soloSinImagen")}
+              </label>
+            </div>
+            {consultado && (
+              <p className="ep-nota">
+                {tr("p_consultado")}: {fecha(consultado)}
+              </p>
+            )}
+            {!fichas || !fichas.length ? (
+              <div className="ep-vacio">
+                <Globe size={32} />
+                <h3>{tr(fichas ? "p_catalogoSinDatos" : "p_catalogoVacio")}</h3>
+              </div>
+            ) : (
+              <div className="ep-fichas">
+                {fichas
+                  .filter(
+                    (f) => filtrar(`${f.titulo} ${f.departamento}`) && (!sinImagen || !f.imagen),
+                  )
+                  .map((f) => (
+                    <article key={f.id} className="ep-ficha">
+                      <div className="ep-ficha-imagen">
+                        {f.imagen ? (
+                          <img
+                            src={f.imagen}
+                            alt={f.titulo}
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <>
+                            <ImageOff size={29} />
+                            <span>{tr("p_sinImagen")}</span>
+                          </>
+                        )}
+                        <span className="ep-etiqueta">
+                          {tr(`p_${f.tipo}`)}
+                          {f.imagenGenerada ? ` · ${tr("p_ilustracion")}` : ""}
+                        </span>
+                      </div>
+                      <div className="ep-ficha-texto">
+                        <h3>{f.titulo}</h3>
+                        <p>{f.lugar || f.departamento}</p>
+                        {f.fecha && <p>{fecha(f.fecha)}</p>}
+                        <a href={`${conexiones?.spotmi}${f.ruta}`} target="_blank" rel="noreferrer">
+                          {tr("p_verFicha")}
+                          <ArrowUpRight size={15} />
+                        </a>
+                        <button
+                          className="ep-boton"
+                          onClick={() => crear(f.imagen ? "guion" : "cazador", f)}
+                        >
+                          {tr(f.imagen ? "p_crearDesde" : "p_buscarImagen")}
+                          <ArrowRight size={15} />
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+              </div>
+            )}
+          </>
+        )}
+        {!soloLectura && seccion === "calendario" && (
+          <>
+            <div className="ep-seccion-cabecera">
+              <div>
+                <p className="ep-eyebrow">04 / {tr("p_calendario")}</p>
+                <h1>{tr("p_calendario")}</h1>
+                <p>{tr("p_calendarioAyuda")}</p>
+              </div>
+              <CalendarDays size={35} />
+            </div>
+            <div className="ep-agenda">
+              {encargos
+                .filter((e) => e.fechaPrevista)
+                .sort((a, b) => a.fechaPrevista.localeCompare(b.fechaPrevista))
+                .map((e) => (
+                  <div className="ep-agenda-fila" key={e.id}>
+                    <time dateTime={`${e.fechaPrevista}:00-06:00`}>{fecha(e.fechaPrevista)}</time>
+                    {tarjetaEncargo(e)}
+                  </div>
+                ))}
+            </div>
+            {!encargos.some((e) => e.fechaPrevista) && (
+              <div className="ep-vacio">
+                <CalendarDays size={32} />
+                <h3>{tr("p_calendarioVacio")}</h3>
+                <button
+                  className="ep-boton"
+                  disabled={!produccion || soloLectura}
+                  onClick={() => crear("semana")}
+                >
+                  {tr("p_nuevo")}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+        {!soloLectura && seccion === "conexiones" && (
+          <>
+            <div className="ep-seccion-cabecera">
+              <div>
+                <p className="ep-eyebrow">05 / {tr("p_conexiones")}</p>
+                <h1>{tr("p_conexionesTitulo")}</h1>
+                <p>{tr("p_conexionesAyuda")}</p>
+              </div>
+              <a className="ep-boton" href="/api/produccion/exportar">
+                <Download size={17} />
+                {tr("p_respaldo")}
+              </a>
+            </div>
+            <div className="ep-conexiones">
+              {proveedores.map((proveedor, i) => (
+                <article className="ep-conexion" key={proveedor}>
+                  <div className="ep-conexion-icono">{i === 0 ? "A" : i === 1 ? "✳" : "✦"}</div>
+                  <div>
+                    <h2>{tr(`p_${proveedor}`)}</h2>
+                    <span className="ep-pill">
+                      {tr(
+                        proveedor === "gemini"
+                          ? conexiones?.geminiHabilitado
+                            ? "p_habilitada"
+                            : conexiones?.geminiConfigurado
+                              ? "p_configurada"
+                              : "p_pendienteConexion"
+                          : (
+                                proveedor === "astra"
+                                  ? conexiones?.astraLocal
+                                  : conexiones?.claudeLocal
+                              )
+                            ? "p_localInstalado"
+                            : "p_localNoInstalado",
+                      )}
+                    </span>
+                    <p>{tr(`p_${proveedor}Ayuda`)}</p>
+                    <button
+                      className="ep-boton"
+                      disabled={!produccion || soloLectura}
+                      onClick={() => {
+                        crear("guion");
+                        setEditor({ ...vacio("guion"), proveedor });
+                      }}
+                    >
+                      {tr("p_nuevo")}
+                      <ArrowUpRight size={16} />
+                    </button>
+                  </div>
+                </article>
+              ))}
+              <article className="ep-conexion">
+                <div className="ep-conexion-icono">
+                  <Globe />
+                </div>
+                <div>
+                  <h2>{g("spotmiLectura")}</h2>
+                  <span className="ep-pill">
+                    {tr(consultado ? "p_conectado" : "p_sinComprobar")}
+                  </span>
+                  <p>{tr("p_spotmiAyuda")}</p>
+                  <code>{conexiones?.spotmi}</code>
+                  <button
+                    className="ep-boton"
+                    onClick={() => {
+                      navegar("fuentes");
+                      void consultar();
+                    }}
+                  >
+                    {tr("p_consultar")}
+                    <ArrowUpRight size={16} />
+                  </button>
+                </div>
+              </article>
+            </div>
+            <ConexionesGranjas g={g} fecha={fecha} aviso={avisoOAuth} />
+          </>
+        )}
+      </div>
+      <footer className="ep-pie">
+        <span>
+          spotmi<span>·</span> creative studio
+        </span>
+        <span>{tr("p_control")}</span>
+      </footer>
+      <Modal
+        open={Boolean(editor)}
+        onClose={cerrar}
+        label={actual?.titulo || tr("p_nuevo")}
+        className="ep-modal"
+        hideClose
+      >
+        {editor && (
+          <>
+            <div className="ep-editor-cabecera">
+              <div>
+                <p className="ep-eyebrow">{tr(`p_${editor.agente}_titulo`)}</p>
+                <h2>{actual ? actual.titulo : tr("p_nuevo")}</h2>
+                {actual && (
+                  <span className="ep-pill">
+                    {tr(`p_${actual.estado}`)} · {tr("p_version")} {actual.version}
+                  </span>
+                )}
+              </div>
+              <button className="ep-boton ep-icono" aria-label={tr("p_cerrar")} onClick={cerrar}>
+                <X size={21} />
+              </button>
+            </div>
+            {error && (
+              <p className="ep-alerta" role="alert">
+                {error}
+              </p>
+            )}
+            {aviso && (
+              <p className="ep-aviso" role="status">
+                {aviso}
+              </p>
+            )}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void guardar();
+              }}
+              className="ep-formulario"
+            >
+              <label>
+                {tr("p_tituloCampo")}
+                <input
+                  required
+                  minLength={3}
+                  maxLength={180}
+                  value={editor.titulo}
+                  onChange={(e) => setEditor({ ...editor, titulo: e.target.value })}
+                />
+              </label>
+              <div className="ep-dos">
+                <label>
+                  {tr("p_agente")}
+                  <select
+                    aria-label={tr("p_agente")}
+                    value={editor.agente}
+                    onChange={(e) => setEditor({ ...editor, agente: e.target.value as Agente })}
+                  >
+                    {agentes.map((a) => (
+                      <option value={a} key={a}>
+                        {tr(`p_${a}_titulo`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {tr("p_proveedor")}
+                  <select
+                    aria-label={tr("p_proveedor")}
+                    value={editor.proveedor}
+                    onChange={(e) =>
+                      setEditor({ ...editor, proveedor: e.target.value as Encargo["proveedor"] })
+                    }
+                  >
+                    {proveedores.map((p) => (
+                      <option value={p} key={p}>
+                        {tr(`p_${p}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <fieldset>
+                <legend>{tr("p_canales")}</legend>
+                <div className="ep-canales">
+                  {canales.map((c) => (
+                    <label className="ep-checkbox" key={c}>
+                      <input
+                        type="checkbox"
+                        checked={editor.canales.includes(c)}
+                        onChange={(e) =>
+                          setEditor({
+                            ...editor,
+                            canales: e.target.checked
+                              ? [...editor.canales, c]
+                              : editor.canales.filter((v) => v !== c),
+                          })
+                        }
+                      />
+                      {nombresCanales[c]}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <label>
+                {tr("p_nota")}
+                <textarea
+                  aria-label={tr("p_nota")}
+                  rows={4}
+                  maxLength={8000}
+                  value={editor.encargo}
+                  onChange={(e) => setEditor({ ...editor, encargo: e.target.value })}
+                />
+              </label>
+              {editor.agente === "edicion" && <p className="ep-nota">{tr("p_sinRender")}</p>}
+              <fieldset>
+                <legend>{tr("p_material")}</legend>
+                {editor.fuentes.map((fuente, i) => (
+                  <div key={i} className="ep-fuente">
+                    <div className="ep-dos">
+                      <label>
+                        {tr("p_fuenteNombre")}
+                        <input
+                          required
+                          value={fuente.nombre}
+                          maxLength={180}
+                          onChange={(e) =>
+                            setEditor({
+                              ...editor,
+                              fuentes: editor.fuentes.map((f, j) =>
+                                j === i ? { ...f, nombre: e.target.value } : f,
+                              ),
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        {tr("p_fuenteUrl")}
+                        <input
+                          required
+                          type="url"
+                          value={fuente.url}
+                          onChange={(e) =>
+                            setEditor({
+                              ...editor,
+                              fuentes: editor.fuentes.map((f, j) =>
+                                j === i ? { ...f, url: e.target.value } : f,
+                              ),
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <label>
+                      {tr("p_imagenUrl")}
+                      <input
+                        type="url"
+                        value={fuente.imagen}
+                        onChange={(e) =>
+                          setEditor({
+                            ...editor,
+                            fuentes: editor.fuentes.map((f, j) =>
+                              j === i ? { ...f, imagen: e.target.value } : f,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      {tr("p_fuenteNota")}
+                      <input
+                        value={fuente.nota}
+                        maxLength={2000}
+                        onChange={(e) =>
+                          setEditor({
+                            ...editor,
+                            fuentes: editor.fuentes.map((f, j) =>
+                              j === i ? { ...f, nota: e.target.value } : f,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="ep-boton ep-texto"
+                      onClick={() =>
+                        setEditor({ ...editor, fuentes: editor.fuentes.filter((_, j) => i !== j) })
+                      }
+                    >
+                      <X size={15} />
+                      {tr("p_quitarFuente")}
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="ep-boton"
+                  disabled={editor.fuentes.length >= 20}
+                  onClick={() =>
+                    setEditor({
+                      ...editor,
+                      fuentes: [...editor.fuentes, { nombre: "", url: "", imagen: "", nota: "" }],
+                    })
+                  }
+                >
+                  <Plus size={16} />
+                  {tr("p_agregarFuente")}
+                </button>
+              </fieldset>
+              <label>
+                {tr("p_resultado")}
+                <textarea
+                  aria-label={tr("p_resultado")}
+                  rows={7}
+                  maxLength={24000}
+                  value={editor.resultado}
+                  onChange={(e) => setEditor({ ...editor, resultado: e.target.value })}
+                />
+              </label>
+              <p className="ep-nota">{tr("p_resultadoAyuda")}</p>
+              <label>
+                {tr("p_fecha")}
+                <input
+                  type="datetime-local"
+                  value={editor.fechaPrevista}
+                  onChange={(e) => setEditor({ ...editor, fechaPrevista: e.target.value })}
+                />
+              </label>
+              <p className="ep-nota">{tr("p_fechaAyuda")}</p>
+              <div className="ep-editor-acciones">
+                <button
+                  type="submit"
+                  className="ep-boton ep-primario"
+                  disabled={ocupado || !editor.canales.length}
+                >
+                  {tr(ocupado ? "p_procesando" : "p_guardar")}
+                </button>
+                <button type="button" className="ep-boton" onClick={cerrar}>
+                  {tr("p_cerrar")}
+                </button>
+              </div>
+            </form>
+            {actual && (
+              <section className="ep-handoff">
+                {modificado && <p className="ep-nota">{tr("p_guardarPrimero")}</p>}
+                {!modificado && <ColocarEnGranja key={actual.id} encargo={actual} g={g} onListo={setAviso} />}
+                <div className="ep-acciones">
+                  <button
+                    className="ep-boton"
+                    disabled={Boolean(modificado) || ocupado}
+                    onClick={() => void copiar()}
+                  >
+                    <Copy size={16} />
+                    {tr("p_copiar")}
+                  </button>
+                  {!modificado && (
+                    <a className="ep-boton" href={`/api/produccion/exportar?id=${actual.id}`}>
+                      <Download size={16} />
+                      {tr("p_exportar")}
+                    </a>
+                  )}
+                  <button
+                    className="ep-boton"
+                    disabled={Boolean(modificado) || ocupado}
+                    onClick={() => void estado("preparando")}
+                  >
+                    {tr("p_preparar")}
+                  </button>
+                </div>
+                <div className="ep-gemini">
+                  <p>{tr(`p_${actual.proveedor}Ayuda`)}</p>
+                  {actual.proveedor !== "gemini" && actual.agente === "cazador" && (
+                    <p>{tr("p_localSinBusqueda")}</p>
+                  )}
+                  <label className="ep-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={confirmarIA}
+                      onChange={(e) => setConfirmarIA(e.target.checked)}
+                    />
+                    {tr("p_confirmarProveedor")}
+                  </label>
+                  <button
+                    className="ep-boton"
+                    disabled={
+                      !(actual.proveedor === "gemini"
+                        ? conexiones?.geminiHabilitado
+                        : actual.proveedor === "astra"
+                          ? conexiones?.astraLocal
+                          : conexiones?.claudeLocal) ||
+                      !confirmarIA ||
+                      Boolean(modificado) ||
+                      ocupado
+                    }
+                    onClick={() => void generar()}
+                  >
+                    <Sparkles size={16} />
+                    {tr(ocupado ? "p_generandoProveedor" : "p_ejecutar")}
+                  </button>
+                </div>
+                {actual.estado === "aprobado" && (
+                  <div className="ep-continuar">
+                    <label>
+                      {tr("p_agenteSiguiente")}
+                      <select
+                        value={siguienteAgente}
+                        onChange={(e) => setSiguienteAgente(e.target.value as Agente)}
+                      >
+                        {agentes.map((a) => (
+                          <option key={a} value={a}>
+                            {tr(`p_${a}_titulo`)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      className="ep-boton ep-primario"
+                      disabled={Boolean(modificado) || ocupado}
+                      onClick={() => void derivar()}
+                    >
+                      {tr("p_auditoriaPaso")}
+                      <ArrowRight size={16} />
+                    </button>
+                  </div>
+                )}
+                <div>
+                  {actual.busquedaHtml && (
+                    <iframe
+                      title={tr("p_sugerencias")}
+                      sandbox="allow-popups allow-popups-to-escape-sandbox"
+                      srcDoc={`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src https:"><base target="_blank">${actual.busquedaHtml}`}
+                    />
+                  )}
+                </div>
+                <div className="ep-revision">
+                  {actual.estado !== "revision" && actual.estado !== "aprobado" && (
+                    <button
+                      className="ep-boton"
+                      disabled={Boolean(modificado) || ocupado || !actual.resultado.trim()}
+                      onClick={() => void estado("revision")}
+                    >
+                      {tr("p_revisar")}
+                      <ArrowRight size={16} />
+                    </button>
+                  )}
+                  {actual.estado === "revision" && (
+                    <>
+                      {(["hechos", "derechos", "marca"] as const).map((c) => (
+                        <label className="ep-checkbox" key={c}>
+                          <input
+                            type="checkbox"
+                            checked={comprobaciones[c]}
+                            onChange={(e) =>
+                              setComprobaciones({ ...comprobaciones, [c]: e.target.checked })
+                            }
+                          />
+                          {tr(`p_${c}`)}
+                        </label>
+                      ))}
+                      <button
+                        className="ep-boton ep-primario"
+                        disabled={
+                          Boolean(modificado) ||
+                          ocupado ||
+                          !Object.values(comprobaciones).every(Boolean) ||
+                          !actual.fuentes.length
+                        }
+                        onClick={() => void estado("aprobado")}
+                      >
+                        <ShieldCheck size={17} />
+                        {tr("p_aprobar")}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </Modal>
+    </div>
+  );
+}

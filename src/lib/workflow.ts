@@ -33,6 +33,10 @@ export function editorial(post: Post) {
     post.mediaIds,
     post.artwork,
     post.demo,
+    post.productId,
+    post.variantId,
+    post.catalogRevision,
+    post.campaignId,
   ]);
 }
 function socialUrl(value: string, channel: Post["channel"]) {
@@ -53,6 +57,8 @@ export function reconcile(previous: Workspace, raw: unknown, now = new Date()): 
   if (!parsed.success)
     throw new WorkflowError("Datos inválidos. Revisa los campos y vuelve a intentarlo.");
   const next = parsed.data;
+  if (next.businessId !== previous.businessId)
+    throw new WorkflowError("No puedes mover publicaciones entre negocios.", 409);
   if (next.revision !== previous.revision)
     throw new WorkflowError(
       "Hay cambios más recientes en otra ventana. Recarga antes de guardar.",
@@ -64,6 +70,7 @@ export function reconcile(previous: Workspace, raw: unknown, now = new Date()): 
     ...next.posts.map((p) => p.id),
     ...next.sources.map((s) => s.id),
     ...next.media.map((m) => m.id),
+    ...next.catalog.map((p) => p.id),
   ];
   if (new Set(keys).size !== keys.length)
     throw new WorkflowError("Hay identificadores duplicados.");
@@ -78,6 +85,38 @@ export function reconcile(previous: Workspace, raw: unknown, now = new Date()): 
       ...(postId ? { postId } : {}),
     });
   const brandChanged = JSON.stringify(next.brand) !== JSON.stringify(previous.brand);
+  const logo = next.appearance.logoMediaId;
+  if (logo && !next.media.some((m) => m.id === logo && m.mime.startsWith("image/")))
+    throw new WorkflowError("El logo debe ser una imagen de la biblioteca de este negocio.");
+  for (const product of next.catalog) {
+    const old = previous.catalog.find((p) => p.id === product.id);
+    const changed =
+      !old ||
+      JSON.stringify({ ...product, revision: 0 }) !== JSON.stringify({ ...old, revision: 0 });
+    product.revision = old ? old.revision + (changed ? 1 : 0) : 0;
+    if (changed) event(old ? "Producto actualizado" : "Producto creado", product.name);
+    if (new Set(product.variants.map((v) => v.id)).size !== product.variants.length)
+      throw new WorkflowError("Las variantes del producto tienen identificadores duplicados.");
+    const mediaIds = [...product.mediaIds, ...product.variants.flatMap((v) => v.mediaIds)];
+    if (mediaIds.some((id) => !next.media.some((m) => m.id === id && m.mime.startsWith("image/"))))
+      throw new WorkflowError("Usa fotografías de la biblioteca de este negocio para el producto.");
+    if (product.verified && (!product.verifiedOn || product.verifiedOn > today(now)))
+      throw new WorkflowError("El producto verificado necesita una fecha de revisión válida.");
+    const promo = product.promotion;
+    if (promo.kind !== "none") {
+      if (!promo.startsOn || !promo.endsOn || promo.endsOn < promo.startsOn || promo.value <= 0)
+        throw new WorkflowError("Indica el descuento y un período de promoción válido.");
+      if (promo.kind === "percentage" && promo.value > 100)
+        throw new WorkflowError("El descuento porcentual no puede superar 100%.");
+      for (const variant of product.variants) {
+        const price = variant.priceCents ?? product.priceCents;
+        if (price === null || (promo.kind === "fixed" && promo.value > price))
+          throw new WorkflowError(
+            "Cada variante en promoción necesita un precio; el descuento no puede superarlo.",
+          );
+      }
+    }
+  }
   if (brandChanged)
     event(
       "Criterios de marca actualizados",
@@ -93,6 +132,17 @@ export function reconcile(previous: Workspace, raw: unknown, now = new Date()): 
   }
   for (const post of next.posts) {
     const old = previous.posts.find((p) => p.id === post.id);
+    const product = next.catalog.find((p) => p.id === post.productId);
+    if (post.productId && !product)
+      throw new WorkflowError("El producto vinculado debe conservarse en el catálogo.");
+    if (
+      post.productId &&
+      (!product?.variants.some((v) => v.id === post.variantId) ||
+        post.catalogRevision === undefined)
+    )
+      throw new WorkflowError("La publicación necesita una variante y una versión del catálogo.");
+    if (!post.productId && (post.variantId || post.catalogRevision !== undefined))
+      throw new WorkflowError("Vincula el producto de esta publicación.");
     if (post.sourceIds.some((id) => !next.sources.some((s) => s.id === id)))
       throw new WorkflowError(
         "Una publicación apunta a una fuente eliminada. Desvincúlala primero.",
@@ -115,11 +165,30 @@ export function reconcile(previous: Workspace, raw: unknown, now = new Date()): 
         JSON.stringify(next.sources.find((s) => s.id === id)) !==
         JSON.stringify(previous.sources.find((s) => s.id === id)),
     );
-    if (JSON.stringify(post) === JSON.stringify(old) && !brandChanged && !sourceChanged) continue;
+    const productChanged =
+      !!post.productId &&
+      product?.revision !== previous.catalog.find((p) => p.id === post.productId)?.revision;
+    if (
+      JSON.stringify(post) === JSON.stringify(old) &&
+      !brandChanged &&
+      !sourceChanged &&
+      !productChanged
+    ) {
+      if (["approved", "planned"].includes(post.status)) {
+        const issues = approvalIssues(post, next, today(now));
+        // Promotions may expire between saves; send affected posts back to review.
+        if (issues.length) {
+          post.status = "review";
+          post.checks = { facts: false, rights: false, brand: false };
+          event("Aprobación invalidada", issues.join(" "), post.id);
+        }
+      }
+      continue;
+    }
     if (old.demo !== post.demo)
       throw new WorkflowError("Duplica un ejemplo para crear contenido real.");
     const contentChanged = editorial(old) !== editorial(post);
-    const invalidated = contentChanged || brandChanged || sourceChanged;
+    const invalidated = contentChanged || brandChanged || sourceChanged || productChanged;
     if (
       old.status === "published" &&
       (contentChanged || post.status !== "published" || post.publishedUrl !== old.publishedUrl)
@@ -133,7 +202,7 @@ export function reconcile(previous: Workspace, raw: unknown, now = new Date()): 
         post.status = "review";
         event(
           "Aprobación invalidada",
-          `«${post.title}» cambió de contenido, fuente o criterios. Revisa la nueva versión.`,
+          `«${post.title}» cambió de contenido, producto, fuente o criterios. Revisa la nueva versión.`,
           post.id,
         );
       } else if (post.status === "approved")

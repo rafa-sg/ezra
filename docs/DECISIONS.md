@@ -1,5 +1,74 @@
 # Decisiones
 
+## 2026-10-07 · Interacción y movimiento del panel
+
+- Una sola capa CSS (`motion.css`) con variables reutilizables: duraciones 140 ms (hover), 210 ms (paneles y vistas), halo 220 ms al entrar y 360 ms al salir, curvas `--az-ease`/`--az-ease-out`, colores de hover/presionado, anillo de foco y sombras. Sin `transition: all`, sin JavaScript de animación ni dependencias.
+- Hover solo en dispositivos con puntero real (`hover: hover` y `pointer: fine`); en táctiles se anulan los hover heredados para evitar estados pegados y queda la respuesta al presionar.
+- La sección activa se marca con fondo lila, texto violeta y una barra lateral (no solo color); el hover de otra opción no la borra ni cambia tamaños.
+- Modo compacto: íconos en la misma posición expandido/compacto (relleno de 22 px), etiquetas ocultas visualmente pero legibles por lectores de pantalla (antes `display: none` + `title`), tooltips CSS al pasar el cursor o con foco. No se agregó expansión por hover.
+- Diálogos con `@starting-style` y `allow-discrete` (Escape y foco nativos intactos; en navegadores sin soporte abren sin animación). El selector de cuentas entra desde la barra lateral.
+- Las vistas solo animan su contenido al montarse (opacidad + 4 px); la barra superior y la lateral no se mueven y la navegación no espera a la animación. Con `prefers-reduced-motion` no hay animaciones ni desplazamientos.
+- Los botones deshabilitados de la barra superior ahora se ven atenuados.
+
+## 2026-10-07 · «Spotmi» y formulario de Empresa
+
+- El nombre visible de un negocio vive en `data/businesses.json`; se cambió solo `owner-main` («Mi negocio» → «Spotmi») y la marca de su workspace, sin tocar el archivo histórico `spotmi` ni la semilla de instalaciones nuevas.
+- «Para quién» y «para qué» son preguntas separadas; categoría y nicho salen de un catálogo tipado compartido. Son preferencias que no habilitan funciones.
+- Registros guardados con valores viejos se migran explícitamente al leerlos («Creativo» → «Arte, diseño y creatividad»; uso principal → objetivo principal); nada se descarta en silencio.
+
+## 2026-10-07 · Bot de atención
+
+- Datos del bot en `bot.json` propio por negocio, no dentro de `workspace.json`: Creación de contenido guarda el workspace completo con revisión optimista, y mezclar ambos provocaría conflictos 409 entre pestañas. Se incluye en el respaldo ZIP del negocio.
+- Motor de simulación determinista y sin proveedor: el simulador no llama a Gemini ni a ninguna IA. Sus respuestas se rotulan como simuladas.
+- Reglas obligatorias fijas antes de las reglas del usuario: derivar pedidos de persona, reclamos, pagos y temas restringidos; no inventar; aclarar cuando falta información (segunda vez, derivar). El texto del cliente nunca cambia reglas.
+- Sin reglas habilitadas, el bot no responde con conocimiento. Reglas nuevas o editadas quedan desactivadas hasta una prueba en la que se apliquen.
+- Editar conocimiento aprobado lo devuelve a borrador; fecha de revisión vencida lo excluye. No se copian catálogo, precios ni horarios: solo un botón para copiar la descripción de Marca a un borrador.
+- Conexiones: un solo panel compartido; GHL y cada canal tienen estados independientes; hoy solo se muestra lo verificable («Sin conectar»). No se asume que el MCP de GHL reciba eventos o mantenga un bot activo.
+- Horarios en America/El_Salvador; horario del bot separado del horario del equipo.
+
+## 2026-10-07 · Configuración reducida
+
+- Configuración conserva Mi perfil, Empresa y Usuarios; el resto se eliminó del código y sus URLs redirigen a Mi perfil (pedido del propietario).
+
+## 2026-10-07 · Herramientas de contenido: Conexiones
+
+- A petición del propietario, el lateral de Creación de contenido ahora contiene solo «Conexiones». Nuevo chat, Buscar, Plantillas y Personalizar se retiran de esta pantalla; el apartado de IA no cambia.
+- Conexiones abre un diálogo para el futuro MCP de GHL, explícitamente pendiente de configurar. No se agregan credenciales, llamadas externas ni conexiones simuladas. Se conserva la creación de paneles locales y todo el contenido guardado.
+- Próximo paso: especificar la integración real de GHL y verificar sus capacidades antes de activarla.
+
+## 2026-10-07 · Creación de contenido según capturas del propietario
+
+- Nueva pantalla real `/azra/content` para administración y clientes, integrada en `AzraShell`; Ask AI y el login existentes se conservan. Implementación: `src/features/azra/content.tsx` y `content.css`.
+- Inicio sin paneles ni conexiones. `socialPanels` opcional en el workspace (Facebook/Instagram, únicos, máximo dos); guardado por API con aislamiento y revisión optimista. Quitar un panel conserva publicaciones y medios. Contenido demo oculto, nunca borrado.
+- Diseño blanco/lila con herramientas, pestañas, tarjetas seleccionables, búsqueda, tres estructuras de texto y personalización de voz/criterios. Editor local con medios propios, fuentes existentes, revisión y exportación ZIP manual usando APIs y reglas editoriales existentes. Cambio de marca invalida aprobaciones según la lógica del servidor.
+- Métricas sin datos, conexiones sin activar y orden por rendimiento deshabilitado. Una cuenta por red y negocio en esta fase. No existe OAuth ni importación/publicación social; no se activó gasto.
+- Limitaciones pendientes: alta/revisión de fuentes desde la nueva interfaz (el editor selecciona fuentes existentes), vista previa específica por formato, gestión de múltiples cuentas de una misma red y traducción de esta nueva pantalla a inglés. Notificaciones/ayuda globales conservan su disponibilidad anterior. No se restauró el estudio retirado.
+- Validación: `npm run check` (55 pruebas), `npm run build`, `npm run test:integration` (6 pruebas) correctos. Prueba nueva de paneles, preservación de datos y conflictos; ruta de contenido accesible por cliente autorizado. Navegador con fixture aislado en `work/`, API real: panel vacío, creación/persistencia de borrador, revisión y aprobación bloqueada sin fuente/comprobaciones, exportación solicitada, Escape y foco visible. Escritorio 1440 y móvil 390 sin desbordamiento del documento. No se probó sesión Clerk real.
+- Arnés temporal `work/content-preview-server.mts`, puertos loopback 3127/3128; captura `work/content-design/desktop.png`. No contiene datos reales y no sustituye la aplicación de 3000.
+- Próximo paso: revisión visual del propietario en `/azra/content`; completar alta de fuentes y vista previa antes de ampliar integraciones.
+
+## 2026-10-07 · Ask AI con Gemini
+
+- Gemini solo desde el servidor (`/api/ask`) con el SDK oficial; la clave se lee de `GEMINI_API_KEY` en cada solicitud y nunca llega al navegador. Modelo configurable con `GEMINI_MODEL`, por defecto el Flash-Lite estable vigente (`gemini-3.5-flash-lite`).
+- Respuestas solo desde herramientas de solo lectura sobre el workspace del negocio autorizado. Sin archivo estático de contexto. Campos mínimos; sin textos completos, correos ni teléfonos. Publicaciones `demo` excluidas.
+- Métricas y mensajes no existen en la app: las herramientas lo declaran «no conectado» en lugar de estimar.
+- Fechas en America/El_Salvador (no hay zona por negocio en el modelo); «esta semana» = lunes a domingo.
+- Límites para el plan gratuito: 5 preguntas/min por cuenta (en memoria, servidor local único), ≤4 llamadas al modelo por pregunta, `maxOutputTokens` 800, historial ≤20 turnos.
+- La conversación vive en memoria del navegador y se reinicia al cambiar de negocio, para no mezclar datos de dos negocios.
+
+## 2026-10-06 · Spotmi automation design scope
+
+- Owner feedback: the visual design is not approved. The owner requested a screen-by-screen explanation and more control over its appearance. The sidebar now stays within viewport height, with its own navigation scroll and compact footer on short screens; further visual changes remain proposals.
+
+The owner requested a reviewable design for authorized information collection, branded creative generation, and automatic inbound customer replies on Instagram, Facebook Messenger, and WhatsApp. This is the future product direction; the current request authorizes design and local simulation only, not external activation, paid services, publication, or messaging.
+
+- Spotmi is the first design case. Its historical archive and the existing commercial workspaces remain preserved.
+- The proposal lives in `docs/design/spotmi/`. The separate browser prototype uses explicitly labeled sample data and its own localStorage key; it does not read or write `data/`, production APIs, or credentials.
+- Production collection remains subject to the current source restrictions until a specific implementation phase changes them. Future scheduled collection, social ingestion, and live reply modes need their own server-side capabilities and activation conditions.
+- Routine bot replies will run automatically from approved business knowledge. Human handoff is required for unknown/stale facts, complaints, payments, availability, and explicit requests for a person. Taking over a conversation must stop concurrent bot replies.
+- Orshot is a candidate renderer, Apify a bounded collection adapter, and official Meta APIs the messaging transport. An information-source URL is never an authenticated account connection.
+- Existing uncommitted changes in `studio.tsx`, `studio.css`, and `next-env.d.ts` predate this design task and are preserved.
+
 ## 2026-10-04 · Base local
 
 - Next.js + TypeScript. CSS convencional con variables, en lugar de Tailwind: reduce dependencias y mantiene un sistema visual explícito en este prototipo. No altera la arquitectura futura.
@@ -148,3 +217,202 @@ Aprobada por el propietario, con las tres recomendaciones: nivel gratuito, `gemi
   - si el texto está vacío o supera 2,200 caracteres, el encargo queda «falló» y no se crea borrador;
   - un resultado repetido no duplica el borrador.
 - **La clave de Gemini:** la crea el propietario y la pega solo en una credencial de n8n de tipo cabecera (`x-goog-api-key`), nunca en ezrá, Git ni el chat. No se usa la credencial «Google Gemini(PaLM) Api» porque envía la clave en la dirección web.
+
+## 2026-10-05 · Acceso comercial con Clerk
+
+- El producto activo se orienta a Sgmotos, motoxspress y el panel del propietario; Spotmi queda como archivo histórico.
+- Clerk gestiona identidad, contraseña y sesión. `data/access.json` solo guarda la autorización privada del panel y, tras el primer acceso, el `userId` de Clerk. No se guardan contraseñas ni claves en Git.
+- La instancia usada es desarrollo. Las tres cuentas de prueba usan correos provisionales y una contraseña débil únicamente para esta prueba local; deben sustituirse antes de cualquier entrega.
+- No se habilitaron Organizations de Clerk: el aislamiento actual es una asignación privada de cuentas a organizaciones locales, suficiente para el piloto. Se revisará B2B/Organizations antes de comercializar.
+- La publicación social, WhatsApp, chatbot, Gemini y cobros continúan fuera del hito; el flujo actual prepara y exporta manualmente.
+
+## 2026-10-05 · Enfoque en Sgmotos y asistente de publicación desde el catálogo
+
+- Por decisión del propietario, se termina primero el panel de **Sgmotos**; motoxspress queda aislado y sin cambios funcionales propios hasta validar Sgmotos. Después se conectan las redes oficiales de Sgmotos.
+- **«Crear publicación» en el catálogo es un asistente de 4 pasos:**
+  1. Variante y fotos: solo las fotos del propio producto o variante.
+  2. Promoción: vigente, próxima, vencida o incompleta, mostrada desde el catálogo verificado y no editable en el asistente.
+  3. Redes: Instagram exige al menos una foto.
+  4. Revisión: vista previa del texto exacto por red y avisos (producto sin verificar, sin enlace, sin precio, promoción no vigente).
+- Los avisos no bloquean el borrador, porque nada se publica; las mismas reglas se exigen al aprobar.
+- El formato sale del número de fotos: sin fotos es texto (solo Facebook), una es foto y varias son carrusel.
+- En pantallas de 640 px o menos, los diálogos ocupan toda la pantalla y sus botones quedan fijos abajo.
+
+## 2026-10-05 · Sgmotos: datos de moto y preparación de redes
+
+- **Acceso:** el panel de Sgmotos pasó a otro correo del propietario, a su pedido, porque el correo inicial no estaba verificado. Copia previa de `data/access.json` en `Documentos/Respaldos-ezra/`. El inicio de sesión de administración y de Sgmotos quedó comprobado: las dos cuentas están enlazadas.
+- **Producto (`details`), compatible con los datos existentes:**
+  - año (si está verificado), cilindrada y especificaciones verificadas;
+  - financiamiento, que solo aparece en una publicación si se marca «El negocio aprobó publicar este financiamiento»; no se puede aprobar un financiamiento vacío;
+  - estos datos forman parte de la revisión del producto: cambiarlos invalida las aprobaciones.
+- **«Preparación para conectar redes» en Ajustes, por negocio (`socialSetup`):**
+  - guarda si Instagram es profesional, si está vinculado a la página, si hay control total de la página y qué WhatsApp se usa;
+  - muestra qué falta;
+  - no conecta, no publica y no envía nada; WhatsApp personal se marca como no conectable.
+
+## 2026-10-05 · Apariencia propia por negocio (Sgmotos)
+
+- **Campo `appearance` por negocio:** color principal, color de acento y logo, compatible con los datos existentes. Vacío conserva el estilo de ezrá.
+- **Cómo se aplica:** solo cambian variables CSS (`--violet`, `--violet-dark`, `--lilac`, `--brand-secondary`); la estructura y el comportamiento son iguales para todos.
+- **Contraste:** si el color principal no alcanza 4.5:1 con texto blanco, se usa automáticamente un tono más oscuro.
+- **Logo:** debe ser una imagen de la biblioteca del mismo negocio, comprobado en el servidor.
+- **Sgmotos:**
+  - azul `#3070B0` y rojo `#C83020`, medidos sobre su logo;
+  - el logo se limpió de las cintas de la bandera y se guardó en su biblioteca como material con autorización del propietario;
+  - copia previa de sus datos en `Documentos/Respaldos-ezra/`.
+- Los datos comerciales del cliente (marcas que distribuye, ubicación, cuentas) se guardan fuera de Git, en notas privadas; se usan para clasificar marcas, no para inventar especificaciones.
+
+## 2026-10-07 — Azra Stage 1, referencias y credenciales demo
+
+El propietario autorizó construir localmente y avanzar con decisiones documentadas. Se añadió `/azra` dentro del proyecto existente para preservar el piloto `/`. Stack/dependencias conservados; CSS aislado, ES por defecto + EN en diccionarios, manifiesto de 40 capturas y rutas según `docs/design/azra/INVENTORY.md`. No se copian capturas con secretos (#28/#32) a archivos públicos.
+
+Tokens/permisos/rotación/revocación funcionan mediante `CredentialService` y adaptador demo en localStorage, sin llamadas externas ni datos reales. Tokens prefijados `DEMO-NOT-A-CREDENTIAL-`; rotación de siete días, cancelar, expirar/revocar y validar errores. La decisión Azra/HighLevel queda abierta explícitamente y no bloquea el desarrollo. Se implementan ocho permisos legibles; los otros 16 se documentan como pendientes. No hay lista poblada aportada: entrada retoma último detalle, retorno del detalle a Claves API. Edición reutiliza modal de permisos; menú de operaciones es supuesto documentado por el pedido explícito del propietario.
+
+Shell, rutas, traducciones y flujo de credenciales listos como base. Las demás pantallas muestran avisos de Stage 2 pendiente, no se consideran terminadas. Logo/ilustraciones/fuente originales pendientes; no se afirma fidelidad exacta. El relevo activo es `CLAUDE.md` y `docs/design/azra/NEXT_STEPS.md`; el relevo histórico del piloto se conserva. Gasto nuevo: USD 0. No se modificó `data/`, ni autenticación o APIs del piloto.
+
+## 2026-10-06 — Azra Stage 2: menú global reducido y módulo de cuenta
+
+El propietario indicó que no se agregarán Reventa, Complementos, Portal de afiliados, Biblioteca de plantillas, Socios, Universidad, Educación en SaaS ni Swag. Se quitaron del sidebar global (y sus textos), en lugar de mostrarse deshabilitados. No confundir con «Afiliados» de Ajustes (#25/#33), que sigue en alcance.
+
+Perfil general (#6), seguridad (#7), empresa (#8) y usuarios (#9) usan `AccountService` (`src/features/azra/account/service.ts`) con adaptador demo en localStorage `azra:account:demo:v1`. El demo empieza vacío: no se siembra ninguna persona, empresa ni usuario; el único usuario listado es el propietario derivado del perfil guardado. Número de relación generado con prefijo `DEMO-`. Guardar el perfil aplica el idioma de la plataforma a la interfaz. Contraseña y «cerrar sesión en todas partes» validan el formulario pero el servicio siempre responde «no conectado»: nunca aparenta éxito.
+
+Supuestos documentados: selector de país con 9 códigos regionales (solo El Salvador es visible); categoría de negocio y uso principal solo con las opciones visibles (Creativo, Otro); nicho deshabilitado con catálogo pendiente y por tanto no obligatorio aún; botón «Guardar cambios» de empresa provisional porque la captura está recortada; marca blanca, avanzado y SSO son pestañas fuera de alcance; el texto «HighLevel» del campo de uso se neutralizó a «la plataforma»; añadir usuario sin diálogo aportado; eliminar al propietario bloqueado; tamaños 10/20/50 por página. La imagen de perfil se valida (tipo, 2.5 MB) y se previsualiza solo en sesión hasta tener almacenamiento de medios.
+
+## 2026-10-06 — Tablero de la agencia, shell y selector de subcuentas
+
+Referencias nuevas aportadas por chat (no guardadas en el repositorio): GHL en español con selector abierto (#4 chat), búsqueda sin coincidencia con «Crear «nombre»» (#5 chat), «Select Snapshot Template» (#6 chat), tarjeta con hover «Seleccionar y continuar»/«Guía de configuración» (#7 chat) y perfil en español (#8 chat). Contienen datos reales (IdeasForge, dirección, correo, teléfono): no se usan como semilla.
+
+Se adoptó la terminología de GHL en español visible: Tablero de la agencia, Pregúntale a la IA, Instantáneas de la cuenta, Configuración, Volver atrás, «Haga clic aquí para cambiar», insignias «Nueva» doradas, nombres de ajustes con elipsis, «Apellidos» y la indicación de imagen. Los textos sin captura en español siguen con voseo salvadoreño. El selector ES/EN se reemplazó por el botón circular de traducir (morado) que abre Español/English. Colores de cabecera y botón verde de contraer según capturas; estimados, no medidos.
+
+Tablero: estado vacío dentro de tarjeta blanca, título gris, botón «Conectar Stripe» con contorno y deshabilitado; el logo de Stripe y la ilustración siguen como marcadores, sin recrear marcas. El widget «Welcome, <nombre>» de #2 no se reproduce (personal/onboarding sin destino).
+
+Selector de subcuentas: panel anclado al sidebar sin fondo oscurecido, cierra con Escape o clic fuera. La demo empieza sin subcuentas (se retiró «Cuenta de ejemplo»). Buscar un nombre inexistente muestra «Borrar la búsqueda» y «Crear»; «Crear» abre el selector de plantillas. Catálogo solo con las 4 plantillas legibles (en blanco, Accounting Firm, Affiliate Marketing Agency, Appliance Repair Shop); el contador muestra 4, no los 123 del proveedor, y hay aviso de catálogo parcial. Las tarjetas recortadas de la segunda fila no se inventan. «Mis/Importadas» muestran 0 con mensaje vacío. «Seleccionar y continuar» crea una subcuenta demo local (nombre + plantilla, dirección pendiente) y vuelve al selector con aviso: el paso real siguiente de GHL no tiene captura. «Guía de configuración» queda fuera de alcance. El pin persiste en el demo. Elegir una cuenta solo cierra el panel: la vista de subcuenta no tiene captura.
+
+## 2026-10-06 — Prospección (#38, #3, #5, #4, #39)
+
+Módulo `src/features/azra/prospecting/` con `ProspectingService` y demo en `azra:prospecting:demo:v1` (orden/visibilidad del informe, alojamiento, primeros pasos omitidos). Encabezado compartido «Cuentas de prospectos» + «Añadir prospecto» en todas las pestañas: solo #38 muestra la cabecera; la zona central tapada no se reproduce. Pestaña Widgets sin captura: deshabilitada.
+
+Cuentas: estado vacío; filtros Categorías/Origen/Estado y búsqueda deshabilitados hasta que existan prospectos (opciones no visibles). «Añadir prospecto» sin diálogo aportado. Primeros pasos 0/5 siempre abiertos porque ninguna de esas funciones existe; «Omitir» persiste y hay enlace para volver a mostrarlo (adición documentada para no perderlo). Prospect AI: textos y tres tarjetas visibles con ilustraciones pendientes; segunda fila recortada no incluida; crear agente sin editor. Constructor: secciones legibles hasta «Rendimiento del sitio web» (Premium, fija y deshabilitada); casillas con estado intermedio padre/hijos y «Todos»; reordenar arrastrando o con flechas sobre el asa; guardado inmediato (no se ve botón guardar). Analítica: KPIs en 0 y gráficos vacíos porque el demo no tiene actividad; el texto «Se actualiza cada 24 h» se reemplazó por una nota honesta; rangos 3/6/12 meses (solo 6 visible); paleta azul/celeste validada con el validador de dataviz; tooltip por mes y vista de tabla. Ajustes: mapas de calor deshabilitados (premium) con valores visibles; «Mejorar plan» bloqueado (sin compras); alojamiento con los 7 servicios visibles y selección inicial de la captura; «Migrar» sin captura. Insignia tapada junto a «Local SEO Heatmaps» no se infiere.
+
+## 2026-10-06 — Sin «Nueva» en el menú global y sin elementos premium
+
+Por pedido del propietario: se quitaron las insignias «Nueva» del sidebar global (AI Suite, aplicación móvil y de escritorio) y todo rastro de premium (palabra, diamante, bloqueo y «Mejorar plan»). Solo interesa la funcionalidad. «Rendimiento del sitio web» es una sección normal del informe. Los mapas de calor son editables: cuadrícula 3×3/5×5/7×7 y cobertura 3/5/10 km (solo 3×3 y 1.9 mi visibles en #39; el resto es supuesto documentado), con resumen calculado y guardado demo; los ajustes anteriores sin esos campos cargan con 3×3/3 km. Las insignias «Nueva» del menú de Configuración siguen hasta que el propietario indique lo contrario.
+
+## 2026-10-06 — Prospección en español según captura del propietario (imagen 10 por chat)
+
+Se adoptaron los textos visibles de GHL en español: «Añadir cliente potencial», «Todos los clientes potenciales», «Gestione todas las cuentas…», filtros Categorías/Fuente/Estado, «Empiece a explorar nuevos clientes» con su descripción y la pestaña «Estadísticas». Por la regla de no premium se omiten «Sencillo», «5 de los 5 informes prémium…», «Desbloquee Premium» y los diamantes de Widgets/Constructor. El panel promocional «Welcome, <nombre>» / llamada de onboarding no se reproduce: contiene testimonio de una persona real, cifras de clientes y una llamada externa; queda pendiente de confirmación del propietario.
+
+## 2026-10-06 — Etapa 2 según el video del propietario (Configuración)
+
+Fuente: grabación «2026-10-06 11.25.42 p. m.» exportada desde Fotos al scratchpad (no al repositorio; contiene datos reales). Implementado:
+
+- Flujos (#10 + video): creador por defecto estándar/avanzado y página «Gestionar el constructor por defecto por subcuenta» con búsqueda, selección en lote, control segmentado y paginación. `WorkflowService` demo (`azra:workflows:demo:v1`), usa las subcuentas demo.
+- Seguridad: sección 2FA; «Configurar» responde «no conectado» (sin backend de autenticación).
+- Empresa: pestañas funcionales. Detalles básicos con Cancelar (confirma el botón Guardar antes provisional), dirección (país, zona horaria de `Intl`), funciones con interruptores (Configurar enlaza a sus pantallas; «Más información» externo fuera). Marca blanca: logotipo con vista previa local, dominios de marca blanca/API validados y guardados como «pendiente de DNS», URLs de políticas, JS/CSS personalizados **solo guardados como texto, nunca ejecutados**, tema claro/oscuro guardado (tema oscuro de UI pendiente). Avanzada: seguridad mejorada, interrupción de sesión (4 h–3 días/Nunca; la opción entre 8 h y 1 día estaba tapada, se asumió 12 h), acceso de soporte de 90 días con ampliar/revocar y modal, interruptores de experiencia con modal «No se recomienda deshabilitar…» y casilla obligatoria. SSO: «Habilitar SSO» informa que falta proveedor de identidad. Se omite «Biblioteca de plantillas para clientes» (sección excluida por el propietario) y la palabra prémium.
+- Avisos (#20 + video): 22 avisos legibles (sin los de reventa), pestañas por prioridad, búsqueda, orden por columna, interruptores (bloqueados con candado no cambian), paginación. Añadir/editar avisos sin captura. El demo no envía avisos.
+- Los ajustes de empresa se guardan combinando cada sección con datos recién leídos para que ninguna sección pise a otra.
+
+## 2026-10-07 — Migración: estructura nueva + identidad y lógica del piloto
+
+El propietario decidió que la estructura nueva gana en layout/navegación/pantallas y la interfaz anterior gana en identidad (nombre «ezrá.», paleta blanca/lila exacta del piloto) y en lógica (Clerk, sesiones, protección, API, validaciones). Negocios del piloto = subcuentas; sidebar blanco con lila. Respaldo en `backup/pre-migracion-ezra-2026-10-06` (`a607921`). Fase 1 hecha: tokens y marca, protección server-side de `/azra` con `sessionAccount()` (solo admin), correo y cerrar sesión, selector y flujos con negocios reales vía `/api/businesses`. Nada del piloto se eliminó; detalle de lo conservado/adaptado/reemplazado/pendiente en CLAUDE.md.
+
+## 2026-10-07 — Logo de agencia persistente
+
+El propietario pidió que el logo de Marca Blanca se guarde. Se guarda en el servidor local (`data/agency/`) con la lógica del piloto: solo administración, detección por contenido (PNG/JPG/WebP, 2,5 MB), cola de escritura y escritura atómica. Sustituye al ícono por defecto en el sidebar. SVG no se acepta (riesgo de scripts). Las pruebas usan un directorio aislado en `work/`.
+
+## 2026-10-07 · Panel nuevo por empresa y comando Claudeya
+
+El propietario confirmó: mismo diseño que la cuenta administrativa rafasanguti69, pero datos y permisos diferentes por empresa. No autoriza acceso administrativo a clientes.
+
+- `Studio` usa por defecto `AzraShell` compartido con opciones de negocio. El panel anterior y `Overview` quedan conservados detrás de `legacyPanel`, desactivado por defecto y sin ruta/query pública para activarlo. No se duplicó ni migró `data/`.
+- Inicio nuevo en `src/features/azra/business-overview.tsx`: catálogo, pendientes, fechas previstas y publicaciones reales del negocio. Redes explícitamente sin conectar. Se conserva la lógica de catálogo, revisión, biblioteca, agenda, fuentes, marca, exportación y respaldo.
+- Cada empresa usa su propio logo; la apariencia del panel usa la paleta compartida blanco/lila. Los colores personalizados guardados no se borran pero ya no cambian el shell. Los clientes no montan el selector administrativo ni leen el logo/perfil demo del administrador. Avatar derivado de la sesión.
+- Administración sigue protegida en `/azra`; clientes permanecen en `/` con el shell nuevo. El selector de negocios sigue limitado por la API. Sin nuevas conexiones, mensajes ni publicaciones.
+- «Claudeya» queda definido en AGENTS.md como comando para actualizar CLAUDE.md y TASKS con el relevo completo, sin secretos, y entregar un mensaje listo para Claude Code.
+- Ideas del foro seleccionadas para fases posteriores: plantillas/colores/logo; valores de catálogo para contenido; asistencia de texto; conocimiento aprobado para bot y respuestas sugeridas; workflows solo tras verificar permisos reales de GHL. Esta tarea implementa el panel, no esas integraciones.
+
+## 2026-10-07 — Revisión visual de Sgmotos/motoxspress y función 1 del foro
+
+Revisión con arnés aislado (datos en `work/`, Clerk offline). Corregidos: «publicaciónl» → «historial», mes de Agenda en mayúscula de oración, buscadores legibles, piso de 12 px para textos del piloto dentro del shell (sin tocar `studio.css`) y botón de cerrar sesión compacto en móvil. Aislamiento verificado por HTTP para ambas empresas. Plantillas de marca: especificación en `docs/features/plantillas-de-marca.md`; no se implementa hasta que el propietario decida imagen o texto, uso de colores, quién edita, marcadores permitidos y sincronización con GHL. GHL Design Kits API documentada públicamente; scopes, token y plan sin confirmar: no se integra.
+
+## 2026-10-07 — Nuevo login
+
+Estructura de la referencia del propietario (panel dividido + tarjeta centrada) con identidad ezrá (violeta del piloto, logo, tuteo como el login anterior). Clerk conserva toda la lógica; solo cambian apariencia y textos. Aviso de desarrollo oculto con la opción oficial de Clerk; marca «Secured by Clerk» se mantiene. En móvil se priorizó el formulario ocultando los tres puntos.
+
+## 2026-10-07 — Menú del panel: solo «Pregúntale a la IA»
+
+El propietario decidió empezar la funcionalidad real por Ask AI. El menú principal de `/azra` queda con un solo elemento y Ask AI es la página de inicio y el destino tras el login. Se borraron el tablero de la agencia (Stripe), Prospección completa y sus textos/estilos; las URLs viejas redirigen a Ask AI. Elementos sin página (AI Suite, Launchpad, Subcuentas, Instantáneas, Ideas, apps) solo se quitaron del menú. El selector de cuentas, Configuración y la barra superior no cambian. Todo lo borrado se puede recuperar del commit de respaldo `a607921`.
+
+## 2026-10-07 — Un solo panel; estudio eliminado
+
+El propietario eligió eliminar del código las funciones del estudio (Resumen, Catálogo, Publicaciones, Agenda, Fuentes, Marca y criterios) y usar un único panel con «Pregúntale a la IA» para todas las cuentas. Clientes solo ven su perfil en Configuración; el selector de cuentas elige el negocio activo de Ask AI. APIs y librerías del servidor se conservan (lógica y datos), `data/` intacta. Respaldo en `0767994` / `backup/pre-eliminar-estudio-2026-10-07`. Consecuencia: hasta que Ask AI funcione, los clientes no tienen pantalla para ver o preparar contenido.
+
+## 2026-10-07 — Login arcade EZRA
+
+Se rediseñó el login existente (sin pantalla ni app paralela) con el panel arcade de la referencia del propietario y el formulario de Clerk restilizado. Se omitió el aviso de «demo sin autenticación» porque la autenticación es real. El juego es opcional, accesible, solo capta teclado con el panel enfocado y se desactiva con movimiento reducido o poco espacio (móvil).
+
+## 2026-10-27 · Dirección vigente: Estudio Spotmi
+
+El propietario confirmó que el centro de producción vive en Ezra y se conecta a Spotmi; Astra es el modelo de Codex. Se añade /azra/produccion para administración, con 11 especialidades, encargos persistentes, cadena por versiones, revisión, calendario y exportación. Los otros negocios conservan sus datos y permisos.
+
+El propietario pidió desvincular Metricool y HighLevel: no reintroducirlos como dependencia del producto. El plugin Metricool se desvinculó de Codex; GoHighLevel no estaba instalado. En el código solo había un contrato futuro de GHL: se sustituyó por estados de conexión directa. No se revocaron accesos sociales en Meta ni se cancelaron suscripciones.
+
+La lectura de Spotmi usa sus fichas públicas y la clave anónima, nunca service role. Dominio confirmado: https://spotmi.com.sv. Los adaptadores locales de Codex y Claude usan la sesión del propietario, con comandos/archivos/plugins desactivados y búsqueda pública solo para el cazador. No activar una API facturada automáticamente. Gemini sigue detrás de configuración explícita. Toda entrega vuelve a revisión; no se publica en redes desde esta versión.
+
+Guía vigente y límites: docs/ESTUDIO_SPOTMI.md. La documentación anterior conserva el historial; las decisiones de este apartado prevalecen para el nuevo estudio.
+
+## 2026-10-27 · Interfaz anterior deshabilitada
+
+El propietario pidió una sola interfaz. Se retiraron del catálogo y del bundle visible Chat, Contenido, Bot y Configuración anteriores. Sus URLs redirigen a /azra/produccion para todas las cuentas, incluidos los clientes. El marco anterior (sidebar blanco/lila y sus hojas azra.css/motion.css) dejó de importarse; se utiliza únicamente el marco del Estudio Spotmi. Las cuentas de cliente ven el nuevo diseño en modo de vista sin llamadas a las APIs privadas, sin encargos de administración y sin nuevas autorizaciones. Crear, editar y ejecutar sigue protegido por requireAdmin en el servidor. La información y las APIs del piloto se conservan, pero su interfaz anterior no se monta.
+
+El acceso también usa el estilo oscuro del Estudio Spotmi. La presentación arcade, los estilos globales heredados y las pantallas anteriores ya no se importan. Clerk conserva sus flujos y permisos.
+
+
+## 2026-10-27 · Solicitud siguiente: Granjas y conexiones directas
+
+Pendiente de implementación por Claude, según `CLAUDE_GRANJAS_SPOTMI.md`: renombrar Producción a Granjas; editor persistente de agentes y conexiones; personajes animados según trabajo real; ejecución configurable y reanudable; medios/video reales; tarjetas OAuth separadas de Instagram, Facebook, TikTok y Spotmi web; autorización del envío ligada a una versión y destinos concretos. No se han agregado estas funciones en esta sesión.
+
+Se auditó el estado: datos en `data/produccion-spotmi.json`, backend local Next.js; sin publicador social ni escritura a Spotmi. Lectura real de Spotmi comprobada el 27/10/2026: 25 eventos, 37 spots, 37 fichas con imagen. No se transfieren autorizaciones antiguas de Metricool.
+
+El propietario eligió el encargo `ae58cf22-6697-497a-8b95-5a26cc2c3f41` para la primera prueba. Se guardó investigación parcial manual y un borrador, versión 2, en revisión, con las comprobaciones sin aprobar. La ficha de El Salvador Travel enlaza a Instagram, pero el anuncio original no pudo leerse. Fecha/año del original, imagen y derechos quedan pendientes. No se ejecutó un adaptador ni se publicó nada. Ver `docs/relevos/granjas-spotmi-20261027/PRIMERA_PUBLICACION.md`.
+
+La API de Direct Post de TikTok tiene restricciones de elegibilidad para herramientas internas. Claude debe verificar la vía permitida y no prometer publicación directa sin aprobación de plataforma. Preparar una vista previa no autoriza enviarla: la primera publicación real requiere autorización final de la versión y las cuentas concretas.
+
+## 2026-10-27 · Granjas: almacenamiento, trabajador y publicación
+
+- Las granjas usan SQLite integrado en Node (`node:sqlite`, sin dependencias nuevas) en `data/granjas/`. Una cola en un JSON por proceso no protege a un trabajador en otro proceso; SQLite con WAL y transacciones inmediatas sí. Los encargos siguen en `produccion-spotmi.json`: la granja los vincula por id y versión, sin migrarlos ni cambiar su esquema.
+- El trabajador corre dentro del servidor de Next (`src/instrumentation.ts`) y también como `npm run granjas:trabajador`. Los arriendos permiten recuperar trabajos si el proceso se corta. Un envío a una red interrumpido queda «desconocido» y nunca se repite a ciegas.
+- Las invariantes de AGENTS.md se actualizan solo en esto: se puede publicar, pero únicamente por el trabajador, tras aprobar el contenido de una huella concreta y con una autorización explícita (`PUBLICAR`) ligada a esa huella y a cuentas concretas. Ningún modelo puede aprobar, elegir cuentas ni llamar a un publicador.
+- Las fuentes de una granja se leen en el servidor solo en dominios permitidos. Se bloquean redes privadas al conectar, se revisan las redirecciones y se respeta robots.txt. Se guardan extractos breves y fechas encontradas, no textos completos ni imágenes ajenas.
+- TikTok: la publicación directa queda bloqueada por política (no acepta herramientas internas para cuentas propias); solo se suben borradores. Instagram con inicio de sesión de Instagram publica Reels por subida directa; las imágenes necesitan un enlace público, que esta Mac no expone. Facebook publica en una Página con tarea CREATE_CONTENT. Graph `v26.0` configurable.
+- Spotmi web: Ezra solo crea propuestas pendientes mediante una RPC (migración `20261103_propuestas_ezra.sql`, preparada en spotmi-web y sin aplicar). Publicar en Spotmi sigue siendo decisión del equipo.
+- La pestaña visible «Producción» pasa a llamarse «Granjas». Las rutas, los esquemas y el archivo de encargos conservan sus nombres.
+- `next.config.ts` acepta `EZRA_DIST_DIR` para compilar y probar en `.next-verificar` sin pisar el servidor de desarrollo. Tras compilar, `next` reescribe `tsconfig.json` y `next-env.d.ts`: hay que restaurarlos.
+- Las rutas de datos de las granjas llevan `/* turbopackIgnore: true */`; sin esa marca, el empaquetador intenta recorrer el proyecto y falla con el enlace roto de `.venv`.
+
+
+## Cierre verificado · Granjas · 27 de octubre de 2026
+
+La interfaz de Granjas está integrada en el estudio: recetas, lienzo de agentes, conexiones entre pasos, inspector, encargos vinculados, ejecución manual, revisión y vista previa. Se conserva el código reciente del otro editor; no se sobrescribió el backend de Claude ni la integración concurrente. Conexiones incluye Instagram, Facebook, TikTok y Spotmi, con requisitos y estados reales; una tarjeta visible no acredita una cuenta conectada.
+
+Verificación final de la versión integrada en copia aislada: `npm run check` pasó (lint, TypeScript y 82 pruebas); build con Webpack y `EZRA_DIST_DIR=.next-verificar` pasó; integración HTTP pasó 7/7, incluidas autenticación, roles y Granjas. Navegador a 1440 px: lienzo e inspector visibles; Alt+flecha y Guardar comprobados. A 390 y 360 px, ancho de documento igual al viewport y sin claves g_* visibles. La regla CSS de movimiento reducido se revisó; no se emuló la preferencia del sistema. La build temporal y los servidores de QA se retiran al cerrar.
+
+La comprobación local adicional del encargo `ae58cf22-6697-497a-8b95-5a26cc2c3f41` creó la granja `baa6585d-ee21-4ccf-be0b-67532e722216` («Primera prueba · Instagram»), ejecución `6d697f57-e00f-40a7-9699-0e85eae7d6ec` y pieza `f4470a71-bd41-450c-84d6-808ba36c9cd8`. Se leyó la ficha oficial (HTTP 200), se importó el encargo y se preparó el texto manualmente. Estado: esperando al dueño, 0 autorizaciones y 0 recibos. No se ejecutó IA, no se subieron medios y no se publicó. Informe: `work/primera-prueba-granjas-real.json`. La granja preparada antes por Claude se conserva también; no se borraron datos.
+
+Los registros de la app viven en `data/granjas/granjas.sqlite`; medios en `data/granjas/medios`; encargos previos en `data/produccion-spotmi.json`. No es almacenamiento remoto ni una subida a Spotmi. La migración y sus ataques están preparados en spotmi-web (`20261103_propuestas_ezra.sql` y `supabase/tests/propuestas_ezra.sql`), SIN aplicar ni ejecutar; falta validarlos en una base aislada. No se regeneraron tipos de una migración sin aplicar.
+
+Pendiente externo: conectar y comprobar cuentas reales y permisos, contrastar el anuncio original de Instagram, aportar imagen autorizada si el canal la exige, y aprobación explícita del contenido exacto y de cada cuenta. TikTok queda en envío de borrador y exige video. Spotmi exige migración aplicada y cuenta editorial habilitada. Gemini y servicios de pago no se activaron; no hubo push, merge ni despliegue.
+
+Matriz de capacidades y uso: `docs/GRANJAS_CAPACIDADES.md`. Contenido exacto: `docs/relevos/granjas-spotmi-20261027/PRIMERA_PUBLICACION.md`. El siguiente paso del propietario es revisar ese texto y elegir cuentas; ninguna aprobación documental sustituye la autorización por versión y destinos en la app.
+
+
+## 2026-10-27 · Prueba de conexión con n8n Cloud
+
+Se añade scripts/probar-n8n.mjs para probar únicamente accion=probar_conexion con el webhook autenticado de spotmi.app.n8n.cloud. Configuración privada en .env.n8n.local, excluida por .gitignore. No cambia el trabajador ni publica, programa o envía contenido editorial. Valida la respuesta y el id de solicitud, limita el destino HTTPS y rechaza redirecciones. Ejecución: node --env-file=.env.n8n.local scripts/probar-n8n.mjs. Tres pruebas con respuestas simuladas pasaron; la prueba real sigue pendiente de configurar el secreto y activar la escucha en n8n.
+
+
+## 2026-10-27 · Integración de Granjas con n8n Cloud
+
+Se añade tarjeta n8n en Conexiones, prueba autenticada desde administración y descarga del flujo docs/n8n/ezra-meta.json. El publicador existente conserva aprobación por hash, autorización por cuenta y recibos; con EZRA_N8N_PUBLICACION=1 sus llamadas publicar/confirmar de Facebook/Instagram pasan por n8n, sin reintentos automáticos. El flujo limita destinos Meta, acepta bytes/formularios hasta 8 MB y no persiste ejecuciones. OAuth continúa en Ezra con regreso HTTPS opcional por n8n al callback fijo local y state de sesión. .env.meta.local se carga al arrancar.
+
+Pruebas: lint/TypeScript y 88 pruebas locales, compilación aislada; la prueba real previa solo confirmó la conexión de prueba. Pendiente importar/publicar el nuevo flujo, completar claves de Meta de forma privada, autorizar cuentas y probar publicación con versión/destinos autorizados. No se publicó, no hubo despliegue ni cambio en la base de Spotmi. Límites y pasos: docs/N8N_META.md.

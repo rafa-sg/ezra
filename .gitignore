@@ -14,3 +14,8 @@ playwright-report/
 coverage/
 .claude/settings.local.json
 handoff/
+
+.env
+
+.next-verificar/
+/x

@@ -1,3 +1,5 @@
+import { createLocalClient } from "../helpers/local-client";
+import { clerkTestEnvironment } from "../helpers/clerk-fixture";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -15,11 +17,19 @@ test(
     const server = spawn(
       process.execPath,
       ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", "3101"],
-      { env: { ...process.env, EZRA_DATA_DIR: directory }, stdio: "pipe" },
+      {
+        env: {
+          ...process.env,
+          ...(await clerkTestEnvironment(directory)),
+          EZRA_DATA_DIR: directory,
+        },
+        stdio: "pipe",
+      },
     );
     let logs = "";
     server.stderr.on("data", (chunk) => (logs += chunk.toString()));
     const base = "http://127.0.0.1:3101";
+    const fetch = createLocalClient(base);
     try {
       let ready = false;
       for (let i = 0; i < 100; i++) {

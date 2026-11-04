@@ -1,0 +1,491 @@
+{
+  "name": "Ezra — Meta y conexión",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Recibir solicitud de Ezra",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ezra-publicaciones",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "ezra-publicaciones"
+    },
+    {
+      "id": "2",
+      "name": "Validar y preparar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "parameters": {
+        "jsCode": "\nconst b = $json.body;\nconst error = (mensaje) => [{json:{valido:false,mensaje}}];\nif (!b || typeof b.id_solicitud !== 'string' || !b.id_solicitud.trim() || b.id_solicitud.length > 100) return error('Falta id_solicitud.');\nif (b.accion === 'probar_conexion') return [{json:{valido:true,prueba:true,id:b.id_solicitud}}];\nif (b.accion !== 'meta_solicitud') return error('Acción no permitida.');\nconst s = b.solicitud;\nif (!s || typeof s.url !== 'string' || !/^https:\\/\\/(graph\\.facebook\\.com|graph-video\\.facebook\\.com|graph\\.instagram\\.com|rupload\\.facebook\\.com)\\//.test(s.url) || /[\\s\\\\\\r\\n]/.test(s.url)) return error('Destino de Meta no permitido.');\nif (!['GET','POST'].includes(s.metodo)) return error('Método no permitido.');\nif (typeof s.cuerpoBase64 !== 'string' || s.cuerpoBase64.length > 11184812 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(s.cuerpoBase64)) return error('Cuerpo inválido o mayor a 8 MB.');\nif (!s.cabeceras || typeof s.cabeceras !== 'object' || Array.isArray(s.cabeceras)) return error('Cabeceras inválidas.');\nconst cabeceras = {};\nfor (const [k,v] of Object.entries(s.cabeceras)) {\n  if (!['authorization','content-type','offset','file_size'].includes(k.toLowerCase()) || typeof v !== 'string' || /[\\r\\n]/.test(v)) return error('Cabecera no permitida.');\n  cabeceras[k.toLowerCase()] = v;\n}\nconst item = {json:{valido:true,prueba:false,id:b.id_solicitud,url:s.url,metodo:s.metodo,cabeceras,conCuerpo:s.metodo === 'POST'}};\nif (s.metodo === 'POST') item.binary = {carga:await this.helpers.prepareBinaryData(Buffer.from(s.cuerpoBase64,'base64'),'carga',cabeceras['content-type'] || 'application/octet-stream')};\nreturn [item];\n"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Solicitud válida",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 0],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "valido",
+              "leftValue": "={{ $json.valido }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "4",
+      "name": "Es prueba",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [700, -100],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "prueba",
+              "leftValue": "={{ $json.prueba }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5",
+      "name": "Responder prueba",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [960, -280],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, conexion: \"ezra-n8n\", id_solicitud: $json.id, modo: \"prueba\", publicado: false, capacidades: [\"meta_solicitud\"] } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "6",
+      "name": "Tiene cuerpo",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [960, 20],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "conCuerpo",
+              "leftValue": "={{ $json.conCuerpo }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "7",
+      "name": "Meta escritura",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 0],
+      "parameters": {
+        "method": "={{ $json.metodo }}",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.cabeceras) }}",
+        "sendBody": true,
+        "options": {
+          "timeout": 100000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          }
+        },
+        "contentType": "binaryData",
+        "inputDataFieldName": "carga"
+      },
+      "retryOnFail": false
+    },
+    {
+      "id": "8",
+      "name": "Meta consulta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 200],
+      "parameters": {
+        "method": "={{ $json.metodo }}",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.cabeceras) }}",
+        "sendBody": false,
+        "options": {
+          "timeout": 100000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "retryOnFail": false
+    },
+    {
+      "id": "9",
+      "name": "Responder resultado de Meta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1490, 100],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { id_solicitud: $(\"Validar y preparar\").first().json.id, status: $json.statusCode, cuerpo: typeof $json.body === \"string\" ? $json.body : (typeof $json.data === \"string\" ? $json.data : JSON.stringify($json.body ?? $json.data ?? {})) } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "10",
+      "name": "Responder solicitud inválida",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [700, 330],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, mensaje: $json.mensaje } }}",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    },
+    {
+      "id": "11",
+      "name": "Instrucciones",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, 400],
+      "parameters": {
+        "content": "## Ezra → n8n → Meta\n1. Sustituye el flujo de prueba o desactívalo antes de publicar este (misma ruta).\n2. Selecciona la credencial Header Auth existente en el Webhook: Name X-Ezra-Secret.\n3. Publica y comprueba desde Conexiones en Ezra.\n4. Configura EZRA_N8N_PUBLICACION=1 solo después de comprobarlo.\n\nOAuth y tokens cifrados se administran en Ezra. n8n recibe tokens temporalmente por HTTPS; este flujo no guarda ejecuciones ni progreso. No actives guardado de ejecuciones ni fijes datos de solicitudes reales.\n\nSolo Ezra autoriza contenido y destinos. El flujo no genera ni aprueba publicaciones. Reintentos automáticos desactivados: Ezra concilia los resultados antes de repetir.\n\nLímite de cuerpo: 8 MB por solicitud. Instagram: Reels MP4; imágenes locales y carruseles siguen pendientes. Nunca se consulta una URL arbitraria.",
+        "width": 650,
+        "height": 500
+      }
+    },
+    {
+      "id": "Regreso instagram",
+      "name": "Regreso instagram",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 1050],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ezra-oauth-instagram",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "Validar regreso instagram",
+      "name": "Validar regreso instagram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 1050],
+      "parameters": {
+        "jsCode": "const q=$json.query || {};\nconst seguro=(s,max)=>typeof s==='string' && s.length<=max;\nif (!seguro(q.state,100) || !/^[A-Za-z0-9_-]{43}$/.test(q.state)) return [{json:{url:'http://127.0.0.1:3000/azra/produccion?seccion=conexiones'}}];\nconst campos=['state='+encodeURIComponent(q.state)];\nif (seguro(q.code,4096)) campos.push('code='+encodeURIComponent(q.code));\nif (seguro(q.error,100)) campos.push('error='+encodeURIComponent(q.error));\nreturn [{json:{url:'http://127.0.0.1:3000/conexiones/instagram/callback?'+campos.join('&')}}];"
+      }
+    },
+    {
+      "id": "Volver a Ezra instagram",
+      "name": "Volver a Ezra instagram",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [520, 1050],
+      "parameters": {
+        "respondWith": "redirect",
+        "redirectURL": "={{ $json.url }}",
+        "options": {
+          "responseCode": 302,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "Referrer-Policy",
+                "value": "no-referrer"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "Regreso facebook",
+      "name": "Regreso facebook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 1250],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ezra-oauth-facebook",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "Validar regreso facebook",
+      "name": "Validar regreso facebook",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 1250],
+      "parameters": {
+        "jsCode": "const q=$json.query || {};\nconst seguro=(s,max)=>typeof s==='string' && s.length<=max;\nif (!seguro(q.state,100) || !/^[A-Za-z0-9_-]{43}$/.test(q.state)) return [{json:{url:'http://127.0.0.1:3000/azra/produccion?seccion=conexiones'}}];\nconst campos=['state='+encodeURIComponent(q.state)];\nif (seguro(q.code,4096)) campos.push('code='+encodeURIComponent(q.code));\nif (seguro(q.error,100)) campos.push('error='+encodeURIComponent(q.error));\nreturn [{json:{url:'http://127.0.0.1:3000/conexiones/facebook/callback?'+campos.join('&')}}];"
+      }
+    },
+    {
+      "id": "Volver a Ezra facebook",
+      "name": "Volver a Ezra facebook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [520, 1250],
+      "parameters": {
+        "respondWith": "redirect",
+        "redirectURL": "={{ $json.url }}",
+        "options": {
+          "responseCode": 302,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "Referrer-Policy",
+                "value": "no-referrer"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Recibir solicitud de Ezra": {
+      "main": [
+        [
+          {
+            "node": "Validar y preparar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar y preparar": {
+      "main": [
+        [
+          {
+            "node": "Solicitud válida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud válida": {
+      "main": [
+        [
+          {
+            "node": "Es prueba",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder solicitud inválida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es prueba": {
+      "main": [
+        [
+          {
+            "node": "Responder prueba",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tiene cuerpo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tiene cuerpo": {
+      "main": [
+        [
+          {
+            "node": "Meta escritura",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Meta consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta escritura": {
+      "main": [
+        [
+          {
+            "node": "Responder resultado de Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta consulta": {
+      "main": [
+        [
+          {
+            "node": "Responder resultado de Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regreso instagram": {
+      "main": [
+        [
+          {
+            "node": "Validar regreso instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar regreso instagram": {
+      "main": [
+        [
+          {
+            "node": "Volver a Ezra instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regreso facebook": {
+      "main": [
+        [
+          {
+            "node": "Validar regreso facebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar regreso facebook": {
+      "main": [
+        [
+          {
+            "node": "Volver a Ezra facebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false,
+    "timezone": "America/El_Salvador"
+  }
+}

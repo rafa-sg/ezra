@@ -1,0 +1,280 @@
+/* El acceso comparte la paleta del estudio; no carga el panel arcade anterior. */
+.access-page {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  background: #101d2d;
+  color: #f3f3e9;
+  color-scheme: dark;
+}
+.access-intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 72px;
+  padding: 40px clamp(28px, 5vw, 80px) 72px;
+  border-right: 1px solid #2b3b4d;
+  background-image:
+    linear-gradient(#27364640 1px, transparent 1px),
+    linear-gradient(90deg, #27364640 1px, transparent 1px);
+  background-size: 40px 40px;
+  min-width: 0;
+}
+.access-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #d7ee9c;
+  min-height: 44px;
+  font-size: 23px;
+  width: fit-content;
+}
+.access-brand strong {
+  color: #f3f3e9;
+  font-weight: 600;
+}
+.access-brand span {
+  color: #83968c;
+  margin: 0 5px;
+  font-weight: 400;
+}
+.access-presentacion {
+  max-width: 580px;
+  margin: auto 0;
+}
+.access-eyebrow {
+  font:
+    600 12px/1.5 ui-monospace,
+    monospace;
+  letter-spacing: 2px;
+  color: #d7ee9c;
+  margin-bottom: 22px;
+}
+.access-presentacion h2 {
+  font-size: clamp(36px, 4.4vw, 66px);
+  line-height: 1.07;
+  letter-spacing: -2.5px;
+  font-weight: 500;
+  text-wrap: balance;
+}
+.access-description {
+  margin-top: 24px;
+  color: #a9b6c4;
+  font-size: 15px;
+  line-height: 1.8;
+  max-width: 450px;
+}
+.access-flujo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 44px;
+}
+.access-flujo > div {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: #172638;
+  border: 1px solid #36485a;
+  border-radius: 9px;
+  padding: 20px 14px;
+}
+.access-flujo svg {
+  color: #d7ee9c;
+}
+.access-flujo span {
+  font-size: 12px;
+  color: #d6e0e5;
+  line-height: 1.5;
+}
+.access-canales {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 30px;
+}
+.access-canales span {
+  border: 1px solid #34485b;
+  border-radius: 5px;
+  padding: 5px 9px;
+  font-size: 12px;
+  color: #afbecb;
+}
+.access-auth {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 48px 32px;
+  min-width: 0;
+  background: #132234;
+}
+.access-auth .ez-clerk-root,
+.access-auth .ez-clerk-card {
+  width: 100%;
+  max-width: 400px;
+}
+.access-auth .ez-clerk-card {
+  box-shadow: none;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.access-auth .ez-clerk-inner {
+  box-shadow: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  gap: 28px;
+  background: transparent;
+}
+.access-auth .ez-clerk-header {
+  align-items: flex-start;
+  text-align: left;
+}
+.access-auth .ez-clerk-title {
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -1px;
+  line-height: 1.15;
+  color: #f3f3e9;
+  text-align: left;
+}
+.access-auth .ez-clerk-subtitle {
+  color: #a9b6c4;
+  font-size: 15px;
+  margin-top: 10px;
+  text-align: left;
+}
+.access-auth .ez-clerk-social,
+.access-auth .ez-clerk-input,
+.access-auth .ez-clerk-primary {
+  min-height: 48px;
+  font-size: 15px;
+}
+.access-auth .ez-clerk-social {
+  background: #1c3043;
+  border: 1px solid #405165;
+  box-shadow: none;
+  color: #f3f3e9;
+}
+.access-auth .ez-clerk-label {
+  font-size: 14px;
+  color: #d6e0e5;
+  font-weight: 500;
+}
+.access-auth .ez-clerk-input {
+  border: 1px solid #405165;
+  background: #101d2d;
+  color: #f3f3e9;
+  box-shadow: none;
+}
+.access-auth .ez-clerk-input:focus,
+.access-auth .ez-clerk-social:focus-visible,
+.access-auth .ez-clerk-primary:focus-visible {
+  outline: 2px solid #d7ee9c;
+  outline-offset: 3px;
+}
+.access-auth .ez-clerk-primary {
+  background: #d7ee9c;
+  color: #172224;
+  font-weight: 600;
+  box-shadow: none;
+}
+.access-auth .ez-clerk-divider {
+  color: #a9b6c4;
+  font-size: 13px;
+}
+.access-auth .ez-clerk-footer {
+  background: transparent;
+}
+.access-note {
+  max-width: 400px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #93a7b9;
+  text-align: center;
+  margin: 0;
+}
+.access-issue {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 28px;
+  gap: 20px;
+  background: #101d2d;
+  color: #f3f3e9;
+  text-align: center;
+}
+.access-issue > svg {
+  color: #d7ee9c;
+}
+.access-issue h1 {
+  font-size: 28px;
+}
+.access-issue p {
+  max-width: 540px;
+  color: #a9b6c4;
+}
+.access-issue button {
+  min-height: 44px;
+  padding: 12px 18px;
+  border-radius: 7px;
+}
+.access-reintentar {
+  background: #d7ee9c;
+  color: #172224;
+  font-weight: 600;
+}
+.access-otro {
+  border: 1px solid #405165;
+  color: #d5e3b8;
+}
+@media (max-width: 1000px) {
+  .access-intro {
+    padding: 30px;
+  }
+  .access-flujo {
+    gap: 7px;
+  }
+  .access-flujo > div {
+    padding: 16px 10px;
+  }
+}
+@media (max-width: 760px) {
+  .access-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .access-intro {
+    gap: 30px;
+    padding: 22px 24px 30px;
+    border-right: 0;
+    border-bottom: 1px solid #2b3b4d;
+  }
+  .access-presentacion h2 {
+    font-size: 34px;
+    letter-spacing: -1.3px;
+  }
+  .access-description {
+    font-size: 13px;
+    margin-top: 16px;
+  }
+  .access-eyebrow {
+    margin-bottom: 15px;
+  }
+  .access-flujo,
+  .access-canales {
+    display: none;
+  }
+  .access-auth {
+    padding: 36px 24px;
+  }
+  .access-auth .ez-clerk-title {
+    font-size: 29px;
+  }
+}

@@ -1,3 +1,4 @@
+import { requireLegacyAutomation } from "@/lib/businesses";
 import {
   automationConfig,
   createDraftJob,
@@ -13,8 +14,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // Status for the Settings page: whether automation is configured and the latest
 // connection test. Never includes secrets or webhook addresses.
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    await requireLegacyAutomation(request);
     const { inbound, outbound, webhook } = automationConfig();
     const latest = (await readAutomation()).jobs.findLast((j) => j.action === "connection_test");
     return Response.json({
@@ -37,6 +39,7 @@ export async function GET() {
 // on the server.
 export async function POST(request: Request) {
   try {
+    await requireLegacyAutomation(request);
     const text = await request.text();
     if (Buffer.byteLength(text) > 16 * 1024)
       throw new WorkflowError("La solicitud supera el límite.", 413);

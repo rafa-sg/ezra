@@ -1,19 +1,23 @@
+import { requestBusinessId, readBusinessDirectory } from "@/lib/businesses";
 import JSZip from "jszip";
 import { stat } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
 import path from "node:path";
-import { mediaDirectory, readWorkspace } from "@/lib/store";
+import { mediaDirectoryFor, readWorkspace } from "@/lib/store";
+import { leerProduccion } from "@/lib/produccion/almacen";
 import { readAutomation } from "@/lib/automation";
+import { readBot } from "@/lib/bot/store";
 import { siteEventPackage } from "@/lib/site-event";
-import { formatLabels, statusLabels } from "@/lib/model";
+import { approvalIssues, defaultBusinessId, formatLabels, statusLabels } from "@/lib/model";
 import { apiError } from "@/lib/http";
 import { WorkflowError } from "@/lib/workflow";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
-    const state = await readWorkspace();
+    const businessId = await requestBusinessId(request);
+    const state = await readWorkspace(businessId);
     const url = new URL(request.url);
     const postId = url.searchParams.get("post");
     const forSite = url.searchParams.get("for") === "site";
@@ -36,8 +40,11 @@ export async function GET(request: Request) {
         "El respaldo supera 1 GB. Detén el servidor y copia la carpeta data/ completa para conservar todos tus archivos.",
         413,
       );
-    // Only an approved version may be scheduled by hand (e.g. in Metricool).
-    const approved = post ? ["approved", "planned", "published"].includes(post.status) : true;
+    // Una versión se revisa antes de prepararla para publicar.
+    const approved = post
+      ? ["approved", "planned", "published"].includes(post.status) &&
+        (!post.productId || post.status === "published" || !approvalIssues(post, state).length)
+      : true;
     if (site) zip.file("evento.txt", site.text);
     else if (post) {
       const sources = state.sources.filter((s) => post.sourceIds.includes(s.id));
@@ -59,15 +66,22 @@ export async function GET(request: Request) {
       );
     } else {
       zip.file("workspace.json", JSON.stringify(state, null, 2));
-      zip.file("automation.json", JSON.stringify(await readAutomation(), null, 2));
+      // «Bot de atención» configuration, knowledge, rules, local tests and activity.
+      zip.file("bot.json", JSON.stringify(await readBot(businessId), null, 2));
+      if (businessId === defaultBusinessId) {
+        zip.file("automation.json", JSON.stringify(await readAutomation(), null, 2));
+        zip.file("produccion-spotmi.json", JSON.stringify(await leerProduccion(), null, 2));
+      }
+      const business = (await readBusinessDirectory()).businesses.find((b) => b.id === businessId);
+      zip.file("negocio.json", JSON.stringify(business, null, 2));
       zip.file(
         "LEEME.txt",
-        "Respaldo completo de ezrá.\nDetén el servidor. Conserva una copia de data/ actual. Copia workspace.json, automation.json y la carpeta media/ de este respaldo dentro de data/. Reinicia con npm run dev.\nNo subas este respaldo a un repositorio público: contiene tus borradores y medios.\n",
+        `Respaldo del negocio ${state.brand.name}.\nDetén el servidor y conserva una copia de data/ completa, incluyendo businesses.json y accounts.json. Restaura workspace.json, bot.json y media/ en ${businessId === defaultBusinessId ? "data/ (y automation.json si está incluido)" : `data/businesses/${businessId}/`}. negocio.json describe este negocio; conserva su registro en businesses.json. Las cuentas y otros negocios no están incluidos en este paquete. Reinicia con npm run dev.\nNo subas el respaldo a un repositorio público.\n`,
       );
     }
     const missing: string[] = [];
     for (const media of assets) {
-      const file = path.join(mediaDirectory, media.filename);
+      const file = path.join(mediaDirectoryFor(businessId), media.filename);
       try {
         await stat(file);
       } catch {
