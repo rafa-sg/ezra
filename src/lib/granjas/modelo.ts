@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { agentes, canales, fuenteSchema, type Agente } from "../produccion/modelo";
+import { farmPurposes } from "./purposes";
 
 export const tiposArtefacto = ["investigacion", "guion", "texto", "imagen", "video", "revision"] as const;
 export const tiposNodo = ["agente", "medios", "render", "revision", "publicacion"] as const;
@@ -77,7 +78,11 @@ export const datosGranjaSchema = z.object({
     .refine((v) => new Set(v).size === v.length),
   politicaFuentes: politicaFuentesSchema,
   ajustes: z
-    .object({ zonaHoraria: z.literal("America/El_Salvador").default("America/El_Salvador") })
+    .object({
+      zonaHoraria: z.literal("America/El_Salvador").default("America/El_Salvador"),
+      purpose: z.enum(farmPurposes).optional(),
+      customPurpose: z.string().trim().max(60).optional(),
+    })
     .default({ zonaHoraria: "America/El_Salvador" }),
 });
 export type Nodo = z.infer<typeof nodoSchema>;
@@ -274,7 +279,7 @@ export function faltantesNodo(nodo: Nodo, grafo: Grafo, contexto: { geminiHabili
 /* ── Recetas iniciales: instrucciones y espacios vacíos, sin eventos ni resultados inventados ── */
 type Paso = Omit<Partial<Nodo>, "id" | "posicion"> & { clave: string; tipo: TipoNodo; titulo: string };
 export type Receta = {
-  clave: "evento_verificado" | "carrusel_spot" | "video_vertical";
+  clave: "evento_verificado" | "carrusel_spot" | "video_vertical" | "instagram_post" | "facebook_post" | "tourist_guide";
   datos: DatosGranja;
   pasos: Paso[];
   conexiones: [string, string][];
@@ -353,6 +358,40 @@ export const recetas: Receta[] = [
     conexiones: [["caza", "hechos"], ["hechos", "guion"], ["guion", "montaje"], ["montaje", "render"], ["medios", "render"], ["render", "auditoria"], ["guion", "texto"], ["texto", "auditoria"], ["auditoria", "revision"], ["render", "revision"], ["texto", "revision"], ["revision", "publicar"]],
   },
 ];
+// Dedicated starting points share the existing reviewed publication flow.
+for (const channel of ["instagram", "facebook"] as const) {
+  const original = recetas[0];
+  recetas.push({
+    ...original,
+    clave: `${channel}_post`,
+    datos: {
+      ...original.datos,
+      nombre: channel === "instagram" ? "Post de Instagram" : "Post de Facebook",
+      objetivo: "Preparar una publicación con texto, medios autorizados y revisión. Completa el tema en las instrucciones del primer paso.",
+      canales: [channel],
+      ajustes: { ...original.datos.ajustes, purpose: `${channel}_post` },
+    },
+    pasos: original.pasos.map((step) => ({
+      ...step,
+      ...(step.clave === "caza" ? { titulo: "Tema y fuentes", fuentes: [], instrucciones: "Escribe el tema y registra las fuentes autorizadas. Separa hechos comprobados de ideas." } : {}),
+      ...(step.tipo === "publicacion" ? { canales: [channel] } : {}),
+    })),
+  });
+}
+recetas.push({
+  clave: "tourist_guide",
+  datos: {
+    nombre: "Guía · Antiguo Cuscatlán",
+    objetivo: "Preparar un cuaderno de campo con equipo, misiones, entrevistas, lugares, ideas y fuentes verificadas.",
+    formato: "publicacion",
+    canales: [],
+    politicaFuentes: { dominios: dominiosOficiales, maxFuentesPorPaso: 5 },
+    ajustes: { zonaHoraria: "America/El_Salvador", purpose: "tourist_guide" },
+  },
+  pasos: [],
+  conexiones: [],
+});
+
 export function grafoDeReceta(receta: Receta): Grafo {
   const ids = new Map(receta.pasos.map((p) => [p.clave, crypto.randomUUID()]));
   const niveles = new Map<string, number>();

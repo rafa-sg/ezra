@@ -214,6 +214,18 @@ const migraciones: string[] = [
     detalle text not null default '{}'
   );
   `,
+  `
+  create table guide_versions (
+    farm_id text not null references granjas(id),
+    version integer not null,
+    content text not null,
+    hash text not null,
+    checks text not null default '{}',
+    approved_at text,
+    created_at text not null,
+    primary key (farm_id, version)
+  );
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

@@ -129,7 +129,7 @@ export function actualizarGranja(
     const siguiente = actual.revision + 1;
     db.prepare(
       `update granjas set nombre = ?, objetivo = ?, formato = ?, canales = ?, politica_fuentes = ?, grafo = ?,
-       estado = ?, revision = ?, actualizado = ? where id = ?`,
+       estado = ?, revision = ?, actualizado = ?, ajustes = ? where id = ?`,
     ).run(
       datos.nombre,
       datos.objetivo,
@@ -140,6 +140,7 @@ export function actualizarGranja(
       cambios.estado ?? actual.estado,
       siguiente,
       ahora,
+      JSON.stringify(datos.ajustes),
       id,
     );
     if (cambios.grafo) {
