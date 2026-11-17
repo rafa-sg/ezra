@@ -1,5 +1,17 @@
 # Estado y relevo
 
+## 2026-11-17 · Eventos e Instagram (rama `feat/eventos-instagram`)
+
+### Fase 0 · Supabase de desarrollo — preparada, falta tu parte
+- [x] `.env.local` apunta al ref `bvmzrmvrdbfpkdhwazgv`. La CLI de spotmi-web (2.116, en `node_modules`) está vinculada a ese ref pero **sin sesión**: `migration list` y `migration repair` piden `supabase login`.
+- [x] Lectura pública (solo `select`/RPC con la clave anónima): 20261103 sin aplicar (las RPC dan 404) y **20261102_plan_spotmi.sql tampoco está aplicada** (`plan_members` no existe). Por eso no se usa `db push`: subiría también la del plan.
+- [x] 20261103 ampliada (tú lo elegiste): la RPC acepta además hora HH:MM, municipio y categoría; prueba de ataque con 3 casos nuevos.
+- [x] Migración nueva `20261117_eventos_conteo_solo_equipo.sql` + `supabase/tests/eventos_conteo_solo_equipo.sql`: amplía el trigger vigente con `verification_count` (no la versión literal, que bloqueaba la moderación).
+- [x] `work/supabase-probar-sin-aplicar.sql` (aplica y prueba todo dentro de una transacción que se revierte), `work/supabase-aplicar.sql` y `work/supabase-habilitar-editorial.sql`.
+- [ ] Propietario: correr la prueba sin aplicar, luego aplicar, `migration repair`, crear la cuenta editorial, habilitarla, poner `SPOTMI_EDITORIAL_EMAIL`/`SPOTMI_EDITORIAL_PASSWORD` y pulsar Conexiones → Spotmi web → Conectar/Verificar.
+- [ ] spotmi-web: la bandeja del equipo sigue mostrando el origen `ezra` como «analizador» (UI de spotmi-web, fuera de este alcance).
+
+
 ## 2026-10-27 · Granjas Spotmi — HECHO (salvo lo externo)
 
 - [x] Granjas con lienzo, recetas, cola durable, personajes ligados al estado real, vista previa, autorización y recibos (ver `docs/ESTUDIO_SPOTMI.md` › Granjas, con la tabla de capacidades).
