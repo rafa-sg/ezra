@@ -5,6 +5,9 @@ import { administrador, cuerpo, errorApi } from "@/lib/granjas/api";
 import { actualizarGranja, crearDesdeReceta, crearGranja, duplicarGranja, listarGranjas } from "@/lib/granjas/almacen";
 import { datosGranjaSchema, grafoSchema, recetas } from "@/lib/granjas/modelo";
 import { listarMedios } from "@/lib/granjas/medios";
+import { especialistasVisibles } from "@/lib/granjas/especialistas";
+import { estadoPresupuesto } from "@/lib/granjas/consumo";
+import { geminiProduccionHabilitado } from "@/lib/ia/gemini";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -34,8 +37,10 @@ export async function GET() {
       ia: {
         astra: Boolean(codex),
         claude: Boolean(claude),
-        gemini: process.env.EZRA_PRODUCCION_IA === "1" && Boolean(process.env.GEMINI_API_KEY?.trim()) && Boolean(process.env.GEMINI_MODEL?.trim()),
+        gemini: geminiProduccionHabilitado(),
       },
+      especialistas: especialistasVisibles(),
+      presupuesto: estadoPresupuesto(),
     });
   } catch (error) {
     return errorApi(error);

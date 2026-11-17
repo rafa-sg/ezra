@@ -226,6 +226,34 @@ const migraciones: string[] = [
     primary key (farm_id, version)
   );
   `,
+  // 3 · Consumo de Gemini y ajustes del estudio (presupuesto, tarifas, especialistas visibles).
+  `
+  create table ajustes_estudio (
+    clave text primary key,
+    valor text not null,
+    actualizado text not null
+  );
+  create table consumo_ia (
+    id text primary key,
+    fecha text not null,
+    origen text not null,
+    granja_id text,
+    ejecucion_id text,
+    paso_id text,
+    paso text not null default '',
+    modelo text not null,
+    prompt_tokens integer not null default 0,
+    candidatos_tokens integer not null default 0,
+    pensamiento_tokens integer not null default 0,
+    herramientas_tokens integer not null default 0,
+    total_tokens integer not null default 0,
+    busqueda integer not null default 0,
+    consultas_busqueda integer not null default 0,
+    duracion_ms integer not null default 0,
+    error text not null default ''
+  );
+  create index consumo_ia_fecha on consumo_ia (fecha);
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

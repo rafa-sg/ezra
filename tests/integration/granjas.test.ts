@@ -67,7 +67,9 @@ test(
       assert.equal((await pedir("/api/granjas/n8n")).status, 401);
       assert.equal((await pedir("/api/granjas/n8n/flujo")).status, 401);
       const puente = await (await pedir("/api/granjas/n8n", admin)).json();
-      assert.equal(puente.n8n.estado, "sin_configurar");
+      // n8n lee .env.n8n.local del proyecto: en la Mac del propietario existe. Sin una
+      // verificación real nunca aparece como conectada.
+      assert.ok(["sin_configurar", "sin_verificar"].includes(puente.n8n.estado), puente.n8n.estado);
       assert.ok(!("secreto" in puente.n8n));
       const flujo = await (await pedir("/api/granjas/n8n/flujo", admin)).json();
       assert.equal(flujo.settings.saveDataSuccessExecution, "none");
@@ -77,8 +79,27 @@ test(
       });
       assert.equal(accionNoPermitida.status, 422);
       const resumen = await (await pedir("/api/granjas", admin)).json();
-      assert.equal(resumen.recetas.length, 3);
+      for (const clave of ["evento_verificado", "carrusel_spot", "video_vertical"])
+        assert.ok(resumen.recetas.some((r: { clave: string }) => r.clave === clave), clave);
       assert.deepEqual(resumen.granjas, []);
+      assert.deepEqual(resumen.especialistas, ["cazador", "verificador", "redactor_ig", "disenador_post"]);
+      // Consumo: vacío, sin precios en el código y sin fingir llamadas.
+      assert.equal((await pedir("/api/granjas/consumo")).status, 401);
+      const consumo = await (await pedir("/api/granjas/consumo", admin)).json();
+      assert.equal(consumo.periodos.mes.llamadas, 0);
+      assert.deepEqual(consumo.tarifas, {});
+      assert.equal(consumo.serie.length, 30);
+      const presupuesto = await pedir("/api/granjas/consumo", admin, {
+        method: "POST",
+        body: JSON.stringify({ accion: "presupuesto", presupuesto: { tokensDia: 50000, tokensMes: 900000 } }),
+      });
+      assert.equal(presupuesto.status, 200);
+      assert.equal((await presupuesto.json()).presupuesto.tokensDia, 50000);
+      const ocultar = await pedir("/api/granjas/especialistas", admin, {
+        method: "POST",
+        body: JSON.stringify({ visibles: [] }),
+      });
+      assert.equal(ocultar.status, 422, "al menos un especialista visible");
       const creada = await pedir("/api/granjas", admin, {
         method: "POST",
         body: JSON.stringify({ accion: "receta", clave: "evento_verificado" }),
@@ -168,6 +189,8 @@ test(
         "/api/granjas/conexiones",
         "/api/granjas/almacenamiento",
         "/api/granjas/piezas?id=" + granja.id,
+        "/api/granjas/consumo",
+        "/api/granjas/especialistas",
       ])
         assert.equal((await pedir(ruta, cliente)).status, 403, ruta);
       assert.equal(

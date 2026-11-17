@@ -4,8 +4,8 @@ import { requestBusinessId } from "@/lib/businesses";
 import { apiError } from "@/lib/http";
 import { readWorkspace } from "@/lib/store";
 import { WorkflowError } from "@/lib/workflow";
+import { llamarGemini, modeloGemini } from "@/lib/ia/gemini";
 import {
-  DEFAULT_MODEL,
   answer,
   geminiError,
   historySchema,
@@ -48,8 +48,13 @@ export async function POST(request: Request) {
       const result = await answer({
         history: parsed.data,
         workspace,
-        model: process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL,
-        generate: withRetry((request) => ai.models.generateContent(request)),
+        model: modeloGemini(),
+        // Cada intento (también los reintentos) queda en Consumo y respeta el presupuesto.
+        generate: withRetry((request) =>
+          llamarGemini({ origen: "ask", paso: "Pregúntale a la IA" }, request, {
+            generar: (r) => ai.models.generateContent(r),
+          }),
+        ),
       });
       return Response.json(result);
     } catch (error) {

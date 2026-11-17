@@ -12,6 +12,16 @@
 - [ ] spotmi-web: la bandeja del equipo sigue mostrando el origen `ezra` como «analizador» (UI de spotmi-web, fuera de este alcance).
 
 
+
+### Fase 1 · Limpieza y consumo — HECHO
+- [x] Menú: Granjas · Eventos · Consumo · Calendario · Conexiones. `?seccion=` retiradas (equipo, fuentes, cola) abren Granjas. La lectura pública de Spotmi quedó en Conexiones.
+- [x] 9 granjas archivadas con el backend (6 «Publicación de evento verificado» y 2 «Primera prueba»), sin borrar filas. Filtro «Ver archivadas» y botón Restaurar. Script: `scripts/granjas-archivar-duplicadas.ts`.
+- [x] Especialistas nuevos `verificador`, `redactor_ig`, `disenador_post`; visibles por defecto solo esos tres y el cazador. Los demás se reactivan en Granjas › Especialistas visibles.
+- [x] Una sola función a Gemini (`src/lib/ia/gemini.ts`) para granjas, encargos y Ask. Registro en `consumo_ia` (SQLite, migración 3). Pantalla Consumo con hoy/semana/mes, 30 días, por granja, por paso y las 20 más caras.
+- [x] Presupuesto diario y mensual editable (aviso al 80 %, Gemini se detiene al 100 % y se reanuda al día o mes siguiente). Tarifas por modelo editables; el código no trae precios. Gemini ya no consume los 30 intentos (decisión del propietario); Astra y Claude sí.
+- [x] Verificación: check 92/92, build en `.next-verificar`, integración 7/7.
+- [ ] Nota: la prueba de integración de n8n aceptaba solo «sin_configurar»; en esta Mac `.env.n8n.local` existe y da «sin_verificar». Se acepta cualquiera de los dos (nunca «conectada» sin verificar).
+
 ## 2026-10-27 · Granjas Spotmi — HECHO (salvo lo externo)
 
 - [x] Granjas con lienzo, recetas, cola durable, personajes ligados al estado real, vista previa, autorización y recibos (ver `docs/ESTUDIO_SPOTMI.md` › Granjas, con la tabla de capacidades).

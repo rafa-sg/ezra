@@ -5,6 +5,7 @@ import { WorkflowError } from "@/lib/workflow";
 import { leerProduccion } from "@/lib/produccion/almacen";
 import { reservarGeneracion, guardarEntrega } from "@/lib/produccion/generacion";
 import { buscarHerramienta, generarGemini, generarLocal } from "@/lib/produccion/proveedores";
+import { geminiProduccionHabilitado } from "@/lib/ia/gemini";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
@@ -30,11 +31,7 @@ export async function POST(request: Request) {
     const encargo = (await leerProduccion()).encargos.find((e) => e.id === leido.data.id);
     if (!encargo) throw new WorkflowError("Encargo no encontrado.", 404);
     if (encargo.proveedor === "gemini") {
-      if (
-        !process.env.GEMINI_API_KEY?.trim() ||
-        !process.env.GEMINI_MODEL?.trim() ||
-        process.env.EZRA_PRODUCCION_IA !== "1"
-      )
+      if (!geminiProduccionHabilitado())
         throw new WorkflowError(
           "La ejecución de Gemini todavía no está habilitada en este estudio.",
           503,

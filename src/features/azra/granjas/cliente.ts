@@ -4,6 +4,7 @@ import type { Artefacto } from "@/lib/granjas/almacen";
 import type { Conexion } from "@/lib/granjas/conexiones";
 import type { ContenidoPieza } from "@/lib/granjas/pieza";
 import type { Agente } from "@/lib/produccion/modelo";
+import type { EstadoPresupuesto } from "@/lib/granjas/consumo";
 
 export type MedioResumen = {
   id: string;
@@ -23,6 +24,8 @@ export type Resumen = {
   encargos: { id: string; titulo: string; agente: Agente; version: number; estado: string; origen: string }[];
   medios: MedioResumen[];
   ia: { astra: boolean; claude: boolean; gemini: boolean };
+  especialistas: Agente[];
+  presupuesto: EstadoPresupuesto;
 };
 export type Recibo = {
   id: string;

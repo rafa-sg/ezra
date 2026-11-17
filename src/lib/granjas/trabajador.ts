@@ -20,7 +20,8 @@ export async function dependenciasReales(): Promise<Dependencias> {
   const { leerProduccion } = await import("../produccion/almacen");
   const { mesEnElSalvador } = await import("./pasos");
   return {
-    generar: (encargo, prompt) => (encargo.proveedor === "gemini" ? generarGemini(encargo, prompt) : generarLocal(encargo, { prompt })),
+    generar: (encargo, prompt, contexto) =>
+      encargo.proveedor === "gemini" ? generarGemini(encargo, prompt, contexto) : generarLocal(encargo, { prompt }),
     recolectar: recolectarFuentes,
     renderizar: renderizarVertical,
     usosLegado: async () => {

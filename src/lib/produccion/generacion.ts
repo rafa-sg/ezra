@@ -27,6 +27,8 @@ export async function reservarGeneracion(
     if (!encargo) throw new WorkflowError("Encargo no encontrado.", 404);
     if (!encargo.encargo.trim() || !encargo.fuentes.length)
       throw new WorkflowError("Agrega instrucciones y al menos una fuente antes de generar.", 422);
+    // Gemini se controla con el presupuesto de tokens (Consumo); los 30 intentos son de Astra y Claude.
+    if (encargo.proveedor === "gemini") return actual;
     if (actual.usos.filter((u) => mesEnElSalvador(u.fecha) === mesEnElSalvador(ahora)).length + deGranjas >= 30)
       throw new WorkflowError(
         "Se alcanzó el límite de 30 intentos mensuales de IA de este estudio.",

@@ -876,3 +876,253 @@
   border: 1px solid #2b3b4d;
   border-radius: 8px;
 }
+
+/* ── Fase eventos/Instagram: consumo, filtros y especialistas ── */
+.azra .eg-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px;
+  background: var(--ep-tarjeta, #172638);
+  border: 1px solid var(--ep-borde, #2b3b4d);
+  border-radius: 8px;
+}
+.azra .eg-bloque-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+.azra .eg-bloque-cabecera .eg-subtitulo {
+  margin-bottom: 0 !important;
+}
+.azra .eg-consumo {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.azra .eg-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.azra .eg-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  background: var(--ep-tarjeta, #172638);
+  border: 1px solid var(--ep-borde, #2b3b4d);
+  border-radius: 8px;
+  min-width: 0;
+}
+.azra .eg-kpi > span {
+  color: var(--ep-suave, #a9b6c4);
+  font-size: 13px;
+}
+.azra .eg-kpi strong {
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+.azra .eg-kpi small {
+  color: var(--ep-suave, #a9b6c4);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.azra .eg-medidores {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.azra .eg-medidor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.azra .eg-medidor-texto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.azra .eg-medidor-texto span {
+  color: var(--ep-suave, #a9b6c4);
+}
+.azra .eg-medidor-barra {
+  height: 8px;
+  border-radius: 4px;
+  background: #22344a;
+  overflow: hidden;
+}
+.azra .eg-medidor-barra span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: #7a9b30;
+}
+.azra .eg-medidor-barra span.eg-alto {
+  background: #d9a441;
+}
+.azra .eg-medidor-barra span.eg-lleno {
+  background: #d9735b;
+}
+.azra .eg-formulario-linea {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.azra .eg-formulario-linea .eg-campo {
+  flex: 1 1 180px;
+}
+.azra .eg-presupuesto-aviso {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 15px;
+  border: 1px solid #a8873e;
+  border-radius: 7px;
+  background: #3b3420;
+  color: #fbe8b8;
+  font-size: 13px;
+}
+.azra .eg-presupuesto-alerta {
+  margin: 0;
+}
+.azra .eg-grafica {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.azra .eg-grafica figcaption {
+  color: var(--ep-suave, #a9b6c4);
+  font-size: 13px;
+}
+.azra .eg-grafica-lienzo {
+  position: relative;
+  min-width: 0;
+}
+.azra .eg-grafica svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.azra .eg-grafica-rejilla {
+  stroke: #2b3b4d;
+  stroke-width: 1;
+}
+.azra .eg-grafica-eje {
+  fill: var(--ep-suave, #a9b6c4);
+  font-size: 11px;
+}
+.azra .eg-grafica-barra {
+  fill: #7a9b30;
+}
+.azra .eg-grafica-barra.eg-activa {
+  fill: #96b94a;
+}
+.azra .eg-grafica-limite {
+  stroke: #c9d4de;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+.azra .eg-grafica-tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #0b1624;
+  border: 1px solid #3a4c60;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+.azra .eg-tabla-desplazable {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.azra .eg-tabla-desplazable table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.azra .eg-tabla-desplazable th,
+.azra .eg-tabla-desplazable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ep-borde, #2b3b4d);
+  text-align: left;
+  vertical-align: top;
+}
+.azra .eg-tabla-desplazable th {
+  color: var(--ep-suave, #a9b6c4);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.azra .eg-tabla-desplazable td {
+  font-variant-numeric: tabular-nums;
+}
+.azra .eg-tabla-tarifas input {
+  min-width: 110px;
+}
+.azra .eg-fila-error td {
+  color: #ffd9c7;
+}
+.azra .eg-error-celda {
+  display: block;
+  color: #ffb79c;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.azra .eg-dos-tablas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.azra .eg-otras-recetas,
+.azra .eg-especialistas {
+  margin-top: 12px;
+}
+.azra .eg-otras-recetas summary,
+.azra .eg-especialistas summary {
+  cursor: pointer;
+  color: #c9d4de;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+}
+.azra .eg-otras-recetas .eg-recetas {
+  margin-top: 10px;
+}
+.azra .eg-especialistas-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px 16px;
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+}
+@media (max-width: 760px) {
+  .azra .eg-kpis,
+  .azra .eg-medidores,
+  .azra .eg-dos-tablas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .azra .eg-bloque {
+    padding: 14px;
+  }
+}

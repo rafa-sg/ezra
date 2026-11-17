@@ -115,11 +115,14 @@ export function Inspector({
             <label className="eg-campo">
               {g("especialidad")}
               <select value={nodo.agente ?? "cazador"} onChange={(e) => cambiar({ agente: e.target.value as Agente })}>
-                {agentes.map((a) => (
-                  <option key={a} value={a}>
-                    {g(`agente_${a}`)}
-                  </option>
-                ))}
+                {agentes
+                  .filter((a) => resumen.especialistas.includes(a) || a === nodo.agente)
+                  .map((a) => (
+                    <option key={a} value={a}>
+                      {g(`agente_${a}`)}
+                      {resumen.especialistas.includes(a) ? "" : ` ${g("especialistaOculto")}`}
+                    </option>
+                  ))}
               </select>
             </label>
             <label className="eg-campo">

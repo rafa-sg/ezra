@@ -16,6 +16,8 @@ import {
 import { buscarHerramienta } from "@/lib/produccion/proveedores";
 import { direccionSpotmi } from "@/lib/produccion/spotmi";
 import { invalidarPorEncargo } from "@/lib/granjas/ejecucion";
+import { especialistasVisibles } from "@/lib/granjas/especialistas";
+import { geminiProduccionHabilitado, modeloGemini } from "@/lib/ia/gemini";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const accionSchema = z.discriminatedUnion("accion", [
@@ -58,12 +60,10 @@ export async function GET() {
         astraLocal: Boolean(codex),
         claudeLocal: Boolean(claude),
         geminiConfigurado: Boolean(process.env.GEMINI_API_KEY?.trim()),
-        geminiHabilitado:
-          process.env.EZRA_PRODUCCION_IA === "1" &&
-          Boolean(process.env.GEMINI_API_KEY?.trim()) &&
-          Boolean(process.env.GEMINI_MODEL?.trim()),
-        modelo: process.env.GEMINI_MODEL?.trim() || null,
+        geminiHabilitado: geminiProduccionHabilitado(),
+        modelo: modeloGemini(),
       },
+      especialistas: especialistasVisibles(),
     });
   } catch (error) {
     return apiError(error);

@@ -111,6 +111,9 @@ const salidasAgente: Record<Agente, TipoArtefacto> = {
   descripcion: "texto",
   capitulos: "texto",
   auditoria: "revision",
+  verificador: "investigacion",
+  redactor_ig: "texto",
+  disenador_post: "imagen",
 };
 const todos = [...tiposArtefacto];
 export function aceptaNodo(nodo: Nodo): TipoArtefacto[] {

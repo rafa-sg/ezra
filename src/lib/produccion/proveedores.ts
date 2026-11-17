@@ -3,9 +3,9 @@ import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
-import { GoogleGenAI } from "@google/genai";
 import { WorkflowError } from "../workflow";
 import { construirEncargo, type Encargo } from "./modelo";
+import type { ContextoGemini } from "../ia/gemini";
 
 export type EntregaIA = { texto: string; busquedaHtml: string };
 export type EjecutorProceso = typeof ejecutarProceso;
@@ -250,18 +250,24 @@ export async function generarLocal(
     await rm(carpeta, { recursive: true, force: true });
   }
 }
-export async function generarGemini(encargo: Encargo, prompt?: string): Promise<EntregaIA> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  const model = process.env.GEMINI_MODEL?.trim();
-  if (!apiKey || !model || process.env.EZRA_PRODUCCION_IA !== "1")
+export async function generarGemini(
+  encargo: Encargo,
+  prompt?: string,
+  contexto: ContextoGemini = { origen: "encargo", paso: `Encargo · ${encargo.agente}` },
+): Promise<EntregaIA> {
+  // Import diferido: la ruta de datos se resuelve al usar Gemini, no al cargar este módulo
+  // (las pruebas apuntan EZRA_DATA_DIR a work/ antes de usarlo).
+  const { geminiProduccionHabilitado, llamarGemini, modeloGemini } = await import("../ia/gemini");
+  if (!geminiProduccionHabilitado())
     throw new WorkflowError(
       "La ejecución de Gemini todavía no está habilitada en el servidor del estudio.",
       503,
     );
-  const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 45000 } });
+  // El presupuesto agotado se informa tal cual: no es un fallo de Gemini.
+  let respuesta;
   try {
-    const respuesta = await ai.models.generateContent({
-      model,
+    respuesta = await llamarGemini(contexto, {
+      model: modeloGemini(),
       contents: prompt ?? construirEncargo(encargo),
       config: {
         systemInstruction:
@@ -270,6 +276,14 @@ export async function generarGemini(encargo: Encargo, prompt?: string): Promise<
         ...(encargo.agente === "cazador" ? { tools: [{ googleSearch: {} }] } : {}),
       },
     });
+  } catch (error) {
+    if (error instanceof WorkflowError) throw error;
+    throw new WorkflowError(
+      "Gemini no devolvió un resultado válido. El intento quedó registrado; tus encargos se conservaron.",
+      502,
+    );
+  }
+  try {
     let texto = respuesta.text?.trim() || "";
     const busquedaHtml =
       respuesta.candidates?.[0]?.groundingMetadata?.searchEntryPoint?.renderedContent || "";

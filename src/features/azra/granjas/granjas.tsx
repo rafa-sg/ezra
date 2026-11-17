@@ -1,13 +1,18 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Copy, Pause, Play, Archive, Save, Square, RotateCcw, ArrowLeft, Bot, Image as Imagen, Film, ShieldCheck, Send } from "lucide-react";
+import { Plus, Copy, Pause, Play, Archive, Save, Square, RotateCcw, ArrowLeft, Bot, Image as Imagen, Film, ShieldCheck, Send, Users } from "lucide-react";
+import { agentes, type Agente } from "@/lib/produccion/modelo";
 import { Modal } from "../ui";
 import { validarGrafo, estadosTrabajando, type TipoNodo } from "@/lib/granjas/modelo";
 import { Lienzo } from "./lienzo";
 import { Inspector, type AccionesPaso } from "./inspector";
 import { VistaPrevia } from "./vista-previa";
+import { AvisoPresupuesto } from "./consumo";
 import { pedir, nodoNuevo, type ConexionesRespuesta, type Detalle, type Grafo, type MedioResumen, type Nodo, type Resumen } from "./cliente";
 import "./granjas.css";
+
+/** Recetas del flujo diario de Spotmi: se muestran primero; las demás quedan en «Otras recetas». */
+const recetasDestacadas = ["eventos_el_salvador", "post_instagram_eventos"];
 
 /** Granjas: flujos de agentes conectados, ejecutados por el trabajador local y revisados por el propietario. */
 export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string; tr: (clave: string) => string; fecha: (iso: string) => string }) {
@@ -26,6 +31,7 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
     return () => clearTimeout(reloj);
   }, [aviso]);
   const [consentimiento, setConsentimiento] = useState<{ abierto: boolean; acepto: boolean }>({ abierto: false, acepto: false });
+  const [verArchivadas, setVerArchivadas] = useState(false);
   const [conexiones, setConexiones] = useState<ConexionesRespuesta | null>(null);
 
   const cargarResumen = useCallback(async () => {
@@ -146,7 +152,8 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
     if (!grafo) return;
     const x = 40 + (grafo.nodos.length % 4) * 250;
     const y = 40 + Math.floor(grafo.nodos.length / 4) * 190;
-    const nodo = nodoNuevo(tipo, { x, y }, tipo === "agente" ? "cazador" : null, tipo === "agente" ? g("agente_cazador") : "");
+    const agente = resumen?.especialistas[0] ?? "cazador";
+    const nodo = nodoNuevo(tipo, { x, y }, tipo === "agente" ? agente : null, tipo === "agente" ? g(`agente_${agente}`) : "");
     setGrafo({ ...grafo, nodos: [...grafo.nodos, nodo] });
     setSeleccionado(nodo.id);
   }
@@ -175,25 +182,37 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
   const iaEnGranja = grafo?.nodos.filter((n) => n.tipo === "agente" && n.proveedor !== "manual") ?? [];
   const ultima = detalle?.ultima;
 
+  async function guardarEspecialistas(visibles: Agente[]) {
+    const r = await ejecutar(() => pedir<{ visibles: Agente[] }>("/api/granjas/especialistas", { visibles }), g("especialistasGuardados"));
+    if (r && resumen) setResumen({ ...resumen, especialistas: r.visibles });
+  }
+
   if (!resumen) return <p role="status">{error || g("cargando")}</p>;
 
-  if (!abierta)
+  if (!abierta) {
+    const tarjetaReceta = (r: Resumen["recetas"][number]) => (
+      <button key={r.clave} className="eg-receta" disabled={ocupado} onClick={() => void crearDesde({ accion: "receta", clave: r.clave })}>
+        {r.formato === "video" ? <Film size={20} /> : r.formato === "carrusel" ? <Imagen size={20} /> : <Send size={20} />}
+        <strong>{g(`receta_${r.clave}`)}</strong>
+        <span>{g(`receta_${r.clave}_ayuda`)}</span>
+        <small>
+          {r.pasos} {g("pasosMin")}
+        </small>
+      </button>
+    );
+    const destacadas = resumen.recetas.filter((r) => recetasDestacadas.includes(r.clave));
+    const otras = resumen.recetas.filter((r) => !recetasDestacadas.includes(r.clave));
+    const archivadas = resumen.granjas.filter((x) => x.estado === "archivada").length;
+    const visibles = resumen.granjas.filter((x) => verArchivadas || x.estado !== "archivada");
     return (
       <div className="eg-granjas">
         {error && <p className="ep-alerta" role="alert">{error}</p>}
+        {aviso && <p className="ep-aviso" role="status">{aviso}</p>}
+        <AvisoPresupuesto estado={resumen.presupuesto} g={g} fecha={fecha} />
         <section>
           <h2 className="eg-subtitulo">{g("recetas")}</h2>
           <div className="eg-recetas">
-            {resumen.recetas.map((r) => (
-              <button key={r.clave} className="eg-receta" disabled={ocupado} onClick={() => void crearDesde({ accion: "receta", clave: r.clave })}>
-                {r.formato === "video" ? <Film size={20} /> : r.formato === "carrusel" ? <Imagen size={20} /> : <Send size={20} />}
-                <strong>{g(`receta_${r.clave}`)}</strong>
-                <span>{g(`receta_${r.clave}_ayuda`)}</span>
-                <small>
-                  {r.pasos} {g("pasosMin")}
-                </small>
-              </button>
-            ))}
+            {destacadas.map(tarjetaReceta)}
             <button
               className="eg-receta"
               disabled={ocupado}
@@ -209,12 +228,27 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
               <span>{g("granjaVaciaAyuda")}</span>
             </button>
           </div>
+          {otras.length > 0 && (
+            <details className="eg-otras-recetas">
+              <summary>
+                {g("otrasRecetas")} ({otras.length})
+              </summary>
+              <div className="eg-recetas">{otras.map(tarjetaReceta)}</div>
+            </details>
+          )}
         </section>
         <section>
-          <h2 className="eg-subtitulo">{g("tusGranjas")}</h2>
-          {!resumen.granjas.length && <p className="ep-nota">{g("sinGranjas")}</p>}
+          <div className="eg-bloque-cabecera">
+            <h2 className="eg-subtitulo">{g("tusGranjas")}</h2>
+            <label className="ep-checkbox">
+              <input type="checkbox" checked={verArchivadas} onChange={(e) => setVerArchivadas(e.target.checked)} />
+              {g("verArchivadas")}
+              {archivadas > 0 && !verArchivadas ? ` · ${archivadas} ${g("archivadasOcultas")}` : ""}
+            </label>
+          </div>
+          {!visibles.length && <p className="ep-nota">{g("sinGranjas")}</p>}
           <div className="eg-lista">
-            {resumen.granjas.map((gr) => (
+            {visibles.map((gr) => (
               <button key={gr.id} className={`eg-tarjeta-granja eg-${gr.estado}`} onClick={() => void abrir(gr.id)}>
                 <span className="ep-pill">{g(`granja_${gr.estado}`)}</span>
                 <strong>{gr.nombre}</strong>
@@ -228,8 +262,33 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
             ))}
           </div>
         </section>
+        <details className="eg-especialistas">
+          <summary>
+            <Users size={16} aria-hidden="true" />
+            {g("especialistas")} ({resumen.especialistas.length}/{agentes.length})
+          </summary>
+          <p className="ep-nota">{g("especialistasAyuda")}</p>
+          <fieldset className="eg-especialistas-lista">
+            <legend className="eg-oculto">{g("especialistas")}</legend>
+            {agentes.map((a) => {
+              const marcado = resumen.especialistas.includes(a);
+              return (
+                <label className="ep-checkbox" key={a}>
+                  <input
+                    type="checkbox"
+                    checked={marcado}
+                    disabled={ocupado || (marcado && resumen.especialistas.length === 1)}
+                    onChange={() => void guardarEspecialistas(marcado ? resumen.especialistas.filter((x) => x !== a) : [...resumen.especialistas, a])}
+                  />
+                  {g(`agente_${a}`)}
+                </label>
+              );
+            })}
+          </fieldset>
+        </details>
       </div>
     );
+  }
 
   return (
     <div className="eg-granjas">
@@ -261,8 +320,8 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
                 </button>
               ) : (
                 <button className="ep-boton" disabled={ocupado || modificado} onClick={() => void actualizar({ estado: "activa" })}>
-                  <Play size={15} />
-                  {g("activarGranja")}
+                  {detalle.granja.estado === "archivada" ? <RotateCcw size={15} /> : <Play size={15} />}
+                  {g(detalle.granja.estado === "archivada" ? "restaurarGranja" : "activarGranja")}
                 </button>
               )}
               {detalle.granja.estado !== "archivada" && (

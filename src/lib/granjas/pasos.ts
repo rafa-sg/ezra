@@ -1,6 +1,7 @@
 import { WorkflowError } from "../workflow";
 import { canales as todosLosCanales, instruccionAgente, type Encargo } from "../produccion/modelo";
 import type { EntregaIA } from "../produccion/proveedores";
+import type { ContextoGemini } from "../ia/gemini";
 import { ahoraIso, auditar, base, transaccion } from "./db";
 import { guardarArtefacto, leerArtefacto, type Artefacto } from "./almacen";
 import { actualizarPaso, avanzar, leerEjecucion, leerPaso, nodoDe, salidaAgente, type Ejecucion } from "./ejecucion";
@@ -10,7 +11,7 @@ import { crearPiezaDesdePaso } from "./publicacion";
 import type { Nodo } from "./modelo";
 
 export type Dependencias = {
-  generar: (encargo: Encargo, prompt: string) => Promise<EntregaIA>;
+  generar: (encargo: Encargo, prompt: string, contexto: ContextoGemini) => Promise<EntregaIA>;
   recolectar: typeof recolectarFuentes;
   renderizar: (medios: Medio[], segundos: number) => Promise<Medio>;
   usosLegado: () => Promise<number>;
@@ -22,10 +23,15 @@ export function mesEnElSalvador(fecha: string) {
 }
 export function usosGranjasDelMes(ahora = ahoraIso()) {
   const mes = mesEnElSalvador(ahora);
-  return (base().prepare("select fecha from usos_ia").all() as { fecha: string }[]).filter((u) => mesEnElSalvador(u.fecha) === mes).length;
+  return (base().prepare("select fecha from usos_ia where proveedor <> 'gemini'").all() as { fecha: string }[]).filter((u) => mesEnElSalvador(u.fecha) === mes).length;
 }
-/** El límite de 30 intentos es uno solo entre el estudio de encargos y las granjas. */
+/**
+ * El límite de 30 intentos es uno solo entre el estudio de encargos y las granjas,
+ * y vale para Astra y Claude, que no informan tokens. Gemini se controla con el
+ * presupuesto de tokens (Consumo), que se comprueba en cada llamada.
+ */
 function reservarIA(pasoId: string, proveedor: string, legado: number) {
+  if (proveedor === "gemini") return;
   transaccion((db) => {
     if (legado + usosGranjasDelMes() >= LIMITE_IA_MENSUAL)
       throw new WorkflowError(`Se alcanzó el límite de ${LIMITE_IA_MENSUAL} intentos mensuales de IA del estudio.`, 429);
@@ -213,7 +219,13 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
     }
     reservarIA(pasoId, nodo.proveedor, await deps.usosLegado());
     actualizarPaso(pasoId, { estado: "generando", detalle: `Enviado a ${nodo.proveedor}.` });
-    const entrega = await deps.generar(encargoParaAdaptador(nodo, ejecucion), construirPromptPaso(nodo, ejecucion.instantanea.canales, entradas, evidencia));
+    const entrega = await deps.generar(encargoParaAdaptador(nodo, ejecucion), construirPromptPaso(nodo, ejecucion.instantanea.canales, entradas, evidencia), {
+      origen: "granja",
+      paso: nodo.titulo,
+      granjaId: ejecucion.granjaId,
+      ejecucionId: ejecucion.id,
+      pasoId,
+    });
     if (!sigueVigente(pasoId, "generando")) return "hecho";
     const artefacto = guardarArtefacto({
       granjaId: ejecucion.granjaId,

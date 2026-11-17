@@ -13,6 +13,9 @@ export const agentes = [
   "descripcion",
   "capitulos",
   "auditoria",
+  "verificador",
+  "redactor_ig",
+  "disenador_post",
 ] as const;
 export const canales = ["spotmi", "instagram", "tiktok", "facebook"] as const;
 export const proveedores = ["astra", "claude", "gemini"] as const;
@@ -213,6 +216,12 @@ const instrucciones: Record<Agente, string> = {
     "Genera capítulos y marcas de tiempo usando exclusivamente la transcripción o video aportado. Sin tiempos reales entrega estructura sin timestamps e indica el material faltante.",
   auditoria:
     "Audita la pieza: hechos frente a fuentes, vigencia, derechos, identidad Spotmi, tuteo, enlaces, legibilidad y adecuación al canal. Enumera errores concretos y datos por verificar. No apruebes ni publiques.",
+  verificador:
+    "Contrasta cada evento con su fuente original: título, fecha, hora, lugar y precio. Marca como «por confirmar» todo dato que no aparezca en la fuente y señala duplicados con eventos ya conocidos. No inventes ni completes datos.",
+  redactor_ig:
+    "Redacta el texto de una publicación de Instagram para un evento: máximo 2.200 caracteres, con fecha, lugar, la línea «Más info en spotmi» y entre 5 y 10 hashtags. Usa solo datos confirmados en la fuente.",
+  disenador_post:
+    "Prepara la imagen 1080×1350 del post con la plantilla de Spotmi: día, mes, título, lugar y logo. Usa una fotografía de fondo solo si tiene permiso registrado.",
 };
 export const instruccionAgente = (agente: Agente) => instrucciones[agente];
 export function construirEncargo(encargo: Encargo) {

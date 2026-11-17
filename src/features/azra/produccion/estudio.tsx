@@ -7,6 +7,8 @@ import {
   Search,
   CalendarDays,
   Workflow,
+  Ticket,
+  Gauge,
   Cable,
   Sparkles,
   Download,
@@ -14,7 +16,6 @@ import {
   RefreshCw,
   Check,
   Globe,
-  ImageOff,
   MapPin,
   X,
   ShieldCheck,
@@ -41,9 +42,14 @@ import { Pixel, colores } from "../granjas/pixel";
 import { SeccionGranjas } from "../granjas/granjas";
 import { ConexionesGranjas } from "../granjas/conexiones";
 import { ColocarEnGranja } from "../granjas/colocar";
+import { SeccionConsumo } from "../granjas/consumo";
 import "./estudio.css";
 
-type Seccion = "equipo" | "cola" | "fuentes" | "calendario" | "conexiones";
+const secciones = ["granjas", "eventos", "consumo", "calendario", "conexiones"] as const;
+type Seccion = (typeof secciones)[number];
+/** Secciones retiradas del menú (equipo, fuentes, cola): sus enlaces abren Granjas. */
+const seccionDe = (valor: string | null): Seccion | null =>
+  valor === null ? null : (secciones as readonly string[]).includes(valor) ? (valor as Seccion) : "granjas";
 type Conexiones = {
   spotmi: string;
   geminiConfigurado: boolean;
@@ -78,7 +84,8 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   const { t, locale } = useLanguage();
   const tr = (clave: string) => t(clave as MessageKey);
   const g = (clave: string) => t(`g_${clave}` as MessageKey);
-  const [seccion, setSeccion] = useState<Seccion>("equipo");
+  const [seccion, setSeccion] = useState<Seccion>("granjas");
+  const [especialistas, setEspecialistas] = useState<Agente[]>([...agentes]);
   const [vistaGranjas, setVistaGranjas] = useState<"granjas" | "encargos">("granjas");
   const [avisoOAuth, setAvisoOAuth] = useState<string | null>(null);
   const [produccion, setProduccion] = useState<Produccion | null>(null);
@@ -90,7 +97,6 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   const [fichas, setFichas] = useState<FichaSpotmi[] | null>(null);
   const [consultado, setConsultado] = useState("");
   const [busqueda, setBusqueda] = useState("");
-  const [sinImagen, setSinImagen] = useState(false);
   const [editor, setEditor] = useState<ContenidoEncargo | null>(null);
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [comprobaciones, setComprobaciones] = useState(comprobacionesVacias());
@@ -114,6 +120,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
       const datos = await datosRespuesta(await fetch("/api/produccion"));
       setProduccion(datos.produccion);
       setConexiones(datos.conexiones);
+      if (datos.especialistas) setEspecialistas(datos.especialistas);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -126,6 +133,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
       .then((datos) => {
         setProduccion(datos.produccion);
         setConexiones(datos.conexiones);
+        if (datos.especialistas) setEspecialistas(datos.especialistas);
       })
       .catch((error) => {
         if (error.name !== "AbortError") setError(error.message);
@@ -135,8 +143,8 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   useEffect(() => {
     if (soloLectura) return;
     const parametros = new URLSearchParams(window.location.search);
-    const pedida = parametros.get("seccion");
-    if (pedida !== "conexiones" && pedida !== "cola") return;
+    const pedida = seccionDe(parametros.get("seccion"));
+    if (!pedida) return;
     const resultado = parametros.get("conexion");
     window.history.replaceState(null, "", window.location.pathname);
     queueMicrotask(() => {
@@ -315,12 +323,13 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     );
   }
   const navegacion = [
-    { id: "equipo", icono: Sparkles },
-    { id: "cola", icono: Workflow },
-    { id: "fuentes", icono: Search },
-    { id: "calendario", icono: CalendarDays },
-    { id: "conexiones", icono: Cable },
+    { id: "granjas", icono: Workflow, etiqueta: "p_cola" },
+    { id: "eventos", icono: Ticket, etiqueta: "p_eventos" },
+    { id: "consumo", icono: Gauge, etiqueta: "p_consumo" },
+    { id: "calendario", icono: CalendarDays, etiqueta: "p_calendario" },
+    { id: "conexiones", icono: Cable, etiqueta: "p_conexiones" },
   ] as const;
+  const visiblesEn = (actual?: Agente) => agentes.filter((a) => especialistas.includes(a) || a === actual);
   return (
     <div className="ep-estudio">
       <header className="ep-cabecera">
@@ -347,15 +356,15 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
         </button>
       </header>
       <nav className="ep-nav" aria-label={tr("productionStudio")}>
-        {navegacion.map(({ id, icono: Icono }) => (
+        {navegacion.map(({ id, icono: Icono, etiqueta }) => (
           <button
             key={id}
-            aria-current={seccion === id ? "page" : undefined}
-            disabled={soloLectura && id !== "equipo"}
+            aria-current={!soloLectura && seccion === id ? "page" : undefined}
+            disabled={soloLectura}
             onClick={() => navegar(id)}
           >
             <Icono size={17} />
-            {tr(`p_${id}`)}
+            {tr(etiqueta)}
           </button>
         ))}
       </nav>
@@ -390,7 +399,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
           </p>
         )}
         {!soloLectura && !produccion && !error && <p role="status">{tr("p_cargando")}</p>}
-        {seccion === "equipo" && (
+        {soloLectura && (
           <>
             <section className="ep-hero">
               <div className="ep-hero-copy">
@@ -416,7 +425,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                   <button
                     className="ep-boton ep-texto"
                     disabled={soloLectura}
-                    onClick={() => navegar("fuentes")}
+                    onClick={() => navegar("granjas")}
                   >
                     {tr("p_fuentesCta")}
                     <ArrowUpRight size={16} />
@@ -497,7 +506,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
               <section className="ep-recientes">
                 <div className="ep-seccion-cabecera">
                   <h2>{tr("p_recientes")}</h2>
-                  <button className="ep-boton ep-texto" onClick={() => navegar("cola")}>
+                  <button className="ep-boton ep-texto" onClick={() => navegar("granjas")}>
                     {tr("p_mas")}
                     <ArrowRight size={16} />
                   </button>
@@ -525,11 +534,11 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
             )}
           </>
         )}
-        {!soloLectura && seccion === "cola" && (
+        {!soloLectura && seccion === "granjas" && (
           <>
             <div className="ep-seccion-cabecera">
               <div>
-                <p className="ep-eyebrow">02 / {tr("p_cola")}</p>
+                <p className="ep-eyebrow">01 / {tr("p_cola")}</p>
                 <h1>{tr("p_cola")}</h1>
                 <p>{tr("p_colaAyuda")}</p>
               </div>
@@ -588,117 +597,33 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
             )}
           </>
         )}
-        {!soloLectura && seccion === "fuentes" && (
+        {!soloLectura && seccion === "eventos" && (
           <>
             <div className="ep-seccion-cabecera">
               <div>
-                <p className="ep-eyebrow">03 / {tr("p_fuentes")}</p>
-                <h1>{tr("p_fuentesTitulo")}</h1>
-                <p>{tr("p_fuentesAyuda")}</p>
+                <p className="ep-eyebrow">02 / {tr("p_eventos")}</p>
+                <h1>{tr("p_eventos")}</h1>
+                <p>{tr("p_eventosAyuda")}</p>
               </div>
-              <button
-                className="ep-boton ep-primario"
-                onClick={() => void consultar()}
-                disabled={consulta || soloLectura}
-              >
-                <RefreshCw size={17} />
-                {tr(consulta ? "p_consultando" : "p_consultar")}
-              </button>
+              <Ticket size={35} />
             </div>
-            <div className="ep-acciones ep-links">
-              <a
-                href={`${conexiones?.spotmi || "https://spotmi.com.sv"}/es/admin/analizador`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {tr("p_analizador")}
-                <ArrowUpRight size={15} />
-              </a>
-              <a
-                href={`${conexiones?.spotmi || "https://spotmi.com.sv"}/es/admin/analizador/propuestas`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {tr("p_propuestas")}
-                <ArrowUpRight size={15} />
-              </a>
+            <div className="ep-vacio">
+              <Ticket size={32} />
+              <h3>{tr("p_eventosVacio")}</h3>
             </div>
-            <div className="ep-filtros">
-              <label className="ep-busqueda">
-                <Search size={18} />
-                <input
-                  aria-label={tr("p_buscar")}
-                  placeholder={tr("p_buscar")}
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                />
-              </label>
-              <label className="ep-checkbox">
-                <input
-                  type="checkbox"
-                  checked={sinImagen}
-                  onChange={(e) => setSinImagen(e.target.checked)}
-                />
-                {tr("p_soloSinImagen")}
-              </label>
-            </div>
-            {consultado && (
-              <p className="ep-nota">
-                {tr("p_consultado")}: {fecha(consultado)}
-              </p>
-            )}
-            {!fichas || !fichas.length ? (
-              <div className="ep-vacio">
-                <Globe size={32} />
-                <h3>{tr(fichas ? "p_catalogoSinDatos" : "p_catalogoVacio")}</h3>
+          </>
+        )}
+        {!soloLectura && seccion === "consumo" && (
+          <>
+            <div className="ep-seccion-cabecera">
+              <div>
+                <p className="ep-eyebrow">03 / {tr("p_consumo")}</p>
+                <h1>{tr("p_consumo")}</h1>
+                <p>{tr("p_consumoAyuda")}</p>
               </div>
-            ) : (
-              <div className="ep-fichas">
-                {fichas
-                  .filter(
-                    (f) => filtrar(`${f.titulo} ${f.departamento}`) && (!sinImagen || !f.imagen),
-                  )
-                  .map((f) => (
-                    <article key={f.id} className="ep-ficha">
-                      <div className="ep-ficha-imagen">
-                        {f.imagen ? (
-                          <img
-                            src={f.imagen}
-                            alt={f.titulo}
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <>
-                            <ImageOff size={29} />
-                            <span>{tr("p_sinImagen")}</span>
-                          </>
-                        )}
-                        <span className="ep-etiqueta">
-                          {tr(`p_${f.tipo}`)}
-                          {f.imagenGenerada ? ` · ${tr("p_ilustracion")}` : ""}
-                        </span>
-                      </div>
-                      <div className="ep-ficha-texto">
-                        <h3>{f.titulo}</h3>
-                        <p>{f.lugar || f.departamento}</p>
-                        {f.fecha && <p>{fecha(f.fecha)}</p>}
-                        <a href={`${conexiones?.spotmi}${f.ruta}`} target="_blank" rel="noreferrer">
-                          {tr("p_verFicha")}
-                          <ArrowUpRight size={15} />
-                        </a>
-                        <button
-                          className="ep-boton"
-                          onClick={() => crear(f.imagen ? "guion" : "cazador", f)}
-                        >
-                          {tr(f.imagen ? "p_crearDesde" : "p_buscarImagen")}
-                          <ArrowRight size={15} />
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-              </div>
-            )}
+              <Gauge size={35} />
+            </div>
+            <SeccionConsumo g={g} fecha={fecha} locale={locale} />
           </>
         )}
         {!soloLectura && seccion === "calendario" && (
@@ -729,7 +654,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                 <button
                   className="ep-boton"
                   disabled={!produccion || soloLectura}
-                  onClick={() => crear("semana")}
+                  onClick={() => crear()}
                 >
                   {tr("p_nuevo")}
                 </button>
@@ -799,16 +724,16 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                   </span>
                   <p>{tr("p_spotmiAyuda")}</p>
                   <code>{conexiones?.spotmi}</code>
-                  <button
-                    className="ep-boton"
-                    onClick={() => {
-                      navegar("fuentes");
-                      void consultar();
-                    }}
-                  >
-                    {tr("p_consultar")}
-                    <ArrowUpRight size={16} />
+                  <button className="ep-boton" disabled={consulta} onClick={() => void consultar()}>
+                    <RefreshCw size={16} />
+                    {tr(consulta ? "p_consultando" : "p_consultar")}
                   </button>
+                  {fichas && (
+                    <p className="ep-nota" role="status">
+                      {fichas.length} {g("fichasLeidas")}
+                      {consultado ? ` · ${fecha(consultado)}` : ""}
+                    </p>
+                  )}
                 </div>
               </article>
             </div>
@@ -880,7 +805,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                     value={editor.agente}
                     onChange={(e) => setEditor({ ...editor, agente: e.target.value as Agente })}
                   >
-                    {agentes.map((a) => (
+                    {visiblesEn(editor.agente).map((a) => (
                       <option value={a} key={a}>
                         {tr(`p_${a}_titulo`)}
                       </option>
@@ -1131,7 +1056,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                         value={siguienteAgente}
                         onChange={(e) => setSiguienteAgente(e.target.value as Agente)}
                       >
-                        {agentes.map((a) => (
+                        {visiblesEn(siguienteAgente).map((a) => (
                           <option key={a} value={a}>
                             {tr(`p_${a}_titulo`)}
                           </option>
