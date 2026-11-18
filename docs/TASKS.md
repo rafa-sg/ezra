@@ -56,12 +56,24 @@
 - [x] Se archivaron 4 copias de «Eventos de El Salvador» creadas al pulsar la receta varias veces; queda `202dfe90…`.
 - [ ] Propietario: revisar los 10 eventos (algunos no son de turismo: EmTech AI, cumbre de Bitcoin). Volver a ejecutar para recuperar Fiestas patronales de Apopa si sigue en la ventana.
 
+### 18 nov (tarde) · Imagen oficial, importación, barrido nov–dic y búsqueda diaria
+- [x] Parte 1 (`54fad07`): el verificador baja la imagen de la ficha oficial (og:image → twitter:image → imagen schema.org → imagen principal; luego la página de boletos). JPG/PNG/WebP, ≤ 8 MB, lado menor ≥ 600 px, validada por contenido, nunca de redes sociales ni sus CDN. Queda «pendiente de tu confirmación»; el post solo la usa tras «Usar imagen de la fuente». Botones «Buscar imagen» y «Cambiar imagen».
+- [x] Parte 2 (`92b2baf`): «Importar JSON» en Eventos y `npm run eventos:importar -- archivo.json [--dominios=a.sv,b.com]`, por el mismo verificador. Migración 6: `fecha_fin` e `imagen_confirmada` (respaldo en `data/granjas/respaldos/`). Hora «08:00 PM» con cero inicial ya se confirma. Duplicados más finos (departamentos no cuentan como palabra distintiva).
+- [x] Barrido: `work/eventos-nov-dic-2026.json`, 61 eventos (17 de la semilla + Smart Ticket + MITUR). Importados: 51 nuevos, 10 duplicados (ya en Spotmi), 0 descartados; 4 con imagen pendiente de confirmar; 42 con hora o precio por confirmar. Contradicciones anotadas en «nota de verificación» de cada evento (Allison, Apopa, Alejandro Sanz, Villa Navideña, Quezaltepeque).
+- [x] Parte 3 (`1428fb5`): granja `202dfe90…` con ventana de 45 días, máximo 10/día, dominios añadidos `smartticket.fun`, `todoticketsv.com`, `funcapital.com`, fuente «Cartelera de Smart Ticket». El prompt recibe hasta 200 eventos vigentes de la bandeja. Horario activo a las 04:30 todos los días (primera ejecución: 19 nov). Resumen de la última ejecución en Granjas (nuevos, duplicados, con imagen, tokens).
+- [x] Cierre: check 113/113; build y integración 7/7 en un worktree aislado (sin tocar el servidor del 3000).
+- [ ] Propietario: reiniciar `npm run dev` para que el trabajador cargue el código nuevo antes de las 04:30.
+- [ ] Propietario: instalar el LaunchAgent (no está instalado) o dejar `npm run dev` abierto: `bash scripts/trabajador-instalar.sh` y `sudo pmset repeat wakeorpoweron MTWRFSU 04:25:00`.
+- [ ] Propietario: decidir si se archiva la copia `4917b7e8…` de «Eventos de El Salvador» (creada hoy a las 14:17 desde la receta; sin horario; los 51 importados quedaron asociados a ella, archivar no los borra).
+- [ ] Limitaciones: `todoticketsv.com` responde 500 al agente de Ezra y `funcapital.com` es una página solo con JavaScript: permitidas para enlaces, pero no se pueden leer. La prensa (`elsalvador.com`) solo se usó en esta importación (`--dominios`). La RPC de Spotmi no lleva `fecha_fin` (va en la descripción); ampliarla es opcional.
+- [ ] Revisar los 4 eventos con imagen y confirmar o cambiar la imagen; revisar Kany García (sin recinto ni ficha oficial).
+
 ### Te toca (propietario)
 - [ ] Supabase: correr `work/supabase-probar-sin-aplicar.sql` en el SQL Editor (debe terminar en «PRUEBAS TERMINADAS»), luego `work/supabase-aplicar.sql`, luego `pnpm exec supabase login` y `pnpm exec supabase migration repair --status applied 20261103 20261117 --linked` en spotmi-web.
 - [ ] Crear la cuenta editorial (Authentication → Users), habilitarla con `work/supabase-habilitar-editorial.sql` y poner `SPOTMI_EDITORIAL_EMAIL` y `SPOTMI_EDITORIAL_PASSWORD` en `.env.local`. Reiniciar `npm run dev` y pulsar Conexiones → Spotmi web → Conectar.
 - [ ] `.env.local`: `EZRA_PRODUCCION_IA=1` (y `GEMINI_MODEL` si no quieres `gemini-3.5-flash-lite`).
 - [ ] Consumo: escribir presupuesto diario y mensual y las tarifas de tu plan.
-- [ ] Granjas: agregar dominios de ticketeras y recintos en «Eventos de El Salvador»; programar 04:30 y «Post para Instagram» después de ella.
+- [x] Granjas: dominios de ticketeras y 04:30 en «Eventos de El Salvador» (18 nov). Falta: «Post para Instagram» después de ella.
 - [ ] Opcional: `bash scripts/trabajador-instalar.sh` y `sudo pmset repeat wakeorpoweron MTWRFSU 04:25:00`.
 - [ ] Prueba real: `scripts/eventos-prueba-real.ts` (ver `docs/GRANJAS_CAPACIDADES.md`).
 - [ ] Pendiente técnico: el publicador genérico de piezas no guarda el token renovado de Spotmi (la bandeja sí).

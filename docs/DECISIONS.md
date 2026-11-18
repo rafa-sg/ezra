@@ -464,3 +464,13 @@ Decisiones del propietario tras revisar los hallazgos:
 - **LaunchAgent:** plantilla en `ops/macos/`, scripts de instalar/desinstalar con `launchctl bootstrap/bootout`. El trabajador independiente ahora también lee `.env.meta.local` (necesita `EZRA_TOKEN_KEY` para la sesión de Spotmi).
 - **Recetas visibles:** primero las dos del flujo diario; las demás en «Otras recetas». La guía turística (sin pasos ni interfaz, trabajo previo) no se ofrece; se añadieron los textos que faltaban de las recetas de Instagram y Facebook generales.
 - **Desborde corregido:** un texto oculto para lectores de pantalla (posición absoluta) escapaba de su tabla desplazable; los contenedores de tablas ahora son `position: relative`.
+
+## 2026-11-18 · Imagen oficial, importación y búsqueda diaria de eventos
+
+- **Regla de imagen y permiso.** Una imagen de evento solo se toma de su ficha oficial (página fuente y, si no hay, la de boletos), en este orden: og:image, twitter:image, imagen del Event de schema.org e imagen principal. Nunca de redes sociales ni de sus CDN (cdninstagram, fbcdn, twimg, tiktokcdn). JPG/PNG/WebP validado por contenido, ≤ 8 MB, lado menor ≥ 600 px. Se guarda con el permiso «Imagen promocional de la fuente oficial: <dominio> · pendiente de tu confirmación»; al confirmar pasa a «… · confirmada por ti el <fecha>». El post de Instagram solo usa una imagen confirmada; nada se confirma de forma automática.
+- **Importación.** El JSON pasa por el mismo verificador que el Cazador: la fecha se confirma en la fuente o el evento se descarta; hora y precio quedan «por confirmar» si no aparecen. Los dominios extra (`--dominios`) valen solo para esa importación; la interfaz usa los de la granja. Las importaciones no cuentan para el máximo diario.
+- **Fuente que manda.** Ficha de ticketera o productora > ficha de MITUR > nota de prensa. Si se contradicen, gana la ficha oficial y la diferencia queda en la nota de verificación.
+- **Eventos de varios días.** Un solo evento con `fecha_fin` (migración 6). Sigue vigente hasta su último día. Un cierre incoherente en la fuente (fin antes del inicio) deja el fin por confirmar.
+- **Duplicados.** Los nombres de departamento no cuentan como palabra distintiva cuando hay otras; «contener al otro título» solo cuenta con ≤ 2 palabras de diferencia.
+- **Horario.** Activar un horario después de su hora no ejecuta en ese momento: la primera vez es al día siguiente. La recuperación al despertar solo aplica a horarios que ya estaban activos.
+- **Fuentes no legibles.** No se finge un navegador: Todoticket (500 a «EzraSpotmi/1.0») y Fun Capital (solo JavaScript) quedan permitidos para enlaces, pero no como Fuentes.

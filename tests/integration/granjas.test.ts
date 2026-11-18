@@ -112,7 +112,7 @@ test(
       // BOM para que Excel abra bien los acentos (Response.text() lo quitaría).
       const bytes = Buffer.from(await csv.arrayBuffer());
       assert.deepEqual([...bytes.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
-      assert.match(bytes.subarray(3).toString("utf8"), /^titulo,fecha,hora/);
+      assert.match(bytes.subarray(3).toString("utf8"), /^titulo,fecha,fecha_fin,hora/);
       const sinSpotmi = await pedir("/api/granjas/eventos", admin, {
         method: "POST",
         body: JSON.stringify({ accion: "enviar_spotmi", id: crypto.randomUUID() }),
