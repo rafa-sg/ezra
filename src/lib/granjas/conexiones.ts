@@ -112,6 +112,12 @@ function registrarError(canal: CanalConexion, mensaje: string, estado?: EstadoCo
     )
     .run(canal, estado ?? "verificacion_fallida", mensaje.slice(0, 500), ahora, ahora);
 }
+/** Guarda un token renovado: Supabase invalida el refresh token anterior al usarlo. */
+export function guardarSecretoRenovado(canal: CanalConexion, secreto: Secreto) {
+  base()
+    .prepare("update conexiones set token_cifrado = ?, expira = ?, actualizado = ? where canal = ?")
+    .run(cifrar(secreto), secreto.expiraAcceso ?? null, ahoraIso(), canal);
+}
 export function secretoDe(canal: CanalConexion): Secreto {
   const f = fila(canal);
   if (!f?.token_cifrado) throw new WorkflowError("Esta cuenta no está conectada.", 409);

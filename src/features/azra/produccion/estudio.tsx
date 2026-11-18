@@ -43,6 +43,7 @@ import { SeccionGranjas } from "../granjas/granjas";
 import { ConexionesGranjas } from "../granjas/conexiones";
 import { ColocarEnGranja } from "../granjas/colocar";
 import { SeccionConsumo } from "../granjas/consumo";
+import { SeccionEventos } from "../granjas/eventos";
 import "./estudio.css";
 
 const secciones = ["granjas", "eventos", "consumo", "calendario", "conexiones"] as const;
@@ -607,10 +608,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
               </div>
               <Ticket size={35} />
             </div>
-            <div className="ep-vacio">
-              <Ticket size={32} />
-              <h3>{tr("p_eventosVacio")}</h3>
-            </div>
+            <SeccionEventos g={g} fecha={fecha} locale={locale} />
           </>
         )}
         {!soloLectura && seccion === "consumo" && (

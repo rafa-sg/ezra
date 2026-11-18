@@ -204,7 +204,7 @@ export function invalidarPieza(piezaId: string, motivo: string) {
 
 /* ── Artefactos ── */
 export type Procedencia = {
-  origen: "astra" | "claude" | "gemini" | "manual" | "fuentes" | "render" | "subida" | "encargo" | "revision";
+  origen: "astra" | "claude" | "gemini" | "manual" | "fuentes" | "render" | "subida" | "encargo" | "revision" | "local";
   nota?: string;
   encargo?: { id: string; version: number };
   herramienta?: string;

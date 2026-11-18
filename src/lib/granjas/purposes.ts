@@ -1,4 +1,4 @@
-export const farmPurposes = ["instagram_post", "facebook_post", "tourist_guide", "carousel", "video", "custom"] as const;
+export const farmPurposes = ["instagram_post", "facebook_post", "tourist_guide", "carousel", "video", "custom", "eventos_el_salvador", "post_instagram_eventos"] as const;
 export type FarmPurpose = (typeof farmPurposes)[number];
 export const purposeLabels: Record<FarmPurpose, string> = {
   instagram_post: "Post de Instagram",
@@ -7,6 +7,8 @@ export const purposeLabels: Record<FarmPurpose, string> = {
   carousel: "Carrusel",
   video: "Video",
   custom: "Personalizada",
+  eventos_el_salvador: "Eventos de El Salvador",
+  post_instagram_eventos: "Post para Instagram",
 };
 
 /** Existing farms keep their data and can be classified without changing their destinations. */

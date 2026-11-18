@@ -254,6 +254,44 @@ const migraciones: string[] = [
   );
   create index consumo_ia_fecha on consumo_ia (fecha);
   `,
+  // 4 · Bandeja de eventos de El Salvador. Fecha, hora y precio nulos = «por confirmar».
+  `
+  create table eventos (
+    id text primary key,
+    titulo text not null,
+    fecha text,
+    hora text,
+    lugar text not null default '',
+    municipio text not null default '',
+    departamento text not null default '',
+    categoria text not null default 'otro',
+    precio text,
+    boletos_url text,
+    fuente_url text not null,
+    confirmado_en text not null default '{}',
+    sugerencias text not null default '{}',
+    descripcion text not null default '',
+    imagen_url text,
+    imagen_medio_id text references medios(id),
+    imagen_permiso text not null default '',
+    estado text not null check (estado in ('nuevo', 'aprobado', 'descartado')),
+    motivo_descarte text not null default '',
+    spotmi_estado text check (spotmi_estado in ('propuesto', 'aceptado', 'descartado', 'duplicado')),
+    spotmi_propuesta_id text,
+    spotmi_clave text,
+    spotmi_consultado text,
+    ig_estado text check (ig_estado in ('post_listo', 'subido')),
+    huella text not null,
+    nota_verificacion text not null default '',
+    granja_id text references granjas(id),
+    ejecucion_id text references ejecuciones(id),
+    revision integer not null default 1,
+    creado text not null,
+    actualizado text not null
+  );
+  create index eventos_estado on eventos (estado, fecha);
+  create index eventos_creado on eventos (creado);
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

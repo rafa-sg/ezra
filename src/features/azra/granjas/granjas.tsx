@@ -179,7 +179,7 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
       return r;
     },
   };
-  const iaEnGranja = grafo?.nodos.filter((n) => n.tipo === "agente" && n.proveedor !== "manual") ?? [];
+  const iaEnGranja = grafo?.nodos.filter((n) => n.tipo === "agente" && n.proveedor !== "manual" && n.proveedor !== "local") ?? [];
   const ultima = detalle?.ultima;
 
   async function guardarEspecialistas(visibles: Agente[]) {

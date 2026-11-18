@@ -4,7 +4,9 @@ import { farmPurposes } from "./purposes";
 
 export const tiposArtefacto = ["investigacion", "guion", "texto", "imagen", "video", "revision"] as const;
 export const tiposNodo = ["agente", "medios", "render", "revision", "publicacion"] as const;
-export const proveedoresNodo = ["astra", "claude", "gemini", "manual"] as const;
+export const proveedoresNodo = ["astra", "claude", "gemini", "manual", "local"] as const;
+/** Especialistas que trabajan sin IA, con código local (verificar, redactar con plantilla, diseñar). */
+export const agentesLocales: Agente[] = ["verificador", "redactor_ig", "disenador_post"];
 export const formatos = ["publicacion", "carrusel", "video"] as const;
 export type TipoArtefacto = (typeof tiposArtefacto)[number];
 export type TipoNodo = (typeof tiposNodo)[number];
@@ -82,6 +84,14 @@ export const datosGranjaSchema = z.object({
       zonaHoraria: z.literal("America/El_Salvador").default("America/El_Salvador"),
       purpose: z.enum(farmPurposes).optional(),
       customPurpose: z.string().trim().max(60).optional(),
+      // Granja «Eventos de El Salvador»: cuántos eventos nuevos por día y cuántos días hacia delante.
+      eventos: z
+        .object({ maxPorDia: z.number().int().min(1).max(30).default(10), diasAdelante: z.number().int().min(1).max(30).default(14) })
+        .optional(),
+      // Granja «Post para Instagram»: cuenta de destino (solo texto) y posts por día.
+      instagram: z
+        .object({ cuenta: z.string().trim().min(2).max(60).default("@spotmi.sv"), postsPorDia: z.number().int().min(1).max(20).default(3) })
+        .optional(),
     })
     .default({ zonaHoraria: "America/El_Salvador" }),
 });
@@ -252,10 +262,15 @@ export function faltantesNodo(nodo: Nodo, grafo: Grafo, contexto: { geminiHabili
   if (nodo.tipo === "agente") {
     if (nodo.proveedor === "gemini" && !contexto.geminiHabilitado)
       faltan.push("Gemini está deshabilitado en este estudio. Elige Astra, Claude o trabajo manual.");
-    if (nodo.agente === "cazador" && !nodo.fuentes.length && !entradas.length)
+    // Con Gemini el cazador busca en Google; sin búsqueda necesita fuentes.
+    if (nodo.agente === "cazador" && nodo.proveedor !== "gemini" && !nodo.fuentes.length && !entradas.length)
       faltan.push("Agrega al menos una fuente para que el cazador investigue.");
     if (nodo.agente !== "cazador" && !entradas.length && !nodo.instrucciones.trim())
       faltan.push("Conecta un paso anterior o escribe las instrucciones.");
+    if (nodo.proveedor === "local" && !agentesLocales.includes(nodo.agente ?? "cazador"))
+      faltan.push("Este especialista no trabaja sin IA. Elige Gemini, Astra, Claude o trabajo manual.");
+    if (nodo.proveedor === "local" && nodo.agente === "verificador" && !entradas.length)
+      faltan.push("Conecta el cazador al verificador.");
   }
   if (nodo.tipo === "medios" && !nodo.medios.length)
     faltan.push("Sube al menos una imagen o video propio o con permiso.");
@@ -282,7 +297,15 @@ export function faltantesNodo(nodo: Nodo, grafo: Grafo, contexto: { geminiHabili
 /* ── Recetas iniciales: instrucciones y espacios vacíos, sin eventos ni resultados inventados ── */
 type Paso = Omit<Partial<Nodo>, "id" | "posicion"> & { clave: string; tipo: TipoNodo; titulo: string };
 export type Receta = {
-  clave: "evento_verificado" | "carrusel_spot" | "video_vertical" | "instagram_post" | "facebook_post" | "tourist_guide";
+  clave:
+    | "evento_verificado"
+    | "carrusel_spot"
+    | "video_vertical"
+    | "instagram_post"
+    | "facebook_post"
+    | "tourist_guide"
+    | "eventos_el_salvador"
+    | "post_instagram_eventos";
   datos: DatosGranja;
   pasos: Paso[];
   conexiones: [string, string][];
@@ -395,6 +418,33 @@ recetas.push({
   conexiones: [],
 });
 
+/** Fuentes iniciales de la granja de eventos: MITUR y sitios del Gobierno (incluye alcaldías *.gob.sv).
+ * Ticketeras y recintos los agrega el propietario en Personalizar; nunca redes sociales. */
+export const dominiosEventos = ["elsalvador.travel", "gob.sv"];
+recetas.unshift({
+  clave: "eventos_el_salvador",
+  datos: {
+    nombre: "Eventos de El Salvador",
+    objetivo:
+      "Cada día, encontrar eventos de los próximos 14 días en El Salvador (conciertos, festivales, ferias, fiestas patronales, deportes y gastronomía) y dejarlos en la bandeja Eventos para tu revisión.",
+    formato: "publicacion",
+    canales: ["spotmi"],
+    politicaFuentes: { dominios: dominiosEventos, maxFuentesPorPaso: 5 },
+    ajustes: { zonaHoraria: "America/El_Salvador", purpose: "eventos_el_salvador", eventos: { maxPorDia: 10, diasAdelante: 14 } },
+  },
+  pasos: [
+    {
+      clave: "caza",
+      tipo: "agente",
+      agente: "cazador",
+      titulo: "Cazador de eventos",
+      proveedor: "gemini",
+      instrucciones: "",
+    },
+    { clave: "verif", tipo: "agente", agente: "verificador", titulo: "Verificador", proveedor: "local" },
+  ],
+  conexiones: [["caza", "verif"]],
+});
 export function grafoDeReceta(receta: Receta): Grafo {
   const ids = new Map(receta.pasos.map((p) => [p.clave, crypto.randomUUID()]));
   const niveles = new Map<string, number>();

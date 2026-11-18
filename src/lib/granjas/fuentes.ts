@@ -254,3 +254,23 @@ export async function recolectarFuentes(
   }
   return resultado;
 }
+
+/**
+ * Lee una página permitida para verificar datos: respeta robots.txt, dominios,
+ * https y límites. Devuelve el texto limpio solo para comparar en memoria; no se
+ * guarda completo (al evento solo pasan los datos confirmados y la URL).
+ */
+export async function leerPaginaVerificable(
+  direccion: string,
+  dominios: string[],
+  opciones: { descargar?: (u: URL, l: number, t: number) => Promise<Respuesta> } = {},
+): Promise<{ url: string; texto: string; html: string }> {
+  const url = new URL(direccion);
+  const robots = await descargarSegura(`${url.origin}/robots.txt`, dominios, { limite: 100_000, descargar: opciones.descargar }).catch(() => null);
+  if (robots && robots.estado < 400 && !permitidoPorRobots(robots.cuerpo.toString("utf8"), url.pathname))
+    throw new WorkflowError("robots.txt no permite leer esta página.", 403);
+  const respuesta = await descargarSegura(direccion, dominios, { descargar: opciones.descargar });
+  if (respuesta.estado >= 400) throw new WorkflowError(`La fuente respondió ${respuesta.estado}.`, 502);
+  const html = respuesta.cuerpo.toString("utf8");
+  return { url: respuesta.url, html, texto: limpiar(html).slice(0, 80_000) };
+}

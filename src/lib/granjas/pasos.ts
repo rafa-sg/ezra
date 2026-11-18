@@ -2,6 +2,7 @@ import { WorkflowError } from "../workflow";
 import { canales as todosLosCanales, instruccionAgente, type Encargo } from "../produccion/modelo";
 import type { EntregaIA } from "../produccion/proveedores";
 import type { ContextoGemini } from "../ia/gemini";
+import { promptEspecial, verificarPaso, type DepsEspecialistas, type ResultadoLocal } from "./pasos-eventos";
 import { ahoraIso, auditar, base, transaccion } from "./db";
 import { guardarArtefacto, leerArtefacto, type Artefacto } from "./almacen";
 import { actualizarPaso, avanzar, leerEjecucion, leerPaso, nodoDe, salidaAgente, type Ejecucion } from "./ejecucion";
@@ -11,7 +12,9 @@ import { crearPiezaDesdePaso } from "./publicacion";
 import type { Nodo } from "./modelo";
 
 export type Dependencias = {
-  generar: (encargo: Encargo, prompt: string, contexto: ContextoGemini) => Promise<EntregaIA>;
+  generar: (encargo: Encargo, prompt: string, contexto: ContextoGemini, opciones?: { maxTokens?: number }) => Promise<EntregaIA>;
+  /** Red y catálogo para los especialistas sin IA (verificador, diseñador); las pruebas los simulan. */
+  especialistas?: DepsEspecialistas;
   recolectar: typeof recolectarFuentes;
   renderizar: (medios: Medio[], segundos: number) => Promise<Medio>;
   usosLegado: () => Promise<number>;
@@ -188,6 +191,29 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
       return "hecho";
     }
 
+    // Agente sin IA: código local (verificar, redactar con plantilla, diseñar).
+    if (nodo.proveedor === "local") {
+      let local: ResultadoLocal;
+      actualizarPaso(pasoId, { estado: "generando", detalle: "Trabajando sin IA en esta Mac." });
+      if (nodo.agente === "verificador") local = await verificarPaso(ejecucion, entradas, deps.especialistas ?? {});
+      else {
+        cerrar(pasoId, { estado: "bloqueado", detalle: "Este especialista no trabaja sin IA. Elige Gemini, Astra, Claude o trabajo manual." });
+        return "hecho";
+      }
+      if (!sigueVigente(pasoId, "generando")) return "hecho";
+      const artefacto = guardarArtefacto({
+        granjaId: ejecucion.granjaId,
+        ejecucionId: ejecucion.id,
+        pasoId,
+        nodo,
+        tipo: local.tipo,
+        contenido: local.contenido,
+        ...(local.medioId ? { medioId: local.medioId, medioSha: local.medioSha } : {}),
+        procedencia: { origen: "local", nota: "Hecho sin IA con código local; requiere revisión." },
+      });
+      cerrar(pasoId, { estado: local.bloqueado ? "bloqueado" : "completado", salidas: [artefacto.id], detalle: local.detalle });
+      return "hecho";
+    }
     // Agente
     if (nodo.proveedor === "gemini" && process.env.EZRA_PRODUCCION_IA !== "1") {
       cerrar(pasoId, { estado: "bloqueado", detalle: "Gemini está deshabilitado en el estudio (EZRA_PRODUCCION_IA). Elige Astra, Claude o trabajo manual." });
@@ -219,13 +245,13 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
     }
     reservarIA(pasoId, nodo.proveedor, await deps.usosLegado());
     actualizarPaso(pasoId, { estado: "generando", detalle: `Enviado a ${nodo.proveedor}.` });
-    const entrega = await deps.generar(encargoParaAdaptador(nodo, ejecucion), construirPromptPaso(nodo, ejecucion.instantanea.canales, entradas, evidencia), {
-      origen: "granja",
-      paso: nodo.titulo,
-      granjaId: ejecucion.granjaId,
-      ejecucionId: ejecucion.id,
-      pasoId,
-    });
+    const especial = promptEspecial(nodo, ejecucion);
+    const entrega = await deps.generar(
+      encargoParaAdaptador(nodo, ejecucion),
+      especial?.prompt ?? construirPromptPaso(nodo, ejecucion.instantanea.canales, entradas, evidencia),
+      { origen: "granja", paso: nodo.titulo, granjaId: ejecucion.granjaId, ejecucionId: ejecucion.id, pasoId },
+      especial ? { maxTokens: especial.maxTokens } : undefined,
+    );
     if (!sigueVigente(pasoId, "generando")) return "hecho";
     const artefacto = guardarArtefacto({
       granjaId: ejecucion.granjaId,

@@ -439,3 +439,15 @@ Decisiones del propietario tras revisar los hallazgos:
 - **Modelo:** granjas, encargos y Ask usan `GEMINI_MODEL` o, si falta, `gemini-3.5-flash-lite` (el mismo valor por defecto que ya usaba Ask).
 - **Incidente evitado:** al importar Gemini de forma estática en `proveedores.ts`, `tests/produccion.test.ts` resolvía la carpeta de datos antes de apuntarla a `work/` y leyó `data/produccion-spotmi.json`. Falló en la primera lectura, no escribió (fecha del archivo sin cambios). La importación es ahora diferida.
 - **Servidor del puerto 3000:** no se tocó, pero `next build` reescribe `tsconfig.json` y `next dev` se reinicia solo; al reiniciar aplicó la migración 3 con su copia en `data/granjas/respaldos/`.
+
+
+## 2026-11-17 · Fase 2: granja «Eventos de El Salvador» y bandeja
+
+- **Cazador:** Gemini con `googleSearch` y un prompt propio que pide JSON. La API de Gemini no permite limitar la búsqueda a dominios, así que la lista de fuentes permitidas se aplica después: el verificador rechaza cualquier URL fuera de la lista y siempre las redes sociales. Los enlaces de redirección de la búsqueda se resuelven sin seguir el destino.
+- **Verificador sin IA (proveedor `local`):** no consume tokens. Confirma solo lo que aparece en la página (o en su `schema.org startDate`). «7:30» sin a. m./p. m. no confirma ninguna hora. El texto completo de la página se usa en memoria y no se guarda.
+- **Sugerencias visibles, no datos:** lo que el cazador dijo y la fuente no confirma queda en `sugerencias`, mostrado como «el cazador indicó…, no aparece en la fuente». Fecha, hora y precio siguen en null.
+- **Estados:** la decisión del propietario (`nuevo`, `aprobado`, `descartado`) se guarda aparte de Spotmi (`propuesto`, `aceptado`, `descartado`, `duplicado`) e Instagram (`post_listo`, `subido`). La bandeja muestra el estado combinado que pidió el propietario.
+- **Editar = volver a aprobar:** cambiar un hecho devuelve el evento a «nuevo» (misma regla que las versiones aprobadas del piloto). Un dato escrito a mano queda «confirmado por ti».
+- **Idempotencia con Spotmi:** clave `ezra-evento-<id>-<hash del contenido>`, guardada antes de llamar. Si la red falla, el reintento usa la misma clave y Spotmi devuelve la misma propuesta. Mientras haya un envío sin confirmar no se puede editar el evento (otra clave sí duplicaría).
+- **Sesión editorial:** Supabase rota el refresh token; el token renovado se guarda cifrado. Si la sesión venció, se vuelve a entrar con `SPOTMI_EDITORIAL_*`. El publicador genérico de piezas no guarda el token renovado (pendiente aparte).
+- **Respaldo sin Spotmi:** «Copiar ficha» y CSV/JSON del día de hallazgo (CSV con BOM y celdas que empiezan por `=`, `+`, `-` o `@` protegidas).

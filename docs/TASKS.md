@@ -22,6 +22,15 @@
 - [x] Verificación: check 92/92, build en `.next-verificar`, integración 7/7.
 - [ ] Nota: la prueba de integración de n8n aceptaba solo «sin_configurar»; en esta Mac `.env.n8n.local` existe y da «sin_verificar». Se acepta cualquiera de los dos (nunca «conectada» sin verificar).
 
+
+### Fase 2 · Granja «Eventos de El Salvador» y bandeja — HECHO (falta la prueba real)
+- [x] Receta: Cazador (Gemini + búsqueda de Google, JSON) → Verificador sin IA (proveedor nuevo `local`). Fuentes iniciales `elsalvador.travel` y `gob.sv` (MITUR, Cultura, ISTU y alcaldías); ticketeras y recintos se agregan en Personalizar. Redes sociales bloqueadas aunque se agreguen.
+- [x] Verificador: lee la página (robots, https, dominios permitidos), confirma fecha, hora y precio solo si aparecen; si no, quedan «por confirmar» con la sugerencia del cazador aparte. Descarta páginas que no mencionan el evento, fechas pasadas o fuera de 14 días, y duplicados contra Ezra, Spotmi público y la misma búsqueda.
+- [x] Tabla `eventos` (migración 4) y máximo por día (por defecto 10, también por ejecución).
+- [x] Bandeja Eventos: filtros por estado y fechas; Aprobar, Descartar con motivo, Editar (vuelve a «nuevo»), imagen con permiso, Copiar ficha, CSV/JSON del día.
+- [x] «Enviar a Spotmi» con la RPC y clave de idempotencia guardada antes de llamar; consulta de estado. Editar se bloquea si hay un envío sin confirmar.
+- [x] Verificación: check 98/98, build en `.next-verificar`, integración 7/7.
+
 ## 2026-10-27 · Granjas Spotmi — HECHO (salvo lo externo)
 
 - [x] Granjas con lienzo, recetas, cola durable, personajes ligados al estado real, vista previa, autorización y recibos (ver `docs/ESTUDIO_SPOTMI.md` › Granjas, con la tabla de capacidades).

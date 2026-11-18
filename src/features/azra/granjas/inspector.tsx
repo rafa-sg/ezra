@@ -63,11 +63,11 @@ export function Inspector({
   const entrantes = grafo.aristas.filter((a) => a.hacia === nodo.id);
   const salientes = grafo.aristas.filter((a) => a.desde === nodo.id);
   const titulo = (id: string) => grafo.nodos.find((n) => n.id === id)?.titulo ?? "—";
-  const ia = nodo.tipo === "agente" && nodo.proveedor !== "manual";
+  const ia = nodo.tipo === "agente" && nodo.proveedor !== "manual" && nodo.proveedor !== "local";
   const candidatos = grafo.nodos.filter(
     (n) => n.id !== nodo.id && !salientes.some((a) => a.hacia === n.id) && salidasNodo(nodo, grafo).some((t) => aceptaNodo(n).includes(t)),
   );
-  const disponible = (p: string) => (p === "manual" ? true : resumen.ia[p as "astra" | "claude" | "gemini"]);
+  const disponible = (p: string) => (p === "manual" || p === "local" ? true : resumen.ia[p as "astra" | "claude" | "gemini"]);
   const verArtefacto = (id: string) => {
     const a = artefactos.get(id);
     if (!a) return null;
@@ -130,7 +130,7 @@ export function Inspector({
               <select value={nodo.proveedor} onChange={(e) => cambiar({ proveedor: e.target.value as Nodo["proveedor"] })}>
                 {proveedoresNodo.map((p) => (
                   <option key={p} value={p}>
-                    {p === "manual" ? g("manual") : tr(`p_${p}`)} {disponible(p) ? "" : `· ${g("noDisponible")}`}
+                    {p === "manual" ? g("manual") : p === "local" ? g("proveedorLocal") : tr(`p_${p}`)} {disponible(p) ? "" : `· ${g("noDisponible")}`}
                   </option>
                 ))}
               </select>
@@ -305,7 +305,7 @@ export function Inspector({
               <dt>{g("intentos")}</dt>
               <dd>{paso.intentos}</dd>
               <dt>{g("ejecutor")}</dt>
-              <dd>{paso.proveedor === "manual" ? g("manual") : paso.proveedor}</dd>
+              <dd>{paso.proveedor === "manual" ? g("manual") : paso.proveedor === "local" ? g("proveedorLocal") : paso.proveedor}</dd>
               {paso.inicio && (
                 <>
                   <dt>{g("inicio")}</dt>

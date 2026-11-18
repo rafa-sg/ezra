@@ -19,6 +19,7 @@ import {
   validarGrafo,
   type EstadoPaso,
   type Grafo,
+  type Granja,
   type Nodo,
   type TipoArtefacto,
 } from "./modelo";
@@ -37,6 +38,12 @@ export type Instantanea = {
   politica: { dominios: string[]; maxFuentesPorPaso: number };
   canales: string[];
   entradas: Record<string, { config: string; encargo: { id: string; version: number } | null; medios: { id: string; sha256: string }[] }>;
+  /** Ajustes de la granja al iniciar (eventos, Instagram). Ausente en ejecuciones anteriores. */
+  ajustes?: Granja["ajustes"];
+  /** Límites de esta ejecución (por ejemplo, la prueba real con 3 eventos). */
+  limites?: { eventos?: number; posts?: number };
+  /** Quién la inició: el propietario o el horario. */
+  origen?: "manual" | "horario";
 };
 export type Ejecucion = {
   id: string;
@@ -140,7 +147,7 @@ export const nodoDe = (ejecucion: Ejecucion, nodoId: string): Nodo => {
   if (!nodo) throw new WorkflowError("El paso no existe en la instantánea de esta ejecución.", 409);
   return nodo;
 };
-export const usaIA = (nodo: Nodo) => nodo.tipo === "agente" && nodo.proveedor !== "manual";
+export const usaIA = (nodo: Nodo) => nodo.tipo === "agente" && nodo.proveedor !== "manual" && nodo.proveedor !== "local";
 
 function actualizarPaso(id: string, cambios: Partial<Omit<Paso, "id">>) {
   const columnas: Record<string, string> = {
@@ -198,7 +205,14 @@ export async function versionesEncargos(): Promise<Map<string, number>> {
 
 export function iniciarEjecucion(
   granjaId: string,
-  opciones: { nodoId?: string; confirmarIA: boolean; usuario: string; encargos: Map<string, number> },
+  opciones: {
+    nodoId?: string;
+    confirmarIA: boolean;
+    usuario: string;
+    encargos: Map<string, number>;
+    limites?: Instantanea["limites"];
+    origen?: Instantanea["origen"];
+  },
 ) {
   return transaccion((db) => {
     const granja = leerGranja(granjaId);
@@ -226,6 +240,9 @@ export function iniciarEjecucion(
       revision: granja.revision,
       politica: granja.politicaFuentes,
       canales: granja.canales,
+      ajustes: granja.ajustes,
+      ...(opciones.limites ? { limites: opciones.limites } : {}),
+      origen: opciones.origen ?? "manual",
       entradas: Object.fromEntries(
         nodos.map((n) => [
           n.id,

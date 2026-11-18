@@ -100,6 +100,24 @@ test(
         body: JSON.stringify({ visibles: [] }),
       });
       assert.equal(ocultar.status, 422, "al menos un especialista visible");
+      // Bandeja de eventos: vacía, sin Spotmi conectado y con respaldo descargable.
+      assert.ok(resumen.recetas.some((r: { clave: string }) => r.clave === "eventos_el_salvador"));
+      assert.equal((await pedir("/api/granjas/eventos")).status, 401);
+      const bandeja = await (await pedir("/api/granjas/eventos", admin)).json();
+      assert.equal(bandeja.total, 0);
+      assert.equal(bandeja.spotmi, false);
+      const csv = await pedir("/api/granjas/eventos/exportar?formato=csv", admin);
+      assert.equal(csv.status, 200);
+      assert.match(csv.headers.get("content-disposition") ?? "", /eventos-\d{4}-\d{2}-\d{2}\.csv/);
+      // BOM para que Excel abra bien los acentos (Response.text() lo quitaría).
+      const bytes = Buffer.from(await csv.arrayBuffer());
+      assert.deepEqual([...bytes.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+      assert.match(bytes.subarray(3).toString("utf8"), /^titulo,fecha,hora/);
+      const sinSpotmi = await pedir("/api/granjas/eventos", admin, {
+        method: "POST",
+        body: JSON.stringify({ accion: "enviar_spotmi", id: crypto.randomUUID() }),
+      });
+      assert.equal(sinSpotmi.status, 409, "sin cuenta editorial no se envía nada");
       const creada = await pedir("/api/granjas", admin, {
         method: "POST",
         body: JSON.stringify({ accion: "receta", clave: "evento_verificado" }),
@@ -191,6 +209,8 @@ test(
         "/api/granjas/piezas?id=" + granja.id,
         "/api/granjas/consumo",
         "/api/granjas/especialistas",
+        "/api/granjas/eventos",
+        "/api/granjas/eventos/exportar",
       ])
         assert.equal((await pedir(ruta, cliente)).status, 403, ruta);
       assert.equal(

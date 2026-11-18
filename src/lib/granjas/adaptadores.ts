@@ -815,7 +815,7 @@ export const tiktok: Adaptador = {
 };
 
 /* ── Spotmi web: propuesta revisable por el equipo, nunca una ficha pública directa ── */
-const supabase = () => (process.env.SPOTMI_SUPABASE_URL?.trim() || "").replace(/\/$/, "");
+export const supabase = () => (process.env.SPOTMI_SUPABASE_URL?.trim() || "").replace(/\/$/, "");
 export function clavePublicaSegura(clave: string) {
   if (clave.startsWith("sb_publishable_")) return true;
   try {
@@ -836,7 +836,8 @@ async function rpcSpotmi(solicitar: Solicitar, acceso: string, funcion: string, 
     body: JSON.stringify(cuerpo),
   });
 }
-async function sesionSpotmi(secreto: Secreto, solicitar: Solicitar): Promise<Secreto> {
+/** Renueva la sesión editorial si vence en menos de un minuto (Supabase rota el refresh token). */
+export async function sesionSpotmi(secreto: Secreto, solicitar: Solicitar): Promise<Secreto> {
   if (secreto.expiraAcceso && Date.parse(secreto.expiraAcceso) - Date.now() > 60000) return secreto;
   if (!secreto.refresco)
     throw new ErrorProveedor(

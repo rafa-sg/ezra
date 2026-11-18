@@ -1126,3 +1126,118 @@
     padding: 14px;
   }
 }
+
+/* ── Bandeja de eventos ── */
+.azra .eg-eventos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.azra .eg-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.azra .eg-filtros .eg-campo {
+  flex: 0 1 200px;
+}
+.azra .eg-lista-eventos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+  gap: 14px;
+}
+.azra .eg-evento {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--ep-tarjeta, #172638);
+  border: 1px solid var(--ep-borde, #2b3b4d);
+  border-radius: 8px;
+}
+.azra .eg-evento-descartado {
+  opacity: 0.72;
+}
+.azra .eg-evento-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+.azra .eg-evento-categoria {
+  color: var(--ep-suave, #a9b6c4);
+  font-size: 12px;
+}
+.azra .eg-evento h3 {
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+.azra .eg-evento-datos {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.azra .eg-evento-datos div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 8px;
+}
+.azra .eg-evento-datos dt {
+  color: var(--ep-suave, #a9b6c4);
+}
+.azra .eg-evento-datos dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.azra .eg-evento-datos a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.azra .eg-confirmado {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  color: #c3d6ac;
+  font-size: 11px;
+}
+.azra .eg-por-confirmar {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px dashed #a8873e;
+  border-radius: 4px;
+  color: #fbe8b8;
+  font-size: 12px;
+}
+.azra .eg-evento-descripcion {
+  color: #d5dde5;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.azra .eg-evento-acciones {
+  margin-top: auto;
+  flex-wrap: wrap;
+}
+.azra .eg-evento-acciones .ep-boton {
+  min-height: 40px;
+}
+.azra .eg-form-evento {
+  max-height: min(80vh, 760px);
+  overflow-y: auto;
+}
+@media (max-width: 600px) {
+  .azra .eg-evento-datos div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .azra .eg-filtros .eg-campo {
+    flex: 1 1 100%;
+  }
+}
