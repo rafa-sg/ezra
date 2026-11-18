@@ -87,15 +87,29 @@ export function palabrasClave(titulo: string): string[] {
   ];
 }
 export const huellaTitulo = (titulo: string) => palabrasClave(titulo).sort().join(" ");
+/** Palabras que dicen qué tipo de evento es, no cuál: «Fiestas patronales de Apopa» y «… de Armenia» son distintos. */
+const genericas = new Set(
+  "fiesta fiestas patronal patronales festival festivales feria ferias concierto conciertos tour gira celebracion aniversario campeonato torneo encuentro expo exposicion noche gran nacional internacional cumbre congreso summit show presentacion temporada".split(
+    " ",
+  ),
+);
 export function parecido(a: string, b: string) {
-  const x = new Set(palabrasClave(a));
-  const y = new Set(palabrasClave(b));
+  const ta = palabrasClave(a);
+  const tb = palabrasClave(b);
+  const da = ta.filter((p) => !genericas.has(p));
+  const db = tb.filter((p) => !genericas.has(p));
+  // Si los dos títulos tienen palabras distintivas, solo esas cuentan.
+  const [x, y] = da.length && db.length ? [new Set(da), new Set(db)] : [new Set(ta), new Set(tb)];
   if (!x.size || !y.size) return 0;
   const comunes = [...x].filter((p) => y.has(p)).length;
   const jaccard = comunes / new Set([...x, ...y]).size;
-  // «Festival del Maíz» y «Festival del Maíz de Suchitoto 2026»: uno contiene al otro.
-  const contenido = comunes / Math.min(x.size, y.size);
-  return Math.max(jaccard, Math.min(x.size, y.size) >= 2 ? contenido * 0.9 : 0);
+  const menor = Math.min(x.size, y.size);
+  const mayor = Math.max(x.size, y.size);
+  const contenido = comunes / menor;
+  // Uno contiene al otro («Festival del Maíz» ⊂ «Festival del Maíz de Suchitoto»). Con una sola palabra
+  // distintiva solo vale si el otro título también es corto: «Navidad» ⊄ «Feria de Navidad de Santa Tecla».
+  if (contenido === 1 && (menor >= 2 || mayor <= 2)) return Math.max(jaccard, 0.85);
+  return Math.max(jaccard, menor >= 2 ? contenido * 0.9 : 0);
 }
 export type Referencia = { titulo: string; fecha: string | null; lugar?: string | null; origen: string };
 const distanciaDias = (a: string, b: string) => Math.abs(Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / 86_400_000;

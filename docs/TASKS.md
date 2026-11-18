@@ -15,7 +15,7 @@
 
 ### Fase 1 · Limpieza y consumo — HECHO
 - [x] Menú: Granjas · Eventos · Consumo · Calendario · Conexiones. `?seccion=` retiradas (equipo, fuentes, cola) abren Granjas. La lectura pública de Spotmi quedó en Conexiones.
-- [x] 9 granjas archivadas con el backend (6 «Publicación de evento verificado» y 2 «Primera prueba»), sin borrar filas. Filtro «Ver archivadas» y botón Restaurar. Script: `scripts/granjas-archivar-duplicadas.ts`.
+- [x] 9 granjas archivadas con el backend (7 «Publicación de evento verificado» y 2 «Primera prueba»), sin borrar filas. Filtro «Ver archivadas» y botón Restaurar. Script: `scripts/granjas-archivar-duplicadas.ts`.
 - [x] Especialistas nuevos `verificador`, `redactor_ig`, `disenador_post`; visibles por defecto solo esos tres y el cazador. Los demás se reactivan en Granjas › Especialistas visibles.
 - [x] Una sola función a Gemini (`src/lib/ia/gemini.ts`) para granjas, encargos y Ask. Registro en `consumo_ia` (SQLite, migración 3). Pantalla Consumo con hoy/semana/mes, 30 días, por granja, por paso y las 20 más caras.
 - [x] Presupuesto diario y mensual editable (aviso al 80 %, Gemini se detiene al 100 % y se reanuda al día o mes siguiente). Tarifas por modelo editables; el código no trae precios. Gemini ya no consume los 30 intentos (decisión del propietario); Astra y Claude sí.
@@ -49,6 +49,12 @@
 - [ ] Propietario: agregar Fuentes al Cazador de tu granja (la receta nueva ya las trae: `https://elsalvador.travel/esp/eventos/`, `https://www.cultura.gob.sv/feed/`, `https://istu.gob.sv/feed/`), o activar la facturación en AI Studio para usar la búsqueda.
 - [ ] Propietario: visto bueno a los dominios propuestos (`smartticket.fun`, `funcapital.com`); falta un editor de dominios en la interfaz.
 - [ ] Cierre: compilación en una copia aislada (para no reiniciar el servidor del puerto 3000).
+
+### 18 nov · Primera ejecución real de «Eventos de El Salvador»
+- [x] 00:02: la búsqueda de Google dio 429 (0 tokens) y el reintento solo con Fuentes funcionó: 12.379 tokens (8.805 entrada, 3.574 salida), 13,9 s. Verificador: 15 revisados, 10 nuevos en la bandeja (fecha confirmada en `elsalvador.travel/esp/event/…`; hora y precio «por confirmar»), 4 duplicados y 1 descartado por fecha pasada.
+- [x] Corregido: «Fiestas patronales de Apopa» se tomó como duplicado de «… de Armenia» (pesaban las palabras genéricas). Ahora solo cuentan las palabras distintivas; pruebas con el caso real.
+- [x] Se archivaron 4 copias de «Eventos de El Salvador» creadas al pulsar la receta varias veces; queda `202dfe90…`.
+- [ ] Propietario: revisar los 10 eventos (algunos no son de turismo: EmTech AI, cumbre de Bitcoin). Volver a ejecutar para recuperar Fiestas patronales de Apopa si sigue en la ventana.
 
 ### Te toca (propietario)
 - [ ] Supabase: correr `work/supabase-probar-sin-aplicar.sql` en el SQL Editor (debe terminar en «PRUEBAS TERMINADAS»), luego `work/supabase-aplicar.sql`, luego `pnpm exec supabase login` y `pnpm exec supabase migration repair --status applied 20261103 20261117 --linked` en spotmi-web.

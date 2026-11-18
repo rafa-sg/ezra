@@ -67,6 +67,13 @@ test("duplicados: mismo evento con otro título o fecha cercana; distinto evento
   assert.equal(eventos.buscarDuplicado({ titulo: "Festival del Maíz", fecha: "2026-12-05" }, refs), null, "otra fecha, otro evento");
   assert.equal(eventos.buscarDuplicado({ titulo: "Fiestas Patronales de San Miguel 2026", fecha: "2026-11-21" }, refs)?.origen, "Ezra");
   assert.equal(eventos.huellaTitulo("¡Festival del MAÍZ!"), eventos.huellaTitulo("festival maiz"));
+  // Caso real del 18 nov: misma fecha, distinto pueblo. Las palabras genéricas no deciden.
+  const mismoDia = [{ titulo: "Fiestas patronales de Armenia", fecha: "2026-11-20", origen: "esta búsqueda" }];
+  assert.equal(eventos.buscarDuplicado({ titulo: "Fiestas patronales de Apopa", fecha: "2026-11-20" }, mismoDia), null);
+  assert.ok(eventos.buscarDuplicado({ titulo: "Fiestas Patronales de Armenia 2026", fecha: "2026-11-20" }, mismoDia));
+  assert.equal(eventos.buscarDuplicado({ titulo: "Concierto de Navidad", fecha: "2026-12-12" }, [{ titulo: "Feria de Navidad de Santa Tecla", fecha: "2026-12-12", origen: "Spotmi" }]), null);
+  assert.ok(eventos.buscarDuplicado({ titulo: "Concierto Milo J", fecha: "2026-11-25" }, [{ titulo: "Concierto Milo J", fecha: "2026-11-25", origen: "Spotmi" }]));
+  assert.ok(eventos.parecido("Festival número uno", "Festival número dos") < 0.6);
   assert.equal(eventos.departamentoNormalizado("departamento de usulutan"), "Usulután");
   assert.equal(eventos.categoriaNormalizada("Fiestas patronales"), "religioso");
 });

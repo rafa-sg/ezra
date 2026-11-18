@@ -68,7 +68,8 @@ test("registro: cada llamada guarda tokens de usageMetadata, búsqueda, duració
 
 test("presupuesto: al 80 % avisa, al 100 % Gemini se detiene sin llamar y se reanuda al día o mes siguiente", async () => {
   vaciar();
-  const ahora = new Date("2026-11-17T15:00:00-06:00");
+  // Fechas fijas de otro mes: la llamada bloqueada se registra con la hora real y no debe mezclarse.
+  const ahora = new Date("2025-03-17T15:00:00-06:00");
   consumo.guardarPresupuesto({ tokensDia: 1000, tokensMes: 5000 });
   const anotar = (tokens: number, fecha: Date) =>
     consumo.registrarConsumo({ fecha: fecha.toISOString(), origen: "granja", paso: "x", modelo: "m", uso: { totalTokenCount: tokens }, busqueda: false, consultasBusqueda: 0, duracionMs: 1 });
@@ -80,7 +81,7 @@ test("presupuesto: al 80 % avisa, al 100 % Gemini se detiene sin llamar y se rea
   anotar(200, ahora);
   estado = consumo.estadoPresupuesto(ahora);
   assert.equal(estado.agotado, "dia");
-  assert.equal(estado.reanuda, "2026-11-18T06:00:00.000Z", "medianoche de El Salvador");
+  assert.equal(estado.reanuda, "2025-03-18T06:00:00.000Z", "medianoche de El Salvador");
   assert.throws(() => consumo.exigirPresupuesto(ahora), (e: Error & { status?: number }) => e.status === 429 && /presupuesto agotado/.test(e.message));
   // Con el presupuesto agotado no sale ninguna petición.
   let llamadas = 0;
@@ -96,14 +97,14 @@ test("presupuesto: al 80 % avisa, al 100 % Gemini se detiene sin llamar y se rea
   gemini.usarGeminiDePrueba(undefined);
   // Al día siguiente vuelve a estar disponible.
   consumo.guardarPresupuesto({ tokensDia: 1000, tokensMes: 5000 });
-  assert.equal(consumo.estadoPresupuesto(new Date("2026-11-18T00:30:00-06:00")).agotado, null);
+  assert.equal(consumo.estadoPresupuesto(new Date("2025-03-18T00:30:00-06:00")).agotado, null);
   // El mensual manda sobre el diario y se reanuda el primer día del mes siguiente.
-  anotar(3000, new Date("2026-11-03T10:00:00-06:00"));
-  anotar(900, new Date("2026-11-10T10:00:00-06:00"));
-  estado = consumo.estadoPresupuesto(new Date("2026-11-20T10:00:00-06:00"));
+  anotar(3000, new Date("2025-03-03T10:00:00-06:00"));
+  anotar(1000, new Date("2025-03-10T10:00:00-06:00"));
+  estado = consumo.estadoPresupuesto(new Date("2025-03-20T10:00:00-06:00"));
   assert.equal(estado.agotado, "mes");
-  assert.equal(estado.reanuda, "2026-12-01T06:00:00.000Z");
-  assert.equal(consumo.estadoPresupuesto(new Date("2026-12-01T00:01:00-06:00")).agotado, null);
+  assert.equal(estado.reanuda, "2025-04-01T06:00:00.000Z");
+  assert.equal(consumo.estadoPresupuesto(new Date("2025-04-01T00:01:00-06:00")).agotado, null);
   // Sin límites no hay pausa.
   consumo.guardarPresupuesto({ tokensDia: null, tokensMes: null });
   assert.equal(consumo.estadoPresupuesto(ahora).agotado, null);
