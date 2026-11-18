@@ -1091,5 +1091,15 @@
   "g_ev_imagenConfirmadaOk": "Imagen confirmada.",
   "g_ev_imagenEncontrada": "Imagen encontrada en la fuente: revísala y confírmala.",
   "g_ev_al": "al",
-  "g_ev_fechaFin": "Último día (si dura varios días)"
+  "g_ev_fechaFin": "Último día (si dura varios días)",
+  "g_ev_importar": "Importar JSON",
+  "g_ev_importarAyuda": "Archivo con el formato del cazador. Pasa por el mismo verificador: duplicados, datos por confirmar e imagen oficial. Solo valen los dominios permitidos de la granja.",
+  "g_ev_importado": "Importación",
+  "g_ev_imp_nuevos": "nuevos",
+  "g_ev_imp_duplicados": "duplicados",
+  "g_ev_imp_descartados": "descartados",
+  "g_ev_imp_conImagen": "con imagen",
+  "g_ev_imp_porConfirmar": "con datos por confirmar",
+  "g_ev_imp_invalidos": "inválidos",
+  "g_ev_imp_jsonInvalido": "El archivo no es un JSON válido."
 }

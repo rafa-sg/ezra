@@ -74,6 +74,13 @@ test("duplicados: mismo evento con otro título o fecha cercana; distinto evento
   assert.equal(eventos.buscarDuplicado({ titulo: "Concierto de Navidad", fecha: "2026-12-12" }, [{ titulo: "Feria de Navidad de Santa Tecla", fecha: "2026-12-12", origen: "Spotmi" }]), null);
   assert.ok(eventos.buscarDuplicado({ titulo: "Concierto Milo J", fecha: "2026-11-25" }, [{ titulo: "Concierto Milo J", fecha: "2026-11-25", origen: "Spotmi" }]));
   assert.ok(eventos.parecido("Festival número uno", "Festival número dos") < 0.6);
+  // Casos reales de la importación del 18 nov: no son el mismo evento.
+  assert.equal(eventos.buscarDuplicado({ titulo: "Pro Tour nacional de surf", fecha: "2026-11-21" }, [{ titulo: "WSL Surf City El Salvador Junior Pro", fecha: "2026-11-21", origen: "Spotmi" }]), null);
+  assert.equal(eventos.buscarDuplicado({ titulo: "2do Festival Navideño y del Café – Chalatenango", fecha: "2026-12-13" }, [{ titulo: "Festival del café – Chalatenango", fecha: "2026-12-12", origen: "Ezra" }]), null);
+  assert.equal(eventos.buscarDuplicado({ titulo: "Fiestas patronales de Usulután", fecha: "2026-11-25" }, [{ titulo: "Fiestas patronales de Chalatenango", fecha: "2026-11-25", origen: "Ezra" }]), null);
+  // Y estos sí lo son.
+  assert.ok(eventos.buscarDuplicado({ titulo: "Villa Navideña de Centro Histórico", fecha: "2026-12-01" }, [{ titulo: "Villa navideña", fecha: "2026-12-01", origen: "Spotmi" }]));
+  assert.ok(eventos.buscarDuplicado({ titulo: "Beéle", fecha: "2026-12-10" }, [{ titulo: "Concierto de Beéle", fecha: "2026-12-10", origen: "Spotmi" }]));
   assert.equal(eventos.departamentoNormalizado("departamento de usulutan"), "Usulután");
   assert.equal(eventos.categoriaNormalizada("Fiestas patronales"), "religioso");
 });
@@ -90,6 +97,11 @@ test("verificador: fecha, hora y precio solo si aparecen en la fuente; nunca se 
   assert.equal(verificador.horaEnTexto("Abre a las 7:30", "19:30"), false, "7:30 sin a. m./p. m. es ambiguo");
   assert.equal(verificador.horaEnTexto("Inicio 20:00 h", "20:00"), true);
   assert.equal(verificador.horaEnTexto("Desde las 8 pm", "20:00"), true);
+  // Formato de las ticketeras: «Sáb • 28 nov 2026 08:00 PM».
+  assert.equal(verificador.horaEnTexto("Sáb • 28 nov 2026 08:00 PM", "20:00"), true);
+  assert.equal(verificador.horaEnTexto("Dom • 29 nov 2026 06:00 AM", "06:00"), true);
+  assert.equal(verificador.horaEnTexto("Sáb • 28 nov 2026 08:00 PM", "08:00"), false);
+  assert.equal(verificador.fechaEnTexto("Sáb • 28 nov 2026 08:00 PM", "2026-11-28"), true);
   assert.equal(verificador.precioEnTexto(texto, "$15 general, $30 VIP"), "$15 general, $30 VIP");
   assert.equal(verificador.precioEnTexto(texto, "$20"), null);
   assert.equal(verificador.precioEnTexto("Entrada libre para toda la familia", "Gratis"), "Entrada gratuita");

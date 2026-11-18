@@ -1427,3 +1427,10 @@
   background: #3b3420;
   border-color: #a8873e;
 }
+.azra .eg-lista-importacion {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--ep-suave, #a9b6c4);
+  overflow-wrap: anywhere;
+}

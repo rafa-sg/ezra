@@ -17,6 +17,7 @@ import {
   ponerImagenFuente,
 } from "@/lib/granjas/eventos";
 import { buscarImagenEvento, permisoPendiente } from "@/lib/granjas/imagenes";
+import { importarEventos, MAX_IMPORTAR } from "@/lib/granjas/importar";
 import { actualizarPropuestasPendientes, consultarEstadoSpotmi, enviarEventoASpotmi, spotmiPuedeProponer } from "@/lib/granjas/spotmi-propuestas";
 import { descargarSegura } from "@/lib/granjas/fuentes";
 import { guardarMedio } from "@/lib/granjas/medios";
@@ -39,6 +40,8 @@ const accion = z.discriminatedUnion("accion", [
     permiso: z.string().trim().max(500),
   }),
   z.object({ accion: z.literal("confirmar_imagen"), id, revision }),
+  // Desde la interfaz solo valen los dominios permitidos de la granja (sin dominios extra).
+  z.object({ accion: z.literal("importar"), eventos: z.array(z.unknown()).min(1).max(MAX_IMPORTAR) }),
   z.object({ accion: z.literal("buscar_imagen"), id }),
   z.object({ accion: z.literal("enviar_spotmi"), id }),
   z.object({ accion: z.literal("consultar_spotmi"), id: id.optional() }),
@@ -72,7 +75,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     await administrador();
-    const a = await cuerpo(request, accion, 20_000);
+    const a = await cuerpo(request, accion, 600_000);
     if (a.accion === "aprobar") return Response.json({ evento: aprobarEvento(a.id, a.revision) });
     if (a.accion === "descartar") return Response.json({ evento: descartarEvento(a.id, a.revision, a.motivo) });
     if (a.accion === "editar") return Response.json({ evento: editarEvento(a.id, a.revision, a.datos) });
@@ -92,6 +95,10 @@ export async function POST(request: Request) {
       return Response.json({ evento: autorizarImagen(a.id, a.revision, medio.id, a.permiso) });
     }
     if (a.accion === "confirmar_imagen") return Response.json({ evento: confirmarImagen(a.id, a.revision) });
+    if (a.accion === "importar") {
+      const { detalle, ...resumen } = await importarEventos(a.eventos);
+      return Response.json({ importacion: { ...resumen, duplicados: detalle.duplicados, descartados: detalle.descartados } });
+    }
     if (a.accion === "buscar_imagen") {
       const e = leerEvento(a.id);
       if (e.imagenMedioId) throw new WorkflowError("Este evento ya tiene imagen. Usa «Cambiar imagen» para reemplazarla.", 409);

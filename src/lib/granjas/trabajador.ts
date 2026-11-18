@@ -6,6 +6,7 @@ import { confirmarRecibo, ejecutarPublicacion } from "./publicacion";
 import { recolectarFuentes } from "./fuentes";
 import { renderizarVertical } from "./medios";
 import { leerPaso } from "./ejecucion";
+import { eventosPublicosSpotmi } from "./spotmi-publico";
 
 /**
  * Trabajador durable: toma trabajos de SQLite con arriendo, los renueva mientras
@@ -15,14 +16,6 @@ import { leerPaso } from "./ejecucion";
 const ARRIENDO = 90_000;
 const LIMITES: Record<Trabajo["tipo"], number> = { paso: 8 * 60_000, publicar: 6 * 60_000, confirmar: 2 * 60_000 };
 
-/** Eventos verificados publicados en Spotmi (lectura pública), para no repetirlos. */
-async function eventosPublicosSpotmi() {
-  const { consultarSpotmi } = await import("../produccion/spotmi");
-  const { diaLocal } = await import("./tiempo");
-  return (await consultarSpotmi()).fichas
-    .filter((f) => f.tipo === "evento")
-    .map((f) => ({ titulo: f.titulo, fecha: f.fecha ? diaLocal(new Date(f.fecha)) : null, lugar: f.lugar, origen: "Spotmi" }));
-}
 export async function dependenciasReales(): Promise<Dependencias> {
   const { generarGemini, generarLocal } = await import("../produccion/proveedores");
   const { leerProduccion } = await import("../produccion/almacen");

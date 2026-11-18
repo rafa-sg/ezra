@@ -93,23 +93,31 @@ const genericas = new Set(
     " ",
   ),
 );
+/** Nombres de departamento: dicen dónde, no qué evento es («Festival del café – Chalatenango»). */
+const lugares = new Set("ahuachapan cabanas chalatenango cuscatlan libertad paz union morazan miguel vicente ana sonsonate usulutan".split(" "));
+/**
+ * Parecido entre dos títulos. Solo cuentan las palabras distintivas (sin genéricas como
+ * «fiestas patronales» ni departamentos, si queda algo más). Que un título contenga al otro
+ * vale solo si le sobran pocas palabras: un evento repetido en la bandeja se descarta con
+ * un clic; uno que se pierde por error no se ve.
+ */
 export function parecido(a: string, b: string) {
-  const ta = palabrasClave(a);
-  const tb = palabrasClave(b);
-  const da = ta.filter((p) => !genericas.has(p));
-  const db = tb.filter((p) => !genericas.has(p));
-  // Si los dos títulos tienen palabras distintivas, solo esas cuentan.
-  const [x, y] = da.length && db.length ? [new Set(da), new Set(db)] : [new Set(ta), new Set(tb)];
-  if (!x.size || !y.size) return 0;
-  const comunes = [...x].filter((p) => y.has(p)).length;
-  const jaccard = comunes / new Set([...x, ...y]).size;
-  const menor = Math.min(x.size, y.size);
-  const mayor = Math.max(x.size, y.size);
-  const contenido = comunes / menor;
-  // Uno contiene al otro («Festival del Maíz» ⊂ «Festival del Maíz de Suchitoto»). Con una sola palabra
-  // distintiva solo vale si el otro título también es corto: «Navidad» ⊄ «Feria de Navidad de Santa Tecla».
-  if (contenido === 1 && (menor >= 2 || mayor <= 2)) return Math.max(jaccard, 0.85);
-  return Math.max(jaccard, menor >= 2 ? contenido * 0.9 : 0);
+  const distintivas = (t: string) => palabrasClave(t).filter((p) => !genericas.has(p));
+  const nucleo = (xs: string[]) => xs.filter((p) => !lugares.has(p));
+  let x = distintivas(a);
+  let y = distintivas(b);
+  if (!x.length || !y.length) [x, y] = [palabrasClave(a), palabrasClave(b)];
+  else if (nucleo(x).length && nucleo(y).length) [x, y] = [nucleo(x), nucleo(y)];
+  const sx = new Set(x);
+  const sy = new Set(y);
+  if (!sx.size || !sy.size) return 0;
+  const comunes = [...sx].filter((p) => sy.has(p)).length;
+  const jaccard = comunes / new Set([...sx, ...sy]).size;
+  const menor = Math.min(sx.size, sy.size);
+  const mayor = Math.max(sx.size, sy.size);
+  // «Festival del Maíz» ⊂ «Festival del Maíz de Suchitoto»: contenido y con pocas palabras de más.
+  if (comunes === menor && (menor >= 2 || mayor <= 2) && mayor - menor <= 2) return Math.max(jaccard, 0.85);
+  return jaccard;
 }
 export type Referencia = { titulo: string; fecha: string | null; lugar?: string | null; origen: string };
 const distanciaDias = (a: string, b: string) => Math.abs(Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / 86_400_000;

@@ -1,6 +1,6 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { Check, Copy, Download, ExternalLink, Image as Imagen, Pencil, RefreshCw, Search, Send, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, Copy, Download, ExternalLink, Image as Imagen, Pencil, RefreshCw, Search, Send, Upload, X } from "lucide-react";
 import type { Evento, EstadoVisible } from "@/lib/granjas/eventos";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
@@ -65,6 +65,31 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
   const [imagen, setImagen] = useState<{ evento: EventoVista; url: string; permiso: string } | null>(null);
   const [diaExportar, setDiaExportar] = useState(hoyLocal);
   const [pestana, setPestana] = useState<"bandeja" | "posts">("bandeja");
+  const archivo = useRef<HTMLInputElement>(null);
+  type Importacion = { nuevos: number; duplicados: { titulo: string; de: string }[]; descartados: { titulo: string; motivo: string }[]; conImagen: number; conDatosPorConfirmar: number; invalidos: { posicion: number; motivo: string }[] };
+  const [importacion, setImportacion] = useState<Importacion | null>(null);
+  async function importar(file: File) {
+    setOcupado(true);
+    setError("");
+    setImportacion(null);
+    try {
+      let eventos: unknown;
+      try {
+        eventos = JSON.parse(await file.text());
+      } catch {
+        throw new Error(g("ev_imp_jsonInvalido"));
+      }
+      const lista = Array.isArray(eventos) ? eventos : (eventos as { eventos?: unknown[] })?.eventos;
+      const r = await pedir<{ importacion: Importacion }>("/api/granjas/eventos", { accion: "importar", eventos: lista ?? [] });
+      setImportacion(r.importacion);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setOcupado(false);
+      if (archivo.current) archivo.current.value = "";
+      await cargar();
+    }
+  }
   const consulta = `estado=${filtro.estado}&desde=${filtro.desde}&hasta=${filtro.hasta}`;
   const cargar = useCallback(async () => {
     try {
@@ -192,6 +217,11 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
         <button className="ep-boton ep-texto" disabled={!filtro.estado && !filtro.desde && !filtro.hasta} onClick={() => setFiltro({ estado: "", desde: "", hasta: "" })}>
           {g("ev_limpiar")}
         </button>
+        <input ref={archivo} type="file" accept="application/json,.json" className="eg-oculto" tabIndex={-1} aria-hidden="true" onChange={(e) => e.target.files?.[0] && void importar(e.target.files[0])} />
+        <button className="ep-boton" disabled={ocupado} onClick={() => archivo.current?.click()} title={g("ev_importarAyuda")}>
+          <Upload size={15} />
+          {g("ev_importar")}
+        </button>
         {datos.spotmi && (datos.conteo.propuesto ?? 0) > 0 && (
           <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "consultar_spotmi" }, g("ev_estadoActualizado"))}>
             <RefreshCw size={15} />
@@ -199,6 +229,33 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           </button>
         )}
       </div>
+      {importacion && (
+        <div className="eg-bloque" role="status">
+          <strong>
+            {g("ev_importado")}: {importacion.nuevos} {g("ev_imp_nuevos")} · {importacion.duplicados.length} {g("ev_imp_duplicados")} · {importacion.descartados.length} {g("ev_imp_descartados")} · {importacion.conImagen} {g("ev_imp_conImagen")} · {importacion.conDatosPorConfirmar} {g("ev_imp_porConfirmar")}
+            {importacion.invalidos.length ? ` · ${importacion.invalidos.length} ${g("ev_imp_invalidos")}` : ""}
+          </strong>
+          {(importacion.duplicados.length > 0 || importacion.descartados.length > 0 || importacion.invalidos.length > 0) && (
+            <ul className="eg-lista-importacion">
+              {importacion.duplicados.map((d) => (
+                <li key={`d-${d.titulo}`}>
+                  {d.titulo} → {d.de}
+                </li>
+              ))}
+              {importacion.descartados.map((d) => (
+                <li key={`x-${d.titulo}`}>
+                  {d.titulo} → {d.motivo}
+                </li>
+              ))}
+              {importacion.invalidos.map((d) => (
+                <li key={`i-${d.posicion}`}>
+                  #{d.posicion} → {d.motivo}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {!datos.total ? (
         <div className="ep-vacio">
           <h3>{g("ev_vacioFiltro")}</h3>

@@ -1091,5 +1091,15 @@
   "g_ev_imagenConfirmadaOk": "Image confirmed.",
   "g_ev_imagenEncontrada": "Image found at the source: review and confirm it.",
   "g_ev_al": "to",
-  "g_ev_fechaFin": "Last day (if it lasts several days)"
+  "g_ev_fechaFin": "Last day (if it lasts several days)",
+  "g_ev_importar": "Import JSON",
+  "g_ev_importarAyuda": "File in the hunter format. It goes through the same verifier: duplicates, unconfirmed data and official image. Only the farm's allowed domains count.",
+  "g_ev_importado": "Import",
+  "g_ev_imp_nuevos": "new",
+  "g_ev_imp_duplicados": "duplicates",
+  "g_ev_imp_descartados": "discarded",
+  "g_ev_imp_conImagen": "with image",
+  "g_ev_imp_porConfirmar": "with data to confirm",
+  "g_ev_imp_invalidos": "invalid",
+  "g_ev_imp_jsonInvalido": "The file is not valid JSON."
 }

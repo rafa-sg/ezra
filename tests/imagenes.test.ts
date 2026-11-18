@@ -123,7 +123,7 @@ test("verificador e Instagram: la imagen llega pendiente; el post solo la usa cu
     "https://ejemplo.sv/cartel.jpg": grande,
   });
   const r = await verificador.verificarCandidatos(
-    [{ titulo: "Concierto de prueba", fecha: dia, hora: null, lugar: "Teatro", municipio: null, departamento: "San Salvador", categoria: "musica", precio: null, boletos_url: null, fuente_url: "https://ejemplo.sv/evento", imagen_url: null, descripcion: null }],
+    [{ titulo: "Concierto de prueba", fecha: dia, hora: null, lugar: "Teatro", municipio: null, departamento: "San Salvador", categoria: "musica", precio: null, boletos_url: null, fuente_url: "https://ejemplo.sv/evento", imagen_url: null, descripcion: null, fecha_fin: null, nota_verificacion: null }],
     { hoy: tiempo.diaLocal(), diasAdelante: 14, dominios: ["ejemplo.sv"], restantes: 5, referencias: [], granjaId: null, ejecucionId: null },
     { descargar: sitios },
   );
@@ -146,4 +146,32 @@ test("verificador e Instagram: la imagen llega pendiente; el post solo la usa cu
   const antes = medios.listarMedios().length;
   await imagenes.buscarImagenEvento({ titulo: "x", fuenteUrl: "https://ejemplo.sv/evento", boletosUrl: null }, { descargar: sitios });
   assert.equal(medios.listarMedios().length, antes, "la misma imagen no se guarda dos veces (sha256)");
+});
+
+test("importar JSON: mismo verificador, eventos de varios días vigentes, terminados fuera, filas inválidas y dominios solo de esta importación", async () => {
+  const { importarEventos } = await import("../src/lib/granjas/importar");
+  const hoy = tiempo.diaLocal();
+  const d = (n: number) => tiempo.sumarDias(hoy, n);
+  const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  const largo = (x: string) => `${Number(x.slice(8))} de ${meses[Number(x.slice(5, 7)) - 1]}`;
+  const sitios = web({
+    "https://prensa.sv/fiestas": `<html><body><h1>Fiestas patronales de Apopa</h1><p>Del ${largo(d(-2)).split(" de ")[0]} al ${largo(d(5))}.</p></body></html>`,
+    "https://prensa.sv/feria": `<html><body><h1>Feria agostina</h1><p>${largo(d(-3))} al ${largo(d(-1))}</p></body></html>`,
+  });
+  const r = await importarEventos(
+    [
+      { titulo: "Fiestas patronales de Apopa", fecha: d(-2), fecha_fin: d(5), lugar: "Apopa", departamento: "San Salvador", categoria: "fiestas patronales", fuente_url: "https://prensa.sv/fiestas", nota_verificacion: "La ficha oficial manda." },
+      { titulo: "Feria agostina", fecha: d(-3), fecha_fin: d(-1), fuente_url: "https://prensa.sv/feria" },
+      { titulo: "Sin fuente" },
+    ],
+    { dominiosExtra: ["prensa.sv"], descargar: sitios, catalogoSpotmi: async () => [] },
+  );
+  assert.equal(r.recibidos, 3);
+  assert.equal(r.invalidos.length, 1);
+  assert.equal(r.nuevos, 1, "unas fiestas que empezaron hace 2 días y terminan en 5 siguen vigentes");
+  assert.match(r.detalle.descartados[0].motivo, /ya pasó/);
+  const e = eventos.leerEvento(r.detalle.nuevos[0].id);
+  assert.deepEqual([e.fecha, e.fechaFin, e.categoria], [d(-2), d(5), "religioso"]);
+  assert.match(e.notaVerificacion, /La ficha oficial manda/);
+  await assert.rejects(importarEventos([], { dominiosExtra: ["no es un dominio"] }));
 });

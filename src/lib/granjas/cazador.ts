@@ -49,8 +49,10 @@ Responde SOLO con un arreglo JSON, sin texto antes ni después, con objetos así
 ${material}`;
 }
 
+// Opcional de verdad (en Zod 4 aceptar undefined no basta): un campo ausente queda null, «por confirmar».
 const textoOpcional = z
-  .union([z.string(), z.number(), z.null(), z.undefined()])
+  .union([z.string(), z.number(), z.null()])
+  .optional()
   .transform((v) => (v === null || v === undefined ? null : String(v).trim() || null));
 export const candidatoSchema = z.object({
   titulo: z.string().trim().min(3).max(300),
@@ -66,8 +68,8 @@ export const candidatoSchema = z.object({
   imagen_url: textoOpcional,
   descripcion: textoOpcional,
   // Eventos de varios días y notas de quien prepara una importación (opcionales).
-  fecha_fin: textoOpcional.optional(),
-  nota_verificacion: textoOpcional.optional(),
+  fecha_fin: textoOpcional,
+  nota_verificacion: textoOpcional,
 });
 export type Candidato = z.infer<typeof candidatoSchema>;
 

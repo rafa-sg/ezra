@@ -65,7 +65,8 @@ export function horaEnTexto(texto: string, hora: string, html = "", fecha: strin
   const MM = String(mi).padStart(2, "0");
   const h12 = h % 12 === 0 ? 12 : h % 12;
   const sufijo = h < 12 ? "am" : "pm";
-  const patrones = [`\\b${h12}${mi === 0 ? "(?::00)?" : `:${MM}`}\\s*${sufijo}\\b`];
+  // «8:00 PM» y «08:00 PM» (las ticketeras suelen escribir la hora con cero inicial).
+  const patrones = [`\\b0?${h12}${mi === 0 ? "(?::00)?" : `:${MM}`}\\s*${sufijo}\\b`];
   if (h >= 13 || h === 0) {
     patrones.push(`\\b0?${h}[:.h]${MM}\\b(?!\\s*(?:am|pm))`);
     if (mi === 0) patrones.push(`\\b0?${h}\\s*(?:h|hrs|horas)\\b`);
