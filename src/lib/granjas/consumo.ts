@@ -9,7 +9,7 @@ import { diaLocal, inicioSemanaLocal, instanteLocal, mesLocal, siguienteMes, sum
  * estimación con las tarifas que escribe el propietario: el código no trae
  * precios. Sin tarifa para un modelo, su costo queda «sin tarifa».
  */
-export const origenesConsumo = ["granja", "encargo", "ask"] as const;
+export const origenesConsumo = ["granja", "encargo", "ask", "prueba"] as const;
 export type OrigenConsumo = (typeof origenesConsumo)[number];
 export type FilaConsumo = {
   id: string;

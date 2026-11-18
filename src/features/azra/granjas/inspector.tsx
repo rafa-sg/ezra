@@ -137,6 +137,15 @@ export function Inspector({
             </label>
           </div>
           {!disponible(nodo.proveedor) && <p className="ep-nota">{nodo.proveedor === "gemini" ? g("geminiApagado") : g("herramientaFalta")}</p>}
+          {nodo.proveedor === "gemini" && (
+            <>
+              <label className="ep-checkbox">
+                <input type="checkbox" checked={nodo.busqueda ?? nodo.agente === "cazador"} onChange={(e) => cambiar({ busqueda: e.target.checked })} />
+                {g("usarBusqueda")}
+              </label>
+              <p className="ep-nota">{g("usarBusquedaAyuda")}</p>
+            </>
+          )}
           <label className="eg-campo">
             {g("instrucciones")}
             <textarea rows={4} maxLength={8000} value={nodo.instrucciones} onChange={(e) => cambiar({ instrucciones: e.target.value })} />

@@ -2,6 +2,7 @@ import type { Artefacto } from "./almacen";
 import type { Ejecucion } from "./ejecucion";
 import type { Nodo } from "./modelo";
 import { leerCandidatos, promptCazadorEventos, type Candidato } from "./cazador";
+import type { MaterialFuente } from "./fuentes";
 import { eventosCreadosHoy, referenciasLocales } from "./eventos";
 import { diaLocal } from "./tiempo";
 import { verificarCandidatos, type DepsVerificador } from "./verificador";
@@ -17,9 +18,15 @@ export function limiteEventos(e: Ejecucion) {
   return Math.min(porDia, e.instantanea.limites?.eventos ?? porDia);
 }
 
+export const esCazadorEventos = (nodo: Nodo, ejecucion: Ejecucion) => nodo.agente === "cazador" && esGranjaEventos(ejecucion);
 /** Prompt del cazador cuando la granja es la de eventos; null en cualquier otra granja. */
-export function promptEspecial(nodo: Nodo, ejecucion: Ejecucion, ahora = new Date()): { prompt: string; maxTokens: number } | null {
-  if (nodo.agente !== "cazador" || !esGranjaEventos(ejecucion)) return null;
+export function promptEspecial(
+  nodo: Nodo,
+  ejecucion: Ejecucion,
+  modo: { busqueda: boolean; material: MaterialFuente[] },
+  ahora = new Date(),
+): { prompt: string; maxTokens: number } | null {
+  if (!esCazadorEventos(nodo, ejecucion)) return null;
   const hoy = diaLocal(ahora);
   return {
     prompt: promptCazadorEventos({
@@ -31,6 +38,8 @@ export function promptEspecial(nodo: Nodo, ejecucion: Ejecucion, ahora = new Dat
         .filter((r) => !r.fecha || r.fecha >= hoy)
         .map((r) => r.titulo),
       instrucciones: nodo.instrucciones,
+      busqueda: modo.busqueda,
+      material: modo.material,
     }),
     // JSON de hasta 20 eventos más el razonamiento del modelo.
     maxTokens: 8192,
@@ -47,7 +56,8 @@ export type ResultadoLocal = {
 export async function verificarPaso(ejecucion: Ejecucion, entradas: Artefacto[], deps: DepsEspecialistas): Promise<ResultadoLocal> {
   const candidatos: Candidato[] = [];
   let invalidos = 0;
-  for (const a of entradas.filter((x) => x.tipo === "investigacion" || x.tipo === "texto")) {
+  // El resumen de fuentes que guarda el cazador no es una lista de eventos.
+  for (const a of entradas.filter((x) => (x.tipo === "investigacion" || x.tipo === "texto") && x.procedencia.origen !== "fuentes")) {
     const leido = leerCandidatos(a.contenido);
     candidatos.push(...leido.candidatos);
     invalidos += leido.invalidos;

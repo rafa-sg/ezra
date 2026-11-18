@@ -51,6 +51,9 @@ export const nodoSchema = z.object({
     .refine((v) => new Set(v).size === v.length)
     .default([]),
   segundosPorImagen: z.number().int().min(1).max(15).default(4),
+  // Búsqueda de Google (solo Gemini). Sin valor: activada en el cazador y apagada en el resto.
+  // Es opcional a propósito: así los pasos que ya existían conservan su huella y sus resultados.
+  busqueda: z.boolean().optional(),
   posicion: z.object({ x: coordenada, y: coordenada }),
 });
 export const aristaSchema = z.object({ id, desde: id, hacia: id });
@@ -96,6 +99,9 @@ export const datosGranjaSchema = z.object({
     .default({ zonaHoraria: "America/El_Salvador" }),
 });
 export type Nodo = z.infer<typeof nodoSchema>;
+/** Si el paso usará Google Search: solo con Gemini; por defecto, solo el cazador. */
+export const busquedaActiva = (nodo: Pick<Nodo, "proveedor" | "agente" | "busqueda">) =>
+  nodo.proveedor === "gemini" && (nodo.busqueda ?? nodo.agente === "cazador");
 export type Arista = z.infer<typeof aristaSchema>;
 export type Grafo = z.infer<typeof grafoSchema>;
 export type DatosGranja = z.infer<typeof datosGranjaSchema>;
@@ -262,9 +268,13 @@ export function faltantesNodo(nodo: Nodo, grafo: Grafo, contexto: { geminiHabili
   if (nodo.tipo === "agente") {
     if (nodo.proveedor === "gemini" && !contexto.geminiHabilitado)
       faltan.push("Gemini está deshabilitado en este estudio. Elige Astra, Claude o trabajo manual.");
-    // Con Gemini el cazador busca en Google; sin búsqueda necesita fuentes.
-    if (nodo.agente === "cazador" && nodo.proveedor !== "gemini" && !nodo.fuentes.length && !entradas.length)
-      faltan.push("Agrega al menos una fuente para que el cazador investigue.");
+    // Con la búsqueda de Google el cazador puede trabajar sin fuentes; sin ella, necesita al menos una.
+    if (nodo.agente === "cazador" && !busquedaActiva(nodo) && !nodo.fuentes.length && !entradas.length)
+      faltan.push(
+        nodo.proveedor === "gemini"
+          ? "Sin búsqueda de Google, agrega al menos una fuente (página oficial de eventos) para que el cazador trabaje."
+          : "Agrega al menos una fuente para que el cazador investigue.",
+      );
     if (nodo.agente !== "cazador" && !entradas.length && !nodo.instrucciones.trim())
       faltan.push("Conecta un paso anterior o escribe las instrucciones.");
     if (nodo.proveedor === "local" && !agentesLocales.includes(nodo.agente ?? "cazador"))
@@ -440,6 +450,8 @@ recetas.unshift({
       titulo: "Cazador de eventos",
       proveedor: "gemini",
       instrucciones: "",
+      // Si la búsqueda de Google no está disponible, el cazador trabaja con estas páginas oficiales.
+      fuentes: fuentesOficiales,
     },
     { clave: "verif", tipo: "agente", agente: "verificador", titulo: "Verificador", proveedor: "local" },
   ],

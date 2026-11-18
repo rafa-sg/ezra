@@ -274,3 +274,49 @@ export async function leerPaginaVerificable(
   const html = respuesta.cuerpo.toString("utf8");
   return { url: respuesta.url, html, texto: limpiar(html).slice(0, 80_000) };
 }
+
+/** Material de una fuente para que la IA extraiga eventos sin buscar: texto y enlaces de esa página. */
+export type MaterialFuente = {
+  nombre: string;
+  url: string;
+  texto: string;
+  enlaces: { texto: string; url: string }[];
+  error: string;
+};
+export async function leerMaterialFuentes(
+  fuentes: { nombre: string; url: string }[],
+  dominios: string[],
+  opciones: { maximo?: number; maxTexto?: number; descargar?: (u: URL, l: number, t: number) => Promise<Respuesta> } = {},
+): Promise<MaterialFuente[]> {
+  const resultado: MaterialFuente[] = [];
+  for (const fuente of fuentes.slice(0, opciones.maximo ?? 5)) {
+    try {
+      const pagina = await leerPaginaVerificable(fuente.url, dominios, { descargar: opciones.descargar });
+      const base = new URL(pagina.url);
+      const vistos = new Set<string>();
+      const enlaces: MaterialFuente["enlaces"] = [];
+      const agregar = (href: string, texto: string) => {
+        try {
+          const u = new URL(decodificar(href.trim()), base);
+          u.hash = "";
+          // Solo páginas https de los dominios permitidos: ahí es donde el verificador puede confirmar.
+          if (u.protocol !== "https:" || !dominioPermitido(u.hostname, dominios) || vistos.has(u.toString())) return;
+          const t = limpiar(texto).slice(0, 140);
+          if (!t) return;
+          vistos.add(u.toString());
+          enlaces.push({ texto: t, url: u.toString() });
+        } catch {
+          /* enlace inválido */
+        }
+      };
+      // RSS: título y enlace de cada entrada. HTML: los enlaces con texto.
+      for (const m of pagina.html.matchAll(/<item[\s\S]*?<\/item>/gi))
+        agregar(/<link>([\s\S]*?)<\/link>/i.exec(m[0])?.[1] ?? "", /<title>([\s\S]*?)<\/title>/i.exec(m[0])?.[1] ?? "");
+      for (const m of pagina.html.matchAll(/<a\b[^>]*href=["']([^"'#][^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)) agregar(m[1], m[2]);
+      resultado.push({ nombre: fuente.nombre, url: pagina.url, texto: pagina.texto.slice(0, opciones.maxTexto ?? 10_000), enlaces: enlaces.slice(0, 80), error: "" });
+    } catch (error) {
+      resultado.push({ nombre: fuente.nombre, url: fuente.url, texto: "", enlaces: [], error: error instanceof WorkflowError ? error.message : "No se pudo leer la fuente." });
+    }
+  }
+  return resultado;
+}

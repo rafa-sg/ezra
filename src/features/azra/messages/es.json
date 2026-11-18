@@ -442,7 +442,7 @@
   "p_configurada": "Clave configurada",
   "p_pendienteConexion": "Pendiente de configurar",
   "p_habilitada": "Ejecución habilitada",
-  "p_geminiAyuda": "Generación de texto y búsqueda de fuentes para el cazador. Requiere clave, modelo y habilitar la ejecución en el servidor. Máximo 30 intentos al mes; cada llamada puede consumir cuota o generar costo.",
+  "p_geminiAyuda": "Generación de texto y búsqueda de fuentes para el cazador. Requiere la clave y EZRA_PRODUCCION_IA=1 en el servidor. Lo limita el presupuesto de tokens de Consumo; cada llamada puede generar costo.",
   "p_spotmiAyuda": "Lee eventos y spots públicos. La búsqueda de fuentes, aprobación de imágenes y publicación web se gestionan en el administrador de Spotmi.",
   "p_sinComprobar": "Conexión sin comprobar",
   "p_conectado": "Catálogo consultado",
@@ -580,8 +580,8 @@
   "g_conectarCon": "Conectar con",
   "g_conectarCuenta": "Conectar",
   "g_conexiones": "Conexiones del paso",
-  "g_consentimientoGranja": "Acepto enviar estos pasos a la IA indicada. Cada paso consume un intento del límite de 30 al mes, aunque falle.",
-  "g_consentimientoPaso": "Acepto enviar este paso a la IA y consumir un intento del límite mensual.",
+  "g_consentimientoGranja": "Acepto enviar estos pasos a la IA indicada. Gemini gasta tokens del presupuesto (Consumo), aunque falle; Astra y Claude gastan un intento del límite de 30 al mes por paso.",
+  "g_consentimientoPaso": "Acepto enviar este paso a la IA. Con Gemini gasta tokens del presupuesto (Consumo); con Astra o Claude, un intento del límite de 30 al mes.",
   "g_corregir": "Corregir resultado",
   "g_corregirAyuda": "Se guarda como versión nueva. Lo que dependía de la anterior quedará desactualizado y su aprobación dejará de valer.",
   "g_creditos": "Créditos y permisos",
@@ -1077,5 +1077,8 @@
   "g_receta_instagram_post": "Post de Instagram (general)",
   "g_receta_instagram_post_ayuda": "Flujo general de publicación con revisión, para un tema que eliges tú.",
   "g_receta_facebook_post": "Post de Facebook",
-  "g_receta_facebook_post_ayuda": "Flujo general de publicación con revisión para una Página de Facebook."
+  "g_receta_facebook_post_ayuda": "Flujo general de publicación con revisión para una Página de Facebook.",
+  "g_c_origen_prueba": "Prueba de conexión",
+  "g_usarBusqueda": "Usar búsqueda de Google",
+  "g_usarBusquedaAyuda": "Necesita un plan de Gemini con la búsqueda de Google (facturación activa en AI Studio). Sin búsqueda, el paso trabaja solo con el texto de sus Fuentes. Si la búsqueda falla por cuota (429), se reintenta una vez sin ella cuando el paso tiene Fuentes."
 }

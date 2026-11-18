@@ -442,7 +442,7 @@
   "p_configurada": "Key configured",
   "p_pendienteConexion": "Setup pending",
   "p_habilitada": "Execution enabled",
-  "p_geminiAyuda": "Text generation and source search for the scout. Requires a key, model and server-side execution enabled. Maximum 30 attempts per month; each call may use quota or incur charges.",
+  "p_geminiAyuda": "Text generation and source search for the hunter. Requires the key and EZRA_PRODUCCION_IA=1 on the server. It is limited by the token budget in Usage; each call may have a cost.",
   "p_spotmiAyuda": "Reads public events and spots. Source discovery, image approval and website publication are managed in the Spotmi admin.",
   "p_sinComprobar": "Connection not checked",
   "p_conectado": "Catalog fetched",
@@ -580,8 +580,8 @@
   "g_conectarCon": "Connect to",
   "g_conectarCuenta": "Connect",
   "g_conexiones": "Step connections",
-  "g_consentimientoGranja": "I agree to send these steps to the listed AI. Each step uses one attempt of the 30-per-month limit, even if it fails.",
-  "g_consentimientoPaso": "I agree to send this step to the AI and use one monthly attempt.",
+  "g_consentimientoGranja": "I accept sending these steps to the selected AI. Gemini uses tokens from the budget (Usage), even if it fails; Astra and Claude use one attempt of the 30-per-month limit per step.",
+  "g_consentimientoPaso": "I accept sending this step to the AI. With Gemini it uses tokens from the budget (Usage); with Astra or Claude, one attempt of the 30-per-month limit.",
   "g_corregir": "Correct result",
   "g_corregirAyuda": "Saved as a new version. Anything that depended on the previous one becomes outdated and its approval no longer counts.",
   "g_creditos": "Credits and permissions",
@@ -1077,5 +1077,8 @@
   "g_receta_instagram_post": "Instagram post (general)",
   "g_receta_instagram_post_ayuda": "General publishing flow with review, for a topic you choose.",
   "g_receta_facebook_post": "Facebook post",
-  "g_receta_facebook_post_ayuda": "General publishing flow with review for a Facebook Page."
+  "g_receta_facebook_post_ayuda": "General publishing flow with review for a Facebook Page.",
+  "g_c_origen_prueba": "Connection test",
+  "g_usarBusqueda": "Use Google Search",
+  "g_usarBusquedaAyuda": "Needs a Gemini plan with Google Search (billing enabled in AI Studio). Without search, the step works only with the text of its Sources. If search fails for quota (429), it retries once without it when the step has Sources."
 }

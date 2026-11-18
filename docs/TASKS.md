@@ -41,6 +41,15 @@
 - [x] Datos reales: creadas «Eventos de El Salvador» y «Post para Instagram» sin horario activo (`scripts/granjas-crear-diarias.ts`).
 - [x] Verificación: check 103/103, build en `.next-verificar`, integración 7/7, navegador aislado a 1440 y 390 px sin desborde en Granjas, Eventos, Posts, Consumo y Calendario.
 
+### 18 nov · Tope, Gemini encendido y primer intento del Cazador
+- [x] Presupuesto guardado con `guardarPresupuesto()`: 200.000 tokens/día y 3.000.000/mes. Se lee en cada llamada (sin caché). Tarifas por modelo: vacías, se llenan en Consumo.
+- [x] `EZRA_PRODUCCION_IA=1` y clave bien escrita (53 caracteres, sin comillas ni espacios). Llamada mínima por `llamarGemini()`: «OK», 6 tokens, `gemini-3.5-flash-lite`, registrada como «Prueba de conexión».
+- [x] «Eventos de El Salvador»: máximo 3 eventos por día para la prueba (revisión 2).
+- [x] Primer intento del Cazador: HTTP 429 RESOURCE_EXHAUSTED con búsqueda de Google (el plan gratuito no la incluye para Gemini 3.x). Ahora el error se explica en español; cada paso de Gemini tiene «Usar búsqueda de Google» (activada por defecto en el Cazador); sin búsqueda, el Cazador extrae eventos solo del texto y los enlaces de sus Fuentes; con búsqueda, un 429 reintenta una vez sin ella si hay Fuentes.
+- [ ] Propietario: agregar Fuentes al Cazador de tu granja (la receta nueva ya las trae: `https://elsalvador.travel/esp/eventos/`, `https://www.cultura.gob.sv/feed/`, `https://istu.gob.sv/feed/`), o activar la facturación en AI Studio para usar la búsqueda.
+- [ ] Propietario: visto bueno a los dominios propuestos (`smartticket.fun`, `funcapital.com`); falta un editor de dominios en la interfaz.
+- [ ] Cierre: compilación en una copia aislada (para no reiniciar el servidor del puerto 3000).
+
 ### Te toca (propietario)
 - [ ] Supabase: correr `work/supabase-probar-sin-aplicar.sql` en el SQL Editor (debe terminar en «PRUEBAS TERMINADAS»), luego `work/supabase-aplicar.sql`, luego `pnpm exec supabase login` y `pnpm exec supabase migration repair --status applied 20261103 20261117 --linked` en spotmi-web.
 - [ ] Crear la cuenta editorial (Authentication → Users), habilitarla con `work/supabase-habilitar-editorial.sql` y poner `SPOTMI_EDITORIAL_EMAIL` y `SPOTMI_EDITORIAL_PASSWORD` en `.env.local`. Reiniciar `npm run dev` y pulsar Conexiones → Spotmi web → Conectar.

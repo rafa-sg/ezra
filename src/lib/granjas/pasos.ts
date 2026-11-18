@@ -2,7 +2,9 @@ import { WorkflowError } from "../workflow";
 import { canales as todosLosCanales, instruccionAgente, type Encargo } from "../produccion/modelo";
 import type { EntregaIA } from "../produccion/proveedores";
 import type { ContextoGemini } from "../ia/gemini";
-import { promptEspecial, verificarPaso, type DepsEspecialistas, type ResultadoLocal } from "./pasos-eventos";
+import { esCazadorEventos, promptEspecial, verificarPaso, type DepsEspecialistas, type ResultadoLocal } from "./pasos-eventos";
+import { ErrorGemini } from "../ia/errores";
+import { leerMaterialFuentes, type MaterialFuente } from "./fuentes";
 import { disenarPaso, esGranjaInstagram, redactarPaso } from "./pasos-instagram";
 import { ahoraIso, auditar, base, transaccion } from "./db";
 import { guardarArtefacto, leerArtefacto, type Artefacto } from "./almacen";
@@ -10,10 +12,10 @@ import { actualizarPaso, avanzar, leerEjecucion, leerPaso, nodoDe, salidaAgente,
 import { recolectarFuentes, type Evidencia } from "./fuentes";
 import { leerMedio, type Medio } from "./medios";
 import { crearPiezaDesdePaso } from "./publicacion";
-import type { Nodo } from "./modelo";
+import { busquedaActiva, type Nodo } from "./modelo";
 
 export type Dependencias = {
-  generar: (encargo: Encargo, prompt: string, contexto: ContextoGemini, opciones?: { maxTokens?: number }) => Promise<EntregaIA>;
+  generar: (encargo: Encargo, prompt: string, contexto: ContextoGemini, opciones?: { maxTokens?: number; busqueda?: boolean }) => Promise<EntregaIA>;
   /** Red y catálogo para los especialistas sin IA (verificador, diseñador); las pruebas los simulan. */
   especialistas?: DepsEspecialistas;
   recolectar: typeof recolectarFuentes;
@@ -238,7 +240,7 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
             encargoParaAdaptador(nodo, ejecucion),
             prompt,
             { origen: "granja", paso: nodo.titulo, granjaId: ejecucion.granjaId, ejecucionId: ejecucion.id, pasoId },
-            { maxTokens: 1500 },
+            { maxTokens: 1500, ...(nodo.proveedor === "gemini" ? { busqueda: busquedaActiva(nodo) } : {}) },
           );
           return r.texto;
         }),
@@ -246,7 +248,28 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
     }
     // Las fuentes se leen de verdad también en el trabajo manual: la evidencia queda para quien lo complete.
     let evidencia: Evidencia[] = [];
-    if (nodo.fuentes.length) {
+    // El cazador de eventos necesita el texto y los enlaces completos de sus fuentes (para trabajar sin búsqueda).
+    let material: MaterialFuente[] = [];
+    const cazadorEventos = esCazadorEventos(nodo, ejecucion);
+    if (nodo.fuentes.length && cazadorEventos) {
+      actualizarPaso(pasoId, { estado: "recolectando", detalle: `Leyendo ${Math.min(nodo.fuentes.length, ejecucion.instantanea.politica.maxFuentesPorPaso)} fuente(s) permitidas.` });
+      material = await leerMaterialFuentes(nodo.fuentes, ejecucion.instantanea.politica.dominios, {
+        maximo: ejecucion.instantanea.politica.maxFuentesPorPaso,
+        descargar: deps.especialistas?.descargar,
+      });
+      if (!sigueVigente(pasoId, "recolectando")) return "hecho";
+      const consulta = guardarArtefacto({
+        granjaId: ejecucion.granjaId,
+        ejecucionId: ejecucion.id,
+        pasoId,
+        nodo,
+        tipo: "investigacion",
+        // Se guarda el resumen (URL, enlaces y largo del texto), no el texto completo de páginas ajenas.
+        contenido: JSON.stringify({ fuentes: material.map((m) => ({ nombre: m.nombre, url: m.url, caracteres: m.texto.length, enlaces: m.enlaces.length, error: m.error })) }, null, 2),
+        procedencia: { origen: "fuentes", consultado: ahoraIso(), nota: "Lectura directa de fuentes permitidas; no es un hecho verificado." },
+      });
+      actualizarPaso(pasoId, { salidas: [consulta.id] });
+    } else if (nodo.fuentes.length) {
       actualizarPaso(pasoId, { estado: "recolectando", detalle: `Leyendo ${Math.min(nodo.fuentes.length, ejecucion.instantanea.politica.maxFuentesPorPaso)} fuente(s) permitidas.` });
       evidencia = await deps.recolectar(nodo.fuentes, ejecucion.instantanea.politica.dominios, { maximo: ejecucion.instantanea.politica.maxFuentesPorPaso });
       if (!sigueVigente(pasoId, "recolectando")) return "hecho";
@@ -270,13 +293,29 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
     }
     reservarIA(pasoId, nodo.proveedor, await deps.usosLegado());
     actualizarPaso(pasoId, { estado: "generando", detalle: `Enviado a ${nodo.proveedor}.` });
-    const especial = promptEspecial(nodo, ejecucion);
-    const entrega = await deps.generar(
-      encargoParaAdaptador(nodo, ejecucion),
-      especial?.prompt ?? construirPromptPaso(nodo, ejecucion.instantanea.canales, entradas, evidencia),
-      { origen: "granja", paso: nodo.titulo, granjaId: ejecucion.granjaId, ejecucionId: ejecucion.id, pasoId },
-      especial ? { maxTokens: especial.maxTokens } : undefined,
-    );
+    const contexto = { origen: "granja" as const, paso: nodo.titulo, granjaId: ejecucion.granjaId, ejecucionId: ejecucion.id, pasoId };
+    const pedir = (busqueda: boolean) => {
+      const especial = promptEspecial(nodo, ejecucion, { busqueda, material });
+      return deps.generar(
+        encargoParaAdaptador(nodo, ejecucion),
+        especial?.prompt ?? construirPromptPaso(nodo, ejecucion.instantanea.canales, entradas, evidencia),
+        contexto,
+        { ...(especial ? { maxTokens: especial.maxTokens } : {}), ...(nodo.proveedor === "gemini" ? { busqueda } : {}) },
+      );
+    };
+    const conBusqueda = busquedaActiva(nodo);
+    const hayFuentes = material.some((m) => !m.error && m.texto) || evidencia.some((e) => !e.error);
+    let aviso = "";
+    let entrega: EntregaIA;
+    try {
+      entrega = await pedir(conBusqueda);
+    } catch (error) {
+      // La búsqueda de Google no está en el plan (429): un solo reintento sin búsqueda, con las Fuentes del paso.
+      if (!(conBusqueda && hayFuentes && error instanceof ErrorGemini && error.codigo === "busqueda_no_disponible")) throw error;
+      actualizarPaso(pasoId, { detalle: "La búsqueda de Google no está disponible: reintentando una vez solo con las Fuentes del paso." });
+      entrega = await pedir(false);
+      aviso = "La búsqueda de Google no está disponible en tu plan de Gemini (429): se reintentó una vez sin búsqueda, solo con las Fuentes del paso.";
+    }
     if (!sigueVigente(pasoId, "generando")) return "hecho";
     const artefacto = guardarArtefacto({
       granjaId: ejecucion.granjaId,
@@ -285,10 +324,10 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
       nodo,
       tipo: salidaAgente(nodo),
       contenido: entrega.texto,
-      procedencia: { origen: nodo.proveedor as "astra" | "claude" | "gemini", nota: `Generado por ${nodo.proveedor}; requiere revisión.` },
+      procedencia: { origen: nodo.proveedor as "astra" | "claude" | "gemini", nota: `Generado por ${nodo.proveedor}${aviso ? " sin búsqueda de Google" : ""}; requiere revisión.` },
     });
     const previas = leerPaso(pasoId).salidas;
-    cerrar(pasoId, { estado: "completado", salidas: [...previas, artefacto.id], detalle: "Resultado recibido." });
+    cerrar(pasoId, { estado: "completado", salidas: [...previas, artefacto.id], detalle: aviso || "Resultado recibido." });
     auditar("paso.ia", pasoId, { proveedor: nodo.proveedor });
     return "hecho";
   } catch (error) {
