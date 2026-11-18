@@ -89,7 +89,7 @@ export const datosGranjaSchema = z.object({
       customPurpose: z.string().trim().max(60).optional(),
       // Granja «Eventos de El Salvador»: cuántos eventos nuevos por día y cuántos días hacia delante.
       eventos: z
-        .object({ maxPorDia: z.number().int().min(1).max(30).default(10), diasAdelante: z.number().int().min(1).max(30).default(14) })
+        .object({ maxPorDia: z.number().int().min(1).max(30).default(10), diasAdelante: z.number().int().min(1).max(60).default(14) })
         .optional(),
       // Granja «Post para Instagram»: cuenta de destino (solo texto) y posts por día.
       instagram: z
@@ -430,17 +430,20 @@ recetas.push({
 
 /** Fuentes iniciales de la granja de eventos: MITUR y sitios del Gobierno (incluye alcaldías *.gob.sv).
  * Ticketeras y recintos los agrega el propietario en Personalizar; nunca redes sociales. */
-export const dominiosEventos = ["elsalvador.travel", "gob.sv"];
+// Carteleras: MITUR y Gobierno, y las ticketeras. Todoticket y Fun Capital quedan permitidas para
+// enlaces de boletos, pero hoy no se pueden leer desde Ezra (500 a nuestro agente; página solo con JavaScript).
+export const dominiosEventos = ["elsalvador.travel", "gob.sv", "smartticket.fun", "todoticketsv.com", "funcapital.com"];
+const fuentesEventos = [...fuentesOficiales, { nombre: "Cartelera de Smart Ticket", url: "https://www.smartticket.fun/es", imagen: "", nota: "" }];
 recetas.unshift({
   clave: "eventos_el_salvador",
   datos: {
     nombre: "Eventos de El Salvador",
     objetivo:
-      "Cada día, encontrar eventos de los próximos 14 días en El Salvador (conciertos, festivales, ferias, fiestas patronales, deportes y gastronomía) y dejarlos en la bandeja Eventos para tu revisión.",
+      "Cada día, encontrar eventos de los próximos 45 días en El Salvador (conciertos, festivales, ferias, fiestas patronales, deportes y gastronomía) y dejarlos en la bandeja Eventos para tu revisión.",
     formato: "publicacion",
     canales: ["spotmi"],
     politicaFuentes: { dominios: dominiosEventos, maxFuentesPorPaso: 5 },
-    ajustes: { zonaHoraria: "America/El_Salvador", purpose: "eventos_el_salvador", eventos: { maxPorDia: 10, diasAdelante: 14 } },
+    ajustes: { zonaHoraria: "America/El_Salvador", purpose: "eventos_el_salvador", eventos: { maxPorDia: 10, diasAdelante: 45 } },
   },
   pasos: [
     {
@@ -450,8 +453,8 @@ recetas.unshift({
       titulo: "Cazador de eventos",
       proveedor: "gemini",
       instrucciones: "",
-      // Si la búsqueda de Google no está disponible, el cazador trabaja con estas páginas oficiales.
-      fuentes: fuentesOficiales,
+      // Si la búsqueda de Google no está disponible, el cazador trabaja con estas carteleras.
+      fuentes: fuentesEventos,
     },
     { clave: "verif", tipo: "agente", agente: "verificador", titulo: "Verificador", proveedor: "local" },
   ],

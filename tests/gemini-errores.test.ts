@@ -130,7 +130,7 @@ test("cazador: un 429 con búsqueda reintenta una vez solo con las Fuentes, lo a
   });
   const granja = granjaCon((n) => n);
   const caza = granja.grafo.nodos.find((n) => n.agente === "cazador")!;
-  assert.equal(caza.fuentes.length, 3, "la receta trae fuentes oficiales para trabajar sin búsqueda");
+  assert.equal(caza.fuentes.length, 4, "la receta trae fuentes oficiales para trabajar sin búsqueda");
   const e = ejecucion.iniciarEjecucion(granja.id, { nodoId: caza.id, confirmarIA: true, usuario: "u", encargos: new Map() });
   await vaciar();
   const paso = ejecucion.pasosDe(e.id)[0];

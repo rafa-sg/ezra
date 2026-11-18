@@ -53,6 +53,7 @@ export type Detalle = {
   aprobaciones: { pasoId: string; vigente: boolean }[];
   faltantes: Record<string, string[]>;
   piezas: VistaPieza[];
+  resumenEventos: { verificado: boolean; nuevos: number; duplicados: number; descartados: number; conImagen: number; tokens: number; llamadas: number; errores: number } | null;
   ahora: string;
 };
 export type ConexionesRespuesta = { conexiones: Conexion[]; claveTokens: boolean; redireccionBase: string; versionGraph: string };

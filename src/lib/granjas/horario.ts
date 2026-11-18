@@ -68,7 +68,7 @@ export function leerHorario(granjaId: string): Horario {
 const usaGemini = (granjaId: string) => leerGranja(granjaId).grafo.nodos.some((n) => n.tipo === "agente" && n.proveedor === "gemini");
 
 /** Activar exige el consentimiento del propietario y, si hay Gemini, un presupuesto diario y mensual. */
-export function guardarHorario(granjaId: string, config: unknown, usuario: string, aceptoIA: boolean) {
+export function guardarHorario(granjaId: string, config: unknown, usuario: string, aceptoIA: boolean, ahora = new Date()) {
   const c = horarioSchema.parse(config);
   return transaccion((db) => {
     const granja = leerGranja(granjaId);
@@ -94,6 +94,11 @@ export function guardarHorario(granjaId: string, config: unknown, usuario: strin
        on conflict (granja_id) do update set activa = excluded.activa, hora = excluded.hora, dias = excluded.dias,
        despues_de = excluded.despues_de, consentimiento = excluded.consentimiento, actualizado = excluded.actualizado`,
     ).run(granjaId, c.activa ? 1 : 0, c.hora, JSON.stringify([...c.dias].sort()), c.despuesDe, consentimiento ? JSON.stringify(consentimiento) : null, ahoraIso());
+    // Activar (o cambiar la hora) cuando la hora de hoy ya pasó no dispara una ejecución inmediata:
+    // la primera es mañana. Recuperar una hora perdida solo aplica a un horario que ya estaba activo.
+    const hoy = diaLocal(ahora);
+    if (c.activa && !c.despuesDe && (!actual.activa || actual.hora !== c.hora) && instanteLocal(hoy, c.hora) < ahora)
+      db.prepare("update horarios set ultima_fecha = ? where granja_id = ? and (ultima_fecha is null or ultima_fecha < ?)").run(hoy, granjaId, hoy);
     auditar("horario.guardar", granjaId, { activa: c.activa, hora: c.hora, dias: c.dias, despuesDe: c.despuesDe });
     return leerHorario(granjaId);
   });

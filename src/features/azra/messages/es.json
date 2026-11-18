@@ -941,7 +941,7 @@
   "g_c_actualizar": "Actualizar",
   "g_fichasLeidas": "fichas públicas leídas",
   "g_receta_eventos_el_salvador": "Eventos de El Salvador",
-  "g_receta_eventos_el_salvador_ayuda": "Cazador con búsqueda de Google y verificador sin IA. Deja eventos de los próximos 14 días en la bandeja Eventos.",
+  "g_receta_eventos_el_salvador_ayuda": "Cazador con búsqueda de Google o con las carteleras (MITUR, Gobierno, Smart Ticket) y verificador sin IA. Deja eventos de los próximos 45 días en la bandeja Eventos.",
   "g_proveedorLocal": "Sin IA (local)",
   "g_origen_local": "Hecho sin IA",
   "g_ev_todos": "Todos",
@@ -1101,5 +1101,13 @@
   "g_ev_imp_conImagen": "con imagen",
   "g_ev_imp_porConfirmar": "con datos por confirmar",
   "g_ev_imp_invalidos": "inválidos",
-  "g_ev_imp_jsonInvalido": "El archivo no es un JSON válido."
+  "g_ev_imp_jsonInvalido": "El archivo no es un JSON válido.",
+  "g_r_nuevos": "eventos nuevos",
+  "g_r_duplicados": "duplicados descartados",
+  "g_r_conImagen": "con imagen",
+  "g_r_tokens": "tokens",
+  "g_r_llamadas": "llamadas a Gemini",
+  "g_r_conError": "con error",
+  "g_recetaYaExiste": "Ya tienes una granja activa con esta receta:",
+  "g_recetaCrearOtra": "¿Crear otra copia?"
 }

@@ -313,7 +313,7 @@ export async function leerMaterialFuentes(
       for (const m of pagina.html.matchAll(/<item[\s\S]*?<\/item>/gi))
         agregar(/<link>([\s\S]*?)<\/link>/i.exec(m[0])?.[1] ?? "", /<title>([\s\S]*?)<\/title>/i.exec(m[0])?.[1] ?? "");
       for (const m of pagina.html.matchAll(/<a\b[^>]*href=["']([^"'#][^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)) agregar(m[1], m[2]);
-      resultado.push({ nombre: fuente.nombre, url: pagina.url, texto: pagina.texto.slice(0, opciones.maxTexto ?? 10_000), enlaces: enlaces.slice(0, 80), error: "" });
+      resultado.push({ nombre: fuente.nombre, url: pagina.url, texto: pagina.texto.slice(0, opciones.maxTexto ?? 10_000), enlaces: enlaces.slice(0, 150), error: "" });
     } catch (error) {
       resultado.push({ nombre: fuente.nombre, url: fuente.url, texto: "", enlaces: [], error: error instanceof WorkflowError ? error.message : "No se pudo leer la fuente." });
     }

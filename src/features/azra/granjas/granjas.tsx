@@ -196,7 +196,17 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
 
   if (!abierta) {
     const tarjetaReceta = (r: Resumen["recetas"][number]) => (
-      <button key={r.clave} className="eg-receta" disabled={ocupado} onClick={() => void crearDesde({ accion: "receta", clave: r.clave })}>
+      <button
+        key={r.clave}
+        className="eg-receta"
+        disabled={ocupado}
+        onClick={() => {
+          // Cada clic crea otra granja: si ya hay una igual activa, se pide confirmación.
+          const existente = resumen.granjas.find((x) => x.receta === r.clave && x.estado !== "archivada");
+          if (existente && !window.confirm(`${g("recetaYaExiste")} «${existente.nombre}». ${g("recetaCrearOtra")}`)) return;
+          void crearDesde({ accion: "receta", clave: r.clave });
+        }}
+      >
         {r.formato === "video" ? <Film size={20} /> : r.formato === "carrusel" ? <Imagen size={20} /> : <Send size={20} />}
         <strong>{g(`receta_${r.clave}`)}</strong>
         <span>{g(`receta_${r.clave}_ayuda`)}</span>
@@ -363,6 +373,18 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
                   {" "}
                   · {fecha(ultima.creado)} · {ultima.alcance === "completa" ? g("granjaCompleta") : g("unPaso")}
                 </span>
+              )}
+              {detalle.resumenEventos && (detalle.resumenEventos.verificado || detalle.resumenEventos.llamadas > 0) && (
+                <p className="eg-resumen-ejecucion">
+                  {detalle.resumenEventos.verificado && (
+                    <>
+                      <b>{detalle.resumenEventos.nuevos}</b> {g("r_nuevos")} · <b>{detalle.resumenEventos.duplicados}</b> {g("r_duplicados")} ·{" "}
+                      <b>{detalle.resumenEventos.conImagen}</b> {g("r_conImagen")} ·{" "}
+                    </>
+                  )}
+                  <b>{new Intl.NumberFormat("es-SV").format(detalle.resumenEventos.tokens)}</b> {g("r_tokens")} ({detalle.resumenEventos.llamadas} {g("r_llamadas")}
+                  {detalle.resumenEventos.errores ? `, ${detalle.resumenEventos.errores} ${g("r_conError")}` : ""})
+                </p>
               )}
             </div>
             <div className="ep-acciones">

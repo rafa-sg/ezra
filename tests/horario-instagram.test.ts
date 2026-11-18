@@ -47,7 +47,9 @@ test("horario: a su hora, tarea perdida una sola vez al despertar, nunca dos vec
   assert.throws(() => horario.guardarHorario(granja.id, config, "u", true), /presupuesto/, "con Gemini exige presupuesto");
   consumo.guardarPresupuesto({ tokensDia: 100_000, tokensMes: 2_000_000 });
   assert.throws(() => horario.guardarHorario(granja.id, config, "u", false), /Confirma/, "y el consentimiento");
-  horario.guardarHorario(granja.id, config, "u", true);
+  // Activarlo a las 14:00 del lunes no lo dispara en ese momento: la primera es el martes a las 4:30.
+  horario.guardarHorario(granja.id, config, "u", true, sv("2026-11-16", "14:00"));
+  assert.equal(horario.proximaEjecucion(horario.leerHorario(granja.id), sv("2026-11-16", "14:01")), sv("2026-11-17", "04:30").toISOString());
   const iniciadas: string[] = [];
   const iniciar = async (id: string) => {
     iniciadas.push(id);
@@ -78,7 +80,7 @@ test("horario: presupuesto agotado pausa con motivo y se reanuda al día siguien
   consumo.guardarPresupuesto({ tokensDia: 1000, tokensMes: 1_000_000 });
   const ev = almacen.crearDesdeReceta("eventos_el_salvador");
   const ig = almacen.crearDesdeReceta("post_instagram_eventos");
-  horario.guardarHorario(ev.id, { activa: true, hora: "04:30", dias: todos, despuesDe: null }, "u", true);
+  horario.guardarHorario(ev.id, { activa: true, hora: "04:30", dias: todos, despuesDe: null }, "u", true, sv("2026-11-16", "12:00"));
   horario.guardarHorario(ig.id, { activa: true, hora: "00:00", dias: todos, despuesDe: ev.id }, "u", true);
   assert.throws(() => horario.guardarHorario(ev.id, { activa: true, hora: "04:30", dias: todos, despuesDe: ig.id }, "u", true), /esperándose/);
   // Se gastó el presupuesto del día antes de las 4:30.
@@ -88,7 +90,7 @@ test("horario: presupuesto agotado pausa con motivo y se reanuda al día siguien
   const h = horario.leerHorario(ev.id);
   assert.equal(h.pausaMotivo, "presupuesto agotado");
   assert.equal(h.pausaHasta, sv("2026-11-20", "00:00").toISOString());
-  assert.equal(h.ultimaFecha, null, "no se reservó el día");
+  assert.notEqual(h.ultimaFecha, "2026-11-19", "no se reservó el día");
   // Al día siguiente vuelve sola: primero eventos (ejecución real en cola), Instagram espera a que termine.
   const r = await horario.revisarHorarios(sv("2026-11-20", "04:30"));
   assert.deepEqual(r.map((x) => [x.granjaId, x.accion]), [[ev.id, "iniciada"]]);

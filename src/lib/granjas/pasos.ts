@@ -255,6 +255,8 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
       actualizarPaso(pasoId, { estado: "recolectando", detalle: `Leyendo ${Math.min(nodo.fuentes.length, ejecucion.instantanea.politica.maxFuentesPorPaso)} fuente(s) permitidas.` });
       material = await leerMaterialFuentes(nodo.fuentes, ejecucion.instantanea.politica.dominios, {
         maximo: ejecucion.instantanea.politica.maxFuentesPorPaso,
+        // Las carteleras listan muchos eventos: con 45 días hace falta más texto que en una ficha.
+        maxTexto: 20_000,
         descargar: deps.especialistas?.descargar,
       });
       if (!sigueVigente(pasoId, "recolectando")) return "hecho";

@@ -1434,3 +1434,11 @@
   color: var(--ep-suave, #a9b6c4);
   overflow-wrap: anywhere;
 }
+.azra .eg-resumen-ejecucion {
+  margin: 4px 0 0;
+  color: var(--ep-suave, #a9b6c4);
+  font-size: 13px;
+}
+.azra .eg-resumen-ejecucion b {
+  color: var(--ep-texto, #f3f3e9);
+}

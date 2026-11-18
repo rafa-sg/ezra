@@ -119,7 +119,7 @@ export function parecido(a: string, b: string) {
   if (comunes === menor && (menor >= 2 || mayor <= 2) && mayor - menor <= 2) return Math.max(jaccard, 0.85);
   return jaccard;
 }
-export type Referencia = { titulo: string; fecha: string | null; lugar?: string | null; origen: string };
+export type Referencia = { titulo: string; fecha: string | null; hasta?: string | null; lugar?: string | null; origen: string };
 const distanciaDias = (a: string, b: string) => Math.abs(Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / 86_400_000;
 /** Mismo evento si el título se parece y la fecha coincide (±1 día), o mucho parecido si falta una fecha. */
 export function buscarDuplicado(candidato: { titulo: string; fecha: string | null }, referencias: Referencia[]): Referencia | null {
@@ -233,15 +233,16 @@ export function listarEventos(filtro: { estado?: EstadoVisible | null; desde?: s
   );
 }
 export function referenciasLocales(): Referencia[] {
-  return (base().prepare("select titulo, fecha, lugar from eventos").all() as { titulo: string; fecha: string | null; lugar: string }[]).map((r) => ({
+  return (base().prepare("select titulo, fecha, fecha_fin as hasta, lugar from eventos").all() as { titulo: string; fecha: string | null; hasta: string | null; lugar: string }[]).map((r) => ({
     ...r,
     origen: "Ezra",
   }));
 }
+/** Eventos que trajo hoy una ejecución de la granja (las importaciones no cuentan para su máximo diario). */
 export function eventosCreadosHoy(granjaId: string | null, ahora = new Date()) {
   const hoy = diaLocal(ahora);
   const fila = base()
-    .prepare("select count(*) as n from eventos where creado >= ? and creado < ? and (? is null or granja_id = ?)")
+    .prepare("select count(*) as n from eventos where ejecucion_id is not null and creado >= ? and creado < ? and (? is null or granja_id = ?)")
     .get(instanteLocal(hoy).toISOString(), instanteLocal(sumarDias(hoy, 1)).toISOString(), granjaId, granjaId) as { n: number };
   return Number(fila.n);
 }

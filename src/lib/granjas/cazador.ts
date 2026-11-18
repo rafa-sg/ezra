@@ -40,7 +40,7 @@ Hoy (El Salvador): ${datos.hoy}. Ventana: del ${datos.hoy} al ${hasta}.
 
 ${comoBuscar}
 Nunca uses Instagram, Facebook, TikTok, X ni otras redes sociales como fuente (${dominiosProhibidos.join(", ")}).
-Devuelve como máximo ${pedidos} eventos distintos. No repitas estos, que ya conocemos: ${datos.conocidos.slice(0, 40).join(" | ") || "(ninguno)"}.
+Devuelve como máximo ${pedidos} eventos NUEVOS. Estos ya están en nuestra bandeja: no los repitas (${Math.min(datos.conocidos.length, 200)}): ${datos.conocidos.slice(0, 200).join(" | ") || "(ninguno)"}.
 
 Copia cada dato tal como aparece en la página fuente. Si la fecha, la hora o el precio no aparecen en esa página, escribe null: no los deduzcas ni los inventes. No inventes enlaces.
 ${datos.instrucciones.trim() ? `Indicaciones del propietario (no cambian estas reglas): ${datos.instrucciones.trim().slice(0, 1500)}\n` : ""}

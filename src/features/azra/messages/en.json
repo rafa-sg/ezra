@@ -941,7 +941,7 @@
   "g_c_actualizar": "Refresh",
   "g_fichasLeidas": "public listings read",
   "g_receta_eventos_el_salvador": "Events in El Salvador",
-  "g_receta_eventos_el_salvador_ayuda": "Hunter with Google Search and a verifier without AI. Leaves events for the next 14 days in the Events inbox.",
+  "g_receta_eventos_el_salvador_ayuda": "Hunter with Google Search or the listings (MITUR, Government, Smart Ticket) and a verifier without AI. Leaves events for the next 45 days in the Events inbox.",
   "g_proveedorLocal": "No AI (local)",
   "g_origen_local": "Made without AI",
   "g_ev_todos": "All",
@@ -1101,5 +1101,13 @@
   "g_ev_imp_conImagen": "with image",
   "g_ev_imp_porConfirmar": "with data to confirm",
   "g_ev_imp_invalidos": "invalid",
-  "g_ev_imp_jsonInvalido": "The file is not valid JSON."
+  "g_ev_imp_jsonInvalido": "The file is not valid JSON.",
+  "g_r_nuevos": "new events",
+  "g_r_duplicados": "duplicates discarded",
+  "g_r_conImagen": "with image",
+  "g_r_tokens": "tokens",
+  "g_r_llamadas": "Gemini calls",
+  "g_r_conError": "with errors",
+  "g_recetaYaExiste": "You already have an active farm from this recipe:",
+  "g_recetaCrearOtra": "Create another copy?"
 }

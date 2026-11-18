@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     if (p.maximo !== undefined || p.cuenta !== undefined) {
       const ajustes = { ...granja.ajustes };
       if (granja.ajustes.purpose === "eventos_el_salvador" && p.maximo !== undefined)
-        ajustes.eventos = { diasAdelante: 14, ...granja.ajustes.eventos, maxPorDia: p.maximo };
+        ajustes.eventos = { diasAdelante: 45, ...granja.ajustes.eventos, maxPorDia: p.maximo };
       if (granja.ajustes.purpose === "post_instagram_eventos")
         ajustes.instagram = {
           cuenta: "@spotmi.sv",

@@ -23,6 +23,7 @@ let ejecucion: typeof import("../src/lib/granjas/ejecucion");
 let conexiones: typeof import("../src/lib/granjas/conexiones");
 let propuestas: typeof import("../src/lib/granjas/spotmi-propuestas");
 let db: typeof import("../src/lib/granjas/db");
+let modelo: typeof import("../src/lib/granjas/modelo");
 let tiempo: typeof import("../src/lib/granjas/tiempo");
 let procesarUno: typeof import("../src/lib/granjas/trabajador").procesarUno;
 before(async () => {
@@ -35,6 +36,7 @@ before(async () => {
   conexiones = await import("../src/lib/granjas/conexiones");
   propuestas = await import("../src/lib/granjas/spotmi-propuestas");
   db = await import("../src/lib/granjas/db");
+  modelo = await import("../src/lib/granjas/modelo");
   tiempo = await import("../src/lib/granjas/tiempo");
   ({ procesarUno } = await import("../src/lib/granjas/trabajador"));
   assert.ok(db.archivoBase.startsWith(process.env.EZRA_DATA_DIR!), "la base de prueba vive en work/");
@@ -207,6 +209,12 @@ test("granja «Eventos de El Salvador»: cazador (Gemini simulado) → verificad
   assert.match(llamadasGemini[0], /^cazador\|Cazador de eventos\|8192\|# Spotmi · Cazador de eventos de El Salvador/);
   assert.equal(eventos.listarEventos().length, 2);
   assert.ok(eventos.listarEventos().every((x) => x.ejecucionId === e.id && x.estado === "nuevo" && x.fecha && x.departamento === "La Libertad"));
+  const { resumenEjecucionEventos } = await import("../src/lib/granjas/pasos-eventos");
+  assert.deepEqual(resumenEjecucionEventos(e.id), { verificado: true, nuevos: 2, duplicados: 0, descartados: 0, conImagen: 0, tokens: 0, llamadas: 0, errores: 0 });
+  // Una importación (sin ejecución) no cuenta para el máximo diario de la granja.
+  const importado = eventos.crearEvento({ titulo: "Importado hoy", fecha: en(3), hora: null, lugar: "", municipio: "", departamento: "", categoria: "otro", precio: null, boletosUrl: null, fuenteUrl: "https://elsalvador.travel/x", confirmadoEn: {}, sugerencias: {}, descripcion: "", imagenUrl: null, notaVerificacion: "", granjaId: granja.id, ejecucionId: null });
+  assert.equal(eventos.eventosCreadosHoy(granja.id), 2, "solo cuentan los de una ejecución");
+  db.base().prepare("delete from eventos where id = ?").run(importado.id);
   // Una segunda ejecución del mismo día ya no agrega más.
   const e2 = ejecucion.iniciarEjecucion(granja.id, { confirmarIA: true, usuario: "u", encargos: new Map() });
   await vaciar(depsGranja(json, paginas));
@@ -347,4 +355,19 @@ test("Spotmi: mapeo al esquema de event_proposals, idempotencia ante fallos de r
   eventos.aprobarEvento(sinFecha.id, sinFecha.revision);
   await assert.rejects(propuestas.enviarEventoASpotmi(sinFecha.id), /Confirma la fecha/);
   conexiones.usarRedDePrueba(undefined);
+});
+
+test("cazador diario: ventana de 45 días y la lista de lo que ya está en la bandeja (hasta 200, con los de varios días en curso)", () => {
+  const conocidos = Array.from({ length: 230 }, (_, i) => `Evento ${i} (2026-12-01)`);
+  const prompt = cazador.promptCazadorEventos({ hoy: "2026-11-18", diasAdelante: 45, maximo: 10, dominios: ["elsalvador.travel", "smartticket.fun"], conocidos, instrucciones: "", busqueda: false, material: [] });
+  assert.match(prompt, /Ventana: del 2026-11-18 al 2027-01-02/);
+  assert.match(prompt, /ya están en nuestra bandeja: no los repitas \(200\)/);
+  assert.match(prompt, /Evento 199 \(2026-12-01\)/);
+  assert.doesNotMatch(prompt, /Evento 200 /);
+  assert.ok(modelo.datosGranjaSchema.shape.ajustes.parse({ zonaHoraria: "America/El_Salvador", eventos: { maxPorDia: 10, diasAdelante: 45 } }).eventos?.diasAdelante === 45);
+  // Unas fiestas que empezaron ayer y terminan en 5 días siguen en la lista de conocidos.
+  db.base().exec("delete from eventos");
+  eventos.crearEvento({ titulo: "Fiestas en curso", fecha: en(-1), fechaFin: en(5), hora: null, lugar: "", municipio: "", departamento: "", categoria: "religioso", precio: null, boletosUrl: null, fuenteUrl: "https://gob.sv/x", confirmadoEn: {}, sugerencias: {}, descripcion: "", imagenUrl: null, notaVerificacion: "", granjaId: null, ejecucionId: null });
+  const ref = eventos.referenciasLocales().find((r) => r.titulo === "Fiestas en curso");
+  assert.equal(ref?.hasta, en(5));
 });

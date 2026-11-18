@@ -4,6 +4,7 @@ import type { Nodo } from "./modelo";
 import { leerCandidatos, promptCazadorEventos, type Candidato } from "./cazador";
 import type { MaterialFuente } from "./fuentes";
 import { eventosCreadosHoy, referenciasLocales } from "./eventos";
+import { base, json } from "./db";
 import { diaLocal } from "./tiempo";
 import { verificarCandidatos, type DepsVerificador } from "./verificador";
 
@@ -34,9 +35,10 @@ export function promptEspecial(
       diasAdelante: ejecucion.instantanea.ajustes?.eventos?.diasAdelante ?? 14,
       maximo: limiteEventos(ejecucion),
       dominios: ejecucion.instantanea.politica.dominios,
+      // Lo que ya está en la bandeja (y sigue vigente) no se vuelve a pedir; el verificador deduplica igual.
       conocidos: referenciasLocales()
-        .filter((r) => !r.fecha || r.fecha >= hoy)
-        .map((r) => r.titulo),
+        .filter((r) => !r.fecha || (r.hasta ?? r.fecha) >= hoy)
+        .map((r) => (r.fecha ? `${r.titulo} (${r.fecha})` : r.titulo)),
       instrucciones: nodo.instrucciones,
       busqueda: modo.busqueda,
       material: modo.material,
@@ -95,4 +97,25 @@ export async function verificarPaso(ejecucion: Ejecucion, entradas: Artefacto[],
     r.spotmi === "no_disponible" ? "Spotmi no respondió: duplicados revisados solo contra Ezra" : "",
   ].filter(Boolean);
   return { artefactos: [{ tipo: "investigacion", contenido: JSON.stringify({ ...r, invalidos }, null, 2) }], detalle: `${partes.join(" · ")}.` };
+}
+
+/** Resumen de una ejecución de la granja de eventos: lo que dejó el verificador y los tokens que costó. */
+export function resumenEjecucionEventos(ejecucionId: string) {
+  const filas = base()
+    .prepare("select contenido from artefactos where ejecucion_id = ? and tipo = 'investigacion' and procedencia like '%\"origen\":\"local\"%' order by creado desc limit 1")
+    .all(ejecucionId) as { contenido: string }[];
+  const v = json<{ nuevos?: unknown[]; duplicados?: unknown[]; descartados?: unknown[]; conImagen?: number }>(filas[0]?.contenido, {});
+  const t = base()
+    .prepare("select count(*) as llamadas, coalesce(sum(total_tokens), 0) as tokens, coalesce(sum(error <> ''), 0) as errores from consumo_ia where ejecucion_id = ?")
+    .get(ejecucionId) as { llamadas: number; tokens: number; errores: number };
+  return {
+    verificado: filas.length > 0,
+    nuevos: v.nuevos?.length ?? 0,
+    duplicados: v.duplicados?.length ?? 0,
+    descartados: v.descartados?.length ?? 0,
+    conImagen: v.conImagen ?? 0,
+    tokens: Number(t.tokens),
+    llamadas: Number(t.llamadas),
+    errores: Number(t.errores),
+  };
 }
