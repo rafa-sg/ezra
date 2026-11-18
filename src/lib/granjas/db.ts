@@ -292,6 +292,42 @@ const migraciones: string[] = [
   create index eventos_estado on eventos (estado, fecha);
   create index eventos_creado on eventos (creado);
   `,
+  // 5 · Posts de Instagram (se suben a mano) y horario diario de cada granja.
+  `
+  create table posts_ig (
+    id text primary key,
+    evento_id text not null references eventos(id),
+    granja_id text references granjas(id),
+    ejecucion_id text references ejecuciones(id),
+    cuenta text not null,
+    texto text not null default '',
+    texto_origen text not null default '',
+    nota text not null default '',
+    medio_id text references medios(id),
+    estado text not null check (estado in ('borrador', 'listo', 'subido')),
+    ig_url text,
+    subido text,
+    revision integer not null default 1,
+    creado text not null,
+    actualizado text not null
+  );
+  create unique index posts_ig_evento on posts_ig (evento_id);
+  create table horarios (
+    granja_id text primary key references granjas(id),
+    activa integer not null default 0,
+    hora text not null default '04:30',
+    dias text not null default '[0,1,2,3,4,5,6]',
+    despues_de text references granjas(id),
+    consentimiento text,
+    ultima_fecha text,
+    ultima_ejecucion_id text,
+    ultimo_inicio text,
+    ultimo_error text not null default '',
+    pausa_motivo text not null default '',
+    pausa_hasta text,
+    actualizado text not null
+  );
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

@@ -451,3 +451,16 @@ Decisiones del propietario tras revisar los hallazgos:
 - **Idempotencia con Spotmi:** clave `ezra-evento-<id>-<hash del contenido>`, guardada antes de llamar. Si la red falla, el reintento usa la misma clave y Spotmi devuelve la misma propuesta. Mientras haya un envío sin confirmar no se puede editar el evento (otra clave sí duplicaría).
 - **Sesión editorial:** Supabase rota el refresh token; el token renovado se guarda cifrado. Si la sesión venció, se vuelve a entrar con `SPOTMI_EDITORIAL_*`. El publicador genérico de piezas no guarda el token renovado (pendiente aparte).
 - **Respaldo sin Spotmi:** «Copiar ficha» y CSV/JSON del día de hallazgo (CSV con BOM y celdas que empiezan por `=`, `+`, `-` o `@` protegidas).
+
+
+## 2026-11-17 · Fase 3: post para Instagram, horario y LaunchAgent
+
+- **Imagen sin IA:** el proyecto no tenía un método HTML→PNG y el ffmpeg de esta Mac no tiene `drawtext`. Por decisión del propietario se usa `next/og` (incluido en Next: satori + resvg, local, sin red ni dependencias nuevas). Plantilla en `src/lib/granjas/diseno.ts`; fuentes Geist (de Next) y Arial Bold del sistema si existe; ícono oficial reducido en `assets/marca/spotmi-icono-blanco.png` (copiado de spotmi-web). Fondo solo si el evento tiene imagen guardada con nota de permiso (PNG o JPG).
+- **Texto:** reglas verificadas en código (`validarTextoIG`). Dos intentos con la IA; si no cumple, plantilla sin IA con una nota visible. La descripción del cazador no entra a la plantilla si menciona hora o precio sin confirmar. Cada intento queda en Consumo.
+- **Instagram:** no hay API. «Marcar como subido» solo guarda un enlace `instagram.com/p/…` o `/reel/…` normalizado.
+- **Horario:** tabla `horarios`, aparte de la granja, para que cambiar la hora no cree versiones ni invalide aprobaciones. La reserva del día es un `update … where ultima_fecha <> hoy`: atómica entre procesos. Un error al iniciar deja el día reservado (no se reintenta cada minuto). Encadenada: corre cuando la otra granja corrió hoy y terminó; si la otra no corre ese día, esta tampoco. La tarea perdida solo se recupera el mismo día.
+- **Consentimiento:** programar una granja con IA exige marcar el consentimiento una vez y tener presupuesto diario y mensual. Las ejecuciones programadas guardan `origen: horario` y `usuario: horario`.
+- **Máximos:** eventos nuevos por día y posts por día se cuentan sobre lo creado ese día por la granja (manual + programado). La prueba real usa límites por ejecución (3 eventos, 1 post).
+- **LaunchAgent:** plantilla en `ops/macos/`, scripts de instalar/desinstalar con `launchctl bootstrap/bootout`. El trabajador independiente ahora también lee `.env.meta.local` (necesita `EZRA_TOKEN_KEY` para la sesión de Spotmi).
+- **Recetas visibles:** primero las dos del flujo diario; las demás en «Otras recetas». La guía turística (sin pasos ni interfaz, trabajo previo) no se ofrece; se añadieron los textos que faltaban de las recetas de Instagram y Facebook generales.
+- **Desborde corregido:** un texto oculto para lectores de pantalla (posición absoluta) escapaba de su tabla desplazable; los contenedores de tablas ahora son `position: relative`.

@@ -445,6 +445,37 @@ recetas.unshift({
   ],
   conexiones: [["caza", "verif"]],
 });
+recetas.splice(1, 0, {
+  clave: "post_instagram_eventos",
+  datos: {
+    nombre: "Post para Instagram",
+    objetivo:
+      "Tomar eventos aprobados sin post y preparar, para cada uno, el texto y una imagen 1080×1350 para subirlos a mano a Instagram.",
+    formato: "publicacion",
+    canales: ["instagram"],
+    politicaFuentes: { dominios: [], maxFuentesPorPaso: 5 },
+    ajustes: { zonaHoraria: "America/El_Salvador", purpose: "post_instagram_eventos", instagram: { cuenta: "@spotmi.sv", postsPorDia: 3 } },
+  },
+  pasos: [
+    {
+      clave: "redactor",
+      tipo: "agente",
+      agente: "redactor_ig",
+      titulo: "Redactor de Instagram",
+      proveedor: "gemini",
+      instrucciones: "Un texto por evento aprobado, con fecha, lugar, «Más info en spotmi» y 5–10 hashtags. Solo datos confirmados.",
+    },
+    {
+      clave: "diseno",
+      tipo: "agente",
+      agente: "disenador_post",
+      titulo: "Diseñador de post",
+      proveedor: "local",
+      instrucciones: "Imagen 1080×1350 con la plantilla de Spotmi. Fondo oficial solo con permiso registrado.",
+    },
+  ],
+  conexiones: [["redactor", "diseno"]],
+});
 export function grafoDeReceta(receta: Receta): Grafo {
   const ids = new Map(receta.pasos.map((p) => [p.clave, crypto.randomUUID()]));
   const niveles = new Map<string, number>();

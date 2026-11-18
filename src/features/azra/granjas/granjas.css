@@ -38,6 +38,15 @@
 .azra .eg-granjas input,
 .azra .eg-granjas select,
 .azra .eg-granjas textarea,
+.azra .eg-eventos input,
+.azra .eg-eventos select,
+.azra .eg-eventos textarea,
+.azra .eg-consumo input,
+.azra .eg-form-evento input,
+.azra .eg-form-evento select,
+.azra .eg-form-evento textarea,
+.azra .eg-guia input,
+.azra .eg-guia textarea,
 .azra .eg-conexiones input,
 .azra .eg-conexiones select,
 .azra .eg-colocar select {
@@ -57,7 +66,8 @@
 }
 .azra .eg-granjas input[type="checkbox"],
 .azra .eg-granjas input[type="radio"],
-.azra .eg-granjas input[type="file"] {
+.azra .eg-granjas input[type="file"],
+.azra .eg-eventos input[type="checkbox"] {
   width: auto;
   min-height: 0;
 }
@@ -1052,6 +1062,8 @@
   z-index: 2;
 }
 .azra .eg-tabla-desplazable {
+  /* Posicionado: así lo oculto para lectores de pantalla (absoluto) no escapa del desplazamiento. */
+  position: relative;
   overflow-x: auto;
   max-width: 100%;
 }
@@ -1240,4 +1252,150 @@
   .azra .eg-filtros .eg-campo {
     flex: 1 1 100%;
   }
+}
+
+/* ── Horario, posts y agenda ── */
+.azra .eg-horario .eg-subtitulo {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.azra .eg-dias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.azra .eg-dias legend {
+  width: 100%;
+  margin-bottom: 6px;
+  color: #c9d4de;
+  font-size: 13px;
+}
+.azra .eg-dia {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 40px;
+  padding: 4px 12px;
+  border: 1px solid var(--ep-borde, #2b3b4d);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.azra .eg-dia:has(input:checked) {
+  border-color: #7a9b30;
+  background: #22341f;
+}
+.azra .eg-horario-estado {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  font-size: 13px;
+}
+.azra .eg-horario-estado dt {
+  color: var(--ep-suave, #a9b6c4);
+}
+.azra .eg-horario-estado dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.azra .eg-tarjeta-horario {
+  color: #c3d6ac;
+}
+.azra .eg-lista-posts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.azra .eg-post {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  gap: 18px;
+  padding: 16px;
+  background: var(--ep-tarjeta, #172638);
+  border: 1px solid var(--ep-borde, #2b3b4d);
+  border-radius: 8px;
+}
+.azra .eg-post-imagen img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  aspect-ratio: 1080 / 1350;
+  background: #002f4b;
+}
+.azra .eg-post-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.azra .eg-post-texto h3 {
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+.azra .eg-post textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+}
+.azra .eg-agenda-eventos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.azra .eg-agenda-eventos time {
+  color: #d7ee9c;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.azra .eg-agenda-eventos ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.azra .eg-agenda-eventos li li {
+  display: flex;
+  flex-direction: column;
+  padding-left: 12px;
+  border-left: 2px solid var(--ep-borde, #2b3b4d);
+  font-size: 13px;
+}
+.azra .eg-agenda-eventos li li span {
+  color: var(--ep-suave, #a9b6c4);
+}
+.azra .eg-calendario-encargos {
+  margin-top: 24px !important;
+}
+@media (max-width: 700px) {
+  .azra .eg-post {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Contenedores flexibles: sus tablas se desplazan dentro, nunca ensanchan la página. */
+.azra .eg-bloque > *,
+.azra .eg-grafica > *,
+.azra .eg-consumo > *,
+.azra .eg-eventos > * {
+  min-width: 0;
+}
+.azra .eg-tabla-desplazable td {
+  white-space: nowrap;
+}
+.azra .eg-tabla-desplazable td .eg-error-celda {
+  white-space: normal;
+  max-width: 280px;
 }

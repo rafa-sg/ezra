@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Plantilla del LaunchAgent del trabajador de granjas de Ezra.
+  No se usa tal cual: scripts/trabajador-instalar.sh reemplaza __NODE__, __PROYECTO__,
+  __PATH__ y __LOG__ y la copia a ~/Library/LaunchAgents/. Arranca al iniciar sesión
+  y launchd lo vuelve a levantar si se cae. No contiene claves: las lee de .env.local.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.spotmi.ezra.trabajador</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__NODE__</string>
+    <string>--env-file-if-exists=.env.local</string>
+    <string>--env-file-if-exists=.env.meta.local</string>
+    <string>--import</string>
+    <string>tsx</string>
+    <string>scripts/granjas-trabajador.ts</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__PROYECTO__</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH__</string>
+    <key>NODE_ENV</key>
+    <string>production</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>__LOG__</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG__</string>
+</dict>
+</plist>

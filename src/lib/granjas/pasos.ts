@@ -3,6 +3,7 @@ import { canales as todosLosCanales, instruccionAgente, type Encargo } from "../
 import type { EntregaIA } from "../produccion/proveedores";
 import type { ContextoGemini } from "../ia/gemini";
 import { promptEspecial, verificarPaso, type DepsEspecialistas, type ResultadoLocal } from "./pasos-eventos";
+import { disenarPaso, esGranjaInstagram, redactarPaso } from "./pasos-instagram";
 import { ahoraIso, auditar, base, transaccion } from "./db";
 import { guardarArtefacto, leerArtefacto, type Artefacto } from "./almacen";
 import { actualizarPaso, avanzar, leerEjecucion, leerPaso, nodoDe, salidaAgente, type Ejecucion } from "./ejecucion";
@@ -192,32 +193,56 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
     }
 
     // Agente sin IA: código local (verificar, redactar con plantilla, diseñar).
+    const especialista = async (trabajo: () => Promise<ResultadoLocal>) => {
+      actualizarPaso(pasoId, { estado: "generando", detalle: nodo.proveedor === "local" ? "Trabajando sin IA en esta Mac." : `Enviado a ${nodo.proveedor}.` });
+      const local = await trabajo();
+      if (!sigueVigente(pasoId, "generando")) return "hecho" as const;
+      const salidas = local.artefactos.map(
+        (a) =>
+          guardarArtefacto({
+            granjaId: ejecucion.granjaId,
+            ejecucionId: ejecucion.id,
+            pasoId,
+            nodo,
+            tipo: a.tipo,
+            contenido: a.contenido,
+            ...(a.medioId ? { medioId: a.medioId, medioSha: a.medioSha } : {}),
+            procedencia:
+              nodo.proveedor === "local"
+                ? { origen: "local" as const, nota: "Hecho sin IA con código local; requiere revisión." }
+                : { origen: nodo.proveedor as "astra" | "claude" | "gemini", nota: `Generado por ${nodo.proveedor}; requiere revisión.` },
+          }).id,
+      );
+      cerrar(pasoId, { estado: local.bloqueado ? "bloqueado" : "completado", salidas, detalle: local.detalle });
+      return "hecho" as const;
+    };
     if (nodo.proveedor === "local") {
-      let local: ResultadoLocal;
-      actualizarPaso(pasoId, { estado: "generando", detalle: "Trabajando sin IA en esta Mac." });
-      if (nodo.agente === "verificador") local = await verificarPaso(ejecucion, entradas, deps.especialistas ?? {});
-      else {
-        cerrar(pasoId, { estado: "bloqueado", detalle: "Este especialista no trabaja sin IA. Elige Gemini, Astra, Claude o trabajo manual." });
-        return "hecho";
-      }
-      if (!sigueVigente(pasoId, "generando")) return "hecho";
-      const artefacto = guardarArtefacto({
-        granjaId: ejecucion.granjaId,
-        ejecucionId: ejecucion.id,
-        pasoId,
-        nodo,
-        tipo: local.tipo,
-        contenido: local.contenido,
-        ...(local.medioId ? { medioId: local.medioId, medioSha: local.medioSha } : {}),
-        procedencia: { origen: "local", nota: "Hecho sin IA con código local; requiere revisión." },
-      });
-      cerrar(pasoId, { estado: local.bloqueado ? "bloqueado" : "completado", salidas: [artefacto.id], detalle: local.detalle });
+      if (nodo.agente === "verificador") return await especialista(() => verificarPaso(ejecucion, entradas, deps.especialistas ?? {}));
+      if (nodo.agente === "redactor_ig") return await especialista(() => redactarPaso(ejecucion, null));
+      if (nodo.agente === "disenador_post") return await especialista(() => disenarPaso(ejecucion, entradas));
+      cerrar(pasoId, { estado: "bloqueado", detalle: "Este especialista no trabaja sin IA. Elige Gemini, Astra, Claude o trabajo manual." });
       return "hecho";
     }
     // Agente
     if (nodo.proveedor === "gemini" && process.env.EZRA_PRODUCCION_IA !== "1") {
       cerrar(pasoId, { estado: "bloqueado", detalle: "Gemini está deshabilitado en el estudio (EZRA_PRODUCCION_IA). Elige Astra, Claude o trabajo manual." });
       return "hecho";
+    }
+    // Redactor de Instagram con IA: un texto por evento aprobado, cada llamada con su registro de consumo.
+    if (nodo.agente === "redactor_ig" && esGranjaInstagram(ejecucion) && nodo.proveedor !== "manual") {
+      const legado = await deps.usosLegado();
+      return await especialista(() =>
+        redactarPaso(ejecucion, async (prompt) => {
+          reservarIA(pasoId, nodo.proveedor, legado);
+          const r = await deps.generar(
+            encargoParaAdaptador(nodo, ejecucion),
+            prompt,
+            { origen: "granja", paso: nodo.titulo, granjaId: ejecucion.granjaId, ejecucionId: ejecucion.id, pasoId },
+            { maxTokens: 1500 },
+          );
+          return r.texto;
+        }),
+      );
     }
     // Las fuentes se leen de verdad también en el trabajo manual: la evidencia queda para quien lo complete.
     let evidencia: Evidencia[] = [];

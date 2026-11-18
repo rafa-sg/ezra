@@ -80,7 +80,7 @@ function GraficaDias({ serie, limite, g, locale }: { serie: ResumenConsumo["seri
           {limite !== null && (
             <g>
               <line x1={margen.izq} x2={ancho - margen.der} y1={y(limite)} y2={y(limite)} className="eg-grafica-limite" />
-              <text x={ancho - margen.der} y={y(limite) - 5} textAnchor="end" className="eg-grafica-eje">
+              <text x={margen.izq + 6} y={y(limite) - 6} textAnchor="start" className="eg-grafica-eje">
                 {g("c_limiteDiario")} · {numeroCompacto(limite, locale)}
               </text>
             </g>

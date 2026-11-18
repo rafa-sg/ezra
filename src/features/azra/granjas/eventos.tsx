@@ -4,6 +4,7 @@ import { Check, Copy, Download, ExternalLink, Image as Imagen, Pencil, RefreshCw
 import type { Evento, EstadoVisible } from "@/lib/granjas/eventos";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
+import { ListaPosts } from "./posts";
 
 type EventoVista = Evento & { ficha: string };
 type Respuesta = {
@@ -61,6 +62,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
   const [descartando, setDescartando] = useState<{ evento: EventoVista; motivo: string } | null>(null);
   const [imagen, setImagen] = useState<{ evento: EventoVista; url: string; permiso: string } | null>(null);
   const [diaExportar, setDiaExportar] = useState(hoyLocal);
+  const [pestana, setPestana] = useState<"bandeja" | "posts">("bandeja");
   const consulta = `estado=${filtro.estado}&desde=${filtro.desde}&hasta=${filtro.hasta}`;
   const cargar = useCallback(async () => {
     try {
@@ -111,10 +113,12 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
     new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(
       new Date(`${dia}T12:00:00Z`),
     );
+  const horaCorta = (hora: string) =>
+    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(`2000-01-01T${hora}:00Z`));
   const dato = (e: EventoVista, campo: "fecha" | "hora" | "precio", valor: string | null) =>
     valor ? (
       <>
-        {campo === "fecha" ? diaCorto(valor) : valor}{" "}
+        {campo === "fecha" ? diaCorto(valor) : campo === "hora" ? horaCorta(valor) : valor}{" "}
         <small className="eg-confirmado">
           <Check size={12} aria-hidden="true" /> {g(e.confirmadoEn[campo] === "propietario" ? "ev_confirmadoPropietario" : "ev_confirmadoFuente")}
         </small>
@@ -130,9 +134,26 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
         )}
       </>
     );
+  const pestanas = (
+    <div className="eg-pestanas" role="tablist" aria-label={g("ev_tab_bandeja")}>
+      {(["bandeja", "posts"] as const).map((p) => (
+        <button key={p} role="tab" aria-selected={pestana === p} className={pestana === p ? "eg-pestana-activa" : ""} onClick={() => setPestana(p)}>
+          {g(`ev_tab_${p}`)}
+        </button>
+      ))}
+    </div>
+  );
+  if (pestana === "posts")
+    return (
+      <div className="eg-eventos">
+        {pestanas}
+        <ListaPosts g={g} fecha={fecha} />
+      </div>
+    );
   if (!datos) return <p role="status">{error || g("cargando")}</p>;
   return (
     <div className="eg-eventos">
+      {pestanas}
       {error && (
         <p className="ep-alerta" role="alert">
           {error}
@@ -490,5 +511,52 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
         )}
       </Modal>
     </div>
+  );
+}
+
+/** Calendario: eventos aprobados o enviados a Spotmi con fecha confirmada, por día. */
+export function AgendaEventos({ g, locale }: { g: (clave: string) => string; locale: string }) {
+  const [eventos, setEventos] = useState<EventoVista[] | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    pedir<Respuesta>(`/api/granjas/eventos?desde=${hoyLocal()}`)
+      .then((r) => vivo && setEventos(r.eventos.filter((e) => e.fecha && e.estado === "aprobado")))
+      .catch(() => vivo && setEventos([]));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+  if (!eventos) return <p role="status">{g("cargando")}</p>;
+  const dias = [...new Set(eventos.map((e) => e.fecha!))];
+  return (
+    <section className="eg-bloque">
+      <h2 className="eg-subtitulo">{g("cal_eventos")}</h2>
+      <p className="ep-nota">{g("cal_eventosAyuda")}</p>
+      {!dias.length ? (
+        <p className="ep-nota">{g("cal_sinEventos")}</p>
+      ) : (
+        <ol className="eg-agenda-eventos">
+          {dias.map((dia) => (
+            <li key={dia}>
+              <time dateTime={dia}>
+                {new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${dia}T12:00:00Z`))}
+              </time>
+              <ul>
+                {eventos
+                  .filter((e) => e.fecha === dia)
+                  .map((e) => (
+                    <li key={e.id}>
+                      <strong>{e.titulo}</strong>
+                      <span>
+                        {[e.hora, e.lugar || e.municipio].filter(Boolean).join(" · ")} · {g(`ev_estado_${e.estadoVisible}`)}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }

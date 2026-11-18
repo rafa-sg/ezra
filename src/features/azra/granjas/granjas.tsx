@@ -8,6 +8,7 @@ import { Lienzo } from "./lienzo";
 import { Inspector, type AccionesPaso } from "./inspector";
 import { VistaPrevia } from "./vista-previa";
 import { AvisoPresupuesto } from "./consumo";
+import { PanelHorario, resumenHorario, type HorariosRespuesta } from "./horario";
 import { pedir, nodoNuevo, type ConexionesRespuesta, type Detalle, type Grafo, type MedioResumen, type Nodo, type Resumen } from "./cliente";
 import "./granjas.css";
 
@@ -32,11 +33,14 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
   }, [aviso]);
   const [consentimiento, setConsentimiento] = useState<{ abierto: boolean; acepto: boolean }>({ abierto: false, acepto: false });
   const [verArchivadas, setVerArchivadas] = useState(false);
+  const [horarios, setHorarios] = useState<HorariosRespuesta["horarios"]>({});
   const [conexiones, setConexiones] = useState<ConexionesRespuesta | null>(null);
 
   const cargarResumen = useCallback(async () => {
     try {
-      setResumen(await pedir<Resumen>("/api/granjas"));
+      const [r, h] = await Promise.all([pedir<Resumen>("/api/granjas"), pedir<HorariosRespuesta>("/api/granjas/horarios")]);
+      setResumen(r);
+      setHorarios(h.horarios);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -55,11 +59,12 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
   }, []);
   useEffect(() => {
     let vivo = true;
-    Promise.all([pedir<Resumen>("/api/granjas"), pedir<ConexionesRespuesta>("/api/granjas/conexiones")])
-      .then(([r, c]) => {
+    Promise.all([pedir<Resumen>("/api/granjas"), pedir<ConexionesRespuesta>("/api/granjas/conexiones"), pedir<HorariosRespuesta>("/api/granjas/horarios")])
+      .then(([r, c, h]) => {
         if (!vivo) return;
         setResumen(r);
         setConexiones(c);
+        setHorarios(h.horarios);
       })
       .catch((e) => vivo && setError((e as Error).message));
     return () => {
@@ -201,7 +206,8 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
       </button>
     );
     const destacadas = resumen.recetas.filter((r) => recetasDestacadas.includes(r.clave));
-    const otras = resumen.recetas.filter((r) => !recetasDestacadas.includes(r.clave));
+    // Una receta sin pasos (la guía turística, aún sin interfaz) no se ofrece.
+    const otras = resumen.recetas.filter((r) => !recetasDestacadas.includes(r.clave) && r.pasos > 0);
     const archivadas = resumen.granjas.filter((x) => x.estado === "archivada").length;
     const visibles = resumen.granjas.filter((x) => verArchivadas || x.estado !== "archivada");
     return (
@@ -255,6 +261,7 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
                 <span>
                   {gr.grafo.nodos.length} {g("pasosMin")} · {gr.canales.map((c) => c).join(", ") || "—"}
                 </span>
+                {gr.estado !== "archivada" && <small className="eg-tarjeta-horario">{resumenHorario(horarios[gr.id], g, fecha)}</small>}
                 <small>
                   {g("actualizada")} {fecha(gr.actualizado)}
                 </small>
@@ -383,6 +390,19 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
               )}
             </div>
           </div>
+          {detalle.granja.estado !== "archivada" && (
+            <PanelHorario
+              granja={detalle.granja}
+              granjas={resumen.granjas}
+              g={g}
+              fecha={fecha}
+              ocupado={ocupado}
+              onGuardado={() => {
+                void cargarDetalle(detalle.granja.id);
+                void cargarResumen();
+              }}
+            />
+          )}
           <div className="eg-agregar" role="toolbar" aria-label={g("agregarPaso")}>
             <span>{g("agregarPaso")}:</span>
             <button className="ep-boton" onClick={() => agregar("agente")}>

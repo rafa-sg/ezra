@@ -118,6 +118,30 @@ test(
         body: JSON.stringify({ accion: "enviar_spotmi", id: crypto.randomUUID() }),
       });
       assert.equal(sinSpotmi.status, 409, "sin cuenta editorial no se envía nada");
+      // Horario y posts: activar exige consentimiento; sin posts no hay nada que subir.
+      assert.ok(resumen.recetas.some((r: { clave: string }) => r.clave === "post_instagram_eventos"));
+      const diaria = await (
+        await pedir("/api/granjas", admin, { method: "POST", body: JSON.stringify({ accion: "receta", clave: "eventos_el_salvador" }) })
+      ).json();
+      // Un día que no es hoy (hora de El Salvador): el reloj del servidor no debe ejecutarla.
+      const otroDia = (new Date(Date.now() - 6 * 3600_000).getUTCDay() + 3) % 7;
+      const programar = (aceptoIA: boolean) =>
+        pedir("/api/granjas/horarios", admin, {
+          method: "POST",
+          body: JSON.stringify({ granjaId: diaria.granja.id, horario: { activa: true, hora: "04:30", dias: [otroDia], despuesDe: null }, aceptoIA, maximo: 3 }),
+        });
+      assert.equal((await programar(false)).status, 422);
+      const programada = await (await programar(true)).json();
+      assert.equal(programada.horario.activa, true);
+      assert.ok(programada.horario.proxima);
+      assert.equal(programada.granja.ajustes.eventos.maxPorDia, 3);
+      // Se apaga enseguida: la prueba no debe ejecutar nada a las 4:30.
+      await pedir("/api/granjas/horarios", admin, {
+        method: "POST",
+        body: JSON.stringify({ granjaId: diaria.granja.id, horario: { activa: false, hora: "04:30", dias: [1], despuesDe: null } }),
+      });
+      assert.equal((await pedir("/api/granjas/horarios")).status, 401);
+      assert.deepEqual((await (await pedir("/api/granjas/posts", admin)).json()).posts, []);
       const creada = await pedir("/api/granjas", admin, {
         method: "POST",
         body: JSON.stringify({ accion: "receta", clave: "evento_verificado" }),
@@ -211,6 +235,8 @@ test(
         "/api/granjas/especialistas",
         "/api/granjas/eventos",
         "/api/granjas/eventos/exportar",
+        "/api/granjas/horarios",
+        "/api/granjas/posts",
       ])
         assert.equal((await pedir(ruta, cliente)).status, 403, ruta);
       assert.equal(

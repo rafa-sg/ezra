@@ -31,6 +31,26 @@
 - [x] «Enviar a Spotmi» con la RPC y clave de idempotencia guardada antes de llamar; consulta de estado. Editar se bloquea si hay un envío sin confirmar.
 - [x] Verificación: check 98/98, build en `.next-verificar`, integración 7/7.
 
+
+### Fase 3 · Post para Instagram y horario — HECHO (LaunchAgent sin instalar)
+- [x] Receta «Post para Instagram»: Redactor (Gemini, valida 2.200 caracteres, fecha, lugar, «Más info en spotmi», 5–10 hashtags, sin hora ni precio sin confirmar; dos intentos y luego plantilla sin IA) → Diseñador sin IA (next/og, PNG 1080×1350, azul `#002f4b`, ícono oficial de Spotmi; fondo solo con permiso registrado). Tabla `posts_ig` (migración 5).
+- [x] Eventos › Posts de Instagram: Descargar imagen, Copiar texto, editar texto, Rehacer imagen y Marcar como subido a IG (pide el enlace).
+- [x] Horario por granja (tabla `horarios`): activa, hora, días, máximo por día, cuenta de destino, encadenado. Reloj de 1 minuto en el trabajador; tarea perdida una vez; nunca dos veces el mismo día; pausa por presupuesto con motivo y reanudación.
+- [x] LaunchAgent: `ops/macos/com.spotmi.ezra.trabajador.plist` + `scripts/trabajador-instalar.sh` / `trabajador-desinstalar.sh` (validados con `plutil`, no instalados).
+- [x] Calendario muestra los eventos aprobados por día.
+- [x] Datos reales: creadas «Eventos de El Salvador» y «Post para Instagram» sin horario activo (`scripts/granjas-crear-diarias.ts`).
+- [x] Verificación: check 103/103, build en `.next-verificar`, integración 7/7, navegador aislado a 1440 y 390 px sin desborde en Granjas, Eventos, Posts, Consumo y Calendario.
+
+### Te toca (propietario)
+- [ ] Supabase: correr `work/supabase-probar-sin-aplicar.sql` en el SQL Editor (debe terminar en «PRUEBAS TERMINADAS»), luego `work/supabase-aplicar.sql`, luego `pnpm exec supabase login` y `pnpm exec supabase migration repair --status applied 20261103 20261117 --linked` en spotmi-web.
+- [ ] Crear la cuenta editorial (Authentication → Users), habilitarla con `work/supabase-habilitar-editorial.sql` y poner `SPOTMI_EDITORIAL_EMAIL` y `SPOTMI_EDITORIAL_PASSWORD` en `.env.local`. Reiniciar `npm run dev` y pulsar Conexiones → Spotmi web → Conectar.
+- [ ] `.env.local`: `EZRA_PRODUCCION_IA=1` (y `GEMINI_MODEL` si no quieres `gemini-3.5-flash-lite`).
+- [ ] Consumo: escribir presupuesto diario y mensual y las tarifas de tu plan.
+- [ ] Granjas: agregar dominios de ticketeras y recintos en «Eventos de El Salvador»; programar 04:30 y «Post para Instagram» después de ella.
+- [ ] Opcional: `bash scripts/trabajador-instalar.sh` y `sudo pmset repeat wakeorpoweron MTWRFSU 04:25:00`.
+- [ ] Prueba real: `scripts/eventos-prueba-real.ts` (ver `docs/GRANJAS_CAPACIDADES.md`).
+- [ ] Pendiente técnico: el publicador genérico de piezas no guarda el token renovado de Spotmi (la bandeja sí).
+
 ## 2026-10-27 · Granjas Spotmi — HECHO (salvo lo externo)
 
 - [x] Granjas con lienzo, recetas, cola durable, personajes ligados al estado real, vista previa, autorización y recibos (ver `docs/ESTUDIO_SPOTMI.md` › Granjas, con la tabla de capacidades).

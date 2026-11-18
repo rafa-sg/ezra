@@ -37,8 +37,12 @@ export function promptEspecial(nodo: Nodo, ejecucion: Ejecucion, ahora = new Dat
   };
 }
 
-/** Resultado de un especialista sin IA: un artefacto y el estado en que queda el paso. */
-export type ResultadoLocal = { tipo: Artefacto["tipo"]; contenido: string; detalle: string; bloqueado?: boolean; medioId?: string; medioSha?: string };
+/** Resultado de un especialista sin IA: sus artefactos y el estado en que queda el paso. */
+export type ResultadoLocal = {
+  artefactos: { tipo: Artefacto["tipo"]; contenido: string; medioId?: string; medioSha?: string }[];
+  detalle: string;
+  bloqueado?: boolean;
+};
 
 export async function verificarPaso(ejecucion: Ejecucion, entradas: Artefacto[], deps: DepsEspecialistas): Promise<ResultadoLocal> {
   const candidatos: Candidato[] = [];
@@ -50,8 +54,7 @@ export async function verificarPaso(ejecucion: Ejecucion, entradas: Artefacto[],
   }
   if (!candidatos.length)
     return {
-      tipo: "investigacion",
-      contenido: JSON.stringify({ revisados: 0, nuevos: [], duplicados: [], descartados: [], invalidos }, null, 2),
+      artefactos: [{ tipo: "investigacion", contenido: JSON.stringify({ revisados: 0, nuevos: [], duplicados: [], descartados: [], invalidos }, null, 2) }],
       detalle: "El cazador no entregó eventos en el formato esperado (JSON). Reintenta el cazador o pega un resultado manual.",
       bloqueado: true,
     };
@@ -59,8 +62,7 @@ export async function verificarPaso(ejecucion: Ejecucion, entradas: Artefacto[],
   const restantes = Math.max(0, limiteEventos(ejecucion) - eventosCreadosHoy(ejecucion.granjaId, ahora));
   if (!restantes)
     return {
-      tipo: "investigacion",
-      contenido: JSON.stringify({ revisados: 0, nuevos: [], limiteAlcanzado: true }, null, 2),
+      artefactos: [{ tipo: "investigacion", contenido: JSON.stringify({ revisados: 0, nuevos: [], limiteAlcanzado: true }, null, 2) }],
       detalle: "Ya se alcanzó el máximo de eventos nuevos de hoy. Sube el máximo en el horario o espera a mañana.",
     };
   const r = await verificarCandidatos(
@@ -82,5 +84,5 @@ export async function verificarPaso(ejecucion: Ejecucion, entradas: Artefacto[],
     r.descartados.length ? `${r.descartados.length} descartado(s)` : "",
     r.spotmi === "no_disponible" ? "Spotmi no respondió: duplicados revisados solo contra Ezra" : "",
   ].filter(Boolean);
-  return { tipo: "investigacion", contenido: JSON.stringify({ ...r, invalidos }, null, 2), detalle: `${partes.join(" · ")}.` };
+  return { artefactos: [{ tipo: "investigacion", contenido: JSON.stringify({ ...r, invalidos }, null, 2) }], detalle: `${partes.join(" · ")}.` };
 }

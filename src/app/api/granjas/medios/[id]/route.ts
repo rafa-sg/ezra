@@ -13,7 +13,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const bytes = await readFile(rutaMedio(medio));
     const rango = request.headers.get("range");
     const parte = rango ? byteRange(rango, bytes.length) : null;
+    // ?descargar=nombre: el navegador lo guarda como archivo (por ejemplo, el PNG de un post).
+    const descargar = new URL(request.url).searchParams.get("descargar");
+    const nombre = descargar ? `${descargar.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 80) || "archivo"}.${medio.archivo.split(".").pop()}` : null;
     const cabeceras = {
+      ...(nombre ? { "Content-Disposition": `attachment; filename="${nombre}"` } : {}),
       "Content-Type": medio.mime,
       "Accept-Ranges": "bytes",
       "Cache-Control": "private, no-store",

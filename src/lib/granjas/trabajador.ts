@@ -118,10 +118,31 @@ export function iniciarTrabajador() {
   };
   const reloj = setInterval(() => void ciclo(), 1500);
   reloj.unref?.();
+  // Horario: una revisión por minuto (y una al arrancar o despertar la Mac).
+  let revisando = false;
+  const horario = async () => {
+    if (revisando || !activo) return;
+    revisando = true;
+    try {
+      const { revisarHorarios } = await import("./horario");
+      for (const r of await revisarHorarios())
+        if (r.accion !== "pausada") console.log(`[horario] ${r.granjaId}: ${r.accion} ${r.detalle}`);
+    } catch (error) {
+      console.error("[horario]", error instanceof Error ? error.message : error);
+    } finally {
+      revisando = false;
+    }
+  };
+  const relojHorario = setInterval(() => void horario(), 60_000);
+  relojHorario.unref?.();
+  const primera = setTimeout(() => void horario(), 5_000);
+  primera.unref?.();
   globales.ezraTrabajador = {
     detener: () => {
       activo = false;
       clearInterval(reloj);
+      clearInterval(relojHorario);
+      clearTimeout(primera);
     },
   };
 }

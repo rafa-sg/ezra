@@ -1,4 +1,18 @@
-## Relevo vigente · Granjas Spotmi implementadas · 27 de octubre de 2026 (tarde)
+## Relevo vigente · Eventos de El Salvador e Instagram · 17 de noviembre de 2026
+
+Rama `feat/eventos-instagram` (desde `codex/ezra-actual-2026-11-04`), un commit por fase, sin push ni merge. El primer commit guarda tal cual el trabajo previo sin commit de la guía turística (Codex, 4 nov), porque la base real ya tenía su migración.
+
+- **Objetivo:** cada día, a la hora elegida, encontrar eventos de El Salvador, dejar cada evento nuevo como propuesta pendiente en Spotmi y un post de Instagram listo para subir a mano; medir tokens de Gemini con presupuesto; menú reducido.
+- **Menú:** Granjas · Eventos · Consumo · Calendario · Conexiones (`src/features/azra/produccion/estudio.tsx`). Secciones retiradas abren Granjas.
+- **Código nuevo:** `src/lib/ia/gemini.ts` (única salida a Gemini: presupuesto + registro), `src/lib/granjas/{consumo,ajustes,tiempo,especialistas,eventos,cazador,verificador,spotmi-propuestas,pasos-eventos,instagram,diseno,pasos-instagram,horario}.ts`, API `src/app/api/granjas/{consumo,especialistas,eventos,eventos/exportar,horarios,posts}`, UI `src/features/azra/granjas/{consumo,eventos,posts,horario}.tsx`. Migraciones SQLite 3 (consumo, ajustes), 4 (eventos), 5 (posts, horarios).
+- **Decisiones del propietario (17 nov):** ampliar el trigger de verificación solo con `verification_count` (el literal bloqueaba a moderación); ampliar la RPC con hora, municipio y categoría; Gemini por presupuesto de tokens y Astra/Claude con sus 30 intentos; imagen con `next/og`.
+- **spotmi-web (sin commit, rama `hero` de otros):** `20261103_propuestas_ezra.sql` ampliada, nueva `20261117_eventos_conteo_solo_equipo.sql` y su prueba. Nada aplicado. La CLI está vinculada al ref `bvmzrmvrdbfpkdhwazgv` pero sin sesión, y `20261102_plan_spotmi.sql` (de otra persona) también está pendiente: por eso no `db push`. SQL listo en `work/supabase-probar-sin-aplicar.sql`, `work/supabase-aplicar.sql`, `work/supabase-habilitar-editorial.sql`.
+- **Datos reales tocados (con el backend de la app):** 9 granjas archivadas (6 «Publicación de evento verificado» y 2 «Primera prueba»); creadas «Eventos de El Salvador» y «Post para Instagram» sin horario activo; base en versión 5 con copias en `data/granjas/respaldos/`. Ninguna llamada real a Gemini ni a Spotmi.
+- **Verificación final:** `npm run check` 103/103; build con `EZRA_DIST_DIR=.next-verificar`; integración 7/7; arnés `work/eventos-visual.mts` (no versionado) a 1440 y 390 px sin desborde. La prueba real no se corrió: falta la cuenta editorial (`GEMINI_API_KEY` sí existe; `EZRA_PRODUCCION_IA` no).
+- **Cuidado:** compilar reescribe `tsconfig.json` y `next-env.d.ts` (restaurar) y reinicia el `next dev` del puerto 3000, que al arrancar migra `data/granjas/granjas.sqlite`. Las pruebas que fijan `EZRA_DATA_DIR` en tiempo de ejecución dependen de no importar `granjas/db` de forma estática antes (ver incidente en DECISIONS).
+- **Pendientes del propietario y siguiente paso:** `docs/TASKS.md` › «Te toca». Guía de uso, horario, LaunchAgent y `pmset`: `docs/GRANJAS_CAPACIDADES.md`.
+
+## Relevo anterior · Granjas Spotmi implementadas · 27 de octubre de 2026 (tarde)
 
 Implementado por Claude Code y verificado: granjas en `src/lib/granjas/` (SQLite, cola y trabajador, adaptadores de Instagram, Facebook, TikTok y Spotmi web, vista previa, autorización y recibos), API en `src/app/api/granjas/**` (la respuesta OAuth vuelve a `src/app/conexiones/[canal]/callback`) e interfaz en `src/features/azra/granjas/` integrada en `estudio.tsx` (pestaña «Granjas» y tarjetas de Conexiones).
 

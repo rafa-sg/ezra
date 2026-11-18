@@ -43,7 +43,7 @@ import { SeccionGranjas } from "../granjas/granjas";
 import { ConexionesGranjas } from "../granjas/conexiones";
 import { ColocarEnGranja } from "../granjas/colocar";
 import { SeccionConsumo } from "../granjas/consumo";
-import { SeccionEventos } from "../granjas/eventos";
+import { AgendaEventos, SeccionEventos } from "../granjas/eventos";
 import "./estudio.css";
 
 const secciones = ["granjas", "eventos", "consumo", "calendario", "conexiones"] as const;
@@ -634,6 +634,8 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
               </div>
               <CalendarDays size={35} />
             </div>
+            <AgendaEventos g={g} locale={locale} />
+            <h2 className="eg-subtitulo eg-calendario-encargos">{g("cal_encargos")}</h2>
             <div className="ep-agenda">
               {encargos
                 .filter((e) => e.fechaPrevista)
