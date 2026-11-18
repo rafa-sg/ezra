@@ -9,7 +9,7 @@ import { ahoraIso, auditar, base, carpetaMedios, json } from "./db";
 import { sha256 } from "./huella";
 
 export type ProcedenciaMedio = {
-  origen: "subida" | "render";
+  origen: "subida" | "render" | "fuente";
   nota: string;
   fuentes?: string[];
   herramienta?: string;
@@ -210,6 +210,22 @@ export async function renderizarVertical(medios: Medio[], segundosPorImagen: num
       licencia: [...new Set(medios.map((m) => m.licencia).filter(Boolean))].join(" · ").slice(0, 1000),
       generado: medios.some((m) => m.generado),
     });
+  } finally {
+    await rm(carpeta, { recursive: true, force: true });
+  }
+}
+
+/** WebP → PNG para la plantilla del post (su renderizador solo acepta PNG y JPG). Sin ffmpeg, null. */
+export async function convertirAPng(bytes: Buffer): Promise<Buffer | null> {
+  const { ffmpeg } = await herramientasVideo();
+  if (!ffmpeg) return null;
+  const carpeta = await mkdtemp(path.join(tmpdir(), "ezra-png-"));
+  try {
+    await writeFile(path.join(carpeta, "entrada.webp"), bytes);
+    await ejecutar(ffmpeg, ["-v", "error", "-y", "-i", path.join(carpeta, "entrada.webp"), "-frames:v", "1", path.join(carpeta, "salida.png")], 60_000);
+    return await readFile(path.join(carpeta, "salida.png"));
+  } catch {
+    return null;
   } finally {
     await rm(carpeta, { recursive: true, force: true });
   }

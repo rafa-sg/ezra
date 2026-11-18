@@ -328,6 +328,13 @@ const migraciones: string[] = [
     actualizado text not null
   );
   `,
+  // 6 · Eventos de varios días (fecha_fin) e imagen de la fuente pendiente de confirmar.
+  // Una imagen guardada antes con permiso escrito por el propietario ya estaba confirmada.
+  `
+  alter table eventos add column fecha_fin text;
+  alter table eventos add column imagen_confirmada integer not null default 0;
+  update eventos set imagen_confirmada = 1 where imagen_medio_id is not null and imagen_permiso <> '';
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

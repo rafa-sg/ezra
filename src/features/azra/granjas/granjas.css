@@ -1399,3 +1399,31 @@
   white-space: normal;
   max-width: 280px;
 }
+
+/* ── Imagen oficial del evento ── */
+.azra .eg-evento-imagen {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.azra .eg-evento-imagen img {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #002f4b;
+}
+.azra .eg-evento-imagen > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.azra .eg-pill-pendiente {
+  color: #fbe8b8;
+  background: #3b3420;
+  border-color: #a8873e;
+}

@@ -2,7 +2,9 @@ import { WorkflowError } from "../workflow";
 import type { Respuesta } from "./fuentes";
 import { dominioPermitido, leerPaginaVerificable } from "./fuentes";
 import { esRedireccionBusqueda, resolverRedireccion, type Candidato } from "./cazador";
+import { buscarImagenEvento, permisoPendiente } from "./imagenes";
 import {
+  ponerImagenFuente,
   buscarDuplicado,
   categoriaNormalizada,
   crearEvento,
@@ -106,11 +108,12 @@ export type DepsVerificador = {
 };
 export type ResultadoVerificacion = {
   revisados: number;
-  nuevos: { id: string; titulo: string; porConfirmar: string[] }[];
+  nuevos: { id: string; titulo: string; porConfirmar: string[]; imagen: boolean }[];
   duplicados: { titulo: string; de: string }[];
   descartados: { titulo: string; motivo: string }[];
   spotmi: "consultado" | "no_disponible";
   limite: number;
+  conImagen: number;
 };
 export async function verificarCandidatos(
   candidatos: Candidato[],
@@ -125,7 +128,7 @@ export async function verificarCandidatos(
   },
   deps: DepsVerificador = {},
 ): Promise<ResultadoVerificacion> {
-  const resultado: ResultadoVerificacion = { revisados: 0, nuevos: [], duplicados: [], descartados: [], spotmi: "consultado", limite: contexto.restantes };
+  const resultado: ResultadoVerificacion = { revisados: 0, nuevos: [], duplicados: [], descartados: [], spotmi: "consultado", limite: contexto.restantes, conImagen: 0 };
   let spotmi: Referencia[] = [];
   try {
     spotmi = deps.catalogoSpotmi ? await deps.catalogoSpotmi() : [];
@@ -182,8 +185,13 @@ export async function verificarCandidatos(
     }
     const fecha = pagina && fechaSugerida && fechaEnTexto(pagina.texto, fechaSugerida, pagina.html) ? fechaSugerida : null;
     const fechaVentana = fecha ?? fechaSugerida;
-    if (fechaVentana && fechaVentana < contexto.hoy) {
-      descartar(fecha ? "El evento ya pasó." : "Según el cazador ya pasó (sin confirmar).");
+    // Eventos de varios días: el último día también se confirma en la fuente.
+    const finSugerido = c.fecha_fin && diaValido(c.fecha_fin.slice(0, 10)) && (!fechaSugerida || c.fecha_fin.slice(0, 10) >= fechaSugerida) ? c.fecha_fin.slice(0, 10) : null;
+    const fechaFin = pagina && finSugerido && fechaEnTexto(pagina.texto, finSugerido, pagina.html) ? finSugerido : null;
+    const ultimoDia = fechaFin ?? finSugerido ?? fechaVentana;
+    // Ya pasó solo si terminó: unas fiestas del 16 al 25 siguen vigentes el 18.
+    if (ultimoDia && ultimoDia < contexto.hoy) {
+      descartar(fecha || fechaFin ? "El evento ya pasó." : "Según el cazador ya pasó (sin confirmar).");
       continue;
     }
     if (fechaVentana && fechaVentana > hasta) {
@@ -205,15 +213,18 @@ export async function verificarCandidatos(
     }
     const sugerencias: Evento["sugerencias"] = {};
     if (fechaSugerida && !fecha) sugerencias.fecha = fechaSugerida;
+    if (finSugerido && !fechaFin) sugerencias.fechaFin = finSugerido;
     if (horaSugerida && !hora) sugerencias.hora = horaSugerida;
     if (c.precio && !precio) sugerencias.precio = recortar(c.precio, 120);
     const confirmadoEn: Evento["confirmadoEn"] = {};
     if (fecha) confirmadoEn.fecha = pagina!.url;
+    if (fechaFin) confirmadoEn.fechaFin = pagina!.url;
     if (hora) confirmadoEn.hora = pagina!.url;
     if (precio) confirmadoEn.precio = pagina!.url;
     const evento = crearEvento({
       titulo,
       fecha,
+      fechaFin,
       hora,
       lugar: recortar(c.lugar ?? "", 200),
       municipio: recortar(c.municipio ?? "", 120),
@@ -226,12 +237,26 @@ export async function verificarCandidatos(
       sugerencias,
       descripcion: recortar(c.descripcion ?? "", 300),
       imagenUrl: pagina ? imagenDe(pagina.html) : null,
-      notaVerificacion: nota,
+      notaVerificacion: [nota, recortar(c.nota_verificacion ?? "", 400)].filter(Boolean).join(" "),
       granjaId: contexto.granjaId,
       ejecucionId: contexto.ejecucionId,
     });
     referencias.push({ titulo: evento.titulo, fecha: evento.fecha ?? fechaSugerida, origen: "esta búsqueda" });
-    resultado.nuevos.push({ id: evento.id, titulo: evento.titulo, porConfirmar: (["fecha", "hora", "precio"] as const).filter((k) => !evento[k]) });
+    // 4. Imagen oficial: de la fuente y, si no hay, de la página de boletos. Queda pendiente de tu confirmación.
+    const imagen = await buscarImagenEvento(
+      { titulo: evento.titulo, fuenteUrl: evento.fuenteUrl, boletosUrl: evento.boletosUrl },
+      { descargar: deps.descargar, htmlFuente: pagina ? { url: pagina.url, html: pagina.html } : null },
+    ).catch(() => ({ medio: null, motivo: "error" }) as const);
+    if (imagen.medio) {
+      ponerImagenFuente(evento.id, imagen.medio.id, imagen.url, permisoPendiente(imagen.dominio));
+      resultado.conImagen++;
+    }
+    resultado.nuevos.push({
+      id: evento.id,
+      titulo: evento.titulo,
+      porConfirmar: (["fecha", "hora", "precio"] as const).filter((k) => !evento[k]),
+      imagen: Boolean(imagen.medio),
+    });
   }
   return resultado;
 }

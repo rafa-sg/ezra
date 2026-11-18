@@ -1,7 +1,7 @@
 import type { Artefacto } from "./almacen";
 import type { Ejecucion } from "./ejecucion";
 import { leerEvento } from "./eventos";
-import { leerBytesMedio, leerMedio, guardarMedio } from "./medios";
+import { convertirAPng, leerBytesMedio, leerMedio, guardarMedio } from "./medios";
 import {
   crearPost,
   eventosParaPost,
@@ -75,15 +75,20 @@ export async function redactarPaso(ejecucion: Ejecucion, generar: GenerarTexto |
   };
 }
 
-/** Datos de la plantilla: solo fecha y hora confirmadas; fondo solo con permiso registrado. */
+/** Datos de la plantilla: solo fecha y hora confirmadas; fondo solo si confirmaste el permiso de la imagen. */
 export async function datosDePost(post: PostIG) {
   const e = leerEvento(post.eventoId);
   if (!e.fecha) throw new Error("El evento perdió su fecha confirmada.");
   const p = partesFecha(e.fecha);
   let fondo: { bytes: Buffer; mime: string } | null = null;
-  if (e.imagenMedioId && e.imagenPermiso.trim()) {
+  if (e.imagenMedioId && e.imagenConfirmada) {
     const medio = leerMedio(e.imagenMedioId);
-    fondo = { bytes: await leerBytesMedio(medio), mime: medio.mime };
+    const bytes = await leerBytesMedio(medio);
+    if (medio.mime === "image/webp") {
+      // La plantilla acepta PNG y JPG: WebP se convierte en local (sin ffmpeg, fondo azul).
+      const png = await convertirAPng(bytes);
+      fondo = png ? { bytes: png, mime: "image/png" } : null;
+    } else fondo = { bytes, mime: medio.mime };
   }
   return {
     evento: e,

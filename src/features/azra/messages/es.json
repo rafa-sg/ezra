@@ -1080,5 +1080,16 @@
   "g_receta_facebook_post_ayuda": "Flujo general de publicación con revisión para una Página de Facebook.",
   "g_c_origen_prueba": "Prueba de conexión",
   "g_usarBusqueda": "Usar búsqueda de Google",
-  "g_usarBusquedaAyuda": "Necesita un plan de Gemini con la búsqueda de Google (facturación activa en AI Studio). Sin búsqueda, el paso trabaja solo con el texto de sus Fuentes. Si la búsqueda falla por cuota (429), se reintenta una vez sin ella cuando el paso tiene Fuentes."
+  "g_usarBusquedaAyuda": "Necesita un plan de Gemini con la búsqueda de Google (facturación activa en AI Studio). Sin búsqueda, el paso trabaja solo con el texto de sus Fuentes. Si la búsqueda falla por cuota (429), se reintenta una vez sin ella cuando el paso tiene Fuentes.",
+  "g_ev_usarImagenFuente": "Usar imagen de la fuente",
+  "g_ev_cambiarImagen": "Cambiar imagen",
+  "g_ev_buscarImagen": "Buscar imagen",
+  "g_ev_imagenEstadoPendiente": "Imagen pendiente de tu confirmación",
+  "g_ev_imagenEstadoConfirmada": "Imagen confirmada",
+  "g_ev_imagenPendienteAyuda": "Mientras no la confirmes, el post de Instagram usa el fondo azul de Spotmi.",
+  "g_ev_imagenConfirmadaAyuda": "El post de Instagram la usará de fondo.",
+  "g_ev_imagenConfirmadaOk": "Imagen confirmada.",
+  "g_ev_imagenEncontrada": "Imagen encontrada en la fuente: revísala y confírmala.",
+  "g_ev_al": "al",
+  "g_ev_fechaFin": "Último día (si dura varios días)"
 }

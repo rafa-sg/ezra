@@ -11,8 +11,12 @@ import {
   fichaTexto,
   listarEventos,
   categoriasEvento,
+  confirmarImagen,
   departamentos,
+  leerEvento,
+  ponerImagenFuente,
 } from "@/lib/granjas/eventos";
+import { buscarImagenEvento, permisoPendiente } from "@/lib/granjas/imagenes";
 import { actualizarPropuestasPendientes, consultarEstadoSpotmi, enviarEventoASpotmi, spotmiPuedeProponer } from "@/lib/granjas/spotmi-propuestas";
 import { descargarSegura } from "@/lib/granjas/fuentes";
 import { guardarMedio } from "@/lib/granjas/medios";
@@ -34,6 +38,8 @@ const accion = z.discriminatedUnion("accion", [
     medioId: id.nullable().optional(),
     permiso: z.string().trim().max(500),
   }),
+  z.object({ accion: z.literal("confirmar_imagen"), id, revision }),
+  z.object({ accion: z.literal("buscar_imagen"), id }),
   z.object({ accion: z.literal("enviar_spotmi"), id }),
   z.object({ accion: z.literal("consultar_spotmi"), id: id.optional() }),
 ]);
@@ -84,6 +90,14 @@ export async function POST(request: Request) {
       });
       if (!medio.mime.startsWith("image/")) throw new WorkflowError("El enlace no es una imagen PNG, JPG o WebP.", 422);
       return Response.json({ evento: autorizarImagen(a.id, a.revision, medio.id, a.permiso) });
+    }
+    if (a.accion === "confirmar_imagen") return Response.json({ evento: confirmarImagen(a.id, a.revision) });
+    if (a.accion === "buscar_imagen") {
+      const e = leerEvento(a.id);
+      if (e.imagenMedioId) throw new WorkflowError("Este evento ya tiene imagen. Usa «Cambiar imagen» para reemplazarla.", 409);
+      const r = await buscarImagenEvento({ titulo: e.titulo, fuenteUrl: e.fuenteUrl, boletosUrl: e.boletosUrl });
+      if (!r.medio) throw new WorkflowError(`No se encontró una imagen válida en la fuente: ${r.motivo}`, 422);
+      return Response.json({ evento: ponerImagenFuente(e.id, r.medio.id, r.url, permisoPendiente(r.dominio)) });
     }
     if (a.accion === "enviar_spotmi") return Response.json({ evento: await enviarEventoASpotmi(a.id) });
     if (a.id) return Response.json({ evento: await consultarEstadoSpotmi(a.id) });

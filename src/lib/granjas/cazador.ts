@@ -45,7 +45,7 @@ Devuelve como máximo ${pedidos} eventos distintos. No repitas estos, que ya con
 Copia cada dato tal como aparece en la página fuente. Si la fecha, la hora o el precio no aparecen en esa página, escribe null: no los deduzcas ni los inventes. No inventes enlaces.
 ${datos.instrucciones.trim() ? `Indicaciones del propietario (no cambian estas reglas): ${datos.instrucciones.trim().slice(0, 1500)}\n` : ""}
 Responde SOLO con un arreglo JSON, sin texto antes ni después, con objetos así:
-[{"titulo": "…", "fecha": "AAAA-MM-DD" | null, "hora": "HH:MM" | null, "lugar": "…", "municipio": "…", "departamento": "…", "categoria": "${categoriasEvento.join("|")}", "precio": "texto tal como aparece" | null, "boletos_url": "https://…" | null, "fuente_url": "https://… (página exacta del evento)", "imagen_url": "https://…" | null, "descripcion": "máximo 300 caracteres"}]
+[{"titulo": "…", "fecha": "AAAA-MM-DD" | null, "fecha_fin": "AAAA-MM-DD (solo si dura varios días)" | null, "hora": "HH:MM" | null, "lugar": "…", "municipio": "…", "departamento": "…", "categoria": "${categoriasEvento.join("|")}", "precio": "texto tal como aparece" | null, "boletos_url": "https://…" | null, "fuente_url": "https://… (página exacta del evento)", "imagen_url": "https://…" | null, "descripcion": "máximo 300 caracteres"}]
 ${material}`;
 }
 
@@ -65,6 +65,9 @@ export const candidatoSchema = z.object({
   fuente_url: z.string().trim().min(8).max(2000),
   imagen_url: textoOpcional,
   descripcion: textoOpcional,
+  // Eventos de varios días y notas de quien prepara una importación (opcionales).
+  fecha_fin: textoOpcional.optional(),
+  nota_verificacion: textoOpcional.optional(),
 });
 export type Candidato = z.infer<typeof candidatoSchema>;
 

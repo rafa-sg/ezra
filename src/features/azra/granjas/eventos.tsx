@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { Check, Copy, Download, ExternalLink, Image as Imagen, Pencil, RefreshCw, Send, X } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, Image as Imagen, Pencil, RefreshCw, Search, Send, X } from "lucide-react";
 import type { Evento, EstadoVisible } from "@/lib/granjas/eventos";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
@@ -19,6 +19,7 @@ const estados: EstadoVisible[] = ["nuevo", "aprobado", "descartado", "propuesto"
 type Formulario = {
   titulo: string;
   fecha: string;
+  fechaFin: string;
   hora: string;
   lugar: string;
   municipio: string;
@@ -32,6 +33,7 @@ type Formulario = {
 const aFormulario = (e: Evento): Formulario => ({
   titulo: e.titulo,
   fecha: e.fecha ?? "",
+  fechaFin: e.fechaFin ?? "",
   hora: e.hora ?? "",
   lugar: e.lugar,
   municipio: e.municipio,
@@ -215,7 +217,15 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
               <dl className="eg-evento-datos">
                 <div>
                   <dt>{g("ev_fecha")}</dt>
-                  <dd>{dato(e, "fecha", e.fecha)}</dd>
+                  <dd>
+                    {dato(e, "fecha", e.fecha)}
+                    {e.fechaFin && (
+                      <>
+                        {" "}
+                        {g("ev_al")} {diaCorto(e.fechaFin)}
+                      </>
+                    )}
+                  </dd>
                 </div>
                 <div>
                   <dt>{g("ev_hora")}</dt>
@@ -247,23 +257,21 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                     </a>
                   </dd>
                 </div>
-                <div>
-                  <dt>{g("ev_imagen")}</dt>
-                  <dd>
-                    {e.imagenMedioId ? (
-                      <>
-                        {g("ev_imagenAutorizada")} · <small className="ep-nota">{e.imagenPermiso}</small>
-                      </>
-                    ) : e.imagenUrl ? (
-                      <a href={e.imagenUrl} target="_blank" rel="noreferrer noopener">
-                        {g("ev_imagenSugerida")}
-                      </a>
-                    ) : (
-                      <small className="ep-nota">{g("ev_sinImagen")}</small>
-                    )}
-                  </dd>
-                </div>
               </dl>
+              <div className="eg-evento-imagen">
+                {e.imagenMedioId ? (
+                  <>
+                    <img src={`/api/granjas/medios/${e.imagenMedioId}`} alt={`${g("ev_imagen")}: ${e.titulo}`} loading="lazy" />
+                    <div>
+                      <span className={`ep-pill ${e.imagenConfirmada ? "" : "eg-pill-pendiente"}`}>{g(e.imagenConfirmada ? "ev_imagenEstadoConfirmada" : "ev_imagenEstadoPendiente")}</span>
+                      <small className="ep-nota">{e.imagenPermiso}</small>
+                      <small className="ep-nota">{g(e.imagenConfirmada ? "ev_imagenConfirmadaAyuda" : "ev_imagenPendienteAyuda")}</small>
+                    </div>
+                  </>
+                ) : (
+                  <small className="ep-nota">{g("ev_sinImagen")}</small>
+                )}
+              </div>
               {e.descripcion && <p className="eg-evento-descripcion">{e.descripcion}</p>}
               {e.spotmiPropuestaId && (
                 <p className="ep-nota">
@@ -309,9 +317,21 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   <Pencil size={15} />
                   {g("ev_editar")}
                 </button>
-                <button className="ep-boton" disabled={ocupado} onClick={() => setImagen({ evento: e, url: e.imagenUrl ?? "", permiso: e.imagenPermiso })}>
+                {e.imagenMedioId && !e.imagenConfirmada && (
+                  <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "confirmar_imagen", id: e.id, revision: e.revision }, g("ev_imagenConfirmadaOk"))}>
+                    <Check size={15} />
+                    {g("ev_usarImagenFuente")}
+                  </button>
+                )}
+                {!e.imagenMedioId && (
+                  <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "buscar_imagen", id: e.id }, g("ev_imagenEncontrada"))}>
+                    <Search size={15} />
+                    {g("ev_buscarImagen")}
+                  </button>
+                )}
+                <button className="ep-boton" disabled={ocupado} onClick={() => setImagen({ evento: e, url: e.imagenUrl ?? "", permiso: e.imagenConfirmada ? e.imagenPermiso : "" })}>
                   <Imagen size={15} />
-                  {g("ev_imagen")}
+                  {g("ev_cambiarImagen")}
                 </button>
                 <button className="ep-boton" onClick={() => void copiar(e)}>
                   <Copy size={15} />
@@ -362,6 +382,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   datos: {
                     ...f,
                     fecha: f.fecha || null,
+                    fechaFin: f.fechaFin || null,
                     hora: f.hora || null,
                     precio: f.precio.trim() || null,
                     boletosUrl: f.boletosUrl.trim() || null,
@@ -378,6 +399,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
               [
                 ["titulo", "ev_titulo", "text", 160],
                 ["fecha", "ev_fecha", "date", 10],
+                ["fechaFin", "ev_fechaFin", "date", 10],
                 ["hora", "ev_hora", "time", 5],
                 ["lugar", "ev_lugar", "text", 200],
                 ["municipio", "ev_municipio", "text", 120],

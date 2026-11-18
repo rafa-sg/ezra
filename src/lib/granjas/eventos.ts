@@ -129,6 +129,8 @@ export type Evento = {
   id: string;
   titulo: string;
   fecha: string | null;
+  /** Último día de un evento de varios días (fiestas patronales, villas navideñas). */
+  fechaFin: string | null;
   hora: string | null;
   lugar: string;
   municipio: string;
@@ -137,12 +139,14 @@ export type Evento = {
   precio: string | null;
   boletosUrl: string | null;
   fuenteUrl: string;
-  confirmadoEn: Partial<Record<"fecha" | "hora" | "precio", string>>;
-  sugerencias: Partial<Record<"fecha" | "hora" | "precio", string>>;
+  confirmadoEn: Partial<Record<"fecha" | "fechaFin" | "hora" | "precio", string>>;
+  sugerencias: Partial<Record<"fecha" | "fechaFin" | "hora" | "precio", string>>;
   descripcion: string;
   imagenUrl: string | null;
   imagenMedioId: string | null;
   imagenPermiso: string;
+  /** El post solo usa la imagen cuando el propietario la confirmó. */
+  imagenConfirmada: boolean;
   estado: (typeof estadosEvento)[number];
   motivoDescarte: string;
   spotmiEstado: "propuesto" | "aceptado" | "descartado" | "duplicado" | null;
@@ -172,6 +176,7 @@ function aEvento(f: Fila): Evento {
     id: String(f.id),
     titulo: String(f.titulo),
     fecha: s(f.fecha),
+    fechaFin: s(f.fecha_fin),
     hora: s(f.hora),
     lugar: String(f.lugar ?? ""),
     municipio: String(f.municipio ?? ""),
@@ -186,6 +191,7 @@ function aEvento(f: Fila): Evento {
     imagenUrl: s(f.imagen_url),
     imagenMedioId: s(f.imagen_medio_id),
     imagenPermiso: String(f.imagen_permiso ?? ""),
+    imagenConfirmada: Boolean(f.imagen_confirmada) && Boolean(f.imagen_medio_id),
     estado: f.estado as Evento["estado"],
     motivoDescarte: String(f.motivo_descarte ?? ""),
     spotmiEstado: s(f.spotmi_estado) as Evento["spotmiEstado"],
@@ -213,7 +219,7 @@ export function listarEventos(filtro: { estado?: EstadoVisible | null; desde?: s
   return filas.filter(
     (e) =>
       (!filtro.estado || e.estadoVisible === filtro.estado) &&
-      (!filtro.desde || (e.fecha !== null && e.fecha >= filtro.desde)) &&
+      (!filtro.desde || (e.fecha !== null && (e.fechaFin ?? e.fecha) >= filtro.desde)) &&
       (!filtro.hasta || (e.fecha !== null && e.fecha <= filtro.hasta)) &&
       (!filtro.creadoEl || diaLocal(new Date(e.creado)) === filtro.creadoEl),
   );
@@ -249,20 +255,23 @@ export type NuevoEvento = Omit<
   | "estadoVisible"
   | "imagenMedioId"
   | "imagenPermiso"
->;
+  | "imagenConfirmada"
+  | "fechaFin"
+> & { fechaFin?: string | null };
 export function crearEvento(datos: NuevoEvento): Evento {
   const id = crypto.randomUUID();
   const ahora = ahoraIso();
   base()
     .prepare(
-      `insert into eventos (id, titulo, fecha, hora, lugar, municipio, departamento, categoria, precio, boletos_url, fuente_url,
+      `insert into eventos (id, titulo, fecha, fecha_fin, hora, lugar, municipio, departamento, categoria, precio, boletos_url, fuente_url,
        confirmado_en, sugerencias, descripcion, imagen_url, estado, huella, nota_verificacion, granja_id, ejecucion_id, creado, actualizado)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nuevo', ?, ?, ?, ?, ?, ?)`,
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nuevo', ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
       datos.titulo,
       datos.fecha,
+      datos.fechaFin ?? null,
       datos.hora,
       datos.lugar,
       datos.municipio,
@@ -298,6 +307,7 @@ const urlHttps = z
 export const edicionEventoSchema = z.object({
   titulo: z.string().trim().min(3).max(160),
   fecha: z.string().refine(diaValido, "Fecha AAAA-MM-DD.").nullable(),
+  fechaFin: z.string().refine(diaValido, "Fecha AAAA-MM-DD.").nullable().default(null),
   hora: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora HH:MM.").nullable(),
   lugar: z.string().trim().max(200),
   municipio: z.string().trim().max(120),
@@ -354,7 +364,8 @@ export function editarEvento(id: string, revision: number, datos: unknown) {
       throw new WorkflowError("Hay un envío a Spotmi sin confirmar. Vuelve a pulsar «Enviar a Spotmi» antes de editar.", 409);
     const confirmadoEn = { ...e.confirmadoEn };
     // Un dato escrito a mano queda confirmado por el propietario, no por la fuente.
-    for (const campo of ["fecha", "hora", "precio"] as const) {
+    if (d.fechaFin && (!d.fecha || d.fechaFin < d.fecha)) throw new WorkflowError("La fecha final debe ser igual o posterior a la de inicio.", 422);
+    for (const campo of ["fecha", "fechaFin", "hora", "precio"] as const) {
       if (d[campo] !== e[campo]) {
         if (d[campo]) confirmadoEn[campo] = "propietario";
         else delete confirmadoEn[campo];
@@ -364,6 +375,7 @@ export function editarEvento(id: string, revision: number, datos: unknown) {
     return actualizar(id, {
       titulo: d.titulo,
       fecha: d.fecha,
+      fecha_fin: d.fechaFin,
       hora: d.hora,
       lugar: d.lugar,
       municipio: d.municipio,
@@ -385,7 +397,26 @@ export function autorizarImagen(id: string, revision: number, medioId: string | 
     exigir(e, revision);
     if (medioId && permiso.trim().length < 3) throw new WorkflowError("Anota de dónde viene el permiso para usar la imagen.", 422);
     auditar("evento.imagen", id, { medioId });
-    return actualizar(id, { imagen_medio_id: medioId, imagen_permiso: medioId ? permiso.trim().slice(0, 500) : "" });
+    // Una imagen que el propietario elige y cuyo permiso anota queda confirmada.
+    return actualizar(id, { imagen_medio_id: medioId, imagen_permiso: medioId ? permiso.trim().slice(0, 500) : "", imagen_confirmada: medioId ? 1 : 0 });
+  });
+}
+/** Imagen descargada de la fuente oficial: queda pendiente de la confirmación del propietario. */
+export function ponerImagenFuente(id: string, medioId: string, url: string, permiso: string) {
+  auditar("evento.imagen.fuente", id, { medioId });
+  return actualizar(id, { imagen_medio_id: medioId, imagen_url: url.slice(0, 1000), imagen_permiso: permiso.slice(0, 500), imagen_confirmada: 0 });
+}
+/** «Usar imagen de la fuente»: un clic del propietario confirma el permiso. Nunca es automático. */
+export function confirmarImagen(id: string, revision: number) {
+  return transaccion(() => {
+    const e = leerEvento(id);
+    exigir(e, revision);
+    if (!e.imagenMedioId) throw new WorkflowError("Este evento no tiene imagen que confirmar.", 409);
+    if (e.imagenConfirmada) return e;
+    const hoy = new Intl.DateTimeFormat("es-SV", { dateStyle: "medium", timeZone: "America/El_Salvador" }).format(new Date());
+    const permiso = e.imagenPermiso.replace(/ · pendiente de tu confirmación$/, "") + ` · confirmada por ti el ${hoy}`;
+    auditar("evento.imagen.confirmar", id, { medioId: e.imagenMedioId });
+    return actualizar(id, { imagen_confirmada: 1, imagen_permiso: permiso.slice(0, 500) });
   });
 }
 export function marcarSpotmi(id: string, cambios: { estado?: Evento["spotmiEstado"]; propuestaId?: string | null; clave?: string | null }) {
@@ -415,7 +446,7 @@ const porConfirmar = "por confirmar";
 export function fichaTexto(e: Evento) {
   return [
     e.titulo,
-    `Fecha: ${e.fecha ?? porConfirmar}`,
+    `Fecha: ${e.fecha ?? porConfirmar}${e.fechaFin ? ` al ${e.fechaFin}` : ""}`,
     `Hora: ${e.hora ?? porConfirmar}`,
     `Lugar: ${[e.lugar, e.municipio, e.departamento].filter(Boolean).join(", ") || porConfirmar}`,
     `Categoría: ${nombreCategoria(e.categoria)}`,
@@ -426,7 +457,7 @@ export function fichaTexto(e: Evento) {
     e.descripcion,
   ].join("\n");
 }
-const columnas = ["titulo", "fecha", "hora", "lugar", "municipio", "departamento", "categoria", "precio", "boletos", "fuente", "descripcion", "estado", "propuesta_spotmi"];
+const columnas = ["titulo", "fecha", "fecha_fin", "hora", "lugar", "municipio", "departamento", "categoria", "precio", "boletos", "fuente", "descripcion", "estado", "propuesta_spotmi"];
 const celda = (v: string | null) => {
   const t = v ?? "";
   // Evita que una hoja de cálculo interprete fórmulas.
@@ -435,7 +466,7 @@ const celda = (v: string | null) => {
 };
 export function eventosCsv(lista: Evento[]) {
   const filas = lista.map((e) =>
-    [e.titulo, e.fecha ?? porConfirmar, e.hora ?? porConfirmar, e.lugar, e.municipio, e.departamento, nombreCategoria(e.categoria), e.precio ?? porConfirmar, e.boletosUrl, e.fuenteUrl, e.descripcion, e.estadoVisible, e.spotmiPropuestaId]
+    [e.titulo, e.fecha ?? porConfirmar, e.fechaFin, e.hora ?? porConfirmar, e.lugar, e.municipio, e.departamento, nombreCategoria(e.categoria), e.precio ?? porConfirmar, e.boletosUrl, e.fuenteUrl, e.descripcion, e.estadoVisible, e.spotmiPropuestaId]
       .map(celda)
       .join(","),
   );
@@ -445,6 +476,7 @@ export function eventosJson(lista: Evento[]) {
   return lista.map((e) => ({
     titulo: e.titulo,
     fecha: e.fecha,
+    fechaFin: e.fechaFin,
     hora: e.hora,
     lugar: e.lugar,
     municipio: e.municipio,
