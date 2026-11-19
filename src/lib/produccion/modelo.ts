@@ -16,6 +16,7 @@ export const agentes = [
   "verificador",
   "redactor_ig",
   "disenador_post",
+  "imagen_evento",
 ] as const;
 export const canales = ["spotmi", "instagram", "tiktok", "facebook"] as const;
 export const proveedores = ["astra", "claude", "gemini"] as const;
@@ -220,6 +221,8 @@ const instrucciones: Record<Agente, string> = {
     "Contrasta cada evento con su fuente original: título, fecha, hora, lugar y precio. Marca como «por confirmar» todo dato que no aparezca en la fuente y señala duplicados con eventos ya conocidos. No inventes ni completes datos.",
   redactor_ig:
     "Redacta el texto de una publicación de Instagram para un evento: máximo 2.200 caracteres, con fecha, lugar, la línea «Más info en spotmi» y entre 5 y 10 hashtags. Usa solo datos confirmados en la fuente.",
+  imagen_evento:
+    "Para cada evento nuevo sin imagen oficial busca, en orden, el afiche oficial, la publicación de una cuenta oficial (API), una foto de prensa y, si está encendida y hay cupo, genera una imagen de referencia con IA sin texto, logos ni personas reconocibles. La referencia IA nunca es imagen oficial.",
   disenador_post:
     "Prepara la imagen 1080×1350 del post con la plantilla de Spotmi: día, mes, título, lugar y logo. Usa una fotografía de fondo solo si tiene permiso registrado.",
 };

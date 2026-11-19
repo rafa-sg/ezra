@@ -27,6 +27,8 @@ import { verificarCandidatos } from "@/lib/granjas/verificador";
 import { eventosPublicosSpotmi } from "@/lib/granjas/spotmi-publico";
 import { listarGranjas } from "@/lib/granjas/almacen";
 import { completarImagenEvento } from "@/lib/granjas/completar-imagenes";
+import { estadoImagenesIA, generarReferencia } from "@/lib/granjas/imagen-ia";
+import { promptImagenEvento, revisarPrompt } from "@/lib/granjas/prompt-imagen";
 import { importarEventos, MAX_IMPORTAR } from "@/lib/granjas/importar";
 import { actualizarPropuestasPendientes, consultarEstadoSpotmi, enviarEventoASpotmi, spotmiPuedeProponer } from "@/lib/granjas/spotmi-propuestas";
 import { descargarSegura, type MaterialFuente } from "@/lib/granjas/fuentes";
@@ -54,7 +56,10 @@ const accion = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("importar"), eventos: z.array(z.unknown()).min(1).max(MAX_IMPORTAR) }),
   z.object({ accion: z.literal("buscar_imagen"), id }),
   // «Completar imágenes»: la interfaz recorre los eventos sin imagen de a uno y muestra el progreso.
-  z.object({ accion: z.literal("completar_imagen"), id }),
+  z.object({ accion: z.literal("completar_imagen"), id, ia: z.boolean().default(false) }),
+  // Imagen de referencia IA: ver el prompt armado, revisar uno editado y generar o regenerar.
+  z.object({ accion: z.literal("referencia_prompt"), id, prompt: z.string().trim().max(2000).optional() }),
+  z.object({ accion: z.literal("generar_referencia"), id, prompt: z.string().trim().max(2000).optional(), forzar: z.boolean().default(false), regenerar: z.boolean().default(false) }),
   // «Pegar enlace»: un video o post (TikTok, Instagram…) con los datos escritos a mano. Ezra no abre ese enlace.
   z.object({ accion: z.literal("pegar_enlace"), datos: enlaceManualSchema }),
   z.object({ accion: z.literal("cuentas"), cuentas: cuentasSeguidasSchema }),
@@ -105,6 +110,7 @@ export async function GET(request: Request) {
         cuentas: leerCuentasSeguidas(),
         confianza: tablaConfianza(todos),
         lectura: estadoLecturaRedes(),
+        imagenesIA: await estadoImagenesIA(),
       },
       { headers: { "Cache-Control": "no-store" } },
     );
@@ -147,8 +153,24 @@ export async function POST(request: Request) {
       return Response.json({ evento: leerEvento(e.id) });
     }
     if (a.accion === "completar_imagen") {
-      const resultado = await completarImagenEvento(a.id, cacheLote());
+      const referenciaIA = a.ia
+        ? async (x: string) => {
+            const r = await generarReferencia(x);
+            return r.ok ? { ok: true as const, motivo: r.motivo } : { ok: false as const, motivo: r.motivo };
+          }
+        : null;
+      const resultado = await completarImagenEvento(a.id, { ...cacheLote(), referenciaIA });
       return Response.json({ resultado, evento: leerEvento(a.id) });
+    }
+    if (a.accion === "referencia_prompt") {
+      const e = leerEvento(a.id);
+      const base = promptImagenEvento(e);
+      return Response.json({ ...base, avisos: a.prompt ? revisarPrompt(a.prompt, e) : [] });
+    }
+    if (a.accion === "generar_referencia") {
+      const r = await generarReferencia(a.id, { prompt: a.prompt, forzar: a.forzar, regenerar: a.regenerar });
+      if (!r.ok) throw new WorkflowError(r.motivo, "facturacion" in r && r.facturacion ? 402 : 422);
+      return Response.json({ evento: leerEvento(a.id), resultado: r });
     }
     if (a.accion === "confianza_dominios") {
       guardarAjuste("confianza_dominios", confianzaDominiosSchema, a.dominios);

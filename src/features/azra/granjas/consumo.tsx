@@ -143,10 +143,12 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [limites, setLimites] = useState({ dia: "", mes: "" });
+  const [imagenesDia, setImagenesDia] = useState("15");
   const [tarifas, setTarifas] = useState<FilaTarifa[]>([]);
   const aplicar = useCallback((r: ResumenConsumo) => {
     setDatos(r);
     setLimites({ dia: r.presupuesto.tokensDia ? String(r.presupuesto.tokensDia) : "", mes: r.presupuesto.tokensMes ? String(r.presupuesto.tokensMes) : "" });
+    setImagenesDia(String(r.imagenesIA.porDia));
     setTarifas(aFilas(r.tarifas, r.modelos));
   }, []);
   const cargar = useCallback(async () => {
@@ -270,6 +272,23 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
             {g("guardar")}
           </button>
         </form>
+        <form
+          className="eg-formulario-linea"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void guardar({ accion: "imagenes_ia", porDia: Math.max(0, Math.min(200, Math.round(Number(imagenesDia) || 0))) });
+          }}
+        >
+          <label className="eg-campo">
+            {g("c_imagenesDia")} ({datos.imagenesIA.hoy} {g("c_imagenesHoy")})
+            <input type="number" min={0} max={200} step={1} inputMode="numeric" value={imagenesDia} onChange={(e) => setImagenesDia(e.target.value)} />
+          </label>
+          <button className="ep-boton ep-primario" disabled={ocupado}>
+            <Save size={15} />
+            {g("guardar")}
+          </button>
+        </form>
+        <p className="ep-nota">{g("c_imagenesAyuda")}</p>
       </section>
       <section className="eg-bloque">
         <div className="eg-bloque-cabecera">

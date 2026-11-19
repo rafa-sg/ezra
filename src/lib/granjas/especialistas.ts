@@ -7,7 +7,7 @@ import { guardarAjuste, leerAjuste } from "./ajustes";
  * borra nada: los pasos y encargos que ya lo usan siguen funcionando y se
  * puede volver a mostrar desde Granjas › Especialistas.
  */
-export const especialistasPorDefecto: Agente[] = ["cazador", "verificador", "redactor_ig", "disenador_post"];
+export const especialistasPorDefecto: Agente[] = ["cazador", "verificador", "imagen_evento", "redactor_ig", "disenador_post"];
 const esquema = z.object({
   visibles: z
     .array(z.enum(agentes))

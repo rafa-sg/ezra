@@ -4,6 +4,8 @@ import type { Nodo } from "./modelo";
 import { esRedireccionBusqueda, fuentesDeBusqueda, leerCandidatos, promptCazadorEventos, type Candidato } from "./cazador";
 import { candidatosDeRedes, type CandidatoRed, type ResumenRedes } from "./redes";
 import { costoLlamada, leerTarifas, type FilaConsumo } from "./consumo";
+import { completarImagenEvento, type GenerarReferencia, type ResultadoCompletar } from "./completar-imagenes";
+import { estadoImagenesIA, generarReferencia } from "./imagen-ia";
 import type { MaterialFuente } from "./fuentes";
 import { eventosCreadosHoy, referenciasLocales } from "./eventos";
 import { base, json } from "./db";
@@ -18,6 +20,8 @@ export type DepsEspecialistas = DepsVerificador & {
   ahora?: () => Date;
   /** Lectura de cuentas en redes (por defecto, las API oficiales de Meta con las «Cuentas a seguir»). */
   redes?: typeof candidatosDeRedes;
+  /** Imagen de referencia IA (las pruebas la simulan); por defecto Gemini con su límite diario. */
+  referenciaIA?: GenerarReferencia;
 };
 /** Ventana por defecto de la búsqueda diaria de eventos (de hoy a 60 días). */
 export const DIAS_ADELANTE = 60;
@@ -135,23 +139,73 @@ export async function verificarPaso(ejecucion: Ejecucion, entradas: Artefacto[],
   return { artefactos: [{ tipo: "investigacion", contenido: JSON.stringify({ ...r, invalidos, redes: redes.resumen }, null, 2) }], detalle: `${partes.join(" · ")}.` };
 }
 
+/**
+ * Paso «Imagen»: para los eventos nuevos que dejó el verificador aplica el orden afiche oficial ›
+ * post oficial (API) › foto de prensa › referencia IA (si está encendida y hay cupo) › cuadro azul.
+ */
+export async function imagenPaso(ejecucion: Ejecucion, entradas: Artefacto[], deps: DepsEspecialistas): Promise<ResultadoLocal> {
+  const ids = [
+    ...new Set(
+      entradas
+        .filter((a) => a.tipo === "investigacion")
+        .flatMap((a) => json<{ nuevos?: { id?: string }[] }>(a.contenido, {}).nuevos ?? [])
+        .map((n) => n.id)
+        .filter((x): x is string => typeof x === "string"),
+    ),
+  ];
+  const estado = await estadoImagenesIA();
+  let iaDisponible = estado.activa;
+  const generar: GenerarReferencia =
+    deps.referenciaIA ??
+    (async (id) => {
+      const r = await generarReferencia(id, { contexto: { granjaId: ejecucion.granjaId, ejecucionId: ejecucion.id } });
+      // Sin facturación o sin cupo no tiene sentido seguir pidiendo imágenes en esta ejecución.
+      if (!r.ok && (("facturacion" in r && r.facturacion) || /límite|cupo/.test(r.motivo))) iaDisponible = false;
+      return r.ok ? { ok: true, motivo: r.motivo } : { ok: false, motivo: r.motivo };
+    });
+  const resultados: ResultadoCompletar[] = [];
+  for (const id of ids) {
+    try {
+      resultados.push(await completarImagenEvento(id, { descargar: deps.descargar, referenciaIA: iaDisponible ? generar : null }));
+    } catch (error) {
+      resultados.push({ id, titulo: id, estado: "sin_imagen", motivo: error instanceof Error ? error.message.slice(0, 160) : "error" });
+    }
+  }
+  const cuenta = (...e: ResultadoCompletar["estado"][]) => resultados.filter((r) => e.includes(r.estado)).length;
+  const imagenes = { revisados: ids.length, afiche: cuenta("afiche", "ticketera"), red: cuenta("red"), prensa: cuenta("prensa"), ia: cuenta("ia"), sinImagen: cuenta("sin_imagen"), yaTenian: cuenta("ya_tenia") };
+  const partes = [
+    `${ids.length} evento(s) nuevo(s) revisado(s)`,
+    imagenes.afiche ? `${imagenes.afiche} afiche(s)` : "",
+    imagenes.red ? `${imagenes.red} de cuentas oficiales` : "",
+    imagenes.prensa ? `${imagenes.prensa} foto(s) de prensa` : "",
+    imagenes.ia ? `${imagenes.ia} referencia(s) IA` : "",
+    imagenes.sinImagen ? `${imagenes.sinImagen} sin imagen` : "",
+    !estado.activa ? `IA: ${estado.motivo}` : !iaDisponible ? "IA detenida en esta ejecución (sin facturación o sin cupo)" : "",
+  ].filter(Boolean);
+  return { artefactos: [{ tipo: "investigacion", contenido: JSON.stringify({ imagenes, detalle: resultados }, null, 2) }], detalle: `${partes.join(" · ")}.` };
+}
+
 /** Resumen de una ejecución de la granja de eventos: lo que dejó el verificador, los tokens y el costo estimado. */
 export function resumenEjecucionEventos(ejecucionId: string) {
   const filas = base()
-    .prepare("select contenido from artefactos where ejecucion_id = ? and tipo = 'investigacion' and procedencia like '%\"origen\":\"local\"%' order by creado desc limit 1")
+    .prepare("select contenido from artefactos where ejecucion_id = ? and tipo = 'investigacion' and procedencia like '%\"origen\":\"local\"%' order by creado desc")
     .all(ejecucionId) as { contenido: string }[];
-  const v = json<{ nuevos?: unknown[]; duplicados?: { fuenteNueva?: boolean }[]; actualizados?: unknown[]; descartados?: unknown[]; conImagen?: number }>(filas[0]?.contenido, {});
+  const leidos = filas.map((f) => json<Record<string, unknown>>(f.contenido, {}));
+  // El verificador deja «nuevos»; el paso Imagen deja «imagenes».
+  const v = (leidos.find((x) => Array.isArray(x.nuevos)) ?? {}) as { nuevos?: unknown[]; duplicados?: { fuenteNueva?: boolean }[]; actualizados?: unknown[]; descartados?: unknown[]; conImagen?: number };
+  const img = (leidos.find((x) => x.imagenes) as { imagenes?: { afiche: number; red: number; prensa: number; ia: number } } | undefined)?.imagenes;
   const consumo = base().prepare("select * from consumo_ia where ejecucion_id = ?").all(ejecucionId) as FilaConsumo[];
   const tarifas = leerTarifas();
   const costos = consumo.map((f) => costoLlamada(f, tarifas));
   return {
-    verificado: filas.length > 0,
+    verificado: Array.isArray(v.nuevos),
     nuevos: v.nuevos?.length ?? 0,
     actualizados: v.actualizados?.length ?? 0,
     duplicados: v.duplicados?.length ?? 0,
     fuentesSumadas: v.duplicados?.filter((d) => d.fuenteNueva).length ?? 0,
     descartados: v.descartados?.length ?? 0,
-    conImagen: v.conImagen ?? 0,
+    conImagen: (v.conImagen ?? 0) + (img ? img.afiche + img.red + img.prensa : 0),
+    conImagenIA: img?.ia ?? 0,
     tokens: consumo.reduce((s, f) => s + Number(f.total_tokens), 0),
     llamadas: consumo.length,
     errores: consumo.filter((f) => f.error).length,

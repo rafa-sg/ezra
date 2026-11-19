@@ -9,7 +9,7 @@ import { ahoraIso, auditar, base, carpetaMedios, json } from "./db";
 import { sha256 } from "./huella";
 
 export type ProcedenciaMedio = {
-  origen: "subida" | "render" | "fuente";
+  origen: "subida" | "render" | "fuente" | "ia";
   nota: string;
   fuentes?: string[];
   herramienta?: string;

@@ -173,8 +173,14 @@ const depsGranja = (respuesta: string, paginas: Record<string, string>): Depende
     throw new Error("render no esperado");
   },
   usosLegado: async () => 0,
-  especialistas: { descargar: web(paginas), catalogoSpotmi: async () => [] },
+  // La referencia IA del paso Imagen nunca sale a la red en las pruebas.
+  especialistas: {
+    descargar: web(paginas),
+    catalogoSpotmi: async () => [],
+    referenciaIA: async (id: string) => (referenciasPedidas.push(id), { ok: false, motivo: "simulada" }),
+  },
 });
+const referenciasPedidas: string[] = [];
 async function vaciar(d: Dependencias) {
   for (let i = 0; i < 30; i++) if (!(await procesarUno("prueba", { dependencias: d, concurrencia: 2 }))) return;
 }
@@ -187,6 +193,7 @@ test("granja «Eventos de El Salvador»: cazador (Gemini simulado) → verificad
     [
       ["cazador", "gemini"],
       ["verificador", "local"],
+      ["imagen_evento", "local"],
     ],
   );
   const dias = [en(2), en(4), en(6)];
@@ -204,13 +211,14 @@ test("granja «Eventos de El Salvador»: cazador (Gemini simulado) → verificad
   await vaciar(depsGranja(`Aquí tienes:\n\`\`\`json\n${json}\n\`\`\``, paginas));
   const verif = granja.grafo.nodos.find((n) => n.agente === "verificador")!.id;
   const pasoVerif = (id: string) => ejecucion.pasosDe(id).find((p) => p.nodoId === verif)!;
-  assert.deepEqual(ejecucion.pasosDe(e.id).map((p) => p.estado), ["completado", "completado"]);
+  assert.deepEqual(ejecucion.pasosDe(e.id).map((p) => p.estado), ["completado", "completado", "completado"]);
   assert.equal(llamadasGemini.length, 1, "una sola llamada a la IA: el verificador no usa IA");
+  assert.equal(referenciasPedidas.length, 2, "el paso Imagen pide referencia IA para los 2 nuevos sin imagen oficial");
   assert.match(llamadasGemini[0], /^cazador\|Cazador de eventos\|8192\|# Spotmi · Cazador de eventos de El Salvador/);
   assert.equal(eventos.listarEventos().length, 2);
   assert.ok(eventos.listarEventos().every((x) => x.ejecucionId === e.id && x.estado === "nuevo" && x.fecha && x.departamento === "La Libertad"));
   const { resumenEjecucionEventos } = await import("../src/lib/granjas/pasos-eventos");
-  assert.deepEqual(resumenEjecucionEventos(e.id), { verificado: true, nuevos: 2, actualizados: 0, duplicados: 0, fuentesSumadas: 0, descartados: 0, conImagen: 0, tokens: 0, llamadas: 0, errores: 0, costo: 0 });
+  assert.deepEqual(resumenEjecucionEventos(e.id), { verificado: true, nuevos: 2, actualizados: 0, duplicados: 0, fuentesSumadas: 0, descartados: 0, conImagen: 0, conImagenIA: 0, tokens: 0, llamadas: 0, errores: 0, costo: 0 });
   // Una importación (sin ejecución) no cuenta para el máximo diario de la granja.
   const importado = eventos.crearEvento({ titulo: "Importado hoy", fecha: en(3), hora: null, lugar: "", municipio: "", departamento: "", categoria: "otro", precio: null, boletosUrl: null, fuenteUrl: "https://elsalvador.travel/x", confirmadoEn: {}, sugerencias: {}, descripcion: "", imagenUrl: null, notaVerificacion: "", granjaId: granja.id, ejecucionId: null });
   assert.equal(eventos.eventosCreadosHoy(granja.id), 2, "solo cuentan los de una ejecución");

@@ -941,7 +941,7 @@
   "g_c_actualizar": "Refresh",
   "g_fichasLeidas": "public listings read",
   "g_receta_eventos_el_salvador": "Events in El Salvador",
-  "g_receta_eventos_el_salvador_ayuda": "Hunter with Google Search or the listings (MITUR, Government, Smart Ticket) and a verifier without AI. Leaves events for the next 45 days in the Events inbox.",
+  "g_receta_eventos_el_salvador_ayuda": "Hunter with Google Search or the listings (MITUR, Government, Smart Ticket), verifier without AI and an Image step (poster, official post, press or AI reference with a daily limit). Leaves events for the next 60 days in the Events inbox.",
   "g_proveedorLocal": "No AI (local)",
   "g_origen_local": "Made without AI",
   "g_ev_todos": "All",
@@ -1205,5 +1205,13 @@
   "g_ev_img_ia": "AI references",
   "g_ev_img_estado_afiche": "poster from its official page",
   "g_ev_img_estado_prensa": "press photo",
-  "g_ev_img_estado_ia": "AI reference image"
+  "g_ev_img_estado_ia": "AI reference image",
+  "p_imagen_evento_titulo": "Image",
+  "p_imagen_evento_texto": "Official poster, official account post, press photo or AI reference for each new event.",
+  "p_imagen_evento_entrega": "Image for each new event (pending your confirmation)",
+  "g_agente_imagen_evento": "Image",
+  "g_c_imagenesDia": "AI images per day",
+  "g_c_imagenesHoy": "today",
+  "g_c_imagenesAyuda": "Daily limit of AI-generated reference images (0 = off). Each image also counts toward the token budget and shows up as “AI reference image”. Google has no free tier for images: billing is required.",
+  "g_origen_ia": "AI-generated"
 }

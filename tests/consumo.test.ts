@@ -131,9 +131,9 @@ test("costo: solo con tarifas que escribe el propietario; sin tarifa queda «sin
   assert.throws(() => consumo.guardarTarifas({ "modelo con espacios": { entrada: 1, salida: 1, busqueda: 1 } }));
 });
 
-test("especialistas: cuatro visibles por defecto; ocultar no borra y se pueden reactivar", () => {
+test("especialistas: cinco visibles por defecto (con el paso Imagen); ocultar no borra y se pueden reactivar", () => {
   vaciar();
-  assert.deepEqual(especialistas.especialistasVisibles(), ["cazador", "verificador", "redactor_ig", "disenador_post"]);
+  assert.deepEqual(especialistas.especialistasVisibles(), ["cazador", "verificador", "imagen_evento", "redactor_ig", "disenador_post"]);
   assert.deepEqual(especialistas.guardarEspecialistas(["guion", "cazador"]), ["cazador", "guion"], "orden del catálogo");
   assert.deepEqual(especialistas.especialistasVisibles(), ["cazador", "guion"]);
   assert.throws(() => especialistas.guardarEspecialistas([]));

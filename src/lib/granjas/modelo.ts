@@ -6,7 +6,7 @@ export const tiposArtefacto = ["investigacion", "guion", "texto", "imagen", "vid
 export const tiposNodo = ["agente", "medios", "render", "revision", "publicacion"] as const;
 export const proveedoresNodo = ["astra", "claude", "gemini", "manual", "local"] as const;
 /** Especialistas que trabajan sin IA, con código local (verificar, redactar con plantilla, diseñar). */
-export const agentesLocales: Agente[] = ["verificador", "redactor_ig", "disenador_post"];
+export const agentesLocales: Agente[] = ["verificador", "redactor_ig", "disenador_post", "imagen_evento"];
 export const formatos = ["publicacion", "carrusel", "video"] as const;
 export type TipoArtefacto = (typeof tiposArtefacto)[number];
 export type TipoNodo = (typeof tiposNodo)[number];
@@ -130,6 +130,7 @@ const salidasAgente: Record<Agente, TipoArtefacto> = {
   verificador: "investigacion",
   redactor_ig: "texto",
   disenador_post: "imagen",
+  imagen_evento: "investigacion",
 };
 const todos = [...tiposArtefacto];
 export function aceptaNodo(nodo: Nodo): TipoArtefacto[] {
@@ -281,6 +282,8 @@ export function faltantesNodo(nodo: Nodo, grafo: Grafo, contexto: { geminiHabili
       faltan.push("Este especialista no trabaja sin IA. Elige Gemini, Astra, Claude o trabajo manual.");
     if (nodo.proveedor === "local" && nodo.agente === "verificador" && !entradas.length)
       faltan.push("Conecta el cazador al verificador.");
+    if (nodo.proveedor === "local" && nodo.agente === "imagen_evento" && !entradas.length)
+      faltan.push("Conecta el verificador al paso Imagen.");
   }
   if (nodo.tipo === "medios" && !nodo.medios.length)
     faltan.push("Sube al menos una imagen o video propio o con permiso.");
@@ -457,8 +460,13 @@ recetas.unshift({
       fuentes: fuentesEventos,
     },
     { clave: "verif", tipo: "agente", agente: "verificador", titulo: "Verificador", proveedor: "local" },
+    // Imagen: afiche › post oficial › prensa › referencia IA (con su límite diario) para los eventos nuevos.
+    { clave: "imagen", tipo: "agente", agente: "imagen_evento", titulo: "Imagen", proveedor: "local" },
   ],
-  conexiones: [["caza", "verif"]],
+  conexiones: [
+    ["caza", "verif"],
+    ["verif", "imagen"],
+  ],
 });
 recetas.splice(1, 0, {
   clave: "post_instagram_eventos",

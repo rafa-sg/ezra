@@ -463,3 +463,112 @@ test("afiche desde el CDN de una fuente permitida (1238×556 → baja resolució
   // Un afiche no se reemplaza.
   assert.equal((await completar.completarImagenEvento(p.id, { descargar: ambos, dominios: ["smartticket.fun"] })).estado, "ya_tenia");
 });
+
+/* ── 19 nov · Imagen de referencia IA ── */
+test("promptImagenEvento: sin artistas ni marcas, deporte inferido, diciembre navideño, negativo siempre y el ejemplo de Quezaltepeque", async () => {
+  const { promptImagenEvento, NEGATIVO, VERSION_PLANTILLA, textoParaModelo } = await import("../src/lib/granjas/prompt-imagen");
+  const base = { lugar: "", municipio: "", departamento: "", fecha: "2026-11-28", hora: null, descripcion: "" };
+  // El ejemplo pedido, palabra por palabra.
+  const q = promptImagenEvento({ ...base, titulo: "Fiestas patronales de Quezaltepeque", categoria: "religioso", municipio: "Quezaltepeque", departamento: "La Libertad", fecha: "2026-12-10", descripcion: "carnaval, música, ruedas, desfiles y quema de toritos pintos" });
+  assert.equal(
+    q.prompt,
+    "Editorial photograph for an events listing in El Salvador. Scene: colonial church plaza decorated with papel picado, procession candles, fireworks in the sky. Setting: small Salvadoran town plaza at dusk. Time: evening. Mood: festive, family-friendly. Composition: vertical 4:5, main subject centered, empty space in the upper third, shallow depth of field. Style: realistic, natural colors, warm light, high quality, no frames. Details: carnival ferris wheel, colorful parade.",
+  );
+  assert.equal(q.negativo, NEGATIVO);
+  assert.equal(q.version, VERSION_PLANTILLA);
+  // Artista en el título y marca en la descripción: no aparecen; el género sí.
+  const artista = promptImagenEvento({ ...base, titulo: "Andrea Bocelli - Romanza World Tour", categoria: "musica", lugar: "Estadio Cuscatlán", descripcion: "Concierto de música clásica presentado por Pilsener y Tigo en el Estadio Cuscatlán" });
+  for (const nombre of [/bocelli/i, /andrea/i, /romanza/i, /pilsener/i, /tigo/i, /cuscatl/i]) assert.doesNotMatch(artista.prompt, nombre);
+  assert.match(artista.prompt, /live classical concert stage/);
+  // Deporte inferido del título.
+  assert.match(promptImagenEvento({ ...base, titulo: "Pro Tour nacional de surf", categoria: "deporte" }).prompt, /surf competition on Pacific waves/);
+  assert.match(promptImagenEvento({ ...base, titulo: "J22 C.D. Municipal Limeño vs Alianza F.C.", categoria: "deporte", hora: "19:00" }).prompt, /football pitch.*no recognizable athletes.*Time: night/);
+  assert.match(promptImagenEvento({ ...base, titulo: "Campeonato Panamericano de Softbol Femenino U18", categoria: "deporte" }).prompt, /softball diamond/);
+  // Diciembre activa la escena navideña (en eventos generales) y las palabras navideñas en cualquier mes.
+  assert.equal(promptImagenEvento({ ...base, titulo: "Feria del comercio", categoria: "feria", fecha: "2026-12-12" }).escena, "navidad");
+  assert.equal(promptImagenEvento({ ...base, titulo: "Villa Navideña Presidente Plaza", categoria: "otro", fecha: "2026-11-20" }).escena, "navidad");
+  assert.equal(promptImagenEvento({ ...base, titulo: "Feria del comercio", categoria: "feria", fecha: "2026-11-12" }).escena, "feria");
+  // Playa por el lugar. El negativo va siempre en lo que se envía al modelo.
+  assert.match(promptImagenEvento({ ...base, titulo: "Fiestas del Pescador", categoria: "feria", lugar: "Playa San Luis La Herradura" }).prompt, /volcanic black sand/);
+  for (const c of ["musica", "feria", "religioso", "cultura", "gastronomia", "deporte", "otro"]) {
+    const p = promptImagenEvento({ ...base, titulo: "Evento", categoria: c });
+    assert.equal(p.negativo, NEGATIVO);
+    assert.ok(textoParaModelo(p).endsWith(`Avoid: ${NEGATIVO}.`));
+  }
+});
+
+test("referencia IA (Gemini simulado): límite diario, control con un reintento, sin facturación, nunca oficial y el afiche la reemplaza", { skip: !hayFfmpeg }, async () => {
+  process.env.EZRA_PRODUCCION_IA = "1";
+  process.env.GEMINI_API_KEY = "clave-de-prueba";
+  const ia = await import("../src/lib/granjas/imagen-ia");
+  const consumo = await import("../src/lib/granjas/consumo");
+  const salida = path.join(process.env.EZRA_DATA_DIR!, "ia.png");
+  execFileSync(ffmpeg, ["-v", "error", "-y", "-f", "lavfi", "-i", "color=c=navy:s=928x1152", "-frames:v", "1", salida]);
+  const png = (await readFile(salida)).toString("base64");
+  let controles: { texto: boolean; logo: boolean; persona: boolean }[] = [];
+  let modo: "ok" | "sin_facturacion" = "ok";
+  const llamadas: string[] = [];
+  gemini.usarGeminiDePrueba(async (p) => {
+    const esImagen = Boolean((p.config as { responseModalities?: string[] })?.responseModalities?.includes("IMAGE"));
+    llamadas.push(esImagen ? `imagen:${p.model}` : `control:${p.model}`);
+    if (esImagen) {
+      if (modo === "sin_facturacion") throw Object.assign(new Error('{"error":{"code":429,"message":"Quota exceeded for metric: generate_content_free_tier_requests, limit: 0"}}'), { status: 429 });
+      assert.match(String(p.contents), /Avoid: no text, no letters/);
+      return { candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: png } }] } }], usageMetadata: { candidatesTokenCount: 1120, totalTokenCount: 1130 } } as never;
+    }
+    return { text: JSON.stringify(controles.shift() ?? { texto: false, logo: false, persona: false }), usageMetadata: { totalTokenCount: 300 } } as never;
+  });
+  const dia = tiempo.sumarDias(tiempo.diaLocal(), 14);
+  consumo.guardarLimiteImagenes(2);
+  const a = nuevo({ titulo: "Fiestas patronales de Texistepeque", categoria: "religioso", fecha: dia, fuenteUrl: "https://elsalvador.travel/esp/event/texis/" });
+  // 1. Primera imagen: el control encuentra texto → se regenera una vez y pasa.
+  controles = [{ texto: true, logo: false, persona: false }];
+  const r1 = await ia.generarReferencia(a.id);
+  assert.ok(r1.ok);
+  assert.equal(r1.ok && r1.intentos, 2);
+  let ev = eventos.leerEvento(a.id);
+  assert.equal(ev.imagenTipo, "ia");
+  assert.equal(ev.imagenConfirmada, false);
+  assert.equal(ev.imagenPermiso, "Imagen de referencia generada con IA (Gemini)");
+  assert.equal(ev.imagenes.at(-1)?.ia?.modelo, "gemini-3.1-flash-lite-image");
+  assert.match(ev.imagenes.at(-1)?.ia?.prompt ?? "", /^Editorial photograph/);
+  const { leerMedio } = await import("../src/lib/granjas/medios");
+  const medio = leerMedio(ev.imagenMedioId!);
+  assert.equal(medio.generado, true);
+  assert.deepEqual([medio.ancho, medio.alto], [1080, 1350], "escalada a 4:5 con ffmpeg");
+  // Nunca se confirma como oficial.
+  assert.throws(() => eventos.confirmarImagen(a.id, ev.revision), /no se confirma como oficial/);
+  assert.equal(consumo.imagenesIaHoy(), 2, "las dos generaciones cuentan para el límite diario");
+  // 2. Límite diario (2) alcanzado: no se llama a Gemini.
+  const b = nuevo({ titulo: "Concierto de rock en Santa Ana", categoria: "musica", fecha: dia, fuenteUrl: "https://elsalvador.travel/esp/event/rock/" });
+  const antes = llamadas.length;
+  const r2 = await ia.generarReferencia(b.id);
+  assert.equal(r2.ok, false);
+  assert.match(r2.motivo, /límite de 2 imágenes IA de hoy/);
+  assert.equal(llamadas.length, antes);
+  // 3. El control falla dos veces → cuadro azul (sin imagen) y motivo.
+  consumo.guardarLimiteImagenes(10);
+  controles = [{ texto: false, logo: true, persona: false }, { texto: false, logo: false, persona: true }];
+  const r3 = await ia.generarReferencia(b.id);
+  assert.equal(r3.ok, false);
+  assert.match(r3.motivo, /persona reconocible dos veces/);
+  assert.equal(eventos.leerEvento(b.id).imagenMedioId, null);
+  // 4. Sin facturación: aviso claro, guardado para la bandeja.
+  modo = "sin_facturacion";
+  const r4 = await ia.generarReferencia(b.id);
+  assert.equal(r4.ok, false);
+  assert.ok(!r4.ok && r4.facturacion);
+  assert.match((await ia.estadoImagenesIA()).aviso, /no tiene facturación/);
+  modo = "ok";
+  // 5. Prompt editado con un artista: se avisa y no se genera sin confirmar.
+  await assert.rejects(ia.generarReferencia(b.id, { prompt: "Rock concert by Molotov on stage" }), /Nombre propio posible: «Molotov»/);
+  // 6. Aparece el afiche oficial: reemplaza a la referencia IA, que queda en el historial.
+  const pagina = "https://www.smartticket.fun/es/event/texis";
+  eventos.agregarFuente(a.id, { url: pagina, via: "web", campos: ["titulo"] });
+  const sitios = web({ [pagina]: html(`<meta property="og:image" content="https://blobsmartticket.blob.core.windows.net/eventos/texis.jpg">`, "<h1>Fiestas patronales de Texistepeque</h1>"), "https://blobsmartticket.blob.core.windows.net/eventos/texis.jpg": cartel });
+  assert.equal((await completar.completarImagenEvento(a.id, { descargar: sitios, dominios: ["smartticket.fun", "elsalvador.travel"] })).estado, "afiche");
+  ev = eventos.leerEvento(a.id);
+  assert.equal(ev.imagenTipo, "afiche");
+  assert.deepEqual(ev.imagenes.map((i) => i.tipo), ["ia", "afiche"]);
+  gemini.usarGeminiDePrueba(undefined);
+});

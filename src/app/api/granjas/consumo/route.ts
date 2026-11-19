@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { administrador, cuerpo, errorApi } from "@/lib/granjas/api";
-import { guardarPresupuesto, guardarTarifas, presupuestoSchema, resumenConsumo, tarifasSchema } from "@/lib/granjas/consumo";
+import { guardarLimiteImagenes, guardarPresupuesto, guardarTarifas, limiteImagenesSchema, presupuestoSchema, resumenConsumo, tarifasSchema } from "@/lib/granjas/consumo";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const accion = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("presupuesto"), presupuesto: presupuestoSchema }),
   z.object({ accion: z.literal("tarifas"), tarifas: tarifasSchema }),
+  z.object({ accion: z.literal("imagenes_ia"), porDia: limiteImagenesSchema.shape.porDia }),
 ]);
 /** Consumo de Gemini: solo administración. Nunca devuelve prompts, respuestas ni claves. */
 export async function GET() {
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     await administrador();
     const a = await cuerpo(request, accion, 20_000);
     if (a.accion === "presupuesto") guardarPresupuesto(a.presupuesto);
+    else if (a.accion === "imagenes_ia") guardarLimiteImagenes(a.porDia);
     else guardarTarifas(a.tarifas);
     return Response.json(resumenConsumo());
   } catch (error) {

@@ -84,3 +84,31 @@ export async function llamarGemini<R extends RespuestaMinima = GenerateContentRe
     throw error;
   }
 }
+
+/* ── Imagen ── */
+/** Modelo de imagen (sin plan gratuito en Google: exige facturación activa en AI Studio). */
+export const modeloImagenGemini = () => process.env.GEMINI_IMAGE_MODEL?.trim() || "gemini-3.1-flash-lite-image";
+type ParteImagen = { inlineData?: { mimeType?: string; data?: string }; text?: string };
+/**
+ * Genera una imagen 4:5 con el modelo de imagen. Pasa por llamarGemini: presupuesto antes y
+ * registro en Consumo después (los tokens de imagen llegan en usageMetadata).
+ */
+export async function generarImagenGemini(contexto: ContextoGemini, prompt: string, opciones: { tiempoMs?: number } = {}) {
+  const r = await llamarGemini<RespuestaMinima & { candidates?: { content?: { parts?: ParteImagen[] } }[] }>(
+    contexto,
+    {
+      model: modeloImagenGemini(),
+      contents: prompt,
+      config: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "4:5" } } as GenerateContentParameters["config"],
+    },
+    { tiempoMs: opciones.tiempoMs ?? 90_000 },
+  );
+  const parte = (r.candidates?.[0]?.content?.parts ?? []).find((p) => p.inlineData?.data);
+  if (!parte?.inlineData?.data) throw new Error("El modelo no devolvió una imagen.");
+  return { bytes: Buffer.from(parte.inlineData.data, "base64"), mime: parte.inlineData.mimeType ?? "image/png", uso: r.usageMetadata };
+}
+/** Un 429 por cuota gratuita en 0: la clave no tiene facturación para el modelo de imagen. */
+export const esFaltaFacturacion = (error: unknown) => {
+  const t = `${(error as { status?: number })?.status ?? ""} ${error instanceof Error ? error.message : String(error)}`;
+  return /429/.test(t) && /free_tier|limit: 0|billing/i.test(t);
+};

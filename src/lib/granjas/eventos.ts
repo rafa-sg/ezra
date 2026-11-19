@@ -667,11 +667,18 @@ function registrarImagen(id: string, d: { medioId: string; tipo: TipoImagen; url
  * Imagen hallada (afiche, post, prensa) o generada (IA): queda pendiente de la confirmación del
  * propietario y entra al historial. Nunca reemplaza una imagen de tipo más alto ni una confirmada.
  */
-export function ponerImagenFuente(id: string, medioId: string, url: string, permiso: string, opciones: { tipo?: TipoImagen; baja?: boolean; ia?: DatosIA | null; nota?: string } = {}) {
+export function ponerImagenFuente(
+  id: string,
+  medioId: string,
+  url: string,
+  permiso: string,
+  opciones: { tipo?: TipoImagen; baja?: boolean; ia?: DatosIA | null; nota?: string; reemplazarIgual?: boolean } = {},
+) {
   const tipo = opciones.tipo ?? "afiche";
   return transaccion(() => {
     const e = leerEvento(id);
-    if (e.imagenTipo && (e.imagenConfirmada || prioridadImagen[e.imagenTipo] >= prioridadImagen[tipo]) && e.imagenMedioId !== medioId)
+    const peor = e.imagenTipo ? prioridadImagen[e.imagenTipo] < prioridadImagen[tipo] || (opciones.reemplazarIgual && e.imagenTipo === tipo) : true;
+    if (e.imagenTipo && (e.imagenConfirmada || !peor) && e.imagenMedioId !== medioId)
       throw new WorkflowError("El evento ya tiene una imagen igual o mejor.", 409);
     auditar("evento.imagen.fuente", id, { medioId, tipo });
     registrarImagen(id, { medioId, tipo, url, permiso, ia: opciones.ia, nota: opciones.nota });

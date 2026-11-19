@@ -154,6 +154,21 @@ export function exigirPresupuesto(ahora: Date = new Date()) {
   );
 }
 
+/* ── Imágenes de referencia IA: límite diario aparte del presupuesto de tokens ── */
+export const PASO_IMAGEN_IA = "Imagen de referencia IA";
+export const LIMITE_IMAGENES_IA = 15;
+export const limiteImagenesSchema = z.object({ porDia: z.number().int().min(0).max(200) });
+export const leerLimiteImagenes = () => leerAjuste("imagenes_ia", limiteImagenesSchema, { porDia: LIMITE_IMAGENES_IA }).porDia;
+export const guardarLimiteImagenes = (porDia: unknown) => guardarAjuste("imagenes_ia", limiteImagenesSchema, { porDia }).porDia;
+/** Imágenes IA generadas hoy (hora de El Salvador): llamadas sin error del paso «Imagen de referencia IA». */
+export function imagenesIaHoy(ahora: Date = new Date()) {
+  const hoy = diaLocal(ahora);
+  const fila = base()
+    .prepare("select count(*) as n from consumo_ia where paso = ? and error = '' and fecha >= ? and fecha < ?")
+    .get(PASO_IMAGEN_IA, instanteLocal(hoy).toISOString(), instanteLocal(sumarDias(hoy, 1)).toISOString()) as { n: number };
+  return Number(fila.n);
+}
+
 /* ── Tarifas editables (USD) ── */
 const precio = z.number().min(0).max(10_000);
 export const tarifaSchema = z.object({
@@ -238,6 +253,7 @@ export function resumenConsumo(ahora: Date = new Date()) {
     caras,
     modelos: [...new Set(filas.map((f) => f.modelo))].sort(),
     presupuesto: { ...leerPresupuesto(), estado: estadoPresupuesto(ahora) },
+    imagenesIA: { porDia: leerLimiteImagenes(), hoy: imagenesIaHoy(ahora) },
     tarifas,
   };
 }

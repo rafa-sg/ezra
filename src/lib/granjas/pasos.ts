@@ -2,7 +2,7 @@ import { WorkflowError } from "../workflow";
 import { canales as todosLosCanales, instruccionAgente, type Encargo } from "../produccion/modelo";
 import type { EntregaIA } from "../produccion/proveedores";
 import type { ContextoGemini } from "../ia/gemini";
-import { esCazadorEventos, promptEspecial, verificarPaso, type DepsEspecialistas, type ResultadoLocal } from "./pasos-eventos";
+import { esCazadorEventos, imagenPaso, promptEspecial, verificarPaso, type DepsEspecialistas, type ResultadoLocal } from "./pasos-eventos";
 import { ErrorGemini } from "../ia/errores";
 import { leerMaterialFuentes, type MaterialFuente } from "./fuentes";
 import { disenarPaso, esGranjaInstagram, redactarPaso } from "./pasos-instagram";
@@ -222,6 +222,7 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
       if (nodo.agente === "verificador") return await especialista(() => verificarPaso(ejecucion, entradas, deps.especialistas ?? {}));
       if (nodo.agente === "redactor_ig") return await especialista(() => redactarPaso(ejecucion, null));
       if (nodo.agente === "disenador_post") return await especialista(() => disenarPaso(ejecucion, entradas));
+      if (nodo.agente === "imagen_evento") return await especialista(() => imagenPaso(ejecucion, entradas, deps.especialistas ?? {}));
       cerrar(pasoId, { estado: "bloqueado", detalle: "Este especialista no trabaja sin IA. Elige Gemini, Astra, Claude o trabajo manual." });
       return "hecho";
     }
