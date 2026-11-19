@@ -80,6 +80,7 @@ function tablaConfianza(lista: ReturnType<typeof listarEventos>) {
   const dominios = [...new Set([...Object.keys(dominiosConocidos), ...Object.keys(ajustes), ...vistos.keys()])].filter(Boolean).sort();
   return dominios.map((d) => ({ ...clasificarFuente({ url: `https://${d}/`, via: "web" }, ajustes), dominio: d, propio: d in ajustes, eventos: vistos.get(d) ?? 0 }));
 }
+const sinImagenOficial = (e: { imagenTipo: string | null; imagenConfirmada: boolean }) => !e.imagenConfirmada && (e.imagenTipo === null || e.imagenTipo === "prensa" || e.imagenTipo === "ia");
 export async function GET(request: Request) {
   try {
     await administrador();
@@ -97,7 +98,8 @@ export async function GET(request: Request) {
         total: todos.length,
         spotmi: spotmiPuedeProponer(),
         // Pendientes de «Completar imágenes»: sin imagen, no descartados y que no han terminado.
-        sinImagen: todos.filter((e) => !e.imagenMedioId && e.estado !== "descartado" && (!e.fecha || (e.fechaFin ?? e.fecha) >= hoy)).map((e) => e.id),
+        // Sin imagen oficial: sin imagen, o con foto de prensa o referencia IA sin confirmar (puede aparecer un afiche).
+        sinImagen: todos.filter((e) => sinImagenOficial(e) && e.estado !== "descartado" && (!e.fecha || (e.fechaFin ?? e.fecha) >= hoy)).map((e) => e.id),
         categorias: categoriasEvento,
         departamentos,
         cuentas: leerCuentasSeguidas(),
@@ -139,9 +141,9 @@ export async function POST(request: Request) {
     }
     if (a.accion === "buscar_imagen") {
       const e = leerEvento(a.id);
-      if (e.imagenMedioId) throw new WorkflowError("Este evento ya tiene imagen. Usa «Cambiar imagen» para reemplazarla.", 409);
+      if (e.imagenTipo === "afiche" || e.imagenConfirmada) throw new WorkflowError("Este evento ya tiene imagen oficial. Usa «Cambiar imagen» para reemplazarla.", 409);
       const r = await completarImagenEvento(e.id);
-      if (r.estado === "sin_imagen") throw new WorkflowError(`No se encontró una imagen oficial válida: ${r.motivo}`, 422);
+      if (r.estado === "sin_imagen" || r.estado === "ya_tenia") throw new WorkflowError(`No se encontró una imagen oficial válida${r.motivo ? `: ${r.motivo}` : "."}`, 422);
       return Response.json({ evento: leerEvento(e.id) });
     }
     if (a.accion === "completar_imagen") {

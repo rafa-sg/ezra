@@ -81,7 +81,7 @@ export async function datosDePost(post: PostIG) {
   if (!e.fecha) throw new Error("El evento perdió su fecha confirmada.");
   const p = partesFecha(e.fecha);
   let fondo: { bytes: Buffer; mime: string } | null = null;
-  if (e.imagenMedioId && e.imagenConfirmada) {
+  if (e.imagenMedioId && e.imagenConfirmada && e.imagenTipo !== "ia") {
     const medio = leerMedio(e.imagenMedioId);
     const bytes = await leerBytesMedio(medio);
     if (medio.mime === "image/webp") {

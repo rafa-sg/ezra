@@ -22,6 +22,8 @@ const ffmpeg = "/opt/homebrew/bin/ffmpeg";
 const hayFfmpeg = existsSync(ffmpeg);
 let cartel: Buffer;
 let otroCartel: Buffer;
+let banner: Buffer;
+let fotoPrensa: Buffer;
 before(async () => {
   await mkdir(process.env.EZRA_DATA_DIR!, { recursive: true });
   eventos = await import("../src/lib/granjas/eventos");
@@ -42,6 +44,8 @@ before(async () => {
   if (hayFfmpeg) {
     cartel = await generar("cartel.jpg", "color=c=orange:s=800x1000");
     otroCartel = await generar("cartel2.jpg", "color=c=purple:s=900x900");
+    banner = await generar("banner.jpg", "color=c=green:s=1238x556");
+    fotoPrensa = await generar("prensa.jpg", "color=c=gray:s=1200x800");
   }
 });
 /** Web simulada: HTML o binarios por URL; robots.txt siempre permite. */
@@ -417,4 +421,45 @@ test("diaria: un evento repetido suma su URL como fuente y recalcula la confianz
   e = eventos.leerEvento(id);
   assert.equal(e.fecha, nuevoDia);
   assert.match(e.notaVerificacion, /Cambio detectado sin aplicar \(ya está en Spotmi\): fecha/);
+});
+
+/* ── 19 nov · Imágenes oficiales: CDN de la fuente, baja resolución y foto de prensa ── */
+test("afiche desde el CDN de una fuente permitida (1238×556 → baja resolución); la foto de prensa queda debajo y el afiche la reemplaza", { skip: !hayFfmpeg }, async () => {
+  const dia = tiempo.sumarDias(tiempo.diaLocal(), 11);
+  // Ficha de Smart Ticket: su og:image vive en otro servidor (blob de Azure), como en la realidad.
+  const ficha = "https://www.smartticket.fun/es/event/molotov-ejemplo";
+  const e = nuevo({ titulo: "Molotov en El Salvador", fecha: dia, fuenteUrl: ficha });
+  const sitios = web({
+    [ficha]: html(`<meta property="og:image" content="https://blobsmartticket.blob.core.windows.net/eventos/7700B_1.jpg">`, `<h1>Molotov en El Salvador</h1><p>${textoFecha(dia)}</p>`),
+    "https://blobsmartticket.blob.core.windows.net/eventos/7700B_1.jpg": banner,
+  });
+  const r = await completar.completarImagenEvento(e.id, { descargar: sitios, dominios: ["smartticket.fun"] });
+  assert.equal(r.estado, "afiche");
+  assert.match(r.motivo, /smartticket\.fun · baja resolución/);
+  const conAfiche = eventos.leerEvento(e.id);
+  assert.equal(conAfiche.imagenTipo, "afiche");
+  assert.equal(conAfiche.imagenBaja, true);
+  assert.match(conAfiche.imagenPermiso, /fuente oficial: smartticket\.fun · pendiente/);
+
+  // Evento con solo una nota de prensa: queda «foto de prensa».
+  const nota = "https://www.elsalvador.com/entretenimiento/nota-festival";
+  const p = nuevo({ titulo: "Festival de jazz de Suchitoto", fecha: dia, fuenteUrl: nota });
+  const conPrensa = web({ [nota]: html(`<meta property="og:image" content="https://cdn-pro.elsalvador.com/fotos/jazz.jpg">`, "<h1>Festival de jazz de Suchitoto</h1>"), "https://cdn-pro.elsalvador.com/fotos/jazz.jpg": fotoPrensa });
+  assert.equal((await completar.completarImagenEvento(p.id, { descargar: conPrensa, dominios: ["elsalvador.com"] })).estado, "prensa");
+  let ev = eventos.leerEvento(p.id);
+  assert.equal(ev.imagenTipo, "prensa");
+  assert.match(ev.imagenPermiso, /^Foto de prensa: elsalvador\.com · pendiente/);
+  // Aparece la ficha oficial: el afiche reemplaza a la foto de prensa, que queda en el historial.
+  const oficial = "https://www.smartticket.fun/es/event/jazz-suchitoto";
+  eventos.agregarFuente(p.id, { url: oficial, via: "web", campos: ["titulo"] });
+  const ambos = web({
+    [oficial]: html(`<meta property="og:image" content="https://blobsmartticket.blob.core.windows.net/eventos/jazz.jpg">`, "<h1>Festival de jazz de Suchitoto</h1>"),
+    "https://blobsmartticket.blob.core.windows.net/eventos/jazz.jpg": otroCartel,
+  });
+  assert.equal((await completar.completarImagenEvento(p.id, { descargar: ambos, dominios: ["elsalvador.com", "smartticket.fun"] })).estado, "afiche");
+  ev = eventos.leerEvento(p.id);
+  assert.equal(ev.imagenTipo, "afiche");
+  assert.deepEqual(ev.imagenes.map((i) => i.tipo), ["prensa", "afiche"]);
+  // Un afiche no se reemplaza.
+  assert.equal((await completar.completarImagenEvento(p.id, { descargar: ambos, dominios: ["smartticket.fun"] })).estado, "ya_tenia");
 });

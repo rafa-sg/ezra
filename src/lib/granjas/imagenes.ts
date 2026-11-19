@@ -12,6 +12,8 @@ import { base } from "./db";
  */
 export const MAX_BYTES_IMAGEN = 8 * 1024 * 1024;
 export const MIN_LADO_IMAGEN = 600;
+/** Afiche oficial de 300–599 px de lado menor: se acepta marcado «baja resolución». */
+export const MIN_LADO_BAJA = 300;
 /** Redes sociales y sus CDN: nunca son origen de una imagen. */
 const cdnSociales = ["cdninstagram.com", "fbcdn.net", "fbsbx.com", "twimg.com", "tiktokcdn.com", "tiktokcdn-us.com"];
 export const hostProhibido = (host: string) => {
@@ -22,6 +24,8 @@ export const permisoPendiente = (dominio: string) => `Imagen promocional de la f
 /** Imagen de un post leído por la API oficial de Instagram o Facebook (nunca raspado). */
 export const permisoPendienteRed = (red: "instagram" | "facebook", cuenta: string) =>
   `Imagen del post de ${cuenta} en ${red === "instagram" ? "Instagram" : "Facebook"} (API oficial) · pendiente de tu confirmación`;
+/** Foto de una nota de prensa: menor prioridad que un afiche oficial. */
+export const permisoPendientePrensa = (dominio: string) => `Foto de prensa: ${dominio} · pendiente de tu confirmación`;
 /** CDN de Meta: solo se aceptan para medios que llegaron por la API oficial. */
 const cdnMeta = ["cdninstagram.com", "fbcdn.net"];
 
@@ -123,7 +127,7 @@ export function medidasImagen(b: Buffer): { ancho: number; alto: number } | null
 }
 
 export type DescargarImagen = (u: URL, l: number, t: number) => Promise<Respuesta>;
-export type ResultadoImagen = { medio: Medio; url: string; dominio: string } | { medio: null; motivo: string };
+export type ResultadoImagen = { medio: Medio; url: string; dominio: string; baja: boolean } | { medio: null; motivo: string };
 /** Descarga y valida una imagen concreta: https, sin redes sociales, JPG/PNG/WebP, ≤ 8 MB, lado menor ≥ 600 px. */
 export async function descargarImagen(
   url: string,
@@ -133,7 +137,9 @@ export async function descargarImagen(
   red?: { via: "instagram" | "facebook"; cuenta: string },
   /** Dominio de la página donde apareció (la ficha oficial), si la imagen vive en otro servidor (CDN). */
   paginaDominio?: string,
-): Promise<{ medio: Medio; dominio: string }> {
+  /** Afiche oficial: acepta 300–599 px marcado «baja resolución». Foto de prensa: 600 px como mínimo. */
+  opciones: { aceptarBaja?: boolean; prensa?: boolean } = {},
+): Promise<{ medio: Medio; dominio: string; baja: boolean }> {
   const u = new URL(url);
   if (u.protocol !== "https:") throw new WorkflowError("La imagen no usa https.", 422);
   const host = u.hostname.toLowerCase();
@@ -150,18 +156,20 @@ export async function descargarImagen(
   if (!["image/jpeg", "image/png", "image/webp"].includes(mime)) throw new WorkflowError("El archivo no es una imagen JPG, PNG o WebP.", 422);
   const medidas = medidasImagen(r.cuerpo);
   if (!medidas) throw new WorkflowError("No se pudieron leer las medidas de la imagen.", 422);
-  if (Math.min(medidas.ancho, medidas.alto) < MIN_LADO_IMAGEN)
-    throw new WorkflowError(`La imagen es muy pequeña (${medidas.ancho}×${medidas.alto}; se piden al menos ${MIN_LADO_IMAGEN} px de lado menor).`, 422);
+  const minimo = opciones.aceptarBaja ? MIN_LADO_BAJA : MIN_LADO_IMAGEN;
+  if (Math.min(medidas.ancho, medidas.alto) < minimo)
+    throw new WorkflowError(`La imagen es muy pequeña (${medidas.ancho}×${medidas.alto}; se piden al menos ${minimo} px de lado menor).`, 422);
+  const baja = Math.min(medidas.ancho, medidas.alto) < MIN_LADO_IMAGEN;
   const dominio = paginaDominio ?? new URL(r.url).hostname.replace(/^www\./, "");
   const medio = await guardarMedio(r.cuerpo, {
     nombre: nombre.slice(0, 200),
     procedencia: red
       ? { origen: "fuente", nota: `Imagen del post de ${red.cuenta} leída con la API oficial de ${red.via}.`, fuentes: [r.url.slice(0, 500)] }
       : { origen: "fuente", nota: `Imagen promocional tomada de ${r.url.slice(0, 300)}.`, fuentes: [r.url.slice(0, 500)] },
-    licencia: red ? permisoPendienteRed(red.via, red.cuenta) : permisoPendiente(dominio),
+    licencia: red ? permisoPendienteRed(red.via, red.cuenta) : opciones.prensa ? permisoPendientePrensa(dominio) : permisoPendiente(dominio),
     generado: false,
   });
-  return { medio, dominio };
+  return { medio, dominio, baja };
 }
 
 /** og:image de la portada de cada dominio: si un evento la trae, es la imagen genérica del sitio. */
@@ -186,7 +194,7 @@ async function portadaDe(origen: string, cache: CachePortadas, descargar?: Desca
  */
 export async function buscarImagenEvento(
   evento: { id?: string; titulo: string; fuenteUrl: string; boletosUrl: string | null; otrasPaginas?: string[] },
-  opciones: { descargar?: DescargarImagen; htmlFuente?: { url: string; html: string } | null; portadas?: CachePortadas } = {},
+  opciones: { descargar?: DescargarImagen; htmlFuente?: { url: string; html: string } | null; portadas?: CachePortadas; prensa?: boolean } = {},
 ): Promise<ResultadoImagen> {
   const motivos: string[] = [];
   const portadas = opciones.portadas ?? new Map();
@@ -215,12 +223,19 @@ export async function buscarImagenEvento(
         continue;
       }
       try {
-        const { medio, dominio } = await descargarImagen(candidata, `Imagen oficial · ${evento.titulo}`, opciones.descargar, undefined, dominioPagina);
+        const { medio, dominio, baja } = await descargarImagen(
+          candidata,
+          `${opciones.prensa ? "Foto de prensa" : "Imagen oficial"} · ${evento.titulo}`,
+          opciones.descargar,
+          undefined,
+          dominioPagina,
+          { aceptarBaja: !opciones.prensa, prensa: opciones.prensa },
+        );
         if (usosImagen({ medioId: medio.id }, evento.id ?? null) >= MAX_USOS_IMAGEN) {
           motivos.push(`${dominioPagina}: la imagen se repite en varios eventos (genérica)`);
           continue;
         }
-        return { medio, url: candidata, dominio };
+        return { medio, url: candidata, dominio, baja };
       } catch (error) {
         motivos.push(error instanceof Error ? error.message : "imagen no válida");
       }

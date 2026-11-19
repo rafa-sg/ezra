@@ -364,6 +364,34 @@ const migraciones: string[] = [
       json_object('fecha', fecha, 'hora', hora, 'lugar', lugar, 'precio', precio)
     from eventos;
   `,
+  // 8 · Tipo de imagen (afiche oficial, post de cuenta oficial, foto de prensa o referencia IA),
+  // baja resolución, precio «desde» (instantánea) e historial de imágenes de cada evento.
+  // Las imágenes ya guardadas de notas de prensa pasan a «foto de prensa».
+  `
+  alter table eventos add column imagen_tipo text check (imagen_tipo in ('afiche', 'red', 'prensa', 'ia'));
+  alter table eventos add column imagen_baja integer not null default 0;
+  alter table eventos add column precio_desde real;
+  create table evento_imagenes (
+    id text primary key,
+    evento_id text not null references eventos(id) on delete cascade,
+    medio_id text references medios(id),
+    tipo text not null check (tipo in ('afiche', 'red', 'prensa', 'ia')),
+    url text,
+    permiso text not null default '',
+    ia text,
+    nota text not null default '',
+    creado text not null
+  );
+  create index evento_imagenes_evento on evento_imagenes (evento_id, creado);
+  update eventos set imagen_tipo = case
+      when imagen_medio_id is null then null
+      when imagen_url like '%elsalvador.com/%' or imagen_url like '%laprensagrafica.com/%' or imagen_url like '%elmundo.sv/%' or imagen_url like '%diarioelsalvador.com/%' then 'prensa'
+      else 'afiche' end;
+  update eventos set imagen_permiso = replace(imagen_permiso, 'Imagen promocional de la fuente oficial:', 'Foto de prensa:') where imagen_tipo = 'prensa';
+  insert into evento_imagenes (id, evento_id, medio_id, tipo, url, permiso, nota, creado)
+    select lower(hex(randomblob(16))), id, imagen_medio_id, imagen_tipo, imagen_url, imagen_permiso, 'Imagen existente al migrar.', actualizado
+    from eventos where imagen_medio_id is not null;
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

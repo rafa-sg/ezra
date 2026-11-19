@@ -2,7 +2,7 @@ import { WorkflowError } from "../workflow";
 import type { Respuesta } from "./fuentes";
 import { dominioPermitido, leerPaginaVerificable } from "./fuentes";
 import { esRedireccionBusqueda, resolverRedireccion, type Candidato } from "./cazador";
-import { buscarImagenEvento, descargarImagen, permisoPendiente, permisoPendienteRed } from "./imagenes";
+import { buscarImagenEvento, descargarImagen, permisoPendiente, permisoPendientePrensa, permisoPendienteRed } from "./imagenes";
 import type { CandidatoRed } from "./redes";
 import {
   ponerImagenFuente,
@@ -16,6 +16,9 @@ import {
   sinAcentos,
   agregarFuente,
   aplicarCambios,
+  leerConfianzaDominios,
+  prioridadImagen,
+  type TipoImagen,
   eventoPorUrl,
   guardarConfianza,
   leerEvento,
@@ -25,7 +28,7 @@ import {
   type Referencia,
 } from "./eventos";
 import { diaValido, sumarDias } from "./tiempo";
-import { lugaresCompatibles } from "./confianza";
+import { clasificarFuente, lugaresCompatibles } from "./confianza";
 
 /**
  * Verificador sin IA. Lee la página fuente y solo da por confirmados la fecha, la
@@ -299,18 +302,19 @@ export async function verificarCandidatos(
       ? await (async () => {
           if (!red.imagenUrl) return { medio: null, motivo: "El post no tiene imagen." } as const;
           try {
-            const { medio } = await descargarImagen(red.imagenUrl, `Post de ${red.cuenta} · ${evento.titulo}`, deps.descargar, { via: red.via, cuenta: red.cuenta });
-            return { medio, url: fuente!, dominio: red.cuenta, red: true } as const;
+            const { medio, baja } = await descargarImagen(red.imagenUrl, `Post de ${red.cuenta} · ${evento.titulo}`, deps.descargar, { via: red.via, cuenta: red.cuenta }, undefined, { aceptarBaja: true });
+            return { medio, url: fuente!, dominio: red.cuenta, baja } as const;
           } catch {
             return { medio: null, motivo: "imagen del post no válida" } as const;
           }
         })()
       : await buscarImagenEvento(
       { id: evento.id, titulo: evento.titulo, fuenteUrl: evento.fuenteUrl, boletosUrl: evento.boletosUrl },
-      { descargar: deps.descargar, htmlFuente: pagina ? { url: pagina.url, html: pagina.html } : null },
+      { descargar: deps.descargar, htmlFuente: pagina ? { url: pagina.url, html: pagina.html } : null, prensa: esPrensa(evento.fuenteUrl) },
     ).catch(() => ({ medio: null, motivo: "error" }) as const);
     if (imagen.medio) {
-      ponerImagenFuente(evento.id, imagen.medio.id, imagen.url, red ? permisoPendienteRed(red.via, red.cuenta) : permisoPendiente(imagen.dominio));
+      const tipo: TipoImagen = red ? "red" : esPrensa(evento.fuenteUrl) ? "prensa" : "afiche";
+      ponerImagenFuente(evento.id, imagen.medio.id, imagen.url, permisoSegun(tipo, red, imagen.dominio), { tipo, baja: imagen.baja });
       resultado.conImagen++;
     }
     resultado.nuevos.push({
@@ -372,17 +376,18 @@ async function sumarAExistente(
   const { aplicados } = cambios.length ? aplicarCambios(id, cambios) : { aplicados: [] };
   if (aplicados.length) resultado.actualizados.push({ id, titulo: e.titulo, cambios: aplicados.map(({ campo, antes, despues }) => ({ campo, antes, despues })) });
   resultado.duplicados.push({ titulo: d.titulo, de: `Ezra: ${e.titulo}`, id, fuenteNueva: nueva });
-  // Imagen: si el evento no tenía, se intenta con esta fuente (queda pendiente de tu confirmación).
-  if (!e.imagenMedioId) {
+  // Imagen: si esta fuente trae una de mejor tipo que la actual (y no confirmaste otra), se usa; queda pendiente.
+  const tipoNuevo: TipoImagen = red ? "red" : esPrensa(d.fuente) ? "prensa" : "afiche";
+  if (!e.imagenConfirmada && prioridadImagen[tipoNuevo] > (e.imagenTipo ? prioridadImagen[e.imagenTipo] : 0)) {
     try {
       if (red?.imagenUrl) {
-        const { medio } = await descargarImagen(red.imagenUrl, `Post de ${red.cuenta} · ${e.titulo}`, deps.descargar, { via: red.via, cuenta: red.cuenta });
-        ponerImagenFuente(id, medio.id, d.fuente, permisoPendienteRed(red.via, red.cuenta));
+        const { medio, baja } = await descargarImagen(red.imagenUrl, `Post de ${red.cuenta} · ${e.titulo}`, deps.descargar, { via: red.via, cuenta: red.cuenta }, undefined, { aceptarBaja: true });
+        ponerImagenFuente(id, medio.id, d.fuente, permisoPendienteRed(red.via, red.cuenta), { tipo: "red", baja });
         resultado.conImagen++;
       } else if (pagina && !red) {
-        const r = await buscarImagenEvento({ id, titulo: e.titulo, fuenteUrl: d.fuente, boletosUrl: null }, { descargar: deps.descargar, htmlFuente: pagina });
+        const r = await buscarImagenEvento({ id, titulo: e.titulo, fuenteUrl: d.fuente, boletosUrl: null }, { descargar: deps.descargar, htmlFuente: pagina, prensa: tipoNuevo === "prensa" });
         if (r.medio) {
-          ponerImagenFuente(id, r.medio.id, r.url, permisoPendiente(r.dominio));
+          ponerImagenFuente(id, r.medio.id, r.url, permisoSegun(tipoNuevo, null, r.dominio), { tipo: tipoNuevo, baja: r.baja });
           resultado.conImagen++;
         }
       }
@@ -392,3 +397,8 @@ async function sumarAExistente(
   }
   guardarConfianza(id);
 }
+
+/** Una página de prensa (según «Confianza por dominio») da «foto de prensa», no afiche oficial. */
+const esPrensa = (url: string) => clasificarFuente({ url, via: "web" }, leerConfianzaDominios()).tipo === "prensa";
+const permisoSegun = (tipo: TipoImagen, red: CandidatoRed["red"] | null, dominio: string) =>
+  red ? permisoPendienteRed(red.via, red.cuenta) : tipo === "prensa" ? permisoPendientePrensa(dominio) : permisoPendiente(dominio);

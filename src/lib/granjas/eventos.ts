@@ -4,6 +4,7 @@ import { ahoraIso, auditar, base, json, transaccion } from "./db";
 import { leerAjuste } from "./ajustes";
 import { calcularConfianza, clasificarFuente, confianzaDominiosSchema, esRedSocial, type Confianza, type ConfianzaDominios, type FuenteEvaluada, type TipoFuente } from "./confianza";
 import { diaLocal, diaValido, instanteLocal, sumarDias } from "./tiempo";
+import { precioDesde, type PrecioDesde } from "./precio";
 
 /**
  * Bandeja de eventos de El Salvador. Un dato que no aparece en la fuente queda en
@@ -179,7 +180,19 @@ export type Evento = {
   confianza: Confianza;
   /** Cambios de fecha, hora, lugar o precio que trajo una fuente después de crearse. */
   cambios: CambioEvento[];
+  /** afiche oficial › post de cuenta oficial › foto de prensa › referencia IA (null: sin imagen). */
+  imagenTipo: TipoImagen | null;
+  /** Imagen oficial de 300–599 px de lado menor. */
+  imagenBaja: boolean;
+  precioDesde: PrecioDesde;
+  /** Todas las imágenes que tuvo el evento (la IA queda aquí si llega un afiche). */
+  imagenes: ImagenHistorial[];
 };
+export const tiposImagen = ["afiche", "red", "prensa", "ia"] as const;
+export type TipoImagen = (typeof tiposImagen)[number];
+export const prioridadImagen: Record<TipoImagen, number> = { afiche: 4, red: 3, prensa: 2, ia: 1 };
+export type DatosIA = { prompt: string; negativo: string; version: string; modelo: string };
+export type ImagenHistorial = { id: string; medioId: string | null; tipo: TipoImagen; url: string | null; permiso: string; ia: DatosIA | null; nota: string; creado: string };
 export const origenesEvento = ["cazador", "instagram", "facebook", "importacion", "manual", "desconocido"] as const;
 export type OrigenEvento = (typeof origenesEvento)[number];
 export type EventoFuente = FuenteEvaluada & { id: string; imagenUrl: string | null; tipo: TipoFuente; puntos: number; dominio: string };
@@ -222,6 +235,17 @@ function fuentesPorEvento(ids: string[] | null, ajustes: ConfianzaDominios) {
   return mapa;
 }
 type Fila = Record<string, string | number | null>;
+type FilaImagen = { id: string; evento_id: string; medio_id: string | null; tipo: TipoImagen; url: string | null; permiso: string; ia: string | null; nota: string; creado: string };
+function imagenesPorEvento(id: string | null) {
+  const filas = (id ? base().prepare("select * from evento_imagenes where evento_id = ? order by creado").all(id) : base().prepare("select * from evento_imagenes order by creado").all()) as FilaImagen[];
+  const mapa = new Map<string, ImagenHistorial[]>();
+  for (const f of filas)
+    mapa.set(f.evento_id, [
+      ...(mapa.get(f.evento_id) ?? []),
+      { id: f.id, medioId: f.medio_id, tipo: f.tipo, url: f.url, permiso: f.permiso, ia: f.ia ? json<DatosIA | null>(f.ia, null) : null, nota: f.nota, creado: f.creado },
+    ]);
+  return mapa;
+}
 const s = (v: unknown) => (v === null || v === undefined ? null : String(v));
 export function estadoVisible(e: Pick<Evento, "estado" | "spotmiEstado" | "igEstado">): EstadoVisible {
   if (e.igEstado === "subido") return "subido_ig";
@@ -229,7 +253,7 @@ export function estadoVisible(e: Pick<Evento, "estado" | "spotmiEstado" | "igEst
   if (e.spotmiEstado === "propuesto") return "propuesto";
   return e.estado;
 }
-function aEvento(f: Fila, fuentes: EventoFuente[], ajustes: ConfianzaDominios, hoy: string): Evento {
+function aEvento(f: Fila, fuentes: EventoFuente[], ajustes: ConfianzaDominios, hoy: string, imagenes: ImagenHistorial[] = []): Evento {
   const e = {
     id: String(f.id),
     titulo: String(f.titulo),
@@ -267,6 +291,10 @@ function aEvento(f: Fila, fuentes: EventoFuente[], ajustes: ConfianzaDominios, h
     origen: (origenesEvento as readonly string[]).includes(String(f.origen)) ? (String(f.origen) as OrigenEvento) : "desconocido",
     fuentes,
     cambios: json<CambioEvento[]>(s(f.cambios), []),
+    imagenTipo: f.imagen_medio_id ? ((tiposImagen as readonly string[]).includes(String(f.imagen_tipo)) ? (String(f.imagen_tipo) as TipoImagen) : "afiche") : null,
+    imagenBaja: Boolean(f.imagen_baja) && Boolean(f.imagen_medio_id),
+    precioDesde: precioDesde(s(f.precio)),
+    imagenes,
   };
   // Se recalcula al leer: la antigüedad de la fuente y los ajustes del propietario cambian con el tiempo.
   return { ...e, estadoVisible: estadoVisible(e), confianza: calcularConfianza(e, fuentes, { hoy, ajustes }) };
@@ -275,14 +303,15 @@ export function leerEvento(id: string): Evento {
   const f = base().prepare("select * from eventos where id = ?").get(id) as Fila | undefined;
   if (!f) throw new WorkflowError("Evento no encontrado.", 404);
   const ajustes = leerConfianzaDominios();
-  return aEvento(f, fuentesPorEvento([id], ajustes).get(id) ?? [], ajustes, diaLocal(new Date()));
+  return aEvento(f, fuentesPorEvento([id], ajustes).get(id) ?? [], ajustes, diaLocal(new Date()), imagenesPorEvento(id).get(id) ?? []);
 }
 export function listarEventos(filtro: { estado?: EstadoVisible | null; desde?: string | null; hasta?: string | null; creadoEl?: string | null } = {}) {
   const ajustes = leerConfianzaDominios();
   const fuentes = fuentesPorEvento(null, ajustes);
   const hoy = diaLocal(new Date());
+  const imagenes = imagenesPorEvento(null);
   const filas = (base().prepare("select * from eventos order by coalesce(fecha, '9999-12-31'), creado desc limit 2000").all() as Fila[]).map((f) =>
-    aEvento(f, fuentes.get(String(f.id)) ?? [], ajustes, hoy),
+    aEvento(f, fuentes.get(String(f.id)) ?? [], ajustes, hoy, imagenes.get(String(f.id)) ?? []),
   );
   return filas.filter(
     (e) =>
@@ -335,6 +364,10 @@ export type NuevoEvento = Omit<
   | "fuentes"
   | "confianza"
   | "cambios"
+  | "imagenTipo"
+  | "imagenBaja"
+  | "precioDesde"
+  | "imagenes"
 > & { fechaFin?: string | null; origen?: OrigenEvento; fuente?: Omit<NuevaFuente, "url"> };
 export function crearEvento(datos: NuevoEvento): Evento {
   const id = crypto.randomUUID();
@@ -428,7 +461,9 @@ export function agregarFuente(eventoId: string, f: NuevaFuente): boolean {
 /** Guarda la confianza calculada (instantánea para exportar y para el resumen); la vista la recalcula al leer. */
 export function guardarConfianza(id: string): Evento {
   const e = leerEvento(id);
-  base().prepare("update eventos set confianza = ?, confianza_desglose = ? where id = ?").run(e.confianza.puntos, JSON.stringify(e.confianza.desglose), id);
+  base()
+    .prepare("update eventos set confianza = ?, confianza_desglose = ?, precio_desde = ? where id = ?")
+    .run(e.confianza.puntos, JSON.stringify(e.confianza.desglose), e.precioDesde?.tipo === "desde" ? e.precioDesde.valor : e.precioDesde ? 0 : null, id);
   return e;
 }
 /**
@@ -612,14 +647,43 @@ export function autorizarImagen(id: string, revision: number, medioId: string | 
     exigir(e, revision);
     if (medioId && permiso.trim().length < 3) throw new WorkflowError("Anota de dónde viene el permiso para usar la imagen.", 422);
     auditar("evento.imagen", id, { medioId });
-    // Una imagen que el propietario elige y cuyo permiso anota queda confirmada.
-    return actualizar(id, { imagen_medio_id: medioId, imagen_permiso: medioId ? permiso.trim().slice(0, 500) : "", imagen_confirmada: medioId ? 1 : 0 });
+    if (medioId) registrarImagen(id, { medioId, tipo: "afiche", url: null, permiso: permiso.trim().slice(0, 500), nota: "Elegida por el propietario." });
+    // Una imagen que el propietario elige y cuyo permiso anota queda confirmada (cuenta como afiche oficial).
+    return actualizar(id, {
+      imagen_medio_id: medioId,
+      imagen_permiso: medioId ? permiso.trim().slice(0, 500) : "",
+      imagen_confirmada: medioId ? 1 : 0,
+      imagen_tipo: medioId ? "afiche" : null,
+      imagen_baja: 0,
+    });
   });
 }
-/** Imagen descargada de la fuente oficial: queda pendiente de la confirmación del propietario. */
-export function ponerImagenFuente(id: string, medioId: string, url: string, permiso: string) {
-  auditar("evento.imagen.fuente", id, { medioId });
-  return actualizar(id, { imagen_medio_id: medioId, imagen_url: url.slice(0, 1000), imagen_permiso: permiso.slice(0, 500), imagen_confirmada: 0 });
+function registrarImagen(id: string, d: { medioId: string; tipo: TipoImagen; url: string | null; permiso: string; ia?: DatosIA | null; nota?: string }) {
+  base()
+    .prepare("insert into evento_imagenes (id, evento_id, medio_id, tipo, url, permiso, ia, nota, creado) values (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(crypto.randomUUID(), id, d.medioId, d.tipo, d.url?.slice(0, 1000) ?? null, d.permiso.slice(0, 500), d.ia ? JSON.stringify(d.ia) : null, (d.nota ?? "").slice(0, 300), ahoraIso());
+}
+/**
+ * Imagen hallada (afiche, post, prensa) o generada (IA): queda pendiente de la confirmación del
+ * propietario y entra al historial. Nunca reemplaza una imagen de tipo más alto ni una confirmada.
+ */
+export function ponerImagenFuente(id: string, medioId: string, url: string, permiso: string, opciones: { tipo?: TipoImagen; baja?: boolean; ia?: DatosIA | null; nota?: string } = {}) {
+  const tipo = opciones.tipo ?? "afiche";
+  return transaccion(() => {
+    const e = leerEvento(id);
+    if (e.imagenTipo && (e.imagenConfirmada || prioridadImagen[e.imagenTipo] >= prioridadImagen[tipo]) && e.imagenMedioId !== medioId)
+      throw new WorkflowError("El evento ya tiene una imagen igual o mejor.", 409);
+    auditar("evento.imagen.fuente", id, { medioId, tipo });
+    registrarImagen(id, { medioId, tipo, url, permiso, ia: opciones.ia, nota: opciones.nota });
+    return actualizar(id, {
+      imagen_medio_id: medioId,
+      imagen_url: tipo === "ia" ? e.imagenUrl : url.slice(0, 1000),
+      imagen_permiso: permiso.slice(0, 500),
+      imagen_confirmada: 0,
+      imagen_tipo: tipo,
+      imagen_baja: opciones.baja ? 1 : 0,
+    });
+  });
 }
 /** Ficha encontrada en una ticketera permitida: pasa a ser el enlace de boletos si no había uno. */
 export function ponerBoletos(id: string, url: string) {
@@ -637,6 +701,8 @@ export function confirmarImagen(id: string, revision: number) {
     const e = leerEvento(id);
     exigir(e, revision);
     if (!e.imagenMedioId) throw new WorkflowError("Este evento no tiene imagen que confirmar.", 409);
+    // La referencia IA nunca pasa a imagen oficial: no se confirma ni llega al post ni a Spotmi.
+    if (e.imagenTipo === "ia") throw new WorkflowError("La imagen de referencia generada con IA no se confirma como oficial.", 409);
     if (e.imagenConfirmada) return e;
     const hoy = new Intl.DateTimeFormat("es-SV", { dateStyle: "medium", timeZone: "America/El_Salvador" }).format(new Date());
     const permiso = e.imagenPermiso.replace(/ · pendiente de tu confirmación$/, "") + ` · confirmada por ti el ${hoy}`;

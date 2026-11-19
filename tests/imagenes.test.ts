@@ -21,6 +21,7 @@ const ffmpeg = "/opt/homebrew/bin/ffmpeg";
 const hayFfmpeg = existsSync(ffmpeg);
 let grande: Buffer;
 let chica: Buffer;
+let diminuta: Buffer;
 before(async () => {
   await mkdir(process.env.EZRA_DATA_DIR!, { recursive: true });
   imagenes = await import("../src/lib/granjas/imagenes");
@@ -40,6 +41,7 @@ before(async () => {
   if (hayFfmpeg) {
     grande = await generar("cartel.jpg", "color=c=orange:s=800x1000");
     chica = await generar("icono.png", "color=c=blue:s=300x300");
+    diminuta = await generar("diminuta.png", "color=c=red:s=200x200");
   }
 });
 /** Web simulada: HTML o binarios por URL; robots.txt siempre permite. */
@@ -86,6 +88,8 @@ test("descarga: og:image válida; muy pequeña, no imagen, red social y página 
     "https://ejemplo.sv/cartel.jpg": grande,
     "https://ejemplo.sv/chica": pagina(`<meta property="og:image" content="https://ejemplo.sv/icono.png">`),
     "https://ejemplo.sv/icono.png": chica,
+    "https://ejemplo.sv/diminuta": pagina(`<meta property="og:image" content="https://ejemplo.sv/diminuta.png">`),
+    "https://ejemplo.sv/diminuta.png": diminuta,
     "https://ejemplo.sv/no-imagen": pagina(`<meta property="og:image" content="https://ejemplo.sv/falsa.jpg">`),
     "https://ejemplo.sv/falsa.jpg": Buffer.from("<html>no soy una imagen</html>"),
     "https://ejemplo.sv/social": pagina(`<meta property="og:image" content="https://scontent.cdninstagram.com/foto.jpg">`),
@@ -104,13 +108,16 @@ test("descarga: og:image válida; muy pequeña, no imagen, red social y página 
     assert.equal(r.medio, null, fuente);
     return (r as { motivo: string }).motivo;
   };
-  assert.match(await motivo("https://ejemplo.sv/chica"), /muy pequeña \(300×300/);
+  // 300–599 px: afiche oficial aceptado como «baja resolución»; menos de 300 px, rechazado.
+  const baja = await buscar("https://ejemplo.sv/chica");
+  assert.ok(baja.medio && baja.baja, "300×300 entra marcada baja resolución");
+  assert.match(await motivo("https://ejemplo.sv/diminuta"), /muy pequeña \(200×200; se piden al menos 300 px/);
   assert.match(await motivo("https://ejemplo.sv/no-imagen"), /no es una imagen/);
   assert.match(await motivo("https://ejemplo.sv/social"), /red social/);
   assert.match(await motivo("https://ejemplo.sv/vacia"), /no tiene imagen del evento/);
   assert.match(await motivo("https://www.instagram.com/p/x/"), /Sin fuente|imagen/);
-  // La fuente solo tiene un ícono: se usa la imagen de la página de boletos.
-  const respaldo = await buscar("https://ejemplo.sv/chica", "https://boletos.sv/evento");
+  // La fuente solo tiene una imagen diminuta: se usa la imagen de la página de boletos.
+  const respaldo = await buscar("https://ejemplo.sv/diminuta", "https://boletos.sv/evento");
   assert.ok(respaldo.medio);
   assert.equal(respaldo.dominio, "boletos.sv");
 });

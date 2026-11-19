@@ -21,7 +21,7 @@ type Respuesta = {
   lectura: { instagram: EstadoLectura; facebook: EstadoLectura };
   confianza: FilaConfianza[];
 };
-type ResultadoImagen = { id: string; titulo: string; estado: "oficial" | "ticketera" | "red" | "sin_imagen" | "ya_tenia"; motivo: string; boletos?: string };
+type ResultadoImagen = { id: string; titulo: string; estado: "afiche" | "ticketera" | "red" | "prensa" | "ia" | "sin_imagen" | "ya_tenia"; motivo: string; boletos?: string };
 type Lote = { total: number; hechos: ResultadoImagen[]; activo: boolean };
 const estados: EstadoVisible[] = ["nuevo", "aprobado", "descartado", "propuesto", "aceptado", "subido_ig"];
 type Formulario = {
@@ -309,8 +309,9 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           ) : (
             <>
               <strong>
-                {g("ev_img_resumen")}: {lote.hechos.filter((h) => h.estado === "oficial" || h.estado === "ticketera").length} {g("ev_img_oficiales")} ·{" "}
-                {lote.hechos.filter((h) => h.estado === "red").length} {g("ev_img_red")} · {lote.hechos.filter((h) => h.estado === "sin_imagen").length} {g("ev_img_sin")}
+                {g("ev_img_resumen")}: {lote.hechos.filter((h) => h.estado === "afiche" || h.estado === "ticketera").length} {g("ev_img_oficiales")} ·{" "}
+                {lote.hechos.filter((h) => h.estado === "red").length} {g("ev_img_red")} · {lote.hechos.filter((h) => h.estado === "prensa").length} {g("ev_img_prensa")} ·{" "}
+                {lote.hechos.filter((h) => h.estado === "ia").length} {g("ev_img_ia")} · {lote.hechos.filter((h) => h.estado === "sin_imagen").length} {g("ev_img_sin")}
                 {lote.hechos.length < lote.total ? ` · ${lote.total - lote.hechos.length} ${g("ev_img_sinRevisar")}` : ""}
               </strong>
               <p className="ep-nota">{g("ev_img_pendientes")}</p>

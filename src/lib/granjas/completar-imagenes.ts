@@ -1,21 +1,23 @@
 import { listarGranjas } from "./almacen";
 import { clasificarFuente } from "./confianza";
-import { agregarFuente, guardarConfianza, leerConfianzaDominios, leerEvento, parecido, ponerBoletos, ponerImagenFuente, type Evento } from "./eventos";
+import { agregarFuente, guardarConfianza, leerConfianzaDominios, leerEvento, parecido, ponerBoletos, ponerImagenFuente, prioridadImagen, type Evento } from "./eventos";
 import { dominioPermitido, leerMaterialFuentes, leerPaginaVerificable, type MaterialFuente } from "./fuentes";
-import { buscarImagenEvento, descargarImagen, permisoPendiente, permisoPendienteRed, type CachePortadas, type DescargarImagen } from "./imagenes";
+import { buscarImagenEvento, descargarImagen, permisoPendiente, permisoPendientePrensa, permisoPendienteRed, type CachePortadas, type DescargarImagen } from "./imagenes";
 import { fechaEnTexto, tituloEnTexto } from "./verificador";
 
 /**
- * «Completar imágenes»: para un evento sin imagen prueba, en orden,
- *   1. su página fuente, la de boletos y las demás fuentes web (og:image, twitter:image…);
- *   2. la ficha del evento en las ticketeras permitidas (comparando título y fecha);
- *   3. la imagen del post de una cuenta oficial leído por la API de Instagram o Facebook.
- * Nunca genera ni retoca imágenes. Toda imagen queda «pendiente de tu confirmación».
+ * «Completar imágenes»: para un evento sin imagen oficial prueba, en orden,
+ *   1. afiche oficial: su página, la de boletos, otras fuentes no de prensa y su ficha en las ticketeras;
+ *   2. la imagen del post de una cuenta oficial leído por la API de Instagram o Facebook;
+ *   3. la foto de una nota de prensa;
+ *   4. una imagen de referencia generada con IA (si está encendida y hay cupo).
+ * Nunca retoca una imagen oficial. Toda imagen queda «pendiente de tu confirmación»; la de IA no
+ * se confirma nunca como oficial. Una mejor (afiche) reemplaza a una peor y la anterior queda en el historial.
  */
 export type ResultadoCompletar = {
   id: string;
   titulo: string;
-  estado: "oficial" | "ticketera" | "red" | "sin_imagen" | "ya_tenia";
+  estado: "afiche" | "ticketera" | "red" | "prensa" | "ia" | "sin_imagen" | "ya_tenia";
   motivo: string;
   boletos?: string;
 };
@@ -90,26 +92,36 @@ export async function buscarFichaTicketera(
   return null;
 }
 
-export async function completarImagenEvento(id: string, ctx: ContextoCompletar = {}): Promise<ResultadoCompletar> {
+/** Generador de la imagen de referencia IA (Parte 2); null si está apagado o sin cupo. */
+export type GenerarReferencia = (id: string) => Promise<{ ok: true; motivo: string } | { ok: false; motivo: string }>;
+
+export async function completarImagenEvento(id: string, ctx: ContextoCompletar & { referenciaIA?: GenerarReferencia | null } = {}): Promise<ResultadoCompletar> {
   let e = leerEvento(id);
   const base = { id, titulo: e.titulo };
-  if (e.imagenMedioId) return { ...base, estado: "ya_tenia", motivo: "" };
+  const actual = e.imagenTipo ? prioridadImagen[e.imagenTipo] : 0;
+  // Un afiche oficial (o una imagen que ya confirmaste) no se reemplaza.
+  if (actual >= prioridadImagen.afiche || e.imagenConfirmada) return { ...base, estado: "ya_tenia", motivo: "" };
   const granja = contextoGranjaEventos();
   const dominios = ctx.dominios ?? granja.dominios;
   const portadas = ctx.portadas ?? new Map();
+  const ajustes = leerConfianzaDominios();
   const motivos: string[] = [];
-  const otrasWeb = e.fuentes.filter((f) => f.via === "web" && f.url !== e.fuenteUrl).map((f) => f.url);
+  const web = [...new Set([e.fuenteUrl, e.boletosUrl, ...e.fuentes.filter((f) => f.via === "web").map((f) => f.url)].filter((u): u is string => Boolean(u)))];
+  const esPrensa = (u: string) => clasificarFuente({ url: u, via: "web" }, ajustes).tipo === "prensa";
+  const oficiales = web.filter((u) => !esPrensa(u));
+  const prensa = web.filter(esPrensa);
 
-  // 1. Páginas del evento: fuente, boletos y otras fuentes web.
-  const r = await buscarImagenEvento({ id, titulo: e.titulo, fuenteUrl: e.fuenteUrl, boletosUrl: e.boletosUrl, otrasPaginas: otrasWeb }, { descargar: ctx.descargar, portadas });
-  if (r.medio) {
-    ponerImagenFuente(id, r.medio.id, r.url, permisoPendiente(r.dominio));
-    return { ...base, estado: "oficial", motivo: r.dominio };
+  // 1. Afiche oficial: páginas oficiales del evento (fuente, boletos, otras) y su ficha en una ticketera.
+  if (oficiales.length) {
+    const [primera, ...resto] = oficiales;
+    const r = await buscarImagenEvento({ id, titulo: e.titulo, fuenteUrl: primera, boletosUrl: null, otrasPaginas: resto }, { descargar: ctx.descargar, portadas });
+    if (r.medio) {
+      ponerImagenFuente(id, r.medio.id, r.url, permisoPendiente(r.dominio), { tipo: "afiche", baja: r.baja });
+      return { ...base, estado: "afiche", motivo: `${r.dominio}${r.baja ? " · baja resolución" : ""}` };
+    }
+    motivos.push(r.motivo);
   }
-  motivos.push(r.motivo);
-
-  // 2. Ficha en una ticketera permitida (si el evento aún no tiene una).
-  const yaEnTicketera = [e.fuenteUrl, e.boletosUrl, ...otrasWeb].some((u) => u && granja.listados.some((l) => new URL(u).hostname === new URL(l.url).hostname));
+  const yaEnTicketera = web.some((u) => granja.listados.some((l) => new URL(u).hostname === new URL(l.url).hostname));
   if (!yaEnTicketera) {
     const ficha = await buscarFichaTicketera(e, { dominios, listados: granja.listados, descargar: ctx.descargar, cache: ctx.listados });
     if (ficha) {
@@ -118,23 +130,44 @@ export async function completarImagenEvento(id: string, ctx: ContextoCompletar =
       guardarConfianza(id);
       const ri = await buscarImagenEvento({ id, titulo: e.titulo, fuenteUrl: ficha.url, boletosUrl: null }, { descargar: ctx.descargar, portadas, htmlFuente: ficha });
       if (ri.medio) {
-        ponerImagenFuente(id, ri.medio.id, ri.url, permisoPendiente(ri.dominio));
-        return { ...base, estado: "ticketera", motivo: ri.dominio, boletos: ficha.url };
+        ponerImagenFuente(id, ri.medio.id, ri.url, permisoPendiente(ri.dominio), { tipo: "afiche", baja: ri.baja });
+        return { ...base, estado: "ticketera", motivo: `${ri.dominio}${ri.baja ? " · baja resolución" : ""}`, boletos: ficha.url };
       }
       motivos.push(`ficha en ${new URL(ficha.url).hostname}: ${ri.motivo}`);
     } else if (granja.listados.some((l) => dominioPermitido(new URL(l.url).hostname, dominios))) motivos.push("no aparece en las carteleras de las ticketeras");
   }
 
-  // 3. Imagen de un post de una cuenta oficial leído por la API (Instagram o Facebook).
-  for (const f of e.fuentes.filter((x) => (x.via === "instagram" || x.via === "facebook") && x.imagenUrl)) {
-    try {
-      const red = { via: f.via as "instagram" | "facebook", cuenta: f.cuenta };
-      const { medio } = await descargarImagen(f.imagenUrl!, `Post de ${f.cuenta} · ${e.titulo}`, ctx.descargar, red);
-      ponerImagenFuente(id, medio.id, f.url, permisoPendienteRed(red.via, red.cuenta));
-      return { ...base, estado: "red", motivo: f.cuenta };
-    } catch (error) {
-      motivos.push(`post de ${f.cuenta}: ${error instanceof Error ? error.message : "imagen no válida"}`);
+  // 2. Publicación de una cuenta oficial leída por la API (Instagram Business Discovery o Facebook).
+  if (actual < prioridadImagen.red)
+    for (const f of e.fuentes.filter((x) => (x.via === "instagram" || x.via === "facebook") && x.imagenUrl)) {
+      try {
+        const red = { via: f.via as "instagram" | "facebook", cuenta: f.cuenta };
+        const { medio, baja } = await descargarImagen(f.imagenUrl!, `Post de ${f.cuenta} · ${e.titulo}`, ctx.descargar, red, undefined, { aceptarBaja: true });
+        ponerImagenFuente(id, medio.id, f.url, permisoPendienteRed(red.via, red.cuenta), { tipo: "red", baja });
+        return { ...base, estado: "red", motivo: f.cuenta };
+      } catch (error) {
+        motivos.push(`post de ${f.cuenta}: ${error instanceof Error ? error.message : "imagen no válida"}`);
+      }
     }
+
+  // 3. Foto de una nota de prensa (menor prioridad que un afiche).
+  if (actual < prioridadImagen.prensa && prensa.length) {
+    const [primera, ...resto] = prensa;
+    const r = await buscarImagenEvento({ id, titulo: e.titulo, fuenteUrl: primera, boletosUrl: null, otrasPaginas: resto }, { descargar: ctx.descargar, portadas, prensa: true });
+    if (r.medio) {
+      ponerImagenFuente(id, r.medio.id, r.url, permisoPendientePrensa(r.dominio), { tipo: "prensa" });
+      return { ...base, estado: "prensa", motivo: r.dominio };
+    }
+    motivos.push(r.motivo);
   }
+  if (actual >= prioridadImagen.prensa) return { ...base, estado: "ya_tenia", motivo: "" };
+
+  // 4. Imagen de referencia generada con IA (si está encendida y hay cupo).
+  if (actual < prioridadImagen.ia && ctx.referenciaIA) {
+    const r = await ctx.referenciaIA(id);
+    if (r.ok) return { ...base, estado: "ia", motivo: r.motivo };
+    motivos.push(`IA: ${r.motivo}`);
+  }
+  if (actual) return { ...base, estado: "ya_tenia", motivo: "" };
   return { ...base, estado: "sin_imagen", motivo: [...new Set(motivos.filter(Boolean))].slice(0, 3).join(" · ") || "Sin páginas donde buscar." };
 }
