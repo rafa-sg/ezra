@@ -591,3 +591,23 @@ test("«Desde $X»: menor precio publicado, «Gratis» solo sin montos y «Preci
   const fila = db.base().prepare("select precio_desde from eventos where id = ?").get(e.id) as { precio_desde: number };
   assert.equal(fila.precio_desde, 45);
 });
+
+test("referencia IA subida a mano (app de Gemini): queda «IA · referencia», no usa la API ni el límite y nunca es oficial", { skip: !hayFfmpeg }, async () => {
+  const ia = await import("../src/lib/granjas/imagen-ia");
+  const medios = await import("../src/lib/granjas/medios");
+  const consumo = await import("../src/lib/granjas/consumo");
+  const antes = consumo.imagenesIaHoy();
+  const e = nuevo({ titulo: "Fiestas patronales de Suchitoto", categoria: "religioso", fecha: tiempo.sumarDias(tiempo.diaLocal(), 17), fuenteUrl: "https://elsalvador.travel/esp/event/suchitoto/" });
+  const sinMarcar = await medios.guardarMedio(otroCartel, { nombre: "x.jpg", procedencia: { origen: "subida", nota: "" }, licencia: "propia", generado: false });
+  assert.throws(() => ia.ponerReferenciaSubida(e.id, sinMarcar.id), /generada con IA/);
+  const destino = path.join(process.env.EZRA_DATA_DIR!, "gemini-app.jpg");
+  execFileSync(ffmpeg, ["-v", "error", "-y", "-f", "lavfi", "-i", "color=c=teal:s=1024x1280", "-frames:v", "1", destino]);
+  const subida = await medios.guardarMedio(await readFile(destino), { nombre: "gemini.jpg", procedencia: { origen: "subida", nota: "" }, licencia: ia.LICENCIA_IA_SUBIDA, generado: true });
+  const ev = ia.ponerReferenciaSubida(e.id, subida.id);
+  assert.equal(ev.imagenTipo, "ia");
+  assert.equal(ev.imagenPermiso, ia.LICENCIA_IA_SUBIDA);
+  assert.equal(ev.imagenes.at(-1)?.ia?.modelo, "app de Gemini (subida a mano)");
+  assert.match(ev.imagenes.at(-1)?.ia?.prompt ?? "", /colonial church plaza/);
+  assert.throws(() => eventos.confirmarImagen(e.id, ev.revision), /no se confirma como oficial/);
+  assert.equal(consumo.imagenesIaHoy(), antes, "no cuenta para el límite diario de la API");
+});

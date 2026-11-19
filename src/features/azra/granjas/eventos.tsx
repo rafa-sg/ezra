@@ -83,6 +83,40 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
   const [abierto, setAbierto] = useState<string | null>(null);
   // Editor del prompt de la imagen de referencia IA.
   const [prompt, setPrompt] = useState<{ evento: EventoVista; texto: string; avisos: string[]; forzar: boolean } | null>(null);
+  const archivoIA = useRef<HTMLInputElement>(null);
+  /** Copia el prompt armado (con «Avoid: …») para pegarlo en la app de Gemini. */
+  async function copiarPrompt(e: EventoVista) {
+    setError("");
+    try {
+      const r = await pedir<{ paraModelo: string }>("/api/granjas/eventos", { accion: "referencia_prompt", id: e.id });
+      await navigator.clipboard.writeText(r.paraModelo);
+      setAviso(g("ev_ia_promptCopiado"));
+    } catch (x) {
+      setError((x as Error).message || g("ev_copiaFallo"));
+    }
+  }
+  /** Sube la imagen hecha en la app de Gemini y la deja como referencia IA del evento. */
+  async function subirReferencia(e: EventoVista, file: File) {
+    setOcupado(true);
+    setError("");
+    try {
+      const formulario = new FormData();
+      formulario.set("archivo", file);
+      formulario.set("licencia", "Imagen de referencia generada con IA (app de Gemini, subida por ti)");
+      formulario.set("generado", "1");
+      const r = await fetch("/api/granjas/medios", { method: "POST", body: formulario });
+      const j = (await r.json().catch(() => ({}))) as { medio?: { id: string }; error?: string };
+      if (!r.ok || !j.medio) throw new Error(j.error ?? g("ev_ia_subidaFallo"));
+      await pedir("/api/granjas/eventos", { accion: "referencia_subida", id: e.id, medioId: j.medio.id });
+      setAviso(g("ev_ia_subida"));
+    } catch (x) {
+      setError((x as Error).message);
+    } finally {
+      setOcupado(false);
+      if (archivoIA.current) archivoIA.current.value = "";
+      await cargar();
+    }
+  }
   async function abrirPrompt(e: EventoVista) {
     setError("");
     try {
@@ -715,6 +749,23 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                     <button className="ep-boton" disabled={ocupado || !datos.imagenesIA.activa} title={datos.imagenesIA.activa ? undefined : datos.imagenesIA.motivo} onClick={() => void abrirPrompt(e)}>
                       <Pencil size={15} />
                       {g("ev_ia_editarPrompt")}
+                    </button>
+                    <button className="ep-boton" disabled={ocupado} title={g("ev_ia_copiarAyuda")} onClick={() => void copiarPrompt(e)}>
+                      <Copy size={15} />
+                      {g("ev_ia_copiarPrompt")}
+                    </button>
+                    <input
+                      ref={archivoIA}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="eg-oculto"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                      onChange={(x) => x.target.files?.[0] && void subirReferencia(e, x.target.files[0])}
+                    />
+                    <button className="ep-boton" disabled={ocupado} title={g("ev_ia_subirAyuda")} onClick={() => archivoIA.current?.click()}>
+                      <Upload size={15} />
+                      {g("ev_ia_subir")}
                     </button>
                   </>
                 )}

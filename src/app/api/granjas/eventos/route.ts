@@ -27,8 +27,8 @@ import { verificarCandidatos } from "@/lib/granjas/verificador";
 import { eventosPublicosSpotmi } from "@/lib/granjas/spotmi-publico";
 import { listarGranjas } from "@/lib/granjas/almacen";
 import { completarImagenEvento } from "@/lib/granjas/completar-imagenes";
-import { estadoImagenesIA, generarReferencia } from "@/lib/granjas/imagen-ia";
-import { promptImagenEvento, revisarPrompt } from "@/lib/granjas/prompt-imagen";
+import { estadoImagenesIA, generarReferencia, ponerReferenciaSubida } from "@/lib/granjas/imagen-ia";
+import { promptImagenEvento, revisarPrompt, textoParaModelo } from "@/lib/granjas/prompt-imagen";
 import { importarEventos, MAX_IMPORTAR } from "@/lib/granjas/importar";
 import { actualizarPropuestasPendientes, consultarEstadoSpotmi, enviarEventoASpotmi, spotmiPuedeProponer } from "@/lib/granjas/spotmi-propuestas";
 import { descargarSegura, type MaterialFuente } from "@/lib/granjas/fuentes";
@@ -59,6 +59,8 @@ const accion = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("completar_imagen"), id, ia: z.boolean().default(false) }),
   // Imagen de referencia IA: ver el prompt armado, revisar uno editado y generar o regenerar.
   z.object({ accion: z.literal("referencia_prompt"), id, prompt: z.string().trim().max(2000).optional() }),
+  // Referencia hecha en la app de Gemini y subida a mano (no usa la API ni el límite diario).
+  z.object({ accion: z.literal("referencia_subida"), id, medioId: id }),
   z.object({ accion: z.literal("generar_referencia"), id, prompt: z.string().trim().max(2000).optional(), forzar: z.boolean().default(false), regenerar: z.boolean().default(false) }),
   // «Pegar enlace»: un video o post (TikTok, Instagram…) con los datos escritos a mano. Ezra no abre ese enlace.
   z.object({ accion: z.literal("pegar_enlace"), datos: enlaceManualSchema }),
@@ -165,8 +167,9 @@ export async function POST(request: Request) {
     if (a.accion === "referencia_prompt") {
       const e = leerEvento(a.id);
       const base = promptImagenEvento(e);
-      return Response.json({ ...base, avisos: a.prompt ? revisarPrompt(a.prompt, e) : [] });
+      return Response.json({ ...base, paraModelo: textoParaModelo(base), avisos: a.prompt ? revisarPrompt(a.prompt, e) : [] });
     }
+    if (a.accion === "referencia_subida") return Response.json({ evento: ponerReferenciaSubida(a.id, a.medioId) });
     if (a.accion === "generar_referencia") {
       const r = await generarReferencia(a.id, { prompt: a.prompt, forzar: a.forzar, regenerar: a.regenerar });
       if (!r.ok) throw new WorkflowError(r.motivo, "facturacion" in r && r.facturacion ? 402 : 422);

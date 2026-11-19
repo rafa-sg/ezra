@@ -1244,5 +1244,12 @@
   "g_ev_ia_lote": "Incluir referencia IA",
   "g_ev_ia_loteAyuda": "Si un evento termina sin afiche, post oficial ni foto de prensa, genera su imagen de referencia IA (respeta el límite diario).",
   "g_ev_historialImagenes": "Historial de imágenes",
-  "g_ev_imagenActual": "actual"
+  "g_ev_imagenActual": "actual",
+  "g_ev_ia_copiarPrompt": "Copiar prompt para la app de Gemini",
+  "g_ev_ia_copiarAyuda": "Copia el prompt que Ezra arma (sin artistas, marcas ni recintos, con «Avoid: …»). Pégalo en la app de Gemini, descarga la imagen y súbela con «Subir imagen de referencia IA».",
+  "g_ev_ia_promptCopiado": "Prompt copiado. Pégalo en la app de Gemini y luego sube la imagen.",
+  "g_ev_ia_subir": "Subir imagen de referencia IA",
+  "g_ev_ia_subirAyuda": "Sube la imagen que hiciste en la app de Gemini. Queda como «IA · referencia»: no es oficial, no va al post ni a Spotmi, y un afiche oficial la reemplaza.",
+  "g_ev_ia_subida": "Imagen de referencia IA guardada.",
+  "g_ev_ia_subidaFallo": "No se pudo subir la imagen."
 }

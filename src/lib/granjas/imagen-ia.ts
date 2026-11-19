@@ -7,7 +7,7 @@ import { WorkflowError } from "../workflow";
 import { guardarAjuste, leerAjuste } from "./ajustes";
 import { imagenesIaHoy, leerLimiteImagenes, PASO_IMAGEN_IA } from "./consumo";
 import { leerEvento, ponerImagenFuente, prioridadImagen } from "./eventos";
-import { herramientasVideo, guardarMedio } from "./medios";
+import { herramientasVideo, guardarMedio, leerMedio } from "./medios";
 import { promptImagenEvento, revisarPrompt, textoParaModelo } from "./prompt-imagen";
 import { z } from "zod";
 
@@ -113,7 +113,7 @@ export async function generarReferencia(
       imagen = await generarImagenGemini(contexto, textoParaModelo({ prompt: intento === 1 ? prompt : `${prompt} Use a different composition and camera angle.`, negativo: base.negativo }));
     } catch (error) {
       if (esFaltaFacturacion(error)) {
-        const motivo = "Tu clave de Gemini no tiene facturación para el modelo de imagen (cuota gratuita en 0). Actívala en AI Studio.";
+        const motivo = "Tu clave de Gemini no tiene facturación para el modelo de imagen (cuota gratuita en 0). Actívala en AI Studio, o crea la imagen en la app de Gemini y súbela desde el panel del evento.";
         guardarBloqueo({ motivo, fecha: new Date().toISOString() });
         return { ok: false, motivo, facturacion: true };
       }
@@ -144,4 +144,25 @@ export async function generarReferencia(
   const f = ultimoControl!;
   const que = [f.texto && "texto", f.logo && "logo", f.persona && "persona reconocible"].filter(Boolean).join(", ");
   return { ok: false, motivo: `El control detectó ${que} dos veces; queda el cuadro azul.` };
+}
+
+/**
+ * Referencia IA hecha a mano en la app de Gemini y subida por el propietario: mismas reglas que la
+ * generada (etiqueta «IA · referencia», nunca oficial, no va al post ni a Spotmi). No usa la API ni
+ * cuenta para el límite diario. Se guarda el prompt que Ezra armó para copiarlo a la app.
+ */
+export const LICENCIA_IA_SUBIDA = "Imagen de referencia generada con IA (app de Gemini, subida por ti)";
+export function ponerReferenciaSubida(id: string, medioId: string) {
+  const e = leerEvento(id);
+  if (e.imagenTipo && prioridadImagen[e.imagenTipo] > prioridadImagen.ia) throw new WorkflowError("El evento ya tiene una imagen oficial o de prensa.", 409);
+  const medio = leerMedio(medioId);
+  if (!["image/jpeg", "image/png", "image/webp"].includes(medio.mime)) throw new WorkflowError("Sube una imagen JPG, PNG o WebP.", 422);
+  if (!medio.generado) throw new WorkflowError("La imagen debe subirse marcada como generada con IA.", 422);
+  const base = promptImagenEvento(e);
+  return ponerImagenFuente(id, medio.id, "", LICENCIA_IA_SUBIDA, {
+    tipo: "ia",
+    ia: { prompt: base.prompt, negativo: base.negativo, version: base.version, modelo: "app de Gemini (subida a mano)" },
+    nota: "Subida por el propietario desde la app de Gemini.",
+    reemplazarIgual: e.imagenTipo === "ia",
+  });
 }

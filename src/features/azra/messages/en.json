@@ -1244,5 +1244,12 @@
   "g_ev_ia_lote": "Include AI reference",
   "g_ev_ia_loteAyuda": "If an event ends without poster, official post or press photo, generate its AI reference image (respects the daily limit).",
   "g_ev_historialImagenes": "Image history",
-  "g_ev_imagenActual": "current"
+  "g_ev_imagenActual": "current",
+  "g_ev_ia_copiarPrompt": "Copy prompt for the Gemini app",
+  "g_ev_ia_copiarAyuda": "Copies the prompt Ezra builds (no artists, brands or venues, with “Avoid: …”). Paste it in the Gemini app, download the image and upload it with “Upload AI reference image”.",
+  "g_ev_ia_promptCopiado": "Prompt copied. Paste it in the Gemini app and then upload the image.",
+  "g_ev_ia_subir": "Upload AI reference image",
+  "g_ev_ia_subirAyuda": "Upload the image you made in the Gemini app. It is marked “AI · reference”: not official, never goes to the post or Spotmi, and an official poster replaces it.",
+  "g_ev_ia_subida": "AI reference image saved.",
+  "g_ev_ia_subidaFallo": "The image could not be uploaded."
 }
