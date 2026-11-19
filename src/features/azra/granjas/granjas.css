@@ -1665,3 +1665,17 @@
     transition: stroke-dasharray 0.3s ease;
   }
 }
+/* El selector de archivo oculto no debe ensanchar la fila de filtros (las reglas de inputs le daban ancho). */
+.azra input.eg-oculto {
+  top: 0;
+  left: 0;
+  width: 1px;
+  min-width: 0;
+  max-width: 1px;
+  padding: 0;
+  border: 0;
+}
+.azra .eg-confianza-desglose li b {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}

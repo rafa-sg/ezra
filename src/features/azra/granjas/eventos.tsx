@@ -380,6 +380,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                 {e.origen !== "cazador" && e.origen !== "desconocido" && <span className="eg-evento-categoria">· {g(`ev_origen_${e.origen}`)}</span>}
                 {e.cambios.length > 0 && <span className="ep-pill eg-pill-actualizado">{g("ev_actualizado")}</span>}
               </div>
+              <h3>{e.titulo}</h3>
               {e.cambios.length > 0 && (
                 <ul className="eg-cambios" aria-label={g("ev_actualizado")}>
                   {e.cambios.slice(-3).map((c) => (
@@ -392,7 +393,6 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   ))}
                 </ul>
               )}
-              <h3>{e.titulo}</h3>
               <dl className="eg-evento-datos">
                 <div>
                   <dt>{g("ev_fecha")}</dt>

@@ -15,6 +15,7 @@
     "access:owner": "tsx scripts/configure-owner.ts",
     "granjas:trabajador": "node --env-file-if-exists=.env.local --env-file-if-exists=.env.meta.local --import tsx scripts/granjas-trabajador.ts",
     "eventos:importar": "node --env-file-if-exists=.env.local --import tsx scripts/eventos-importar.ts",
+    "eventos:imagenes": "node --env-file-if-exists=.env.local --import tsx scripts/eventos-imagenes.ts",
     "format": "prettier --write ."
   },
   "engines": {
