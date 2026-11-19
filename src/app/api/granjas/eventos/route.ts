@@ -14,10 +14,13 @@ import {
   confirmarImagen,
   departamentos,
   leerEvento,
+  leerConfianzaDominios,
   crearEventoManual,
   enlaceManualSchema,
   referenciasLocales,
 } from "@/lib/granjas/eventos";
+import { clasificarFuente, confianzaDominiosSchema, dominiosConocidos } from "@/lib/granjas/confianza";
+import { guardarAjuste } from "@/lib/granjas/ajustes";
 import { candidatosDeRedes, cuentasSeguidasSchema, estadoLecturaRedes, guardarCuentasSeguidas, leerCuentasSeguidas } from "@/lib/granjas/redes";
 import { contextoGranjaEventos } from "@/lib/granjas/completar-imagenes";
 import { verificarCandidatos } from "@/lib/granjas/verificador";
@@ -56,6 +59,8 @@ const accion = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("pegar_enlace"), datos: enlaceManualSchema }),
   z.object({ accion: z.literal("cuentas"), cuentas: cuentasSeguidasSchema }),
   z.object({ accion: z.literal("leer_redes") }),
+  // Confianza por dominio: tipo y puntos que el propietario fija para cada sitio.
+  z.object({ accion: z.literal("confianza_dominios"), dominios: confianzaDominiosSchema }),
   z.object({ accion: z.literal("enviar_spotmi"), id }),
   z.object({ accion: z.literal("consultar_spotmi"), id: id.optional() }),
 ]);
@@ -67,6 +72,14 @@ function cacheLote() {
   return { portadas: lote.portadas, listados: lote.listados };
 }
 
+/** Dominios conocidos y los que aparecen en las fuentes, con su tipo y puntos actuales (y si los fijó el propietario). */
+function tablaConfianza(lista: ReturnType<typeof listarEventos>) {
+  const ajustes = leerConfianzaDominios();
+  const vistos = new Map<string, number>();
+  for (const e of lista) for (const f of e.fuentes) if (f.via === "web") vistos.set(f.dominio, (vistos.get(f.dominio) ?? 0) + 1);
+  const dominios = [...new Set([...Object.keys(dominiosConocidos), ...Object.keys(ajustes), ...vistos.keys()])].filter(Boolean).sort();
+  return dominios.map((d) => ({ ...clasificarFuente({ url: `https://${d}/`, via: "web" }, ajustes), dominio: d, propio: d in ajustes, eventos: vistos.get(d) ?? 0 }));
+}
 export async function GET(request: Request) {
   try {
     await administrador();
@@ -88,6 +101,7 @@ export async function GET(request: Request) {
         categorias: categoriasEvento,
         departamentos,
         cuentas: leerCuentasSeguidas(),
+        confianza: tablaConfianza(todos),
         lectura: estadoLecturaRedes(),
       },
       { headers: { "Cache-Control": "no-store" } },
@@ -133,6 +147,10 @@ export async function POST(request: Request) {
     if (a.accion === "completar_imagen") {
       const resultado = await completarImagenEvento(a.id, cacheLote());
       return Response.json({ resultado, evento: leerEvento(a.id) });
+    }
+    if (a.accion === "confianza_dominios") {
+      guardarAjuste("confianza_dominios", confianzaDominiosSchema, a.dominios);
+      return Response.json({ confianza: tablaConfianza(listarEventos()) });
     }
     if (a.accion === "pegar_enlace") return Response.json(crearEventoManual(a.datos));
     if (a.accion === "cuentas") return Response.json({ cuentas: guardarCuentasSeguidas(a.cuentas) });

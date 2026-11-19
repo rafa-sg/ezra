@@ -5,7 +5,7 @@ import type { Evento, EstadoVisible } from "@/lib/granjas/eventos";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
 import { ListaPosts } from "./posts";
-import { CuentasSeguir, PegarEnlace } from "./eventos-redes";
+import { ConfianzaDominios, CuentasSeguir, PegarEnlace, type FilaConfianza } from "./eventos-redes";
 import type { CuentasSeguidas, EstadoLectura } from "@/lib/granjas/redes";
 
 type EventoVista = Evento & { ficha: string };
@@ -19,6 +19,7 @@ type Respuesta = {
   sinImagen: string[];
   cuentas: CuentasSeguidas;
   lectura: { instagram: EstadoLectura; facebook: EstadoLectura };
+  confianza: FilaConfianza[];
 };
 type ResultadoImagen = { id: string; titulo: string; estado: "oficial" | "ticketera" | "red" | "sin_imagen" | "ya_tenia"; motivo: string; boletos?: string };
 type Lote = { total: number; hechos: ResultadoImagen[]; activo: boolean };
@@ -76,6 +77,9 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
   type Importacion = { nuevos: number; duplicados: { titulo: string; de: string }[]; descartados: { titulo: string; motivo: string }[]; conImagen: number; conDatosPorConfirmar: number; invalidos: { posicion: number; motivo: string }[] };
   const [importacion, setImportacion] = useState<Importacion | null>(null);
   const [lote, setLote] = useState<Lote | null>(null);
+  // Filtro y orden por confianza (en el navegador: la lista ya viene filtrada por estado y fechas).
+  const [cuidado, setCuidado] = useState(false);
+  const [orden, setOrden] = useState<"fecha" | "confianza_baja" | "confianza_alta">("fecha");
   const detener = useRef(false);
   /** Recorre de a uno los eventos sin imagen: cada paso es una petición, así se ve el progreso y se puede detener. */
   async function completarImagenes(ids: string[]) {
@@ -205,6 +209,9 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
       </div>
     );
   if (!datos) return <p role="status">{error || g("cargando")}</p>;
+  const visibles = datos.eventos
+    .filter((e) => !cuidado || e.confianza.puntos < 50)
+    .sort((a, b) => (orden === "confianza_baja" ? a.confianza.puntos - b.confianza.puntos : orden === "confianza_alta" ? b.confianza.puntos - a.confianza.puntos : 0));
   return (
     <div className="eg-eventos">
       {pestanas}
@@ -220,6 +227,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
       )}
       <p className={datos.spotmi ? "ep-nota" : "eg-presupuesto-aviso"}>{g(datos.spotmi ? "ev_spotmiConectado" : "ev_spotmiNoConectado")}</p>
       <CuentasSeguir key={JSON.stringify(datos.cuentas)} g={g} cuentas={datos.cuentas} lectura={datos.lectura} alGuardar={cargar} />
+      <ConfianzaDominios key={JSON.stringify(datos.confianza)} g={g} filas={datos.confianza} alGuardar={cargar} />
       <div className="eg-filtros" role="group" aria-label={g("ev_estado")}>
         <label className="eg-campo">
           {g("ev_estado")}
@@ -242,7 +250,19 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           {g("ev_hasta")}
           <input type="date" value={filtro.hasta} onChange={(e) => setFiltro({ ...filtro, hasta: e.target.value })} />
         </label>
-        <button className="ep-boton ep-texto" disabled={!filtro.estado && !filtro.desde && !filtro.hasta} onClick={() => setFiltro({ estado: "", desde: "", hasta: "" })}>
+        <label className="eg-campo">
+          {g("ev_conf_orden")}
+          <select value={orden} onChange={(e) => setOrden(e.target.value as typeof orden)}>
+            <option value="fecha">{g("ev_conf_ordenFecha")}</option>
+            <option value="confianza_baja">{g("ev_conf_ordenBaja")}</option>
+            <option value="confianza_alta">{g("ev_conf_ordenAlta")}</option>
+          </select>
+        </label>
+        <label className="eg-check">
+          <input type="checkbox" checked={cuidado} onChange={(e) => setCuidado(e.target.checked)} />
+          {g("ev_conf_cuidado")} ({datos.eventos.filter((e) => e.confianza.puntos < 50).length})
+        </label>
+        <button className="ep-boton ep-texto" disabled={!filtro.estado && !filtro.desde && !filtro.hasta && !cuidado} onClick={() => (setFiltro({ estado: "", desde: "", hasta: "" }), setCuidado(false))}>
           {g("ev_limpiar")}
         </button>
         <PegarEnlace
@@ -348,17 +368,30 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
         <div className="ep-vacio">
           <h3>{g("ev_vacioFiltro")}</h3>
         </div>
-      ) : !datos.eventos.length ? (
+      ) : !visibles.length ? (
         <p className="ep-nota">{g("ev_vacioFiltro")}</p>
       ) : (
         <ul className="eg-lista-eventos">
-          {datos.eventos.map((e) => (
+          {visibles.map((e) => (
             <li key={e.id} className={`eg-evento eg-evento-${e.estadoVisible}`}>
               <div className="eg-evento-cabecera">
                 <span className="ep-pill">{g(`ev_estado_${e.estadoVisible}`)}</span>
                 <span className="eg-evento-categoria">{g(`ev_cat_${e.categoria}`)}</span>
                 {e.origen !== "cazador" && e.origen !== "desconocido" && <span className="eg-evento-categoria">· {g(`ev_origen_${e.origen}`)}</span>}
+                {e.cambios.length > 0 && <span className="ep-pill eg-pill-actualizado">{g("ev_actualizado")}</span>}
               </div>
+              {e.cambios.length > 0 && (
+                <ul className="eg-cambios" aria-label={g("ev_actualizado")}>
+                  {e.cambios.slice(-3).map((c) => (
+                    <li key={`${c.campo}-${c.fecha}`}>
+                      {g(`ev_campo_${c.campo}`)}: <del>{c.antes ?? g("ev_porConfirmar")}</del> → <ins>{c.despues ?? g("ev_porConfirmar")}</ins>{" "}
+                      <small className="ep-nota">
+                        · {host(c.url)} · {fecha(c.fecha)}
+                      </small>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <h3>{e.titulo}</h3>
               <dl className="eg-evento-datos">
                 <div>
@@ -446,6 +479,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   </>
                 )}
               </div>
+              <AnilloConfianza g={g} confianza={e.confianza} />
               {e.descripcion && <p className="eg-evento-descripcion">{e.descripcion}</p>}
               {e.spotmiPropuestaId && (
                 <p className="ep-nota">
@@ -706,6 +740,44 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           </form>
         )}
       </Modal>
+    </div>
+  );
+}
+
+/** Círculo de confianza (verde ≥ 80, amarillo 50–79, rojo < 50); el desglose aparece al pasar el cursor o con el teclado. */
+function AnilloConfianza({ g, confianza }: { g: (clave: string) => string; confianza: Evento["confianza"] }) {
+  const p = confianza.puntos;
+  const nivel = p >= 80 ? "alta" : p >= 50 ? "media" : "baja";
+  const radio = 16;
+  const largo = 2 * Math.PI * radio;
+  const desglose = confianza.desglose.map((l) => `${l.concepto}: ${l.puntos > 0 ? "+" : ""}${l.puntos}`).join("\n");
+  return (
+    <div className={`eg-confianza eg-confianza-${nivel}`}>
+      <button type="button" className="eg-confianza-anillo" aria-label={`${g("ev_conf_nombre")}: ${p} %. ${desglose.replace(/\n/g, ". ")}`}>
+        <svg viewBox="0 0 40 40" width="44" height="44" aria-hidden="true">
+          <circle cx="20" cy="20" r={radio} className="eg-confianza-fondo" />
+          <circle cx="20" cy="20" r={radio} className="eg-confianza-valor" strokeDasharray={`${(p / 100) * largo} ${largo}`} transform="rotate(-90 20 20)" />
+        </svg>
+        <span>{p}%</span>
+      </button>
+      <span className="eg-confianza-texto">
+        {g("ev_conf_nombre")} · {g(`ev_conf_nivel_${nivel}`)}
+      </span>
+      <div className="eg-confianza-desglose" role="tooltip">
+        <strong>{g("ev_conf_desglose")}</strong>
+        <ul>
+          {confianza.desglose.map((l, i) => (
+            <li key={i}>
+              <span>{l.concepto}</span>
+              <b>
+                {l.puntos > 0 ? "+" : ""}
+                {l.puntos}
+              </b>
+            </li>
+          ))}
+        </ul>
+        <small>{g("ev_conf_limite")}</small>
+      </div>
     </div>
   );
 }

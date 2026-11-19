@@ -309,3 +309,108 @@ export function PegarEnlace({
     </>
   );
 }
+
+export type FilaConfianza = { dominio: string; tipo: string; puntos: number; propio: boolean; eventos: number };
+const tiposFuente = ["organizador", "ticketera", "gobierno", "prensa", "agregador"] as const;
+const puntosTipo: Record<string, number> = { organizador: 90, ticketera: 90, gobierno: 85, prensa: 65, agregador: 45 };
+
+/** «Confianza por dominio»: el propietario fija el tipo y los puntos de cada sitio. */
+export function ConfianzaDominios({ g, filas, alGuardar }: { g: (clave: string) => string; filas: FilaConfianza[]; alGuardar: () => Promise<void> }) {
+  const [edicion, setEdicion] = useState<Record<string, { tipo: string; puntos: number } | null>>({});
+  const [estado, setEstado] = useState({ ocupado: false, error: "", aviso: "" });
+  const valor = (f: FilaConfianza) => (f.dominio in edicion ? edicion[f.dominio] : f.propio ? { tipo: f.tipo, puntos: f.puntos } : null);
+  async function guardar() {
+    setEstado({ ocupado: true, error: "", aviso: "" });
+    const dominios = Object.fromEntries(filas.flatMap((f) => (valor(f) ? [[f.dominio, valor(f)!]] : [])));
+    try {
+      await pedir("/api/granjas/eventos", { accion: "confianza_dominios", dominios });
+      setEdicion({});
+      setEstado({ ocupado: false, error: "", aviso: g("ev_conf_guardada") });
+      await alGuardar();
+    } catch (e) {
+      setEstado({ ocupado: false, error: (e as Error).message, aviso: "" });
+    }
+  }
+  return (
+    <details className="eg-bloque eg-plegable">
+      <summary>
+        <strong>{g("ev_conf_titulo")}</strong>
+      </summary>
+      <p className="ep-nota">{g("ev_conf_ayuda")}</p>
+      {estado.error && (
+        <p className="ep-alerta" role="alert">
+          {estado.error}
+        </p>
+      )}
+      {estado.aviso && (
+        <p className="ep-aviso" role="status">
+          {estado.aviso}
+        </p>
+      )}
+      <div className="eg-tabla-desplazable">
+        <table className="eg-tabla-confianza">
+          <thead>
+            <tr>
+              <th scope="col">{g("ev_conf_dominio")}</th>
+              <th scope="col">{g("ev_redes_tipo")}</th>
+              <th scope="col">{g("ev_conf_puntos")}</th>
+              <th scope="col">{g("ev_conf_eventos")}</th>
+              <th scope="col">
+                <span className="eg-oculto-visual">{g("ev_conf_restablecer")}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((f) => {
+              const v = valor(f);
+              const tipo = v?.tipo ?? f.tipo;
+              const puntos = v?.puntos ?? f.puntos;
+              return (
+                <tr key={f.dominio}>
+                  <th scope="row">{f.dominio}</th>
+                  <td>
+                    <select
+                      aria-label={`${g("ev_redes_tipo")} · ${f.dominio}`}
+                      value={tipo}
+                      onChange={(e) => setEdicion({ ...edicion, [f.dominio]: { tipo: e.target.value, puntos: puntosTipo[e.target.value] ?? puntos } })}
+                    >
+                      {tiposFuente.map((t) => (
+                        <option key={t} value={t}>
+                          {g(`ev_tipo_${t}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`${g("ev_conf_puntos")} · ${f.dominio}`}
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={puntos}
+                      onChange={(e) => setEdicion({ ...edicion, [f.dominio]: { tipo, puntos: Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0))) } })}
+                    />
+                  </td>
+                  <td>{f.eventos}</td>
+                  <td>
+                    {v && (
+                      <button className="ep-boton ep-texto" onClick={() => setEdicion({ ...edicion, [f.dominio]: null })}>
+                        {g("ev_conf_restablecer")}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="ep-acciones">
+        <button className="ep-boton ep-primario" disabled={!Object.keys(edicion).length || estado.ocupado} onClick={() => void guardar()}>
+          <Save size={15} />
+          {g("guardar")}
+        </button>
+      </div>
+    </details>
+  );
+}

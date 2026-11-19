@@ -283,3 +283,63 @@ test("dominios prohibidos: el HTML y las imágenes de redes nunca se leen; el en
   assert.equal(otra.evento.id, manual.evento.id);
   assert.equal(otra.evento.fuentes.length, 2);
 });
+
+/* ── Parte 3: porcentaje de confianza ── */
+test("confianza: tipo de la mejor fuente, coincidencias, datos por confirmar, contradicciones, antigüedad y ajustes", async () => {
+  const { calcularConfianza, clasificarFuente } = await import("../src/lib/granjas/confianza");
+  const hoy = "2026-11-18";
+  type Ev = { fecha: string | null; fechaFin: string | null; hora: string | null; precio: string | null; lugar: string; municipio: string };
+  const completo: Ev = { fecha: "2026-12-05", fechaFin: null, hora: "19:00", precio: "$25", lugar: "Teatro Presidente", municipio: "San Salvador" };
+  const f = (url: string, extra: Partial<Parameters<typeof calcularConfianza>[1][number]> = {}) => ({
+    url,
+    via: "web" as const,
+    cuenta: "",
+    publicado: null,
+    leido: "2026-11-17T10:00:00Z",
+    campos: ["titulo", "fecha"],
+    datos: { fecha: "2026-12-05", lugar: "Teatro Presidente" },
+    ...extra,
+  });
+  const puntos = (evento: Ev, fuentes: ReturnType<typeof f>[], ajustes = {}) => calcularConfianza(evento, fuentes, { hoy, ajustes }).puntos;
+  // Tipos base.
+  assert.equal(puntos(completo, [f("https://www.smartticket.fun/es/event/x")]), 90, "ticketera");
+  assert.equal(puntos(completo, [f("https://elsalvador.travel/esp/event/x/")]), 85, "MITUR");
+  assert.equal(puntos(completo, [f("https://cultura.gob.sv/x")]), 85, "otro dominio .gob.sv");
+  assert.equal(puntos(completo, [f("https://www.elsalvador.com/x")]), 65, "prensa");
+  assert.equal(puntos(completo, [f("https://blog-desconocido.com/x")]), 45, "agregador");
+  assert.equal(puntos(completo, [f("https://www.instagram.com/p/x/", { via: "instagram", cuenta: "@teatro" })]), 80, "cuenta oficial por API");
+  assert.equal(puntos(completo, [f("https://www.tiktok.com/@x/video/1", { via: "manual" })]), 35, "enlace manual de TikTok");
+  // +10: dos orígenes independientes coinciden; el mismo dominio dos veces no cuenta.
+  assert.equal(puntos(completo, [f("https://elsalvador.travel/a"), f("https://www.smartticket.fun/b")]), 100, "90 + 10 (tope 100)");
+  assert.equal(puntos(completo, [f("https://www.elsalvador.com/a"), f("https://www.elsalvador.com/b")]), 65);
+  assert.equal(puntos(completo, [f("https://www.elsalvador.com/a"), f("https://blog.com/b")]), 75);
+  // −10 por cada dato por confirmar.
+  assert.equal(puntos({ ...completo, hora: null, precio: null }, [f("https://elsalvador.travel/a")]), 65);
+  assert.equal(puntos({ ...completo, hora: null, precio: null, lugar: "", municipio: "" }, [f("https://blog.com/a")]), 15);
+  // −20 si se contradicen (otra fecha u otro lugar); un evento de varios días no se contradice dentro de su rango.
+  const otraFecha = f("https://www.elsalvador.com/b", { datos: { fecha: "2026-12-20", lugar: "Teatro Presidente" } });
+  assert.equal(puntos(completo, [f("https://www.smartticket.fun/a"), otraFecha]), 70);
+  const otroLugar = f("https://www.elsalvador.com/b", { datos: { fecha: "2026-12-05", lugar: "Estadio Cuscatlán" } });
+  assert.equal(puntos(completo, [f("https://www.smartticket.fun/a"), otroLugar]), 70);
+  const fiestas = { ...completo, fechaFin: "2026-12-10" };
+  const dentro = f("https://www.elsalvador.com/b", { datos: { fecha: "2026-12-08", lugar: "Teatro Presidente" } });
+  assert.equal(puntos(fiestas, [f("https://www.smartticket.fun/a"), dentro]), 100);
+  // −15 si la mejor fuente tiene más de 30 días (por fecha de publicación o, si no hay, de lectura).
+  assert.equal(puntos(completo, [f("https://www.smartticket.fun/a", { leido: "2026-09-01T00:00:00Z" })]), 75);
+  assert.equal(puntos(completo, [f("https://www.instagram.com/p/x/", { via: "instagram", cuenta: "@t", publicado: "2026-10-01T00:00:00Z" })]), 65);
+  // Límite 0–100 y desglose legible.
+  const peor = calcularConfianza({ ...completo, hora: null, precio: null, lugar: "", municipio: "" }, [f("https://www.tiktok.com/@x/video/1", { via: "manual", leido: "2026-01-01T00:00:00Z" }), f("https://blog.com/z", { datos: { fecha: "2027-03-01" } })], { hoy });
+  assert.equal(peor.puntos, 0);
+  assert.ok(peor.desglose.some((l) => /contradicen \(fecha\)/.test(l.concepto)));
+  // Ajuste del propietario: un dominio pasa a organizador con 95 puntos.
+  assert.equal(puntos(completo, [f("https://www.teatropresidente.gob.sv/x")], { "teatropresidente.gob.sv": { tipo: "organizador", puntos: 95 } }), 95);
+  assert.equal(clasificarFuente({ url: "https://sub.smartticket.fun/x", via: "web" }).tipo, "ticketera");
+  // En la bandeja: la confianza se ve en cada evento y cambia con los ajustes guardados.
+  const e = nuevo({ titulo: "Recital de piano en el Teatro Nacional", fuenteUrl: "https://blog-cultural.com/recital", fecha: "2026-12-05", hora: "19:00", precio: "$10", lugar: "Teatro Nacional" });
+  assert.equal(e.confianza.puntos, 45);
+  const { guardarAjuste } = await import("../src/lib/granjas/ajustes");
+  const { confianzaDominiosSchema } = await import("../src/lib/granjas/confianza");
+  guardarAjuste("confianza_dominios", confianzaDominiosSchema, { "blog-cultural.com": { tipo: "prensa", puntos: 70 } });
+  assert.equal(eventos.leerEvento(e.id).confianza.puntos, 70);
+  guardarAjuste("confianza_dominios", confianzaDominiosSchema, {});
+});

@@ -1518,3 +1518,150 @@
   font-size: 13px;
   overflow-wrap: anywhere;
 }
+/* Confianza: círculo con el %, desglose al pasar el cursor o con foco. */
+.azra .eg-confianza {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.azra .eg-confianza-anillo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  background: none;
+  cursor: help;
+}
+.azra .eg-confianza-anillo:focus-visible {
+  outline: 2px solid #4ea1ff;
+  outline-offset: 2px;
+}
+.azra .eg-confianza-anillo svg {
+  position: absolute;
+  inset: 0;
+}
+.azra .eg-confianza-anillo span {
+  position: relative;
+  font-size: 11px;
+  font-weight: 700;
+}
+.azra .eg-confianza-fondo {
+  fill: none;
+  stroke: var(--ep-borde, #2b3b4d);
+  stroke-width: 4;
+}
+.azra .eg-confianza-valor {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.azra .eg-confianza-alta .eg-confianza-valor {
+  stroke: #3ccf7d;
+}
+.azra .eg-confianza-media .eg-confianza-valor {
+  stroke: #f2c94c;
+}
+.azra .eg-confianza-baja .eg-confianza-valor {
+  stroke: #ff6b6b;
+}
+.azra .eg-confianza-texto {
+  color: var(--ep-suave, #a9b6c4);
+  font-size: 13px;
+}
+.azra .eg-confianza-desglose {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  display: none;
+  width: min(340px, calc(100vw - 48px));
+  padding: 10px 12px;
+  border: 1px solid var(--ep-borde, #2b3b4d);
+  border-radius: 8px;
+  background: #0f1b2a;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  font-size: 13px;
+}
+.azra .eg-confianza:hover .eg-confianza-desglose,
+.azra .eg-confianza:focus-within .eg-confianza-desglose {
+  display: block;
+}
+.azra .eg-confianza-desglose ul {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .eg-confianza-desglose li {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  overflow-wrap: anywhere;
+}
+.azra .eg-confianza-desglose small {
+  color: var(--ep-suave, #a9b6c4);
+}
+.azra .eg-pill-actualizado {
+  color: #cfe6ff;
+  background: #1d3550;
+  border-color: #4ea1ff;
+}
+.azra .eg-cambios {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.azra .eg-cambios del {
+  color: #ff9b9b;
+}
+.azra .eg-cambios ins {
+  color: #9ff0bf;
+  text-decoration: none;
+}
+.azra .eg-check {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  align-self: end;
+  min-height: 38px;
+}
+.azra .eg-tabla-desplazable {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.azra .eg-tabla-confianza {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.azra .eg-tabla-confianza th,
+.azra .eg-tabla-confianza td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ep-borde, #2b3b4d);
+  text-align: left;
+  white-space: nowrap;
+}
+.azra .eg-tabla-confianza input {
+  width: 72px;
+}
+.azra .eg-oculto-visual {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .azra .eg-confianza-valor {
+    transition: stroke-dasharray 0.3s ease;
+  }
+}
