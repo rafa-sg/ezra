@@ -1109,5 +1109,22 @@
   "g_r_llamadas": "Gemini calls",
   "g_r_conError": "with errors",
   "g_recetaYaExiste": "You already have an active farm from this recipe:",
-  "g_recetaCrearOtra": "Create another copy?"
+  "g_recetaCrearOtra": "Create another copy?",
+  "g_ev_img_detener": "Stop",
+  "g_ev_img_ayuda": "Looks for the official image of each event without one: its page, the ticket page, its other sources, its listing on allowed ticket sites and the post of an official account read through the API. It never generates or edits images.",
+  "g_ev_img_completar": "Complete images",
+  "g_ev_img_buscando": "Looking for images",
+  "g_ev_img_resumen": "Result",
+  "g_ev_img_oficiales": "official",
+  "g_ev_img_red": "from official accounts",
+  "g_ev_img_sin": "without image",
+  "g_ev_img_sinRevisar": "not checked (stopped)",
+  "g_ev_img_pendientes": "Every image found stays pending your confirmation. Events without an image show the blue date box.",
+  "g_ev_img_detalle": "See details per event",
+  "g_ev_img_estado_oficial": "image from its page",
+  "g_ev_img_estado_ticketera": "image from its ticket-site listing",
+  "g_ev_img_estado_red": "image from the official account's post",
+  "g_ev_img_estado_sin_imagen": "no image",
+  "g_ev_img_estado_ya_tenia": "already had an image",
+  "g_ev_cerrar": "Close"
 }

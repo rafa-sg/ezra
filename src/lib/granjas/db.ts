@@ -335,6 +335,35 @@ const migraciones: string[] = [
   alter table eventos add column imagen_confirmada integer not null default 0;
   update eventos set imagen_confirmada = 1 where imagen_medio_id is not null and imagen_permiso <> '';
   `,
+  // 7 · Todas las URL donde apareció cada evento, su origen de entrada, la confianza
+  // calculada (instantánea; se recalcula al leer) y el historial de cambios de fecha, lugar o precio.
+  // Los eventos existentes conservan su fuente como primera fila; lo confirmado sale de confirmado_en.
+  `
+  create table evento_fuentes (
+    id text primary key,
+    evento_id text not null references eventos(id) on delete cascade,
+    url text not null,
+    via text not null check (via in ('web', 'instagram', 'facebook', 'manual', 'desconocido')),
+    cuenta text not null default '',
+    publicado text,
+    leido text not null,
+    campos text not null default '[]',
+    datos text not null default '{}',
+    imagen_url text,
+    unique (evento_id, url)
+  );
+  create index evento_fuentes_evento on evento_fuentes (evento_id);
+  alter table eventos add column origen text not null default 'desconocido';
+  alter table eventos add column confianza integer;
+  alter table eventos add column confianza_desglose text not null default '[]';
+  alter table eventos add column cambios text not null default '[]';
+  update eventos set origen = case when ejecucion_id is not null then 'cazador' else 'importacion' end;
+  insert into evento_fuentes (id, evento_id, url, via, leido, campos, datos)
+    select lower(hex(randomblob(16))), id, fuente_url, 'web', creado,
+      coalesce((select json_group_array(key) from json_each(eventos.confirmado_en) where value <> 'propietario'), '[]'),
+      json_object('fecha', fecha, 'hora', hora, 'lugar', lugar, 'precio', precio)
+    from eventos;
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

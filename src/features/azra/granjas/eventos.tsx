@@ -14,7 +14,10 @@ type Respuesta = {
   spotmi: boolean;
   categorias: string[];
   departamentos: string[];
+  sinImagen: string[];
 };
+type ResultadoImagen = { id: string; titulo: string; estado: "oficial" | "ticketera" | "red" | "sin_imagen" | "ya_tenia"; motivo: string; boletos?: string };
+type Lote = { total: number; hechos: ResultadoImagen[]; activo: boolean };
 const estados: EstadoVisible[] = ["nuevo", "aprobado", "descartado", "propuesto", "aceptado", "subido_ig"];
 type Formulario = {
   titulo: string;
@@ -68,6 +71,26 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
   const archivo = useRef<HTMLInputElement>(null);
   type Importacion = { nuevos: number; duplicados: { titulo: string; de: string }[]; descartados: { titulo: string; motivo: string }[]; conImagen: number; conDatosPorConfirmar: number; invalidos: { posicion: number; motivo: string }[] };
   const [importacion, setImportacion] = useState<Importacion | null>(null);
+  const [lote, setLote] = useState<Lote | null>(null);
+  const detener = useRef(false);
+  /** Recorre de a uno los eventos sin imagen: cada paso es una petición, así se ve el progreso y se puede detener. */
+  async function completarImagenes(ids: string[]) {
+    detener.current = false;
+    setError("");
+    setLote({ total: ids.length, hechos: [], activo: true });
+    for (const id of ids) {
+      if (detener.current) break;
+      let r: ResultadoImagen;
+      try {
+        r = (await pedir<{ resultado: ResultadoImagen }>("/api/granjas/eventos", { accion: "completar_imagen", id })).resultado;
+      } catch (e) {
+        r = { id, titulo: datos?.eventos.find((x) => x.id === id)?.titulo ?? id, estado: "sin_imagen", motivo: (e as Error).message };
+      }
+      setLote((l) => (l ? { ...l, hechos: [...l.hechos, r] } : l));
+    }
+    setLote((l) => (l ? { ...l, activo: false } : l));
+    await cargar();
+  }
   async function importar(file: File) {
     setOcupado(true);
     setError("");
@@ -222,6 +245,17 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           <Upload size={15} />
           {g("ev_importar")}
         </button>
+        {lote?.activo ? (
+          <button className="ep-boton" onClick={() => (detener.current = true)}>
+            <X size={15} />
+            {g("ev_img_detener")}
+          </button>
+        ) : (
+          <button className="ep-boton" disabled={ocupado || !datos.sinImagen.length} onClick={() => void completarImagenes(datos.sinImagen)} title={g("ev_img_ayuda")}>
+            <Imagen size={15} />
+            {g("ev_img_completar")} ({datos.sinImagen.length})
+          </button>
+        )}
         {datos.spotmi && (datos.conteo.propuesto ?? 0) > 0 && (
           <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "consultar_spotmi" }, g("ev_estadoActualizado"))}>
             <RefreshCw size={15} />
@@ -229,6 +263,46 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           </button>
         )}
       </div>
+      {lote && (
+        <div className="eg-bloque eg-lote" role="status" aria-live="polite">
+          {lote.activo ? (
+            <>
+              <strong>
+                {g("ev_img_buscando")} {Math.min(lote.hechos.length + 1, lote.total)} / {lote.total}
+              </strong>
+              <progress max={lote.total} value={lote.hechos.length} />
+            </>
+          ) : (
+            <>
+              <strong>
+                {g("ev_img_resumen")}: {lote.hechos.filter((h) => h.estado === "oficial" || h.estado === "ticketera").length} {g("ev_img_oficiales")} ·{" "}
+                {lote.hechos.filter((h) => h.estado === "red").length} {g("ev_img_red")} · {lote.hechos.filter((h) => h.estado === "sin_imagen").length} {g("ev_img_sin")}
+                {lote.hechos.length < lote.total ? ` · ${lote.total - lote.hechos.length} ${g("ev_img_sinRevisar")}` : ""}
+              </strong>
+              <p className="ep-nota">{g("ev_img_pendientes")}</p>
+              {lote.hechos.some((h) => h.estado !== "ya_tenia") && (
+                <details>
+                  <summary>{g("ev_img_detalle")}</summary>
+                  <ul className="eg-lista-importacion">
+                    {lote.hechos
+                      .filter((h) => h.estado !== "ya_tenia")
+                      .map((h) => (
+                        <li key={h.id}>
+                          {h.titulo} → {g(`ev_img_estado_${h.estado}`)}
+                          {h.motivo ? `: ${h.motivo}` : ""}
+                          {h.boletos ? ` · ${g("ev_boletos")}: ${host(h.boletos)}` : ""}
+                        </li>
+                      ))}
+                  </ul>
+                </details>
+              )}
+              <button className="ep-boton ep-texto" onClick={() => setLote(null)}>
+                {g("ev_cerrar")}
+              </button>
+            </>
+          )}
+        </div>
+      )}
       {importacion && (
         <div className="eg-bloque" role="status">
           <strong>
@@ -326,7 +400,10 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                     </div>
                   </>
                 ) : (
-                  <small className="ep-nota">{g("ev_sinImagen")}</small>
+                  <>
+                    <CuadroFecha fecha={e.fecha} locale={locale} />
+                    <small className="ep-nota">{g("ev_sinImagen")}</small>
+                  </>
                 )}
               </div>
               {e.descripcion && <p className="eg-evento-descripcion">{e.descripcion}</p>}
@@ -589,6 +666,17 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           </form>
         )}
       </Modal>
+    </div>
+  );
+}
+
+/** Sin imagen: el mismo cuadro azul marino de Spotmi con el día grande y el mes. */
+function CuadroFecha({ fecha, locale }: { fecha: string | null; locale: string }) {
+  const d = fecha ? new Date(`${fecha}T12:00:00Z`) : null;
+  return (
+    <div className="eg-cuadro-fecha" aria-hidden="true">
+      <strong>{d ? d.getUTCDate() : "?"}</strong>
+      <span>{d ? new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { month: "short", timeZone: "UTC" }).format(d).replace(".", "") : "—"}</span>
     </div>
   );
 }

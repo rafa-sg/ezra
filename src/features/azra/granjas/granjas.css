@@ -1442,3 +1442,32 @@
 .azra .eg-resumen-ejecucion b {
   color: var(--ep-texto, #f3f3e9);
 }
+/* Sin imagen: cuadro azul marino de Spotmi con el día y el mes. */
+.azra .eg-cuadro-fecha {
+  flex: 0 0 auto;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  color: #fff;
+  background: #002f4b;
+  line-height: 1;
+}
+.azra .eg-cuadro-fecha strong {
+  font-size: 36px;
+  font-weight: 800;
+}
+.azra .eg-cuadro-fecha span {
+  margin-top: 4px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.azra .eg-lote progress {
+  width: 100%;
+  height: 8px;
+  margin-top: 8px;
+  accent-color: #4ea1ff;
+}

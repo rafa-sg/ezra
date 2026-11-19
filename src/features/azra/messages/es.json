@@ -1109,5 +1109,22 @@
   "g_r_llamadas": "llamadas a Gemini",
   "g_r_conError": "con error",
   "g_recetaYaExiste": "Ya tienes una granja activa con esta receta:",
-  "g_recetaCrearOtra": "¿Crear otra copia?"
+  "g_recetaCrearOtra": "¿Crear otra copia?",
+  "g_ev_img_detener": "Detener",
+  "g_ev_img_ayuda": "Busca la imagen oficial de cada evento sin imagen: su página, la de boletos, sus otras fuentes, la ficha en las ticketeras permitidas y el post de una cuenta oficial leído por API. Nunca genera ni retoca imágenes.",
+  "g_ev_img_completar": "Completar imágenes",
+  "g_ev_img_buscando": "Buscando imágenes",
+  "g_ev_img_resumen": "Resultado",
+  "g_ev_img_oficiales": "oficiales",
+  "g_ev_img_red": "de cuentas oficiales",
+  "g_ev_img_sin": "sin imagen",
+  "g_ev_img_sinRevisar": "sin revisar (detenido)",
+  "g_ev_img_pendientes": "Cada imagen encontrada queda pendiente de tu confirmación. Los eventos sin imagen muestran el cuadro azul con la fecha.",
+  "g_ev_img_detalle": "Ver detalle por evento",
+  "g_ev_img_estado_oficial": "imagen de su página",
+  "g_ev_img_estado_ticketera": "imagen de su ficha en la ticketera",
+  "g_ev_img_estado_red": "imagen del post de la cuenta oficial",
+  "g_ev_img_estado_sin_imagen": "sin imagen",
+  "g_ev_img_estado_ya_tenia": "ya tenía imagen",
+  "g_ev_cerrar": "Cerrar"
 }

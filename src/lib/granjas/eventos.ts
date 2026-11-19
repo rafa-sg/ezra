@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { WorkflowError } from "../workflow";
 import { ahoraIso, auditar, base, json, transaccion } from "./db";
+import { leerAjuste } from "./ajustes";
+import { calcularConfianza, clasificarFuente, confianzaDominiosSchema, esRedSocial, type Confianza, type ConfianzaDominios, type FuenteEvaluada, type TipoFuente } from "./confianza";
 import { diaLocal, diaValido, instanteLocal, sumarDias } from "./tiempo";
 
 /**
@@ -119,7 +121,7 @@ export function parecido(a: string, b: string) {
   if (comunes === menor && (menor >= 2 || mayor <= 2) && mayor - menor <= 2) return Math.max(jaccard, 0.85);
   return jaccard;
 }
-export type Referencia = { titulo: string; fecha: string | null; hasta?: string | null; lugar?: string | null; origen: string };
+export type Referencia = { titulo: string; fecha: string | null; hasta?: string | null; lugar?: string | null; origen: string; id?: string };
 const distanciaDias = (a: string, b: string) => Math.abs(Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / 86_400_000;
 /** Mismo evento si el título se parece y la fecha coincide (±1 día), o mucho parecido si falta una fecha. */
 export function buscarDuplicado(candidato: { titulo: string; fecha: string | null }, referencias: Referencia[]): Referencia | null {
@@ -170,7 +172,55 @@ export type Evento = {
   creado: string;
   actualizado: string;
   estadoVisible: EstadoVisible;
+  /** Cómo entró: cazador (web y Google), cuentas de Instagram o Facebook por API, importación o enlace manual. */
+  origen: OrigenEvento;
+  /** Todas las URL donde apareció, con su tipo y lo que confirmó cada una. */
+  fuentes: EventoFuente[];
+  confianza: Confianza;
+  /** Cambios de fecha, hora, lugar o precio que trajo una fuente después de crearse. */
+  cambios: CambioEvento[];
 };
+export const origenesEvento = ["cazador", "instagram", "facebook", "importacion", "manual", "desconocido"] as const;
+export type OrigenEvento = (typeof origenesEvento)[number];
+export type EventoFuente = FuenteEvaluada & { id: string; imagenUrl: string | null; tipo: TipoFuente; puntos: number; dominio: string };
+export type CambioEvento = { campo: "fecha" | "fechaFin" | "hora" | "lugar" | "precio"; antes: string | null; despues: string | null; url: string; fecha: string };
+export type NuevaFuente = {
+  url: string;
+  via: FuenteEvaluada["via"];
+  cuenta?: string;
+  publicado?: string | null;
+  campos?: string[];
+  datos?: FuenteEvaluada["datos"];
+  imagenUrl?: string | null;
+};
+export const leerConfianzaDominios = (): ConfianzaDominios => leerAjuste("confianza_dominios", confianzaDominiosSchema, {});
+type FilaFuente = { id: string; evento_id: string; url: string; via: string; cuenta: string; publicado: string | null; leido: string; campos: string; datos: string; imagen_url: string | null };
+function aFuente(f: FilaFuente, ajustes: ConfianzaDominios): EventoFuente {
+  const crudo = {
+    id: f.id,
+    url: f.url,
+    via: f.via as FuenteEvaluada["via"],
+    cuenta: f.cuenta,
+    publicado: f.publicado,
+    leido: f.leido,
+    campos: json<string[]>(f.campos, []),
+    datos: json<FuenteEvaluada["datos"]>(f.datos, {}),
+    imagenUrl: f.imagen_url,
+  };
+  return { ...crudo, ...clasificarFuente(crudo, ajustes) };
+}
+function fuentesPorEvento(ids: string[] | null, ajustes: ConfianzaDominios) {
+  const filas = (
+    ids === null
+      ? base().prepare("select * from evento_fuentes order by leido").all()
+      : ids.length === 1
+        ? base().prepare("select * from evento_fuentes where evento_id = ? order by leido").all(ids[0])
+        : []
+  ) as FilaFuente[];
+  const mapa = new Map<string, EventoFuente[]>();
+  for (const f of filas) mapa.set(f.evento_id, [...(mapa.get(f.evento_id) ?? []), aFuente(f, ajustes)]);
+  return mapa;
+}
 type Fila = Record<string, string | number | null>;
 const s = (v: unknown) => (v === null || v === undefined ? null : String(v));
 export function estadoVisible(e: Pick<Evento, "estado" | "spotmiEstado" | "igEstado">): EstadoVisible {
@@ -179,7 +229,7 @@ export function estadoVisible(e: Pick<Evento, "estado" | "spotmiEstado" | "igEst
   if (e.spotmiEstado === "propuesto") return "propuesto";
   return e.estado;
 }
-function aEvento(f: Fila): Evento {
+function aEvento(f: Fila, fuentes: EventoFuente[], ajustes: ConfianzaDominios, hoy: string): Evento {
   const e = {
     id: String(f.id),
     titulo: String(f.titulo),
@@ -214,16 +264,26 @@ function aEvento(f: Fila): Evento {
     revision: Number(f.revision),
     creado: String(f.creado),
     actualizado: String(f.actualizado),
+    origen: (origenesEvento as readonly string[]).includes(String(f.origen)) ? (String(f.origen) as OrigenEvento) : "desconocido",
+    fuentes,
+    cambios: json<CambioEvento[]>(s(f.cambios), []),
   };
-  return { ...e, estadoVisible: estadoVisible(e) };
+  // Se recalcula al leer: la antigüedad de la fuente y los ajustes del propietario cambian con el tiempo.
+  return { ...e, estadoVisible: estadoVisible(e), confianza: calcularConfianza(e, fuentes, { hoy, ajustes }) };
 }
 export function leerEvento(id: string): Evento {
   const f = base().prepare("select * from eventos where id = ?").get(id) as Fila | undefined;
   if (!f) throw new WorkflowError("Evento no encontrado.", 404);
-  return aEvento(f);
+  const ajustes = leerConfianzaDominios();
+  return aEvento(f, fuentesPorEvento([id], ajustes).get(id) ?? [], ajustes, diaLocal(new Date()));
 }
 export function listarEventos(filtro: { estado?: EstadoVisible | null; desde?: string | null; hasta?: string | null; creadoEl?: string | null } = {}) {
-  const filas = (base().prepare("select * from eventos order by coalesce(fecha, '9999-12-31'), creado desc limit 2000").all() as Fila[]).map(aEvento);
+  const ajustes = leerConfianzaDominios();
+  const fuentes = fuentesPorEvento(null, ajustes);
+  const hoy = diaLocal(new Date());
+  const filas = (base().prepare("select * from eventos order by coalesce(fecha, '9999-12-31'), creado desc limit 2000").all() as Fila[]).map((f) =>
+    aEvento(f, fuentes.get(String(f.id)) ?? [], ajustes, hoy),
+  );
   return filas.filter(
     (e) =>
       (!filtro.estado || e.estadoVisible === filtro.estado) &&
@@ -233,7 +293,7 @@ export function listarEventos(filtro: { estado?: EstadoVisible | null; desde?: s
   );
 }
 export function referenciasLocales(): Referencia[] {
-  return (base().prepare("select titulo, fecha, fecha_fin as hasta, lugar from eventos").all() as { titulo: string; fecha: string | null; hasta: string | null; lugar: string }[]).map((r) => ({
+  return (base().prepare("select id, titulo, fecha, fecha_fin as hasta, lugar from eventos").all() as { id: string; titulo: string; fecha: string | null; hasta: string | null; lugar: string }[]).map((r) => ({
     ...r,
     origen: "Ezra",
   }));
@@ -266,15 +326,20 @@ export type NuevoEvento = Omit<
   | "imagenPermiso"
   | "imagenConfirmada"
   | "fechaFin"
-> & { fechaFin?: string | null };
+  | "origen"
+  | "fuentes"
+  | "confianza"
+  | "cambios"
+> & { fechaFin?: string | null; origen?: OrigenEvento; fuente?: Omit<NuevaFuente, "url"> };
 export function crearEvento(datos: NuevoEvento): Evento {
   const id = crypto.randomUUID();
   const ahora = ahoraIso();
+  transaccion(() => {
   base()
     .prepare(
       `insert into eventos (id, titulo, fecha, fecha_fin, hora, lugar, municipio, departamento, categoria, precio, boletos_url, fuente_url,
-       confirmado_en, sugerencias, descripcion, imagen_url, estado, huella, nota_verificacion, granja_id, ejecucion_id, creado, actualizado)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nuevo', ?, ?, ?, ?, ?, ?)`,
+       confirmado_en, sugerencias, descripcion, imagen_url, estado, huella, nota_verificacion, granja_id, ejecucion_id, creado, actualizado, origen)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nuevo', ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -299,8 +364,105 @@ export function crearEvento(datos: NuevoEvento): Evento {
       datos.ejecucionId,
       ahora,
       ahora,
+      datos.origen ?? "desconocido",
     );
-  return leerEvento(id);
+  // La fuente principal es la primera de la lista; lo que confirmó sale de confirmadoEn.
+  agregarFuente(id, {
+    via: "web",
+    campos: Object.entries(datos.confirmadoEn)
+      .filter(([, v]) => v && v !== "propietario")
+      .map(([k]) => k),
+    datos: { fecha: datos.fecha ?? datos.sugerencias.fecha ?? null, hora: datos.hora ?? datos.sugerencias.hora ?? null, lugar: datos.lugar || null, precio: datos.precio ?? null },
+    imagenUrl: datos.imagenUrl,
+    ...datos.fuente,
+    url: datos.fuenteUrl,
+  });
+  });
+  return guardarConfianza(id);
+}
+
+/* ── Fuentes de cada evento ── */
+/**
+ * Suma una URL a las fuentes de un evento. Si ya estaba, actualiza la fecha de lectura,
+ * une lo que confirmó y conserva lo último que decía. Devuelve true si la URL era nueva.
+ */
+export function agregarFuente(eventoId: string, f: NuevaFuente): boolean {
+  return transaccion((db) => {
+    const previa = db.prepare("select * from evento_fuentes where evento_id = ? and url = ?").get(eventoId, f.url) as FilaFuente | undefined;
+    const ahora = ahoraIso();
+    if (previa) {
+      const campos = [...new Set([...json<string[]>(previa.campos, []), ...(f.campos ?? [])])];
+      const datos = { ...json<object>(previa.datos, {}), ...Object.fromEntries(Object.entries(f.datos ?? {}).filter(([, v]) => v !== null && v !== undefined && v !== "")) };
+      db.prepare("update evento_fuentes set leido = ?, campos = ?, datos = ?, imagen_url = coalesce(?, imagen_url), publicado = coalesce(?, publicado) where id = ?").run(
+        ahora,
+        JSON.stringify(campos),
+        JSON.stringify(datos),
+        f.imagenUrl ?? null,
+        f.publicado ?? null,
+        previa.id,
+      );
+      return false;
+    }
+    db.prepare(
+      "insert into evento_fuentes (id, evento_id, url, via, cuenta, publicado, leido, campos, datos, imagen_url) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    ).run(
+      crypto.randomUUID(),
+      eventoId,
+      f.url.slice(0, 1000),
+      f.via,
+      (f.cuenta ?? "").slice(0, 120),
+      f.publicado ?? null,
+      ahora,
+      JSON.stringify([...new Set(f.campos ?? [])]),
+      JSON.stringify(f.datos ?? {}),
+      f.imagenUrl?.slice(0, 2000) ?? null,
+    );
+    return true;
+  });
+}
+/** Guarda la confianza calculada (instantánea para exportar y para el resumen); la vista la recalcula al leer. */
+export function guardarConfianza(id: string): Evento {
+  const e = leerEvento(id);
+  base().prepare("update eventos set confianza = ?, confianza_desglose = ? where id = ?").run(e.confianza.puntos, JSON.stringify(e.confianza.desglose), id);
+  return e;
+}
+/**
+ * Aplica cambios que trajo una fuente (fecha, hora, lugar o precio) y los anota con
+ * el antes y el después. Un dato escrito por el propietario no se toca. Un evento
+ * aprobado vuelve a «nuevo» (cambió un hecho); uno ya enviado a Spotmi no se cambia:
+ * el cambio queda anotado como pendiente en la nota de verificación.
+ */
+export function aplicarCambios(id: string, cambios: Omit<CambioEvento, "fecha">[]): { evento: Evento; aplicados: CambioEvento[] } {
+  return transaccion(() => {
+    const e = leerEvento(id);
+    const ahora = ahoraIso();
+    const validos = cambios.filter((c) => c.antes !== c.despues && !(c.campo !== "lugar" && e.confirmadoEn[c.campo] === "propietario"));
+    if (!validos.length) return { evento: e, aplicados: [] };
+    const aplicados = validos.map((c) => ({ ...c, fecha: ahora }));
+    const enSpotmi = e.spotmiEstado === "propuesto" || e.spotmiEstado === "aceptado";
+    const historial = JSON.stringify([...e.cambios, ...aplicados].slice(-30));
+    if (enSpotmi || (e.spotmiClave && !e.spotmiPropuestaId)) {
+      const nota = aplicados.map((c) => `${c.campo}: ${c.antes ?? "—"} → ${c.despues ?? "—"} (${c.url})`).join("; ");
+      auditar("evento.cambio_pendiente", id, { campos: aplicados.map((c) => c.campo) });
+      return {
+        evento: actualizar(id, { cambios: historial, nota_verificacion: `${e.notaVerificacion} Cambio detectado sin aplicar (ya está en Spotmi): ${nota}.`.trim().slice(0, 1500) }),
+        aplicados: [],
+      };
+    }
+    const columnas: Record<CambioEvento["campo"], string> = { fecha: "fecha", fechaFin: "fecha_fin", hora: "hora", lugar: "lugar", precio: "precio" };
+    const confirmadoEn = { ...e.confirmadoEn };
+    const set: Record<string, string | number | null> = {};
+    for (const c of aplicados) {
+      set[columnas[c.campo]] = c.campo === "lugar" ? (c.despues ?? "") : c.despues;
+      if (c.campo !== "lugar") {
+        if (c.despues) confirmadoEn[c.campo] = c.url;
+        else delete confirmadoEn[c.campo];
+      }
+    }
+    auditar("evento.actualizado", id, { campos: aplicados.map((c) => c.campo) });
+    const evento = actualizar(id, { ...set, confirmado_en: JSON.stringify(confirmadoEn), cambios: historial, estado: e.estado === "aprobado" ? "nuevo" : e.estado });
+    return { evento, aplicados };
+  });
 }
 
 /* ── Acciones del propietario ── */
@@ -362,12 +524,13 @@ export function descartarEvento(id: string, revision: number, motivo: string) {
 /** Editar cambia hechos: un evento aprobado vuelve a «nuevo» y necesita aprobarse otra vez. */
 export function editarEvento(id: string, revision: number, datos: unknown) {
   const d = edicionEventoSchema.parse(datos);
-  for (const url of [d.fuenteUrl, d.boletosUrl])
-    if (url && dominiosProhibidos.some((p) => new URL(url).hostname === p || new URL(url).hostname.endsWith(`.${p}`)))
-      throw new WorkflowError("Las redes sociales no sirven como fuente ni enlace de boletos. Usa el sitio oficial o la ticketera.", 422);
   return transaccion(() => {
     const e = leerEvento(id);
     exigir(e, revision);
+    // Un evento pegado a mano desde una red puede conservar ese enlace como fuente; ningún otro.
+    for (const url of [d.fuenteUrl, d.boletosUrl])
+      if (url && esRedSocial(new URL(url).hostname.toLowerCase()) && !(url === d.fuenteUrl && e.origen === "manual" && url === e.fuenteUrl))
+        throw new WorkflowError("Las redes sociales no sirven como fuente ni enlace de boletos. Usa el sitio oficial o la ticketera.", 422);
     // Si la red falló durante un envío, primero se reintenta con la misma clave: así no se duplica en Spotmi.
     if (e.spotmiClave && !e.spotmiPropuestaId)
       throw new WorkflowError("Hay un envío a Spotmi sin confirmar. Vuelve a pulsar «Enviar a Spotmi» antes de editar.", 409);
@@ -381,7 +544,7 @@ export function editarEvento(id: string, revision: number, datos: unknown) {
       }
     }
     auditar("evento.editar", id);
-    return actualizar(id, {
+    actualizar(id, {
       titulo: d.titulo,
       fecha: d.fecha,
       fecha_fin: d.fechaFin,
@@ -398,7 +561,45 @@ export function editarEvento(id: string, revision: number, datos: unknown) {
       huella: huellaTitulo(d.titulo),
       estado: e.estado === "descartado" ? "descartado" : "nuevo",
     });
+    if (d.fuenteUrl !== e.fuenteUrl) agregarFuente(id, { url: d.fuenteUrl, via: esRedSocial(new URL(d.fuenteUrl).hostname.toLowerCase()) ? "manual" : "web" });
+    return guardarConfianza(id);
   });
+}
+
+/* ── «Pegar enlace»: evento escrito a mano desde un video o post de una red ── */
+export const enlaceManualSchema = edicionEventoSchema.omit({ fuenteUrl: true }).extend({ url: urlHttps });
+/**
+ * El propietario pega la URL (por ejemplo, un video de TikTok) y escribe los datos.
+ * Ezra no abre ni lee esa página. Si el evento ya existe, la URL se suma a sus fuentes.
+ */
+export function crearEventoManual(datos: unknown): { evento: Evento; duplicado: boolean } {
+  const d = enlaceManualSchema.parse(datos);
+  if (d.fechaFin && (!d.fecha || d.fechaFin < d.fecha)) throw new WorkflowError("La fecha final debe ser igual o posterior a la de inicio.", 422);
+  const host = new URL(d.url).hostname.toLowerCase();
+  const via = esRedSocial(host) ? ("manual" as const) : ("web" as const);
+  const datosFuente = { fecha: d.fecha, hora: d.hora, lugar: d.lugar || null, precio: d.precio };
+  const previo = buscarDuplicado({ titulo: d.titulo, fecha: d.fecha }, referenciasLocales());
+  if (previo?.id) {
+    agregarFuente(previo.id, { url: d.url, via, campos: ["titulo"], datos: datosFuente });
+    auditar("evento.fuente_manual", previo.id, { dominio: host });
+    return { evento: guardarConfianza(previo.id), duplicado: true };
+  }
+  const confirmadoEn: Evento["confirmadoEn"] = {};
+  for (const campo of ["fecha", "fechaFin", "hora", "precio"] as const) if (d[campo]) confirmadoEn[campo] = "propietario";
+  const evento = crearEvento({
+    ...d,
+    fuenteUrl: d.url,
+    confirmadoEn,
+    sugerencias: {},
+    imagenUrl: null,
+    notaVerificacion: `Datos escritos a mano desde ${host}; Ezra no lee esa página.`,
+    granjaId: null,
+    ejecucionId: null,
+    origen: "manual",
+    fuente: { via, campos: ["titulo"], datos: datosFuente },
+  });
+  auditar("evento.manual", evento.id, { dominio: host });
+  return { evento, duplicado: false };
 }
 export function autorizarImagen(id: string, revision: number, medioId: string | null, permiso: string) {
   return transaccion(() => {
@@ -414,6 +615,16 @@ export function autorizarImagen(id: string, revision: number, medioId: string | 
 export function ponerImagenFuente(id: string, medioId: string, url: string, permiso: string) {
   auditar("evento.imagen.fuente", id, { medioId });
   return actualizar(id, { imagen_medio_id: medioId, imagen_url: url.slice(0, 1000), imagen_permiso: permiso.slice(0, 500), imagen_confirmada: 0 });
+}
+/** Ficha encontrada en una ticketera permitida: pasa a ser el enlace de boletos si no había uno. */
+export function ponerBoletos(id: string, url: string) {
+  return transaccion(() => {
+    const e = leerEvento(id);
+    if (e.boletosUrl || (e.spotmiClave && !e.spotmiPropuestaId) || e.spotmiEstado === "propuesto" || e.spotmiEstado === "aceptado") return e;
+    auditar("evento.boletos", id, { url: url.slice(0, 200) });
+    // Un dato nuevo en un evento aprobado vuelve a revisión.
+    return actualizar(id, { boletos_url: url.slice(0, 1000), estado: e.estado === "aprobado" ? "nuevo" : e.estado });
+  });
 }
 /** «Usar imagen de la fuente»: un clic del propietario confirma el permiso. Nunca es automático. */
 export function confirmarImagen(id: string, revision: number) {

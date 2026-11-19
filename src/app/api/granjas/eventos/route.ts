@@ -14,14 +14,13 @@ import {
   confirmarImagen,
   departamentos,
   leerEvento,
-  ponerImagenFuente,
 } from "@/lib/granjas/eventos";
-import { buscarImagenEvento, permisoPendiente } from "@/lib/granjas/imagenes";
+import { completarImagenEvento } from "@/lib/granjas/completar-imagenes";
 import { importarEventos, MAX_IMPORTAR } from "@/lib/granjas/importar";
 import { actualizarPropuestasPendientes, consultarEstadoSpotmi, enviarEventoASpotmi, spotmiPuedeProponer } from "@/lib/granjas/spotmi-propuestas";
-import { descargarSegura } from "@/lib/granjas/fuentes";
+import { descargarSegura, type MaterialFuente } from "@/lib/granjas/fuentes";
 import { guardarMedio } from "@/lib/granjas/medios";
-import { diaValido } from "@/lib/granjas/tiempo";
+import { diaLocal, diaValido } from "@/lib/granjas/tiempo";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -43,10 +42,18 @@ const accion = z.discriminatedUnion("accion", [
   // Desde la interfaz solo valen los dominios permitidos de la granja (sin dominios extra).
   z.object({ accion: z.literal("importar"), eventos: z.array(z.unknown()).min(1).max(MAX_IMPORTAR) }),
   z.object({ accion: z.literal("buscar_imagen"), id }),
+  // «Completar imágenes»: la interfaz recorre los eventos sin imagen de a uno y muestra el progreso.
+  z.object({ accion: z.literal("completar_imagen"), id }),
   z.object({ accion: z.literal("enviar_spotmi"), id }),
   z.object({ accion: z.literal("consultar_spotmi"), id: id.optional() }),
 ]);
 const dia = z.string().refine(diaValido).nullable();
+// Portadas y carteleras leídas durante un lote: se reutilizan 10 minutos para no releerlas por cada evento.
+const lote = { creado: 0, portadas: new Map<string, string[]>(), listados: new Map<string, Promise<MaterialFuente[]>>() };
+function cacheLote() {
+  if (Date.now() - lote.creado > 10 * 60_000) Object.assign(lote, { creado: Date.now(), portadas: new Map(), listados: new Map() });
+  return { portadas: lote.portadas, listados: lote.listados };
+}
 
 export async function GET(request: Request) {
   try {
@@ -55,6 +62,7 @@ export async function GET(request: Request) {
     const estado = z.enum(estadosVisibles).nullable().catch(null).parse(p.get("estado"));
     const filtro = { estado, desde: dia.catch(null).parse(p.get("desde")), hasta: dia.catch(null).parse(p.get("hasta")) };
     const todos = listarEventos();
+    const hoy = diaLocal(new Date());
     const eventos = listarEventos(filtro);
     const conteo = Object.fromEntries(estadosVisibles.map((e) => [e, todos.filter((x) => x.estadoVisible === e).length]));
     return Response.json(
@@ -63,6 +71,8 @@ export async function GET(request: Request) {
         conteo,
         total: todos.length,
         spotmi: spotmiPuedeProponer(),
+        // Pendientes de «Completar imágenes»: sin imagen, no descartados y que no han terminado.
+        sinImagen: todos.filter((e) => !e.imagenMedioId && e.estado !== "descartado" && (!e.fecha || (e.fechaFin ?? e.fecha) >= hoy)).map((e) => e.id),
         categorias: categoriasEvento,
         departamentos,
       },
@@ -102,9 +112,13 @@ export async function POST(request: Request) {
     if (a.accion === "buscar_imagen") {
       const e = leerEvento(a.id);
       if (e.imagenMedioId) throw new WorkflowError("Este evento ya tiene imagen. Usa «Cambiar imagen» para reemplazarla.", 409);
-      const r = await buscarImagenEvento({ titulo: e.titulo, fuenteUrl: e.fuenteUrl, boletosUrl: e.boletosUrl });
-      if (!r.medio) throw new WorkflowError(`No se encontró una imagen válida en la fuente: ${r.motivo}`, 422);
-      return Response.json({ evento: ponerImagenFuente(e.id, r.medio.id, r.url, permisoPendiente(r.dominio)) });
+      const r = await completarImagenEvento(e.id);
+      if (r.estado === "sin_imagen") throw new WorkflowError(`No se encontró una imagen oficial válida: ${r.motivo}`, 422);
+      return Response.json({ evento: leerEvento(e.id) });
+    }
+    if (a.accion === "completar_imagen") {
+      const resultado = await completarImagenEvento(a.id, cacheLote());
+      return Response.json({ resultado, evento: leerEvento(a.id) });
     }
     if (a.accion === "enviar_spotmi") return Response.json({ evento: await enviarEventoASpotmi(a.id) });
     if (a.id) return Response.json({ evento: await consultarEstadoSpotmi(a.id) });
