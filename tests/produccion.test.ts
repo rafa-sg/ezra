@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
+  asignarFecha,
+  encargoSchema,
+  solicitarCambios,
   cambiarEstado,
   comprobacionesVacias,
   contenidoEncargoSchema,
@@ -216,4 +219,45 @@ test("persistencia, reserva mensual y generación concurrente conservan todas la
   await writeFile(archivo, "{corrupto");
   await assert.rejects(() => leerProduccion(), /conservó intacto/);
   assert.equal(await readFile(archivo, "utf8"), "{corrupto");
+});
+
+test("historial: versión reemplazada con su texto, aprobada con su texto, cambios con nota y fecha sin versión nueva", () => {
+  let e = crearEncargo({ ...contenido(), resultado: "Primera entrega." });
+  assert.deepEqual(e.historial.map((h) => h.accion), ["creado"]);
+  e = cambiarEstado(e, "revision");
+  // Pedir cambios: vuelve a pendiente con la nota; la versión revisada queda con su texto.
+  assert.throws(() => solicitarCambios(e, "  "), /qué hay que cambiar/);
+  e = solicitarCambios(e, "Falta la hora del evento.");
+  assert.equal(e.estado, "pendiente");
+  assert.equal(e.notaCambios, "Falta la hora del evento.");
+  assert.equal(e.version, 1, "pedir cambios no crea versión: la crea la corrección");
+  assert.deepEqual(e.historial.at(-1), { ...e.historial.at(-1)!, accion: "cambios", version: 1, nota: "Falta la hora del evento.", resultado: "Primera entrega." });
+  assert.throws(() => solicitarCambios(e, "otra vez"), /en revisión o aprobada/);
+  // La corrección crea la versión 2 y guarda la 1 en el historial; la nota de cambios se limpia.
+  e = editarEncargo(e, { ...contenido(), resultado: "Segunda entrega con hora." });
+  assert.equal(e.version, 2);
+  assert.equal(e.notaCambios, "");
+  assert.deepEqual([e.historial.at(-1)!.accion, e.historial.at(-1)!.version, e.historial.at(-1)!.resultado], ["editado", 1, "Primera entrega."]);
+  // Aprobar guarda el texto exacto aprobado.
+  e = cambiarEstado(cambiarEstado(e, "revision"), "aprobado", comprobado);
+  assert.deepEqual([e.historial.at(-1)!.accion, e.historial.at(-1)!.version, e.historial.at(-1)!.resultado], ["aprobado", 2, "Segunda entrega con hora."]);
+  // Editar lo aprobado: versión 3, pierde la aprobación y lo deja dicho.
+  const editado = editarEncargo(e, { ...contenido(), resultado: "Tercera." });
+  assert.equal(editado.estado, "pendiente");
+  assert.match(editado.historial.at(-1)!.nota, /estaba aprobada: la edición la deja sin efecto/);
+  // Pedir cambios sobre lo aprobado también quita la aprobación.
+  assert.equal(solicitarCambios(e, "Cambiar la foto.").estado, "pendiente");
+  // La fecha prevista no crea versión ni toca la aprobación.
+  const conFecha = asignarFecha(e, "2026-12-05T18:30");
+  assert.equal(conFecha.version, 2);
+  assert.equal(conFecha.estado, "aprobado");
+  assert.equal(conFecha.fechaPrevista, "2026-12-05T18:30");
+  assert.equal(conFecha.historial.at(-1)!.accion, "fecha");
+  assert.throws(() => asignarFecha(e, "2026-02-30T10:00"));
+  // Un encargo guardado antes del historial se lee igual (historial vacío, sin nota).
+  const viejo: Record<string, unknown> = { ...crearEncargo(contenido()) };
+  delete viejo.historial;
+  delete viejo.notaCambios;
+  const leido = encargoSchema.parse(viejo);
+  assert.deepEqual([leido.historial, leido.notaCambios], [[], ""]);
 });

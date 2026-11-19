@@ -1387,3 +1387,396 @@
     padding: 16px;
   }
 }
+/* ── Barra lateral (estilo Buffer): menú a la izquierda en escritorio, fila desplazable en móvil ── */
+@media (min-width: 1024px) {
+  .azra .ep-marco {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: start;
+  }
+  .azra .ep-marco > .ep-nav {
+    position: sticky;
+    top: 0;
+    flex-direction: column;
+    gap: 2px;
+    min-height: calc(100vh - 140px);
+    padding: 20px 12px;
+    border-right: 1px solid var(--ep-borde);
+    border-bottom: 0;
+    overflow: visible;
+  }
+  .azra .ep-marco > .ep-nav > button {
+    min-height: 40px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  .azra .ep-marco > .ep-nav > button:hover {
+    color: var(--ep-texto);
+    background: #1b2c40;
+  }
+  .azra .ep-marco > .ep-nav > button[aria-current] {
+    color: #172224;
+    background: var(--ep-lima);
+  }
+  .azra .ep-marco > .ep-nav > button[aria-current] > span {
+    color: #172224;
+    background: #ffffffaa;
+  }
+  .azra .ep-marco > .ep-nav > button > span {
+    margin-left: auto;
+  }
+  .azra .ep-marco > .ep-cuerpo {
+    width: 100%;
+    max-width: 1340px;
+    /* En la cuadrícula, margin: auto lo centraría en vertical: solo horizontal. */
+    margin: 0 auto;
+    padding-top: 6px;
+  }
+}
+/* ── Inicio ── */
+.azra .ep-guia-tarjeta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin: 8px 0 22px;
+  padding: 18px 20px;
+  border: 1px solid #4b5f3a;
+  border-radius: 14px;
+  background: linear-gradient(120deg, #1d2f22, var(--ep-tarjeta));
+}
+.azra .ep-guia-tarjeta > svg {
+  color: var(--ep-lima);
+}
+.azra .ep-guia-tarjeta h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+.azra .ep-guia-progreso {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .ep-guia-progreso li {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.azra .ep-guia-progreso li > span {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 50%;
+  font-size: 11px;
+}
+.azra .ep-guia-progreso li.ep-actual {
+  color: var(--ep-texto);
+  font-weight: 700;
+}
+.azra .ep-guia-progreso li.ep-actual > span {
+  border-color: var(--ep-lima);
+  color: var(--ep-lima);
+}
+.azra .ep-guia-progreso li.ep-hecho {
+  color: var(--ep-lima);
+}
+.azra .ep-inicio-cifras {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.azra .ep-cifra {
+  display: grid;
+  gap: 2px;
+  padding: 16px;
+  text-align: left;
+  border: 1px solid var(--ep-borde) !important;
+  border-radius: 12px;
+  color: var(--ep-texto) !important;
+  background: var(--ep-tarjeta) !important;
+  cursor: pointer;
+}
+.azra .ep-cifra:hover {
+  border-color: #506174 !important;
+}
+.azra .ep-cifra span {
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .ep-cifra b {
+  font-size: 30px;
+  line-height: 1.1;
+}
+.azra .ep-cifra small {
+  color: var(--ep-suave);
+}
+.azra .ep-inicio-columnas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.azra .ep-inicio-bloque {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 12px;
+  background: var(--ep-tarjeta);
+}
+.azra .ep-inicio-bloque h2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+.azra .ep-inicio-lista {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .ep-inicio-lista button {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 9px 8px;
+  text-align: left;
+  border: 0 !important;
+  border-radius: 8px;
+  color: var(--ep-texto) !important;
+  background: none !important;
+  cursor: pointer;
+}
+.azra .ep-inicio-lista button:hover {
+  background: #1b2c40 !important;
+}
+.azra .ep-inicio-lista button > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--ep-lima);
+}
+.azra .ep-inicio-lista button > span {
+  display: grid;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.azra .ep-inicio-lista small {
+  color: var(--ep-suave);
+}
+.azra .ep-inicio-lista time {
+  flex: 0 0 auto;
+  min-width: 112px;
+  color: var(--ep-lima);
+  font-size: 13px;
+}
+.azra .ep-estado-ejecucion {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: #6b7a8a;
+}
+.azra .ep-ej-completada {
+  background: #3ccf7d;
+}
+.azra .ep-ej-en_curso {
+  background: #4ea1ff;
+}
+.azra .ep-ej-esperando_dueno {
+  background: #f2c94c;
+}
+.azra .ep-ej-fallida,
+.azra .ep-ej-bloqueada {
+  background: #ff6b6b;
+}
+@media (max-width: 1023px) {
+  .azra .ep-inicio-cifras {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .azra .ep-inicio-columnas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 599px) {
+  .azra .ep-guia-tarjeta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .azra .ep-guia-tarjeta > svg {
+    display: none;
+  }
+}
+/* ── Guía de inicio ── */
+.azra .ep-modal.ep-bienvenida {
+  max-width: 720px !important;
+}
+.azra .ep-ob {
+  display: grid;
+  gap: 14px;
+}
+.azra .ep-ob h2 {
+  margin: 4px 0;
+}
+.azra .ep-ob-opciones {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 0;
+  border: 0;
+}
+.azra .ep-ob-opciones legend {
+  margin-bottom: 6px;
+  color: var(--ep-suave);
+}
+.azra .ep-ob-opcion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.azra .ep-ob-opcion small {
+  grid-column: 2;
+  color: var(--ep-suave);
+}
+.azra .ep-ob-opcion:has(input:checked) {
+  border-color: var(--ep-lima);
+}
+.azra .ep-ob-objetivos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+  margin: 10px 0;
+}
+.azra .ep-ob-objetivo {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 14px;
+  text-align: left;
+  border: 1px solid var(--ep-borde) !important;
+  border-radius: 12px;
+  color: var(--ep-texto) !important;
+  background: #0f1b2a !important;
+  cursor: pointer;
+}
+.azra .ep-ob-objetivo span,
+.azra .ep-ob-objetivo small {
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .ep-ob-objetivo.ep-elegido,
+.azra .ep-ob-objetivo:hover {
+  border-color: var(--ep-lima) !important;
+}
+.azra .ep-ob-siguientes {
+  display: grid;
+  gap: 6px;
+  padding-left: 20px;
+}
+.azra .ep-ob-pie {
+  border-top: 1px solid var(--ep-borde);
+  padding-top: 10px;
+}
+.azra .ep-campo {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+}
+/* ── Revisión: cambios pedidos e historial ── */
+.azra .ep-cambios-pedidos {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.azra .ep-pedir-cambios {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ep-borde);
+}
+.azra .ep-pedir-cambios .ep-boton {
+  justify-self: start;
+}
+.azra .ep-historial {
+  margin-top: 14px;
+}
+.azra .ep-historial summary {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+}
+.azra .ep-historial ol {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+.azra .ep-historial-meta {
+  display: block;
+}
+.azra .ep-historial-nota {
+  display: block;
+  color: var(--ep-suave);
+  overflow-wrap: anywhere;
+}
+.azra .ep-historial pre {
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 8px;
+  background: #0f1b2a;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+/* ── Calendario: encargos sin fecha ── */
+.azra .ep-sin-fecha ul {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+.azra .ep-sin-fecha li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 10px;
+}
+.azra .ep-sin-fecha li > span {
+  display: grid;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.azra .ep-sin-fecha small {
+  color: var(--ep-suave);
+}
+.azra .ep-asignar-fecha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.azra .ep-asignar-fecha input {
+  max-width: 100%;
+}

@@ -5,7 +5,9 @@ import { WorkflowError } from "@/lib/workflow";
 import { leerProduccion, guardarProduccion } from "@/lib/produccion/almacen";
 import {
   agentes,
+  asignarFecha,
   cambiarEstado,
+  solicitarCambios,
   contenidoEncargoSchema,
   crearEncargo,
   editarEncargo,
@@ -37,6 +39,18 @@ const accionSchema = z.discriminatedUnion("accion", [
     revision: z.number().int(),
     id: z.string().uuid(),
     contenido: contenidoEncargoSchema,
+  }),
+  z.object({
+    accion: z.literal("cambios"),
+    revision: z.number().int(),
+    id: z.string().uuid(),
+    nota: z.string().trim().min(3).max(2000),
+  }),
+  z.object({
+    accion: z.literal("fecha"),
+    revision: z.number().int(),
+    id: z.string().uuid(),
+    fechaPrevista: z.string().max(16),
   }),
   z.object({
     accion: z.literal("estado"),
@@ -116,7 +130,11 @@ export async function POST(request: Request) {
       const nuevo =
         accion.accion === "editar"
           ? editarEncargo(encargo, accion.contenido)
-          : cambiarEstado(encargo, accion.estado, accion.comprobaciones);
+          : accion.accion === "cambios"
+            ? solicitarCambios(encargo, accion.nota)
+            : accion.accion === "fecha"
+              ? asignarFecha(encargo, accion.fechaPrevista)
+              : cambiarEstado(encargo, accion.estado, accion.comprobaciones);
       encargoId = nuevo.id;
       const encargos = actual.encargos.map((e) => (e.id === nuevo.id ? nuevo : e));
       return {

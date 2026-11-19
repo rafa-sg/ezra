@@ -293,6 +293,72 @@ test(
         2,
       );
 
+      // Inicio, guía, revisión con historial y calendario: solo administración y datos guardados.
+      for (const ruta of ["/api/produccion/inicio", "/api/produccion/onboarding", "/api/produccion/calendario"]) {
+        assert.equal((await get(ruta)).status, 401, ruta);
+        assert.equal((await get(ruta, sgToken)).status, 403, ruta);
+      }
+      assert.equal((await operar({ accion: "espacio", espacio: "owner-main" }, sgToken, "/api/produccion/onboarding")).status, 403);
+      const inicio = await (await get("/api/produccion/inicio", admin)).json();
+      assert.equal(inicio.encargos.total, 2);
+      assert.ok(inicio.conexiones.every((c: { estado: string }) => !c.estado.startsWith("conectada")), "sin credenciales nada aparece conectado");
+      let guia = await (await get("/api/produccion/onboarding", admin)).json();
+      assert.equal(guia.estado.paso, 1);
+      assert.equal(guia.tieneTrabajo, true, "una cuenta con trabajo no recibe la guía automática");
+      const espacio = guia.espacios[0].id;
+      assert.equal((await operar({ accion: "espacio", espacio: "motoxspress-main" }, admin, "/api/produccion/onboarding")).status, 403, "espacio ajeno");
+      for (const paso of [{ accion: "espacio", espacio }, { accion: "objetivo", objetivo: "contenido" }, { accion: "configurar", crearGranja: false, proveedor: "gemini" }]) {
+        const r = await operar(paso, admin, "/api/produccion/onboarding");
+        assert.equal(r.status, 200, JSON.stringify(paso));
+        guia = await r.json();
+      }
+      assert.equal(guia.estado.paso, 4);
+      guia = await (await operar({ accion: "encargo", titulo: "Mi primer guion", fuente: "https://example.test/spot" }, admin, "/api/produccion/onboarding")).json();
+      assert.equal(guia.estado.paso, 5);
+      assert.equal(guia.encargo.titulo, "Mi primer guion");
+      // Recargar: el encargo y el avance siguen ahí.
+      const tras = await (await get("/api/produccion", admin)).json();
+      const primero = tras.produccion.encargos.find((e: { id: string }) => e.id === guia.encargo.id);
+      assert.equal(primero.agente, "guion");
+      assert.equal((await (await get("/api/produccion/onboarding", admin)).json()).estado.encargoId, guia.encargo.id);
+      // Revisar → solicitar cambios → corregir → aprobar, con historial.
+      let rev = tras.produccion.revision;
+      const paso2 = async (cuerpo: object) => {
+        const r = await operar({ ...cuerpo, revision: rev });
+        const j = await r.json();
+        if (r.ok) rev = j.produccion.revision;
+        return { r, j };
+      };
+      const fuentePrueba = [{ nombre: "Fuente", url: "https://example.test/spot", imagen: "", nota: "" }];
+      const base1 = { titulo: "Mi primer guion", agente: "guion", proveedor: "gemini", canales: ["spotmi", "instagram"], encargo: "x", fuentes: fuentePrueba, fechaPrevista: "" };
+      await paso2({ accion: "editar", id: primero.id, contenido: { ...base1, resultado: "Primer borrador" } });
+      await paso2({ accion: "estado", id: primero.id, estado: "revision", comprobaciones: checks });
+      assert.equal((await paso2({ accion: "cambios", id: primero.id, nota: "x" })).r.status, 422, "la nota es obligatoria");
+      let paso = await paso2({ accion: "cambios", id: primero.id, nota: "Agrega el horario del lugar." });
+      let enc = paso.j.produccion.encargos.find((e: { id: string }) => e.id === primero.id);
+      assert.equal(enc.estado, "pendiente");
+      assert.equal(enc.notaCambios, "Agrega el horario del lugar.");
+      await paso2({ accion: "editar", id: primero.id, contenido: { ...base1, resultado: "Borrador con horario" } });
+      await paso2({ accion: "estado", id: primero.id, estado: "revision", comprobaciones: checks });
+      paso = await paso2({ accion: "estado", id: primero.id, estado: "aprobado", comprobaciones: checks });
+      enc = paso.j.produccion.encargos.find((e: { id: string }) => e.id === primero.id);
+      assert.equal(enc.estado, "aprobado");
+      assert.deepEqual(
+        enc.historial.filter((h: { resultado?: string }) => h.resultado).map((h: { accion: string; version: number }) => `${h.accion}:v${h.version}`),
+        ["cambios:v2", "editado:v2", "aprobado:v3"],
+      );
+      // Fecha → calendario → exportar (.ics); la fecha no quita la aprobación.
+      paso = await paso2({ accion: "fecha", id: primero.id, fechaPrevista: "2026-12-05T18:30" });
+      enc = paso.j.produccion.encargos.find((e: { id: string }) => e.id === primero.id);
+      assert.equal(enc.estado, "aprobado");
+      const ics = await get("/api/produccion/calendario", admin);
+      assert.equal(ics.status, 200);
+      assert.match(ics.headers.get("content-type") ?? "", /text\/calendar/);
+      const textoIcs = await ics.text();
+      assert.match(textoIcs, /UID:encargo-[0-9a-f-]+@ezra\.local/);
+      assert.match(textoIcs, /DTSTART:20261206T003000Z/);
+      assert.match(textoIcs, /\[Encargo · aprobado\] Mi primer guion/);
+
       // «Bot de atención»: empty start, per-business storage, optimistic revision, isolation.
       const bot = (business: string, token: string, body?: unknown) =>
         fetch(`${base}/api/bot${business ? `?business=${business}` : ""}`, {

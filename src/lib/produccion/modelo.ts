@@ -62,6 +62,21 @@ export const contenidoEncargoSchema = z.object({
   fuentes: z.array(fuenteSchema).max(20),
   fechaPrevista: fechaLocal,
 });
+/**
+ * Historial de un encargo: cada versión que se reemplaza, cada cambio de estado, cada entrega de IA,
+ * cada pedido de cambios y cada fecha asignada. La versión aprobada y la reemplazada guardan su texto.
+ */
+export const accionesHistorial = ["creado", "editado", "generado", "pendiente", "preparando", "revision", "cambios", "aprobado", "fecha"] as const;
+export const entradaHistorialSchema = z.object({
+  version: z.number().int().positive(),
+  accion: z.enum(accionesHistorial),
+  estado: z.enum(estados),
+  nota: z.string().max(2000).default(""),
+  resultado: z.string().max(24000).optional(),
+  fecha: z.string().datetime(),
+});
+export type EntradaHistorial = z.infer<typeof entradaHistorialSchema>;
+export const MAX_HISTORIAL = 200;
 export const encargoSchema = contenidoEncargoSchema.extend({
   id: z.string().uuid(),
   version: z.number().int().positive(),
@@ -75,6 +90,10 @@ export const encargoSchema = contenidoEncargoSchema.extend({
     .object({ id: z.string().uuid(), version: z.number().int().positive() })
     .nullable()
     .default(null),
+  // Encargos anteriores a esta versión no tienen historial: empieza vacío, nada se reescribe.
+  historial: z.array(entradaHistorialSchema).max(MAX_HISTORIAL).default([]),
+  /** Lo último que pediste cambiar (visible hasta la siguiente versión). */
+  notaCambios: z.string().max(2000).default(""),
 });
 export const produccionSchema = z.object({
   version: z.literal(1),
@@ -95,11 +114,23 @@ export const produccionVacia = (): Produccion => ({
   usos: [],
 });
 export const comprobacionesVacias = () => ({ hechos: false, derechos: false, marca: false });
+/** Agrega una entrada al historial (las más antiguas se descartan pasado el máximo). */
+export function anotar(e: Encargo, accion: EntradaHistorial["accion"], extra: { nota?: string; resultado?: string; version?: number } = {}): Encargo {
+  const entrada = entradaHistorialSchema.parse({
+    version: extra.version ?? e.version,
+    accion,
+    estado: e.estado,
+    nota: (extra.nota ?? "").slice(0, 2000),
+    ...(extra.resultado !== undefined ? { resultado: extra.resultado.slice(0, 24000) } : {}),
+    fecha: new Date().toISOString(),
+  });
+  return { ...e, historial: [...(e.historial ?? []), entrada].slice(-MAX_HISTORIAL) };
+}
 export function crearEncargo(
   contenido: ContenidoEncargo,
   ahora = new Date().toISOString(),
 ): Encargo {
-  return encargoSchema.parse({
+  const nuevo = encargoSchema.parse({
     ...contenido,
     id: crypto.randomUUID(),
     version: 1,
@@ -107,14 +138,17 @@ export function crearEncargo(
     comprobaciones: comprobacionesVacias(),
     creado: ahora,
     actualizado: ahora,
+    historial: [],
+    notaCambios: "",
   });
+  return anotar(nuevo, "creado");
 }
 export function editarEncargo(actual: Encargo, datos: ContenidoEncargo): Encargo {
   const contenido = contenidoEncargoSchema.parse(datos);
   const antes = contenidoEncargoSchema.parse(actual);
   const editorial = (v: ContenidoEncargo) => ({ ...v, fechaPrevista: "" });
   const cambiado = JSON.stringify(editorial(antes)) !== JSON.stringify(editorial(contenido));
-  return {
+  let siguiente: Encargo = {
     ...actual,
     ...contenido,
     actualizado: new Date().toISOString(),
@@ -124,9 +158,34 @@ export function editarEncargo(actual: Encargo, datos: ContenidoEncargo): Encargo
           estado: "pendiente" as const,
           comprobaciones: comprobacionesVacias(),
           busquedaHtml: "",
+          notaCambios: "",
         }
       : {}),
   };
+  // La versión reemplazada queda en el historial con su texto (y si estaba aprobada, se dice).
+  if (cambiado)
+    siguiente = anotar(siguiente, "editado", {
+      version: actual.version,
+      resultado: actual.resultado,
+      nota: actual.estado === "aprobado" ? `La versión ${actual.version} estaba aprobada: la edición la deja sin efecto.` : "",
+    });
+  if (antes.fechaPrevista !== contenido.fechaPrevista) siguiente = anotar(siguiente, "fecha", { nota: contenido.fechaPrevista || "sin fecha" });
+  return siguiente;
+}
+/** Pedir cambios: vuelve a «pendiente» con tu nota; la versión revisada queda en el historial. */
+export function solicitarCambios(actual: Encargo, nota: string): Encargo {
+  const limpia = nota.trim();
+  if (limpia.length < 3) throw new WorkflowError("Escribe qué hay que cambiar.", 422);
+  if (actual.estado !== "revision" && actual.estado !== "aprobado")
+    throw new WorkflowError("Solo se piden cambios sobre una entrega en revisión o aprobada.", 422);
+  const siguiente: Encargo = { ...actual, estado: "pendiente", comprobaciones: comprobacionesVacias(), notaCambios: limpia.slice(0, 2000), actualizado: new Date().toISOString() };
+  return anotar(siguiente, "cambios", { nota: limpia, resultado: actual.resultado });
+}
+/** La fecha prevista no crea versión ni cambia la revisión: solo ordena el calendario (no programa nada). */
+export function asignarFecha(actual: Encargo, fechaPrevista: string): Encargo {
+  const { fechaPrevista: limpia } = contenidoEncargoSchema.pick({ fechaPrevista: true }).parse({ fechaPrevista });
+  if (limpia === actual.fechaPrevista) return actual;
+  return anotar({ ...actual, fechaPrevista: limpia, actualizado: new Date().toISOString() }, "fecha", { nota: limpia || "sin fecha" });
 }
 export function cambiarEstado(
   actual: Encargo,
@@ -146,12 +205,15 @@ export function cambiarEstado(
       "Revisa el resultado, vincula una fuente y confirma hechos, derechos y marca antes de aprobar.",
       422,
     );
-  return {
+  const siguiente: Encargo = {
     ...actual,
     estado,
     comprobaciones: estado === "aprobado" ? comprobaciones : comprobacionesVacias(),
     actualizado: new Date().toISOString(),
   };
+  if (estado === actual.estado) return siguiente;
+  // La versión aprobada guarda su texto exacto en el historial.
+  return anotar(siguiente, estado, estado === "aprobado" ? { resultado: actual.resultado } : {});
 }
 
 export function derivarEncargo(anterior: Encargo, agente: Agente): Encargo {

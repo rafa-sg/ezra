@@ -108,6 +108,8 @@ function encargoParaAdaptador(nodo: Nodo, ejecucion: Ejecucion): Encargo {
     origenResultado: "manual",
     busquedaHtml: "",
     dependencia: null,
+    historial: [],
+    notaCambios: "",
   };
 }
 

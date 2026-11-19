@@ -1,5 +1,5 @@
 import { guardarProduccion, leerProduccion } from "./almacen";
-import { crearEncargo, editarEncargo, type Encargo } from "./modelo";
+import { anotar, crearEncargo, editarEncargo, type Encargo } from "./modelo";
 import { WorkflowError } from "../workflow";
 import type { EntregaIA } from "./proveedores";
 
@@ -58,6 +58,8 @@ export async function guardarEntrega(encargo: Encargo, entrega: EntregaIA) {
         siguiente.comprobaciones = { hechos: false, derechos: false, marca: false };
         siguiente.origenResultado = encargo.proveedor;
         siguiente.busquedaHtml = entrega.busquedaHtml;
+        const anotado = anotar(siguiente, "generado", { nota: `Entrega de ${encargo.proveedor}.`, resultado: entrega.texto });
+        Object.assign(siguiente, { historial: anotado.historial });
         encargoId = siguiente.id;
         return {
           ...estado,

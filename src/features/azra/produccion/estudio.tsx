@@ -20,6 +20,10 @@ import {
   X,
   ShieldCheck,
   ChevronRight,
+  House,
+  ListTodo,
+  History,
+  MessageSquareWarning,
 } from "lucide-react";
 import { useLanguage, type MessageKey } from "../i18n";
 import { useClerk } from "@clerk/nextjs";
@@ -44,9 +48,13 @@ import { ConexionesGranjas } from "../granjas/conexiones";
 import { ColocarEnGranja } from "../granjas/colocar";
 import { SeccionConsumo } from "../granjas/consumo";
 import { AgendaEventos, SeccionEventos } from "../granjas/eventos";
+import { Inicio, type DestinoInicio } from "./inicio";
+import { Bienvenida, leerGuia } from "./bienvenida";
+import type { EstadoOnboarding } from "@/lib/produccion/onboarding";
 import "./estudio.css";
 
-const secciones = ["granjas", "eventos", "consumo", "calendario", "conexiones"] as const;
+// Barra lateral estilo Buffer: Inicio y Encargos arriba; las secciones anteriores siguen igual.
+const secciones = ["inicio", "encargos", "granjas", "eventos", "calendario", "conexiones", "consumo"] as const;
 type Seccion = (typeof secciones)[number];
 /** Secciones retiradas del menú (equipo, fuentes, cola): sus enlaces abren Granjas. */
 const seccionDe = (valor: string | null): Seccion | null =>
@@ -85,9 +93,14 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   const { t, locale } = useLanguage();
   const tr = (clave: string) => t(clave as MessageKey);
   const g = (clave: string) => t(`g_${clave}` as MessageKey);
-  const [seccion, setSeccion] = useState<Seccion>("granjas");
+  const [seccion, setSeccion] = useState<Seccion>("inicio");
+  const [guia, setGuia] = useState<EstadoOnboarding | null>(null);
+  const [guiaAbierta, setGuiaAbierta] = useState(false);
+  // Cada guardado sube este número y el Inicio vuelve a leer sus datos.
+  const [versionInicio, setVersionInicio] = useState(0);
+  const [notaCambios, setNotaCambios] = useState("");
+  const [fechasCalendario, setFechasCalendario] = useState<Record<string, string>>({});
   const [especialistas, setEspecialistas] = useState<Agente[]>([...agentes]);
-  const [vistaGranjas, setVistaGranjas] = useState<"granjas" | "encargos">("granjas");
   const [avisoOAuth, setAvisoOAuth] = useState<string | null>(null);
   const [produccion, setProduccion] = useState<Produccion | null>(null);
   const [conexiones, setConexiones] = useState<Conexiones | null>(null);
@@ -140,6 +153,27 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
         if (error.name !== "AbortError") setError(error.message);
       });
     return () => controlador.abort();
+  }, [soloLectura]);
+  useEffect(() => {
+    if (soloLectura) return;
+    let vivo = true;
+    leerGuia().then((v) => {
+      if (!vivo || !v) return;
+      setGuia(v.estado);
+      // La guía se abre sola solo en un estudio sin trabajo y una vez por sesión del navegador.
+      let vista = false;
+      try {
+        vista = sessionStorage.getItem("ezra:guia-vista") === "1";
+        sessionStorage.setItem("ezra:guia-vista", "1");
+      } catch {
+        /* sin almacenamiento: no se abre sola */
+        vista = true;
+      }
+      if (!v.tieneTrabajo && !v.estado.completado && !vista) setGuiaAbierta(true);
+    });
+    return () => {
+      vivo = false;
+    };
   }, [soloLectura]);
   useEffect(() => {
     if (soloLectura) return;
@@ -230,6 +264,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
       );
       setProduccion(datos.produccion);
       setAviso(tr("p_guardado"));
+      setVersionInicio((v) => v + 1);
       return datos as { produccion: Produccion; encargoId?: string };
     } catch (e) {
       setError((e as Error).message);
@@ -261,6 +296,24 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     });
     if (datos)
       abrir(datos.produccion.encargos.find((e) => e.id === (datos.encargoId || seleccionado))!);
+  }
+  async function pedirCambios() {
+    const datos = await mutar({ accion: "cambios", id: seleccionado, nota: notaCambios });
+    if (datos) {
+      setNotaCambios("");
+      abrir(datos.produccion.encargos.find((e) => e.id === seleccionado)!);
+    }
+  }
+  async function ponerFecha(id: string, fechaPrevista: string) {
+    const datos = await mutar({ accion: "fecha", id, fechaPrevista });
+    if (datos) setFechasCalendario((f) => ({ ...f, [id]: "" }));
+  }
+  function ir(d: DestinoInicio) {
+    navegar(d.seccion);
+    if (d.seccion === "encargos" && d.id) {
+      const e = produccion?.encargos.find((x) => x.id === d.id);
+      if (e) abrir(e);
+    }
   }
   async function derivar() {
     const datos = await mutar({ accion: "derivar", id: seleccionado, agente: siguienteAgente });
@@ -324,11 +377,13 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     );
   }
   const navegacion = [
+    { id: "inicio", icono: House, etiqueta: "p_inicio" },
+    { id: "encargos", icono: ListTodo, etiqueta: "p_encargos" },
     { id: "granjas", icono: Workflow, etiqueta: "p_cola" },
     { id: "eventos", icono: Ticket, etiqueta: "p_eventos" },
-    { id: "consumo", icono: Gauge, etiqueta: "p_consumo" },
     { id: "calendario", icono: CalendarDays, etiqueta: "p_calendario" },
     { id: "conexiones", icono: Cable, etiqueta: "p_conexiones" },
+    { id: "consumo", icono: Gauge, etiqueta: "p_consumo" },
   ] as const;
   const visiblesEn = (actual?: Agente) => agentes.filter((a) => especialistas.includes(a) || a === actual);
   return (
@@ -356,6 +411,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
           {tr("p_nuevo")}
         </button>
       </header>
+      <div className="ep-marco">
       <nav className="ep-nav" aria-label={tr("productionStudio")}>
         {navegacion.map(({ id, icono: Icono, etiqueta }) => (
           <button
@@ -366,6 +422,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
           >
             <Icono size={17} />
             {tr(etiqueta)}
+            {id === "encargos" && encargos.some((e) => e.estado === "revision") && <span>{encargos.filter((e) => e.estado === "revision").length}</span>}
           </button>
         ))}
       </nav>
@@ -535,33 +592,22 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
             )}
           </>
         )}
-        {!soloLectura && seccion === "granjas" && (
+        {!soloLectura && seccion === "inicio" && produccion && (
+          <Inicio tr={tr} fecha={fecha} onIr={ir} onNuevo={() => crear()} onGuia={() => setGuiaAbierta(true)} guia={guia} version={versionInicio} />
+        )}
+        {!soloLectura && seccion === "encargos" && (
           <>
             <div className="ep-seccion-cabecera">
               <div>
-                <p className="ep-eyebrow">01 / {tr("p_cola")}</p>
-                <h1>{tr("p_cola")}</h1>
-                <p>{tr("p_colaAyuda")}</p>
+                <p className="ep-eyebrow">{tr("p_encargos")}</p>
+                <h1>{tr("p_encargos")}</h1>
+                <p>{tr("p_encargosAyuda")}</p>
               </div>
+              <button className="ep-boton ep-primario" disabled={!produccion} onClick={() => crear()}>
+                <Plus size={17} />
+                {tr("p_nuevo")}
+              </button>
             </div>
-            <div className="eg-pestanas" role="tablist" aria-label={tr("p_cola")}>
-              {(["granjas", "encargos"] as const).map((v) => (
-                <button
-                  key={v}
-                  role="tab"
-                  aria-selected={vistaGranjas === v}
-                  className={vistaGranjas === v ? "eg-pestana-activa" : ""}
-                  onClick={() => setVistaGranjas(v)}
-                >
-                  {g(`pestana_${v}`)}
-                  {v === "encargos" && <span>{encargos.length}</span>}
-                </button>
-              ))}
-            </div>
-            {vistaGranjas === "granjas" ? (
-              <SeccionGranjas g={g} tr={tr} fecha={fecha} />
-            ) : (
-              <>
             <label className="ep-busqueda">
               <Search size={18} />
               <input
@@ -594,8 +640,25 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
               ))}
             </div>
             {busqueda && !filtrados.length && <p>{tr("p_sinResultados")}</p>}
-              </>
+            {!encargos.length && produccion && (
+              <div className="ep-vacio">
+                <Workflow size={29} />
+                <h3>{tr("p_sinEncargos")}</h3>
+                <p>{tr("p_vacioAyuda")}</p>
+              </div>
             )}
+          </>
+        )}
+        {!soloLectura && seccion === "granjas" && (
+          <>
+            <div className="ep-seccion-cabecera">
+              <div>
+                <p className="ep-eyebrow">{tr("p_cola")}</p>
+                <h1>{tr("p_cola")}</h1>
+                <p>{tr("p_colaAyuda")}</p>
+              </div>
+            </div>
+            <SeccionGranjas g={g} tr={tr} fecha={fecha} />
           </>
         )}
         {!soloLectura && seccion === "eventos" && (
@@ -634,6 +697,13 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
               </div>
               <CalendarDays size={35} />
             </div>
+            <div className="ep-acciones">
+              <a className="ep-boton" href="/api/produccion/calendario" download>
+                <Download size={16} />
+                {tr("p_exportarIcs")}
+              </a>
+            </div>
+            <p className="ep-nota">{tr("p_calendarioSignificado")}</p>
             <AgendaEventos g={g} locale={locale} />
             <h2 className="eg-subtitulo eg-calendario-encargos">{g("cal_encargos")}</h2>
             <div className="ep-agenda">
@@ -647,6 +717,42 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                   </div>
                 ))}
             </div>
+            {encargos.some((e) => !e.fechaPrevista) && (
+              <section className="ep-sin-fecha">
+                <h2 className="eg-subtitulo">{tr("p_sinFechaTitulo")}</h2>
+                <ul>
+                  {encargos
+                    .filter((e) => !e.fechaPrevista)
+                    .map((e) => (
+                      <li key={e.id}>
+                        <span>
+                          <strong>{e.titulo}</strong>
+                          <small>
+                            {tr(`p_${e.estado}`)} · v{e.version}
+                          </small>
+                        </span>
+                        <form
+                          className="ep-asignar-fecha"
+                          onSubmit={(x) => {
+                            x.preventDefault();
+                            void ponerFecha(e.id, fechasCalendario[e.id] ?? "");
+                          }}
+                        >
+                          <input
+                            type="datetime-local"
+                            aria-label={`${tr("p_fecha")}: ${e.titulo}`}
+                            value={fechasCalendario[e.id] ?? ""}
+                            onChange={(x) => setFechasCalendario({ ...fechasCalendario, [e.id]: x.target.value })}
+                          />
+                          <button className="ep-boton" disabled={ocupado || !fechasCalendario[e.id]}>
+                            {tr("p_asignarFecha")}
+                          </button>
+                        </form>
+                      </li>
+                    ))}
+                </ul>
+              </section>
+            )}
             {!encargos.some((e) => e.fechaPrevista) && (
               <div className="ep-vacio">
                 <CalendarDays size={32} />
@@ -741,6 +847,31 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
           </>
         )}
       </div>
+      </div>
+      <Bienvenida
+        abierta={guiaAbierta}
+        tr={tr}
+        onCerrar={() => {
+          setGuiaAbierta(false);
+          setVersionInicio((v) => v + 1);
+        }}
+        onCambio={(e) => {
+          setGuia(e);
+          if (e.encargoId) void cargar();
+        }}
+        onAbrirEncargo={async (id) => {
+          setGuiaAbierta(false);
+          const datos = await datosRespuesta(await fetch("/api/produccion"));
+          setProduccion(datos.produccion);
+          navegar("encargos");
+          const e = (datos.produccion as Produccion).encargos.find((x) => x.id === id);
+          if (e) abrir(e);
+        }}
+        onIrGranjas={() => {
+          setGuiaAbierta(false);
+          navegar("granjas");
+        }}
+      />
       <footer className="ep-pie">
         <span>
           spotmi<span>·</span> creative studio
@@ -992,6 +1123,12 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
             </form>
             {actual && (
               <section className="ep-handoff">
+                {actual.notaCambios && (
+                  <p className="ep-alerta ep-cambios-pedidos" role="status">
+                    <MessageSquareWarning size={16} aria-hidden="true" />
+                    {tr("p_cambiosPedidos")}: {actual.notaCambios}
+                  </p>
+                )}
                 {modificado && <p className="ep-nota">{tr("p_guardarPrimero")}</p>}
                 {!modificado && <ColocarEnGranja key={actual.id} encargo={actual} g={g} onListo={setAviso} />}
                 <div className="ep-acciones">
@@ -1122,7 +1259,52 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                       </button>
                     </>
                   )}
+                  {(actual.estado === "revision" || actual.estado === "aprobado") && (
+                    <form
+                      className="ep-pedir-cambios"
+                      onSubmit={(x) => {
+                        x.preventDefault();
+                        void pedirCambios();
+                      }}
+                    >
+                      <label className="ep-campo">
+                        {tr("p_pedirCambiosCampo")}
+                        <textarea rows={3} maxLength={2000} required minLength={3} value={notaCambios} onChange={(x) => setNotaCambios(x.target.value)} />
+                      </label>
+                      <button className="ep-boton" disabled={Boolean(modificado) || ocupado || notaCambios.trim().length < 3}>
+                        <MessageSquareWarning size={16} />
+                        {tr("p_pedirCambios")}
+                      </button>
+                      <p className="ep-nota">{tr(actual.estado === "aprobado" ? "p_pedirCambiosAprobado" : "p_pedirCambiosAyuda")}</p>
+                    </form>
+                  )}
                 </div>
+                <details className="ep-historial">
+                  <summary>
+                    <History size={16} aria-hidden="true" />
+                    {tr("p_historial")} ({actual.historial.length})
+                  </summary>
+                  {!actual.historial.length ? (
+                    <p className="ep-nota">{tr("p_historialVacio")}</p>
+                  ) : (
+                    <ol>
+                      {[...actual.historial].reverse().map((h, i) => (
+                        <li key={`${h.fecha}-${i}`}>
+                          <span className="ep-historial-meta">
+                            <b>v{h.version}</b> · {tr(`p_h_${h.accion}`)} · {fecha(h.fecha)}
+                          </span>
+                          {h.nota && <span className="ep-historial-nota">{h.accion === "fecha" && /^\d{4}-/.test(h.nota) ? fecha(h.nota) : h.nota}</span>}
+                          {h.resultado && (
+                            <details>
+                              <summary>{tr("p_verTexto")}</summary>
+                              <pre>{h.resultado}</pre>
+                            </details>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </details>
               </section>
             )}
           </>
