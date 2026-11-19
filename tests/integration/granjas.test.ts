@@ -82,7 +82,7 @@ test(
       for (const clave of ["evento_verificado", "carrusel_spot", "video_vertical"])
         assert.ok(resumen.recetas.some((r: { clave: string }) => r.clave === clave), clave);
       assert.deepEqual(resumen.granjas, []);
-      assert.deepEqual(resumen.especialistas, ["cazador", "verificador", "redactor_ig", "disenador_post"]);
+      assert.deepEqual(resumen.especialistas, ["cazador", "verificador", "imagen_evento", "redactor_ig", "disenador_post"]);
       // Consumo: vacío, sin precios en el código y sin fingir llamadas.
       assert.equal((await pedir("/api/granjas/consumo")).status, 401);
       const consumo = await (await pedir("/api/granjas/consumo", admin)).json();
