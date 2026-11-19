@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, Download, ExternalLink, Image as Imagen, Pencil, RefreshCw, Search, Send, Upload, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Copy, Download, ExternalLink, Image as Imagen, MapPin, Pencil, RefreshCw, Search, Send, Sparkles, Upload, X } from "lucide-react";
 import type { Evento, EstadoVisible } from "@/lib/granjas/eventos";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
@@ -20,6 +20,7 @@ type Respuesta = {
   cuentas: CuentasSeguidas;
   lectura: { instagram: EstadoLectura; facebook: EstadoLectura };
   confianza: FilaConfianza[];
+  imagenesIA: { activa: boolean; motivo: string; aviso: string; hoy: number; limite: number; modelo: string };
 };
 type ResultadoImagen = { id: string; titulo: string; estado: "afiche" | "ticketera" | "red" | "prensa" | "ia" | "sin_imagen" | "ya_tenia"; motivo: string; boletos?: string };
 type Lote = { total: number; hechos: ResultadoImagen[]; activo: boolean };
@@ -77,6 +78,21 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
   type Importacion = { nuevos: number; duplicados: { titulo: string; de: string }[]; descartados: { titulo: string; motivo: string }[]; conImagen: number; conDatosPorConfirmar: number; invalidos: { posicion: number; motivo: string }[] };
   const [importacion, setImportacion] = useState<Importacion | null>(null);
   const [lote, setLote] = useState<Lote | null>(null);
+  const [conIA, setConIA] = useState(false);
+  // Panel lateral con la ficha completa y todas las acciones.
+  const [abierto, setAbierto] = useState<string | null>(null);
+  // Editor del prompt de la imagen de referencia IA.
+  const [prompt, setPrompt] = useState<{ evento: EventoVista; texto: string; avisos: string[]; forzar: boolean } | null>(null);
+  async function abrirPrompt(e: EventoVista) {
+    setError("");
+    try {
+      const r = await pedir<{ prompt: string }>("/api/granjas/eventos", { accion: "referencia_prompt", id: e.id });
+      setAbierto(null);
+      setPrompt({ evento: e, texto: r.prompt, avisos: [], forzar: false });
+    } catch (x) {
+      setError((x as Error).message);
+    }
+  }
   // Filtro y orden por confianza (en el navegador: la lista ya viene filtrada por estado y fechas).
   const [cuidado, setCuidado] = useState(false);
   const [orden, setOrden] = useState<"fecha" | "confianza_baja" | "confianza_alta">("fecha");
@@ -90,7 +106,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
       if (detener.current) break;
       let r: ResultadoImagen;
       try {
-        r = (await pedir<{ resultado: ResultadoImagen }>("/api/granjas/eventos", { accion: "completar_imagen", id })).resultado;
+        r = (await pedir<{ resultado: ResultadoImagen }>("/api/granjas/eventos", { accion: "completar_imagen", id, ia: conIA })).resultado;
       } catch (e) {
         r = { id, titulo: datos?.eventos.find((x) => x.id === id)?.titulo ?? id, estado: "sin_imagen", motivo: (e as Error).message };
       }
@@ -173,6 +189,21 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
     );
   const horaCorta = (hora: string) =>
     new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(`2000-01-01T${hora}:00Z`));
+  const fechaLarga = (dia: string) =>
+    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${dia}T12:00:00Z`));
+  /** Organizador o dominio de la fuente (la cuenta si vino de una red). */
+  const origenVisible = (e: EventoVista) => {
+    const f = e.fuentes.find((x) => x.url === e.fuenteUrl) ?? e.fuentes[0];
+    return f?.cuenta || host(e.fuenteUrl);
+  };
+  const etiquetaImagen = (e: EventoVista) =>
+    e.imagenTipo === "ia"
+      ? g("ev_etiqueta_ia")
+      : e.imagenTipo === "prensa"
+        ? g("ev_etiqueta_prensa")
+        : e.imagenMedioId && !e.imagenConfirmada
+          ? `${g("ev_etiqueta_pendiente")}${e.imagenBaja ? ` · ${g("ev_etiqueta_baja")}` : ""}`
+          : "";
   const dato = (e: EventoVista, campo: "fecha" | "hora" | "precio", valor: string | null) =>
     valor ? (
       <>
@@ -209,6 +240,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
       </div>
     );
   if (!datos) return <p role="status">{error || g("cargando")}</p>;
+  const enPanel = abierto ? (datos.eventos.find((x) => x.id === abierto) ?? null) : null;
   const visibles = datos.eventos
     .filter((e) => !cuidado || e.confianza.puntos < 50)
     .sort((a, b) => (orden === "confianza_baja" ? a.confianza.puntos - b.confianza.puntos : orden === "confianza_alta" ? b.confianza.puntos - a.confianza.puntos : 0));
@@ -226,6 +258,11 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
         </p>
       )}
       <p className={datos.spotmi ? "ep-nota" : "eg-presupuesto-aviso"}>{g(datos.spotmi ? "ev_spotmiConectado" : "ev_spotmiNoConectado")}</p>
+      {(datos.imagenesIA.aviso || !datos.imagenesIA.activa) && (
+        <p className="eg-presupuesto-aviso" role="status">
+          {g("ev_ia_titulo")}: {datos.imagenesIA.aviso || datos.imagenesIA.motivo}
+        </p>
+      )}
       <CuentasSeguir key={JSON.stringify(datos.cuentas)} g={g} cuentas={datos.cuentas} lectura={datos.lectura} alGuardar={cargar} />
       <ConfianzaDominios key={JSON.stringify(datos.confianza)} g={g} filas={datos.confianza} alGuardar={cargar} />
       <div className="eg-filtros" role="group" aria-label={g("ev_estado")}>
@@ -285,10 +322,16 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
             {g("ev_img_detener")}
           </button>
         ) : (
-          <button className="ep-boton" disabled={ocupado || !datos.sinImagen.length} onClick={() => void completarImagenes(datos.sinImagen)} title={g("ev_img_ayuda")}>
-            <Imagen size={15} />
-            {g("ev_img_completar")} ({datos.sinImagen.length})
-          </button>
+          <>
+            <button className="ep-boton" disabled={ocupado || !datos.sinImagen.length} onClick={() => void completarImagenes(datos.sinImagen)} title={g("ev_img_ayuda")}>
+              <Imagen size={15} />
+              {g("ev_img_completar")} ({datos.sinImagen.length})
+            </button>
+            <label className="eg-check" title={datos.imagenesIA.activa ? g("ev_ia_loteAyuda") : datos.imagenesIA.motivo}>
+              <input type="checkbox" checked={conIA && datos.imagenesIA.activa} disabled={!datos.imagenesIA.activa} onChange={(e) => setConIA(e.target.checked)} />
+              {g("ev_ia_lote")} ({datos.imagenesIA.hoy}/{datos.imagenesIA.limite})
+            </label>
+          </>
         )}
         {datos.spotmi && (datos.conteo.propuesto ?? 0) > 0 && (
           <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "consultar_spotmi" }, g("ev_estadoActualizado"))}>
@@ -372,16 +415,102 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
       ) : !visibles.length ? (
         <p className="ep-nota">{g("ev_vacioFiltro")}</p>
       ) : (
-        <ul className="eg-lista-eventos">
+        <ul className="eg-cuadricula-eventos">
           {visibles.map((e) => (
-            <li key={e.id} className={`eg-evento eg-evento-${e.estadoVisible}`}>
+            <li key={e.id} className={`eg-tarjeta-evento eg-evento-${e.estadoVisible}`}>
+              <div className="eg-tarjeta-imagen">
+                {e.imagenMedioId ? (
+                  <>
+                    <img className="eg-tarjeta-fondo" src={`/api/granjas/medios/${e.imagenMedioId}`} alt="" aria-hidden="true" loading="lazy" />
+                    <img className="eg-tarjeta-afiche" src={`/api/granjas/medios/${e.imagenMedioId}`} alt={`${g("ev_imagen")}: ${e.titulo}`} loading="lazy" />
+                  </>
+                ) : (
+                  <CuadroFecha fecha={e.fecha} locale={locale} grande />
+                )}
+                <span className="eg-sobre eg-sobre-categoria">{g(`ev_cat_${e.categoria}`)}</span>
+                <div className="eg-sobre eg-sobre-confianza">
+                  <AnilloConfianza g={g} confianza={e.confianza} compacto />
+                </div>
+                <span className="eg-sobre eg-sobre-fuente">{origenVisible(e)}</span>
+                {etiquetaImagen(e) && <span className={`eg-sobre eg-sobre-etiqueta eg-etiqueta-${e.imagenTipo ?? "sin"}`}>{etiquetaImagen(e)}</span>}
+              </div>
+              <div className="eg-tarjeta-cuerpo">
+                <div className="eg-tarjeta-estado">
+                  <span className="ep-pill">{g(`ev_estado_${e.estadoVisible}`)}</span>
+                  {e.cambios.length > 0 && <span className="ep-pill eg-pill-actualizado">{g("ev_actualizado")}</span>}
+                </div>
+                <h3>{e.titulo}</h3>
+                <p className="eg-tarjeta-linea">
+                  <CalendarDays size={15} aria-hidden="true" />
+                  <span>
+                    {e.fecha ? fechaLarga(e.fecha) : g("ev_fechaPorConfirmar")}
+                    {e.fechaFin ? ` ${g("ev_al")} ${fechaLarga(e.fechaFin)}` : ""}
+                    {e.hora ? ` · ${horaCorta(e.hora)}` : ""}
+                  </span>
+                </p>
+                <p className="eg-tarjeta-linea">
+                  <MapPin size={15} aria-hidden="true" />
+                  <span>{[e.lugar, e.municipio].filter(Boolean).join(" · ") || e.departamento || g("ev_lugarPorConfirmar")}</span>
+                </p>
+              </div>
+              <div className="eg-tarjeta-pie">
+                <span className={`eg-precio ${e.precioDesde ? "" : "eg-precio-pendiente"}`}>
+                  {!e.precioDesde ? g("ev_precioPorConfirmar") : e.precioDesde.tipo === "gratis" ? g("ev_gratis") : `${g("ev_desde")} $${Number.isInteger(e.precioDesde.valor) ? e.precioDesde.valor : e.precioDesde.valor.toFixed(2)}`}
+                </span>
+                <button className="eg-ver-mas" onClick={() => setAbierto(e.id)} aria-label={`${g("ev_verMas")}: ${e.titulo}`}>
+                  {g("ev_verMas")} <ArrowRight size={15} aria-hidden="true" />
+                </button>
+              </div>
+              {e.estado !== "descartado" && (e.estado === "nuevo" || !e.spotmiPropuestaId) && (
+                <div className="eg-tarjeta-rapidas">
+                  {e.estado === "nuevo" && (
+                    <button className="ep-boton ep-primario" disabled={ocupado} onClick={() => void accion({ accion: "aprobar", id: e.id, revision: e.revision }, g("ev_estado_aprobado"))}>
+                      <Check size={15} />
+                      {g("ev_aprobar")}
+                    </button>
+                  )}
+                  {!e.spotmiPropuestaId && (
+                    <button className="ep-boton eg-peligro" disabled={ocupado} onClick={() => setDescartando({ evento: e, motivo: "" })}>
+                      <X size={15} />
+                      {g("ev_descartar")}
+                    </button>
+                  )}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <section className="eg-bloque">
+        <h2 className="eg-subtitulo">{g("ev_exportar")}</h2>
+        <p className="ep-nota">{g("ev_exportarAyuda")}</p>
+        <div className="eg-formulario-linea">
+          <label className="eg-campo">
+            {g("ev_diaHallazgo")}
+            <input type="date" value={diaExportar} onChange={(e) => setDiaExportar(e.target.value)} />
+          </label>
+          <a className="ep-boton" href={`/api/granjas/eventos/exportar?dia=${diaExportar}&formato=csv`}>
+            <Download size={15} />
+            {g("ev_csv")}
+          </a>
+          <a className="ep-boton" href={`/api/granjas/eventos/exportar?dia=${diaExportar}&formato=json`}>
+            <Download size={15} />
+            {g("ev_json")}
+          </a>
+        </div>
+      </section>
+
+      <Modal open={Boolean(enPanel)} onClose={() => setAbierto(null)} label={enPanel?.titulo ?? g("ev_verMas")} className="ep-modal eg-panel-lateral" dismissOnBackdrop>
+        {enPanel &&
+          ((e) => (
+            <div className={`eg-panel-evento eg-evento-${e.estadoVisible}`}>
               <div className="eg-evento-cabecera">
                 <span className="ep-pill">{g(`ev_estado_${e.estadoVisible}`)}</span>
                 <span className="eg-evento-categoria">{g(`ev_cat_${e.categoria}`)}</span>
                 {e.origen !== "cazador" && e.origen !== "desconocido" && <span className="eg-evento-categoria">· {g(`ev_origen_${e.origen}`)}</span>}
                 {e.cambios.length > 0 && <span className="ep-pill eg-pill-actualizado">{g("ev_actualizado")}</span>}
               </div>
-              <h3>{e.titulo}</h3>
+              <h2 className="eg-panel-titulo">{e.titulo}</h2>
               {e.cambios.length > 0 && (
                 <ul className="eg-cambios" aria-label={g("ev_actualizado")}>
                   {e.cambios.slice(-3).map((c) => (
@@ -468,9 +597,15 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   <>
                     <img src={`/api/granjas/medios/${e.imagenMedioId}`} alt={`${g("ev_imagen")}: ${e.titulo}`} loading="lazy" />
                     <div>
-                      <span className={`ep-pill ${e.imagenConfirmada ? "" : "eg-pill-pendiente"}`}>{g(e.imagenConfirmada ? "ev_imagenEstadoConfirmada" : "ev_imagenEstadoPendiente")}</span>
+                      <span className={`ep-pill ${e.imagenConfirmada ? "" : "eg-pill-pendiente"}`}>
+                        {e.imagenTipo === "ia" ? g("ev_imagenEstadoIA") : g(e.imagenConfirmada ? "ev_imagenEstadoConfirmada" : "ev_imagenEstadoPendiente")}
+                      </span>
+                      <small className="ep-nota">
+                        {g(`ev_imagenTipo_${e.imagenTipo ?? "afiche"}`)}
+                        {e.imagenBaja ? ` · ${g("ev_bajaResolucion")}` : ""}
+                      </small>
                       <small className="ep-nota">{e.imagenPermiso}</small>
-                      <small className="ep-nota">{g(e.imagenConfirmada ? "ev_imagenConfirmadaAyuda" : "ev_imagenPendienteAyuda")}</small>
+                      <small className="ep-nota">{g(e.imagenTipo === "ia" ? "ev_imagenIAAyuda" : e.imagenConfirmada ? "ev_imagenConfirmadaAyuda" : "ev_imagenPendienteAyuda")}</small>
                     </div>
                   </>
                 ) : (
@@ -480,6 +615,30 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   </>
                 )}
               </div>
+              {e.imagenTipo === "ia" && e.imagenes.at(-1)?.ia && (
+                <details className="eg-fuentes-evento">
+                  <summary>{g("ev_ia_promptUsado")}</summary>
+                  <p className="eg-prompt-ia">{e.imagenes.at(-1)!.ia!.prompt}</p>
+                  <small className="ep-nota">
+                    {g("ev_ia_negativo")}: {e.imagenes.at(-1)!.ia!.negativo} · {e.imagenes.at(-1)!.ia!.modelo} · {e.imagenes.at(-1)!.ia!.version}
+                  </small>
+                </details>
+              )}
+              {e.imagenes.length > 1 && (
+                <details className="eg-fuentes-evento">
+                  <summary>
+                    {g("ev_historialImagenes")} ({e.imagenes.length})
+                  </summary>
+                  <ul>
+                    {e.imagenes.map((i) => (
+                      <li key={i.id}>
+                        {g(`ev_imagenTipo_${i.tipo}`)} · {fecha(i.creado)}
+                        {i.medioId === e.imagenMedioId ? ` · ${g("ev_imagenActual")}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
               <AnilloConfianza g={g} confianza={e.confianza} />
               {e.descripcion && <p className="eg-evento-descripcion">{e.descripcion}</p>}
               {e.spotmiPropuestaId && (
@@ -522,60 +681,115 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                     {g("ev_consultarSpotmi")}
                   </button>
                 )}
-                <button className="ep-boton" disabled={ocupado} onClick={() => setEditando({ evento: e, form: aFormulario(e) })}>
+                <button className="ep-boton" disabled={ocupado} onClick={() => (setAbierto(null), setEditando({ evento: e, form: aFormulario(e) }))}>
                   <Pencil size={15} />
                   {g("ev_editar")}
                 </button>
-                {e.imagenMedioId && !e.imagenConfirmada && (
+                {e.imagenMedioId && !e.imagenConfirmada && e.imagenTipo !== "ia" && (
                   <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "confirmar_imagen", id: e.id, revision: e.revision }, g("ev_imagenConfirmadaOk"))}>
                     <Check size={15} />
                     {g("ev_usarImagenFuente")}
                   </button>
                 )}
-                {!e.imagenMedioId && (
+                {e.imagenTipo !== "afiche" && !e.imagenConfirmada && (
                   <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "buscar_imagen", id: e.id }, g("ev_imagenEncontrada"))}>
                     <Search size={15} />
                     {g("ev_buscarImagen")}
                   </button>
                 )}
-                <button className="ep-boton" disabled={ocupado} onClick={() => setImagen({ evento: e, url: e.imagenUrl ?? "", permiso: e.imagenConfirmada ? e.imagenPermiso : "" })}>
+                <button className="ep-boton" disabled={ocupado} onClick={() => (setAbierto(null), setImagen({ evento: e, url: e.imagenUrl ?? "", permiso: e.imagenConfirmada ? e.imagenPermiso : "" }))}>
                   <Imagen size={15} />
                   {g("ev_cambiarImagen")}
                 </button>
+                {(e.imagenTipo === null || e.imagenTipo === "ia") && (
+                  <>
+                    <button
+                      className="ep-boton"
+                      disabled={ocupado || !datos.imagenesIA.activa}
+                      title={datos.imagenesIA.activa ? g("ev_ia_ayuda") : datos.imagenesIA.motivo}
+                      onClick={() => void accion({ accion: "generar_referencia", id: e.id, regenerar: e.imagenTipo === "ia" }, g("ev_ia_generada"))}
+                    >
+                      <Sparkles size={15} />
+                      {g(e.imagenTipo === "ia" ? "ev_ia_regenerar" : "ev_ia_generar")}
+                    </button>
+                    <button className="ep-boton" disabled={ocupado || !datos.imagenesIA.activa} title={datos.imagenesIA.activa ? undefined : datos.imagenesIA.motivo} onClick={() => void abrirPrompt(e)}>
+                      <Pencil size={15} />
+                      {g("ev_ia_editarPrompt")}
+                    </button>
+                  </>
+                )}
                 <button className="ep-boton" onClick={() => void copiar(e)}>
                   <Copy size={15} />
                   {g("ev_copiarFicha")}
                 </button>
                 {e.estado !== "descartado" && !e.spotmiPropuestaId && (
-                  <button className="ep-boton eg-peligro" disabled={ocupado} onClick={() => setDescartando({ evento: e, motivo: "" })}>
+                  <button className="ep-boton eg-peligro" disabled={ocupado} onClick={() => (setAbierto(null), setDescartando({ evento: e, motivo: "" }))}>
                     <X size={15} />
                     {g("ev_descartar")}
                   </button>
                 )}
               </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      <section className="eg-bloque">
-        <h2 className="eg-subtitulo">{g("ev_exportar")}</h2>
-        <p className="ep-nota">{g("ev_exportarAyuda")}</p>
-        <div className="eg-formulario-linea">
-          <label className="eg-campo">
-            {g("ev_diaHallazgo")}
-            <input type="date" value={diaExportar} onChange={(e) => setDiaExportar(e.target.value)} />
-          </label>
-          <a className="ep-boton" href={`/api/granjas/eventos/exportar?dia=${diaExportar}&formato=csv`}>
-            <Download size={15} />
-            {g("ev_csv")}
-          </a>
-          <a className="ep-boton" href={`/api/granjas/eventos/exportar?dia=${diaExportar}&formato=json`}>
-            <Download size={15} />
-            {g("ev_json")}
-          </a>
-        </div>
-      </section>
-
+            </div>
+          ))(enPanel)}
+      </Modal>
+      <Modal open={Boolean(prompt)} onClose={() => setPrompt(null)} label={g("ev_ia_editarPrompt")} className="ep-modal" dismissOnBackdrop>
+        {prompt && (
+          <form
+            className="eg-guia"
+            onSubmit={async (ev) => {
+              ev.preventDefault();
+              setOcupado(true);
+              setError("");
+              try {
+                const r = await pedir<{ avisos: string[] }>("/api/granjas/eventos", { accion: "referencia_prompt", id: prompt.evento.id, prompt: prompt.texto });
+                if (r.avisos.length && !prompt.forzar) {
+                  setPrompt({ ...prompt, avisos: r.avisos });
+                  return;
+                }
+                await pedir("/api/granjas/eventos", { accion: "generar_referencia", id: prompt.evento.id, prompt: prompt.texto, forzar: prompt.forzar, regenerar: prompt.evento.imagenTipo === "ia" });
+                setAviso(g("ev_ia_generada"));
+                setPrompt(null);
+              } catch (x) {
+                setPrompt({ ...prompt, avisos: [(x as Error).message] });
+              } finally {
+                setOcupado(false);
+                await cargar();
+              }
+            }}
+          >
+            <h2>
+              {g("ev_ia_editarPrompt")} · {prompt.evento.titulo}
+            </h2>
+            <p className="ep-nota">{g("ev_ia_promptAyuda")}</p>
+            <label className="eg-campo">
+              {g("ev_ia_prompt")}
+              <textarea rows={8} maxLength={2000} value={prompt.texto} onChange={(x) => setPrompt({ ...prompt, texto: x.target.value, avisos: [], forzar: false })} />
+            </label>
+            {prompt.avisos.length > 0 && (
+              <div className="ep-alerta" role="alert">
+                <ul>
+                  {prompt.avisos.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+                <label className="eg-check">
+                  <input type="checkbox" checked={prompt.forzar} onChange={(x) => setPrompt({ ...prompt, forzar: x.target.checked })} />
+                  {g("ev_ia_forzar")}
+                </label>
+              </div>
+            )}
+            <div className="ep-acciones">
+              <button className="ep-boton ep-primario" disabled={ocupado || prompt.texto.trim().length < 20}>
+                <Sparkles size={15} />
+                {g("ev_ia_generar")}
+              </button>
+              <button type="button" className="ep-boton" onClick={() => setPrompt(null)}>
+                {g("ev_cancelar")}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
       <Modal open={Boolean(editando)} onClose={() => setEditando(null)} label={g("ev_editar")} className="ep-modal" dismissOnBackdrop>
         {editando && (
           <form
@@ -746,7 +960,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
 }
 
 /** Círculo de confianza (verde ≥ 80, amarillo 50–79, rojo < 50); el desglose aparece al pasar el cursor o con el teclado. */
-function AnilloConfianza({ g, confianza }: { g: (clave: string) => string; confianza: Evento["confianza"] }) {
+function AnilloConfianza({ g, confianza, compacto = false }: { g: (clave: string) => string; confianza: Evento["confianza"]; compacto?: boolean }) {
   const p = confianza.puntos;
   const nivel = p >= 80 ? "alta" : p >= 50 ? "media" : "baja";
   const radio = 16;
@@ -761,9 +975,11 @@ function AnilloConfianza({ g, confianza }: { g: (clave: string) => string; confi
         </svg>
         <span>{p}%</span>
       </button>
-      <span className="eg-confianza-texto">
-        {g("ev_conf_nombre")} · {g(`ev_conf_nivel_${nivel}`)}
-      </span>
+      {!compacto && (
+        <span className="eg-confianza-texto">
+          {g("ev_conf_nombre")} · {g(`ev_conf_nivel_${nivel}`)}
+        </span>
+      )}
       <div className="eg-confianza-desglose" role="tooltip">
         <strong>{g("ev_conf_desglose")}</strong>
         <ul>
@@ -784,10 +1000,10 @@ function AnilloConfianza({ g, confianza }: { g: (clave: string) => string; confi
 }
 
 /** Sin imagen: el mismo cuadro azul marino de Spotmi con el día grande y el mes. */
-function CuadroFecha({ fecha, locale }: { fecha: string | null; locale: string }) {
+function CuadroFecha({ fecha, locale, grande = false }: { fecha: string | null; locale: string; grande?: boolean }) {
   const d = fecha ? new Date(`${fecha}T12:00:00Z`) : null;
   return (
-    <div className="eg-cuadro-fecha" aria-hidden="true">
+    <div className={`eg-cuadro-fecha ${grande ? "eg-cuadro-grande" : ""}`} aria-hidden="true">
       <strong>{d ? d.getUTCDate() : "?"}</strong>
       <span>{d ? new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { month: "short", timeZone: "UTC" }).format(d).replace(".", "") : "—"}</span>
     </div>

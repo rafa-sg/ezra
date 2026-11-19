@@ -572,3 +572,22 @@ test("referencia IA (Gemini simulado): límite diario, control con un reintento,
   assert.deepEqual(ev.imagenes.map((i) => i.tipo), ["ia", "afiche"]);
   gemini.usarGeminiDePrueba(undefined);
 });
+
+test("«Desde $X»: menor precio publicado, «Gratis» solo sin montos y «Precio por confirmar» sin dato", async () => {
+  const { precioDesde, textoPrecioDesde } = await import("../src/lib/granjas/precio");
+  assert.deepEqual(precioDesde("$45 – $265"), { tipo: "desde", valor: 45 });
+  assert.deepEqual(precioDesde("Cover $5"), { tipo: "desde", valor: 5 });
+  assert.deepEqual(precioDesde("Entrada gratuita"), { tipo: "gratis" });
+  assert.deepEqual(precioDesde("Preventa $12.50 · General $15"), { tipo: "desde", valor: 12.5 });
+  assert.deepEqual(precioDesde("25 USD"), { tipo: "desde", valor: 25 });
+  assert.equal(precioDesde(null), null);
+  assert.equal(precioDesde("Consultar en taquilla"), null);
+  assert.equal(textoPrecioDesde(precioDesde("$45 – $265")), "Desde $45");
+  assert.equal(textoPrecioDesde(precioDesde("Entrada libre")), "Gratis");
+  assert.equal(textoPrecioDesde(null), "Precio por confirmar");
+  // En el evento se calcula al leer y se guarda como instantánea numérica.
+  const e = nuevo({ titulo: "Concierto con precio", fuenteUrl: "https://www.smartticket.fun/es/event/precio", precio: "$45 – $265" });
+  assert.deepEqual(e.precioDesde, { tipo: "desde", valor: 45 });
+  const fila = db.base().prepare("select precio_desde from eventos where id = ?").get(e.id) as { precio_desde: number };
+  assert.equal(fila.precio_desde, 45);
+});

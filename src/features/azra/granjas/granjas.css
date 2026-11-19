@@ -1679,3 +1679,265 @@
   flex: 0 0 auto;
   white-space: nowrap;
 }
+/* ── Tarjeta de evento estilo ticketera (4 · 2 · 1 columnas) ── */
+.azra .eg-cuadricula-eventos {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 1199px) {
+  .azra .eg-cuadricula-eventos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 599px) {
+  .azra .eg-cuadricula-eventos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.azra .eg-tarjeta-evento {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ep-borde, #2b3b4d);
+  border-radius: 14px;
+  background: var(--ep-tarjeta, #172638);
+}
+.azra .eg-tarjeta-evento.eg-evento-descartado {
+  opacity: 0.6;
+}
+.azra .eg-tarjeta-imagen {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 14px 14px 10px 10px;
+  background: #002f4b;
+}
+/* El afiche completo (contain) sobre un fondo desenfocado de la misma imagen: nunca se corta su texto. */
+.azra .eg-tarjeta-fondo {
+  position: absolute;
+  inset: -12px;
+  width: calc(100% + 24px);
+  height: calc(100% + 24px);
+  object-fit: cover;
+  filter: blur(18px) brightness(0.6);
+}
+.azra .eg-tarjeta-afiche {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.azra .eg-tarjeta-imagen .eg-cuadro-fecha.eg-cuadro-grande {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+.azra .eg-cuadro-grande strong {
+  font-size: 72px;
+}
+.azra .eg-cuadro-grande span {
+  font-size: 18px;
+}
+.azra .eg-sobre {
+  position: absolute;
+  z-index: 1;
+  max-width: calc(100% - 70px);
+  padding: 4px 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  color: #f3f3e9;
+  background: rgb(10 20 32 / 0.78);
+  backdrop-filter: blur(4px);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.azra .eg-sobre-categoria {
+  top: 10px;
+  left: 10px;
+}
+.azra .eg-sobre-confianza {
+  top: 6px;
+  right: 6px;
+  max-width: none;
+  padding: 2px;
+  overflow: visible;
+  border-radius: 50%;
+}
+.azra .eg-sobre-confianza .eg-confianza-desglose {
+  right: 0;
+  left: auto;
+  white-space: normal;
+}
+.azra .eg-sobre-fuente {
+  bottom: 10px;
+  left: 10px;
+}
+.azra .eg-sobre-etiqueta {
+  bottom: 10px;
+  right: 10px;
+  max-width: 45%;
+  color: #172224;
+  background: #d7ee9c;
+  font-weight: 600;
+}
+.azra .eg-etiqueta-ia {
+  color: #f3e8ff;
+  background: #5b3b8c;
+}
+.azra .eg-etiqueta-prensa {
+  color: #172224;
+  background: #cfd8e3;
+}
+.azra .eg-tarjeta-cuerpo {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px 4px;
+  min-width: 0;
+}
+.azra .eg-tarjeta-estado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.azra .eg-tarjeta-cuerpo h3 {
+  margin: 2px 0;
+  font-size: 18px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.azra .eg-tarjeta-linea {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  margin: 0;
+  color: var(--ep-suave, #a9b6c4);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.azra .eg-tarjeta-linea svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #d7ee9c;
+}
+.azra .eg-tarjeta-linea span::first-letter {
+  text-transform: uppercase;
+}
+.azra .eg-tarjeta-pie {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding: 10px 14px;
+}
+.azra .eg-precio {
+  padding: 5px 11px;
+  border-radius: 999px;
+  color: #172224;
+  background: #d7ee9c;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.azra .eg-precio-pendiente {
+  color: #fbe8b8;
+  background: transparent;
+  border: 1px dashed #a8873e;
+  font-weight: 500;
+}
+.azra .eg-ver-mas {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 4px;
+  border: 0;
+  color: #d7ee9c;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.azra .eg-ver-mas:hover {
+  text-decoration: underline;
+}
+.azra .eg-ver-mas:focus-visible {
+  outline: 2px solid #d7ee9c;
+  outline-offset: 2px;
+}
+.azra .eg-tarjeta-rapidas {
+  display: flex;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+.azra .eg-tarjeta-rapidas .ep-boton {
+  flex: 1 1 0;
+  justify-content: center;
+}
+/* Panel lateral con la ficha completa. */
+.azra .ep-modal.eg-panel-lateral {
+  inset: 0 0 0 auto !important;
+  margin: 0 0 0 auto !important;
+  width: min(580px, 100vw) !important;
+  max-width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  border-radius: 14px 0 0 14px !important;
+}
+@media (max-width: 599px) {
+  .azra .ep-modal.eg-panel-lateral {
+    border-radius: 0 !important;
+  }
+}
+.azra .eg-panel-evento {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.azra .eg-panel-titulo {
+  margin: 0;
+  padding-right: 36px;
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+.azra .eg-panel-evento .eg-evento-imagen img {
+  width: 160px;
+  height: auto;
+  max-height: 220px;
+  object-fit: contain;
+}
+.azra .eg-prompt-ia {
+  margin: 6px 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: #0f1b2a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .azra .eg-tarjeta-evento {
+    transition: border-color 0.15s ease;
+  }
+  .azra .eg-tarjeta-evento:hover {
+    border-color: #506174;
+  }
+}
+/* El desglose sobre la imagen no puede salirse de la tarjeta (que recorta): se ajusta a su ancho. */
+.azra .eg-tarjeta-imagen {
+  container-type: inline-size;
+}
+.azra .eg-sobre-confianza .eg-confianza-desglose {
+  width: min(300px, calc(100cqw - 16px));
+}
