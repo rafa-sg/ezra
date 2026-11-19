@@ -14,6 +14,10 @@ let completar: typeof import("../src/lib/granjas/completar-imagenes");
 let imagenes: typeof import("../src/lib/granjas/imagenes");
 let tiempo: typeof import("../src/lib/granjas/tiempo");
 let db: typeof import("../src/lib/granjas/db");
+let redes: typeof import("../src/lib/granjas/redes");
+let verificador: typeof import("../src/lib/granjas/verificador");
+let gemini: typeof import("../src/lib/ia/gemini");
+let cripto: typeof import("../src/lib/granjas/cripto");
 const ffmpeg = "/opt/homebrew/bin/ffmpeg";
 const hayFfmpeg = existsSync(ffmpeg);
 let cartel: Buffer;
@@ -25,6 +29,10 @@ before(async () => {
   imagenes = await import("../src/lib/granjas/imagenes");
   tiempo = await import("../src/lib/granjas/tiempo");
   db = await import("../src/lib/granjas/db");
+  redes = await import("../src/lib/granjas/redes");
+  verificador = await import("../src/lib/granjas/verificador");
+  gemini = await import("../src/lib/ia/gemini");
+  cripto = await import("../src/lib/granjas/cripto");
   assert.ok(db.archivoBase.startsWith(process.env.EZRA_DATA_DIR!), "la base de prueba vive en work/");
   const generar = (nombre: string, filtro: string) => {
     const destino = path.join(process.env.EZRA_DATA_DIR!, nombre);
@@ -139,4 +147,139 @@ test("sin imagen oficial: queda sin imagen con el motivo (nunca se genera una)",
   assert.equal(r.estado, "sin_imagen");
   assert.match(r.motivo, /no tiene imagen del evento/);
   assert.equal(eventos.leerEvento(e.id).imagenMedioId, null);
+});
+
+/* ── Parte 2: redes por API oficial, enlaces manuales y dominios prohibidos ── */
+type Llamada = { url: string };
+/** Graph API simulada: responde según la ruta y guarda cada URL pedida. */
+function graph(respuestas: Record<string, object>, llamadas: Llamada[]) {
+  return async (url: string) => {
+    llamadas.push({ url });
+    const u = new URL(url);
+    const clave = Object.keys(respuestas).find((k) => u.pathname.endsWith(k));
+    return new Response(JSON.stringify(clave ? respuestas[clave] : { error: { code: 100, message: "no existe" } }), { status: clave ? 200 : 400 });
+  };
+}
+
+test("redes: sin conexión de Facebook no se lee nada; Facebook queda apagado sin Page Public Content Access", () => {
+  const estado = redes.estadoLecturaRedes();
+  assert.equal(estado.instagram.listo, false);
+  assert.match(estado.instagram.motivo, /Conecta Facebook/);
+  assert.equal(estado.facebook.listo, false);
+  assert.match(estado.facebook.motivo, /Page Public Content Access/);
+  // Cuentas: @ y mayúsculas se normalizan; repetidas o inválidas se rechazan.
+  const guardadas = redes.guardarCuentasSeguidas({ instagram: [{ usuario: "@Teatro.Presidente", tipo: "recinto" }], facebook: [{ pagina: "https://www.facebook.com/alcaldia.ss/", tipo: "alcaldia" }] });
+  assert.deepEqual(guardadas.instagram[0], { usuario: "teatro.presidente", tipo: "recinto", nota: "" });
+  assert.equal(guardadas.facebook[0].pagina, "alcaldia.ss");
+  assert.throws(() => redes.guardarCuentasSeguidas({ instagram: [{ usuario: "a b", tipo: "recinto" }], facebook: [] }));
+  assert.throws(() => redes.guardarCuentasSeguidas({ instagram: [{ usuario: "x", tipo: "recinto" }, { usuario: "@X", tipo: "otro" }], facebook: [] }), /repetidas/);
+});
+
+test("Instagram Business Discovery (simulado) → Gemini (simulado) → verificador: fuente = enlace del post e imagen del post pendiente", { skip: !hayFfmpeg }, async () => {
+  const dia = tiempo.sumarDias(tiempo.diaLocal(), 12);
+  const hoy = tiempo.diaLocal();
+  process.env.EZRA_TOKEN_KEY = Buffer.alloc(32, 7).toString("base64");
+  process.env.EZRA_PRODUCCION_IA = "1";
+  process.env.GEMINI_API_KEY = "clave-de-prueba";
+  // Conexión de Facebook con la Página elegida y los permisos de lectura.
+  db.base()
+    .prepare("insert or replace into conexiones (canal, estado, identidad, capacidades, permisos, opciones, token_cifrado, actualizado) values ('facebook', 'conectada_publicacion', ?, '[]', ?, '[]', ?, ?)")
+    .run(
+      JSON.stringify({ id: "pagina1", nombre: "Spotmi" }),
+      JSON.stringify(["pages_show_list", "pages_read_engagement", "pages_manage_posts", "instagram_basic", "instagram_manage_insights"]),
+      cripto.cifrar({ acceso: "token-usuario", paginaId: "pagina1", paginas: { pagina1: "token-pagina" } }),
+      new Date().toISOString(),
+    );
+  redes.guardarCuentasSeguidas({ instagram: [{ usuario: "teatro.presidente", tipo: "recinto" }], facebook: [] });
+  assert.equal(redes.estadoLecturaRedes().instagram.listo, true);
+  const ahora = new Date().toISOString();
+  const llamadas: Llamada[] = [];
+  const solicitar = graph(
+    {
+      "/pagina1": { instagram_business_account: { id: "ig-spotmi" } },
+      "/ig-spotmi": {
+        business_discovery: {
+          media: {
+            data: [
+              { id: "p1", caption: `Cascanueces en el Teatro Presidente, ${textoFecha(dia)} a las 7:00 p. m. Boletos $25`, media_type: "IMAGE", media_url: "https://scontent.cdninstagram.com/v/cascanueces.jpg", permalink: "https://www.instagram.com/p/AAA/", timestamp: ahora },
+              { id: "p2", caption: "Feliz lunes", media_type: "IMAGE", media_url: "https://scontent.cdninstagram.com/v/lunes.jpg", permalink: "https://www.instagram.com/p/BBB/", timestamp: ahora },
+              { id: "p3", caption: "Post de hace un año", media_type: "IMAGE", media_url: "https://scontent.cdninstagram.com/v/viejo.jpg", permalink: "https://www.instagram.com/p/CCC/", timestamp: "2025-01-01T00:00:00+0000" },
+            ],
+          },
+        },
+      },
+    },
+    llamadas,
+  );
+  const prompts: string[] = [];
+  gemini.usarGeminiDePrueba(async (p) => {
+    prompts.push(String(p.contents));
+    // El modelo intenta poner otra fuente: se ignora y se usa el enlace del post.
+    return {
+      text: JSON.stringify([{ post: "p1", titulo: "El Cascanueces", fecha: dia, hora: "19:00", lugar: "Teatro Presidente", municipio: "San Salvador", departamento: "San Salvador", categoria: "cultura", precio: "$25", fuente_url: "https://otro.sitio/inventado", descripcion: "Ballet navideño." }]),
+      usageMetadata: { totalTokenCount: 120 },
+    } as never;
+  });
+  const { candidatos, resumen } = await redes.candidatosDeRedes({ hoy, diasAdelante: 60, conocidos: [], gemini: { granjaId: null }, solicitar });
+  gemini.usarGeminiDePrueba(undefined);
+  assert.equal(resumen.posts, 2, "el post de hace un año no se manda a Gemini");
+  assert.doesNotMatch(prompts[0], /Post de hace un año/);
+  assert.match(llamadas[1].url, /fields=business_discovery\.username\(teatro\.presidente\)/);
+  assert.ok(llamadas.every((l) => l.url.startsWith("https://graph.facebook.com/")), "solo la Graph API oficial");
+  assert.equal(candidatos.length, 1);
+  assert.equal(candidatos[0].fuente_url, "https://www.instagram.com/p/AAA/");
+
+  const sitios = web({ "https://scontent.cdninstagram.com/v/cascanueces.jpg": cartel });
+  const r = await verificador.verificarCandidatos(candidatos, { hoy, diasAdelante: 60, dominios: ["elsalvador.travel"], restantes: 5, referencias: eventos.referenciasLocales(), granjaId: null, ejecucionId: null }, { descargar: sitios });
+  assert.equal(r.nuevos.length, 1);
+  const e = eventos.leerEvento(r.nuevos[0].id);
+  assert.equal(e.origen, "instagram");
+  assert.equal(e.fuenteUrl, "https://www.instagram.com/p/AAA/");
+  assert.equal(e.fecha, dia, "la fecha está en el texto del post");
+  assert.equal(e.hora, "19:00");
+  assert.equal(e.precio, "$25");
+  assert.equal(e.fuentes[0].tipo, "cuenta_red");
+  assert.equal(e.fuentes[0].cuenta, "@teatro.presidente");
+  assert.ok(e.imagenMedioId, "la imagen del post llega por la API");
+  assert.equal(e.imagenConfirmada, false);
+  assert.match(e.imagenPermiso, /post de @teatro\.presidente en Instagram \(API oficial\) · pendiente de tu confirmación$/);
+});
+
+test("dominios prohibidos: el HTML y las imágenes de redes nunca se leen; el enlace manual sí se guarda (sin abrirlo)", async () => {
+  // Una imagen del CDN de Instagram sin pasar por la API se rechaza.
+  await assert.rejects(imagenes.descargarImagen("https://scontent.cdninstagram.com/v/x.jpg", "x", web({})), /red social/);
+  // El cazador no puede usar una red social como fuente; un post de la API tampoco puede traer otra URL.
+  const hoy = tiempo.diaLocal();
+  const base = { fecha: null, hora: null, lugar: null, municipio: null, departamento: null, categoria: null, precio: null, boletos_url: null, imagen_url: null, descripcion: null, fecha_fin: null, nota_verificacion: null };
+  const r = await verificador.verificarCandidatos(
+    [
+      { ...base, titulo: "Concierto en TikTok", fuente_url: "https://www.tiktok.com/@banda/video/1" },
+      { ...base, titulo: "Post con enlace ajeno", fuente_url: "https://otro.sitio/x", red: { via: "instagram", cuenta: "@x", publicado: "", imagenUrl: null, texto: "Post con enlace ajeno" } },
+    ],
+    { hoy, diasAdelante: 30, dominios: ["tiktok.com", "otro.sitio"], restantes: 5, referencias: [], granjaId: null, ejecucionId: null },
+    { descargar: web({}) },
+  );
+  assert.deepEqual(
+    r.descartados.map((d) => d.motivo),
+    ["Fuente en una red social: no se usa.", "El enlace no es el del post leído por la API."],
+  );
+  // «Pegar enlace»: TikTok queda como fuente principal, origen manual, 35 puntos.
+  const dia = tiempo.sumarDias(hoy, 20);
+  const manual = eventos.crearEventoManual({ url: "https://www.tiktok.com/@banda/video/123", titulo: "Banda Los Tigres en Santa Ana", fecha: dia, fechaFin: null, hora: null, lugar: "Teatro de Santa Ana", municipio: "Santa Ana", departamento: "Santa Ana", categoria: "musica", precio: null, boletosUrl: null, descripcion: "" });
+  assert.equal(manual.duplicado, false);
+  assert.equal(manual.evento.origen, "manual");
+  assert.equal(manual.evento.fuentes[0].tipo, "red_manual");
+  assert.equal(manual.evento.confirmadoEn.fecha, "propietario");
+  // Editar conserva ese enlace; pero no se puede cambiar a otra red ni poner una red en otro evento.
+  const datos = { titulo: manual.evento.titulo, fecha: dia, fechaFin: null, hora: "20:00", lugar: "Teatro de Santa Ana", municipio: "Santa Ana", departamento: "Santa Ana", categoria: "musica", precio: null, boletosUrl: null, descripcion: "" };
+  const editado = eventos.editarEvento(manual.evento.id, manual.evento.revision, { ...datos, fuenteUrl: "https://www.tiktok.com/@banda/video/123" });
+  assert.equal(editado.hora, "20:00");
+  assert.throws(() => eventos.editarEvento(editado.id, editado.revision, { ...datos, fuenteUrl: "https://www.instagram.com/p/x/" }), /redes sociales/);
+  const web1 = nuevo({ titulo: "Feria de Apopa", fuenteUrl: "https://apopa.gob.sv/feria" });
+  assert.throws(() => eventos.editarEvento(web1.id, web1.revision, { ...datos, titulo: "Feria de Apopa", fuenteUrl: "https://www.tiktok.com/@x/video/9" }), /redes sociales/);
+  // El mismo evento pegado otra vez desde Instagram suma la URL en vez de crear otra tarjeta.
+  const otra = eventos.crearEventoManual({ url: "https://www.instagram.com/p/TIGRES/", titulo: "Los Tigres – Santa Ana", fecha: dia, fechaFin: null, hora: null, lugar: "", municipio: "", departamento: "", categoria: "musica", precio: null, boletosUrl: null, descripcion: "" });
+  assert.equal(otra.duplicado, true);
+  assert.equal(otra.evento.id, manual.evento.id);
+  assert.equal(otra.evento.fuentes.length, 2);
 });

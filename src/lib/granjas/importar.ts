@@ -47,7 +47,7 @@ export async function importarEventos(
   const diasAdelante = Math.min(180, Math.max(1, Math.ceil((Date.parse(`${ultimo}T12:00:00Z`) - Date.parse(`${hoy}T12:00:00Z`)) / 86_400_000) + 1));
   const r = await verificarCandidatos(
     candidatos,
-    { hoy, diasAdelante, dominios, restantes: MAX_IMPORTAR, referencias: referenciasLocales(), granjaId: granja?.id ?? null, ejecucionId: null },
+    { hoy, diasAdelante, dominios, restantes: MAX_IMPORTAR, referencias: referenciasLocales(), granjaId: granja?.id ?? null, ejecucionId: null, origen: "importacion" },
     { descargar: opciones.descargar, catalogoSpotmi: opciones.catalogoSpotmi ?? eventosPublicosSpotmi },
   );
   const resumen = {

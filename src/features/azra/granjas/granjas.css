@@ -1471,3 +1471,50 @@
   margin-top: 8px;
   accent-color: #4ea1ff;
 }
+/* Cuentas a seguir y fuentes de cada evento. */
+.azra .eg-plegable > summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+.azra .eg-redes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+  margin: 12px 0;
+}
+.azra .eg-redes h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.azra .eg-cuentas {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .eg-cuentas li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+.azra .eg-cuentas li > span {
+  flex: 1 1 120px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.azra .eg-fuentes-evento summary {
+  cursor: pointer;
+  color: var(--ep-suave, #a9b6c4);
+  font-size: 13px;
+}
+.azra .eg-fuentes-evento ul {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}

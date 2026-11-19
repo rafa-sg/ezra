@@ -14,7 +14,15 @@ import {
   confirmarImagen,
   departamentos,
   leerEvento,
+  crearEventoManual,
+  enlaceManualSchema,
+  referenciasLocales,
 } from "@/lib/granjas/eventos";
+import { candidatosDeRedes, cuentasSeguidasSchema, estadoLecturaRedes, guardarCuentasSeguidas, leerCuentasSeguidas } from "@/lib/granjas/redes";
+import { contextoGranjaEventos } from "@/lib/granjas/completar-imagenes";
+import { verificarCandidatos } from "@/lib/granjas/verificador";
+import { eventosPublicosSpotmi } from "@/lib/granjas/spotmi-publico";
+import { listarGranjas } from "@/lib/granjas/almacen";
 import { completarImagenEvento } from "@/lib/granjas/completar-imagenes";
 import { importarEventos, MAX_IMPORTAR } from "@/lib/granjas/importar";
 import { actualizarPropuestasPendientes, consultarEstadoSpotmi, enviarEventoASpotmi, spotmiPuedeProponer } from "@/lib/granjas/spotmi-propuestas";
@@ -44,6 +52,10 @@ const accion = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("buscar_imagen"), id }),
   // «Completar imágenes»: la interfaz recorre los eventos sin imagen de a uno y muestra el progreso.
   z.object({ accion: z.literal("completar_imagen"), id }),
+  // «Pegar enlace»: un video o post (TikTok, Instagram…) con los datos escritos a mano. Ezra no abre ese enlace.
+  z.object({ accion: z.literal("pegar_enlace"), datos: enlaceManualSchema }),
+  z.object({ accion: z.literal("cuentas"), cuentas: cuentasSeguidasSchema }),
+  z.object({ accion: z.literal("leer_redes") }),
   z.object({ accion: z.literal("enviar_spotmi"), id }),
   z.object({ accion: z.literal("consultar_spotmi"), id: id.optional() }),
 ]);
@@ -75,6 +87,8 @@ export async function GET(request: Request) {
         sinImagen: todos.filter((e) => !e.imagenMedioId && e.estado !== "descartado" && (!e.fecha || (e.fechaFin ?? e.fecha) >= hoy)).map((e) => e.id),
         categorias: categoriasEvento,
         departamentos,
+        cuentas: leerCuentasSeguidas(),
+        lectura: estadoLecturaRedes(),
       },
       { headers: { "Cache-Control": "no-store" } },
     );
@@ -119,6 +133,26 @@ export async function POST(request: Request) {
     if (a.accion === "completar_imagen") {
       const resultado = await completarImagenEvento(a.id, cacheLote());
       return Response.json({ resultado, evento: leerEvento(a.id) });
+    }
+    if (a.accion === "pegar_enlace") return Response.json(crearEventoManual(a.datos));
+    if (a.accion === "cuentas") return Response.json({ cuentas: guardarCuentasSeguidas(a.cuentas) });
+    if (a.accion === "leer_redes") {
+      // Lectura pedida por el propietario: mismas reglas que la búsqueda diaria (API oficial, Gemini con presupuesto, verificador).
+      const granja = listarGranjas().find((g) => g.ajustes.purpose === "eventos_el_salvador" && g.estado === "activa");
+      const hoy = diaLocal(new Date());
+      const diasAdelante = granja?.ajustes.eventos?.diasAdelante ?? 60;
+      const conocidos = referenciasLocales()
+        .filter((r) => !r.fecha || (r.hasta ?? r.fecha) >= hoy)
+        .map((r) => (r.fecha ? `${r.titulo} (${r.fecha})` : r.titulo));
+      const { candidatos, resumen } = await candidatosDeRedes({ hoy, diasAdelante, conocidos, gemini: { granjaId: granja?.id ?? null } });
+      const verificacion = candidatos.length
+        ? await verificarCandidatos(
+            candidatos,
+            { hoy, diasAdelante, dominios: contextoGranjaEventos().dominios, restantes: 50, referencias: referenciasLocales(), granjaId: granja?.id ?? null, ejecucionId: null },
+            { catalogoSpotmi: eventosPublicosSpotmi },
+          )
+        : null;
+      return Response.json({ redes: resumen, verificacion: verificacion && { nuevos: verificacion.nuevos.length, duplicados: verificacion.duplicados.length, descartados: verificacion.descartados.length, conImagen: verificacion.conImagen } });
     }
     if (a.accion === "enviar_spotmi") return Response.json({ evento: await enviarEventoASpotmi(a.id) });
     if (a.id) return Response.json({ evento: await consultarEstadoSpotmi(a.id) });

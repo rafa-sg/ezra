@@ -5,6 +5,8 @@ import type { Evento, EstadoVisible } from "@/lib/granjas/eventos";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
 import { ListaPosts } from "./posts";
+import { CuentasSeguir, PegarEnlace } from "./eventos-redes";
+import type { CuentasSeguidas, EstadoLectura } from "@/lib/granjas/redes";
 
 type EventoVista = Evento & { ficha: string };
 type Respuesta = {
@@ -15,6 +17,8 @@ type Respuesta = {
   categorias: string[];
   departamentos: string[];
   sinImagen: string[];
+  cuentas: CuentasSeguidas;
+  lectura: { instagram: EstadoLectura; facebook: EstadoLectura };
 };
 type ResultadoImagen = { id: string; titulo: string; estado: "oficial" | "ticketera" | "red" | "sin_imagen" | "ya_tenia"; motivo: string; boletos?: string };
 type Lote = { total: number; hechos: ResultadoImagen[]; activo: boolean };
@@ -215,6 +219,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
         </p>
       )}
       <p className={datos.spotmi ? "ep-nota" : "eg-presupuesto-aviso"}>{g(datos.spotmi ? "ev_spotmiConectado" : "ev_spotmiNoConectado")}</p>
+      <CuentasSeguir key={JSON.stringify(datos.cuentas)} g={g} cuentas={datos.cuentas} lectura={datos.lectura} alGuardar={cargar} />
       <div className="eg-filtros" role="group" aria-label={g("ev_estado")}>
         <label className="eg-campo">
           {g("ev_estado")}
@@ -240,6 +245,15 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
         <button className="ep-boton ep-texto" disabled={!filtro.estado && !filtro.desde && !filtro.hasta} onClick={() => setFiltro({ estado: "", desde: "", hasta: "" })}>
           {g("ev_limpiar")}
         </button>
+        <PegarEnlace
+          g={g}
+          categorias={datos.categorias}
+          departamentos={datos.departamentos}
+          alTerminar={async (m) => {
+            setAviso(m);
+            await cargar();
+          }}
+        />
         <input ref={archivo} type="file" accept="application/json,.json" className="eg-oculto" tabIndex={-1} aria-hidden="true" onChange={(e) => e.target.files?.[0] && void importar(e.target.files[0])} />
         <button className="ep-boton" disabled={ocupado} onClick={() => archivo.current?.click()} title={g("ev_importarAyuda")}>
           <Upload size={15} />
@@ -343,6 +357,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
               <div className="eg-evento-cabecera">
                 <span className="ep-pill">{g(`ev_estado_${e.estadoVisible}`)}</span>
                 <span className="eg-evento-categoria">{g(`ev_cat_${e.categoria}`)}</span>
+                {e.origen !== "cazador" && e.origen !== "desconocido" && <span className="eg-evento-categoria">· {g(`ev_origen_${e.origen}`)}</span>}
               </div>
               <h3>{e.titulo}</h3>
               <dl className="eg-evento-datos">
@@ -389,6 +404,31 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   </dd>
                 </div>
               </dl>
+              <details className="eg-fuentes-evento">
+                <summary>
+                  {g("ev_fuentes_titulo")} ({e.fuentes.length})
+                </summary>
+                <ul>
+                  {e.fuentes.map((f) => (
+                    <li key={f.id}>
+                      <a href={f.url} target="_blank" rel="noreferrer noopener">
+                        {f.cuenta || f.dominio} <ExternalLink size={12} aria-hidden="true" />
+                      </a>{" "}
+                      · {g(`ev_tipo_${f.tipo}`)} ({f.puntos})
+                      {f.campos.length > 0 && (
+                        <small className="ep-nota">
+                          {" "}
+                          · {g("ev_fuentes_confirmo")}: {f.campos.map((c) => g(`ev_campo_${c}`)).join(", ")}
+                        </small>
+                      )}
+                      <small className="ep-nota">
+                        {" "}
+                        · {g("ev_fuentes_leido")} {fecha(f.publicado ?? f.leido)}
+                      </small>
+                    </li>
+                  ))}
+                </ul>
+              </details>
               <div className="eg-evento-imagen">
                 {e.imagenMedioId ? (
                   <>
@@ -587,7 +627,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                 {g("guardar")}
               </button>
               <button type="button" className="ep-boton" onClick={() => setEditando(null)}>
-                {g("cancelar")}
+                {g("ev_cancelar")}
               </button>
             </div>
           </form>
@@ -616,7 +656,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                 {g("ev_descartar")}
               </button>
               <button type="button" className="ep-boton" onClick={() => setDescartando(null)}>
-                {g("cancelar")}
+                {g("ev_cancelar")}
               </button>
             </div>
           </form>
@@ -660,7 +700,7 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                 </button>
               )}
               <button type="button" className="ep-boton" onClick={() => setImagen(null)}>
-                {g("cancelar")}
+                {g("ev_cancelar")}
               </button>
             </div>
           </form>

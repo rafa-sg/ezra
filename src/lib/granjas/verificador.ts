@@ -2,7 +2,8 @@ import { WorkflowError } from "../workflow";
 import type { Respuesta } from "./fuentes";
 import { dominioPermitido, leerPaginaVerificable } from "./fuentes";
 import { esRedireccionBusqueda, resolverRedireccion, type Candidato } from "./cazador";
-import { buscarImagenEvento, permisoPendiente } from "./imagenes";
+import { buscarImagenEvento, descargarImagen, permisoPendiente, permisoPendienteRed } from "./imagenes";
+import type { CandidatoRed } from "./redes";
 import {
   ponerImagenFuente,
   buscarDuplicado,
@@ -14,6 +15,7 @@ import {
   recortar,
   sinAcentos,
   type Evento,
+  type OrigenEvento,
   type Referencia,
 } from "./eventos";
 import { diaValido, sumarDias } from "./tiempo";
@@ -117,8 +119,10 @@ export type ResultadoVerificacion = {
   conImagen: number;
 };
 export async function verificarCandidatos(
-  candidatos: Candidato[],
+  candidatos: (Candidato | CandidatoRed)[],
   contexto: {
+    /** Cómo entran los eventos nuevos (cazador por defecto; importación o redes). */
+    origen?: OrigenEvento;
     hoy: string;
     diasAdelante: number;
     dominios: string[];
@@ -145,7 +149,9 @@ export async function verificarCandidatos(
     resultado.revisados++;
     const titulo = recortar(c.titulo, 160);
     const descartar = (motivo: string) => resultado.descartados.push({ titulo, motivo });
-    // 1. Fuente: https, dominio permitido y nunca una red social.
+    // Un post leído por la API oficial: su texto es la página (no se abre ni se raspa la red).
+    const red = "red" in c ? c.red : null;
+    // 1. Fuente: https, dominio permitido y nunca una red social (salvo el enlace del post leído por API).
     let fuente = esRedireccionBusqueda(c.fuente_url) ? await resolver(c.fuente_url) : c.fuente_url;
     let host = "";
     try {
@@ -157,11 +163,16 @@ export async function verificarCandidatos(
       descartar("La fuente no es un enlace https válido.");
       continue;
     }
-    if (prohibido(host)) {
+    if (red) {
+      const esperado = red.via === "instagram" ? ["instagram.com"] : ["facebook.com"];
+      if (!esperado.some((d) => host === d || host.endsWith(`.${d}`))) {
+        descartar("El enlace no es el del post leído por la API.");
+        continue;
+      }
+    } else if (prohibido(host)) {
       descartar("Fuente en una red social: no se usa.");
       continue;
-    }
-    if (!dominioPermitido(host, dominios)) {
+    } else if (!dominioPermitido(host, dominios)) {
       descartar(`${host} no está en las fuentes permitidas.`);
       continue;
     }
@@ -175,11 +186,13 @@ export async function verificarCandidatos(
     // 3. Lectura de la fuente: solo lo que aparece queda confirmado.
     let pagina: { url: string; texto: string; html: string } | null = null;
     let nota = "";
-    try {
-      pagina = await leerPaginaVerificable(fuente!, dominios, { descargar: deps.descargar });
-    } catch (error) {
-      nota = `No se pudo leer la fuente (${error instanceof WorkflowError ? error.message : "error de red"}). Fecha, hora y precio quedan por confirmar.`;
-    }
+    if (red) pagina = { url: fuente!, texto: red.texto, html: "" };
+    else
+      try {
+        pagina = await leerPaginaVerificable(fuente!, dominios, { descargar: deps.descargar });
+      } catch (error) {
+        nota = `No se pudo leer la fuente (${error instanceof WorkflowError ? error.message : "error de red"}). Fecha, hora y precio quedan por confirmar.`;
+      }
     if (pagina && !tituloEnTexto(pagina.texto, titulo)) {
       descartar("La página fuente no menciona este evento.");
       continue;
@@ -207,7 +220,7 @@ export async function verificarCandidatos(
       try {
         const b = new URL(c.boletos_url);
         // El enlace de boletos debe aparecer en la propia fuente.
-        if (b.protocol === "https:" && !prohibido(b.hostname) && pagina.html.includes(b.hostname)) boletos = b.toString();
+        if (b.protocol === "https:" && !prohibido(b.hostname) && (pagina.html || pagina.texto).includes(b.hostname)) boletos = b.toString();
       } catch {
         /* enlace inválido: se omite */
       }
@@ -222,12 +235,15 @@ export async function verificarCandidatos(
     if (fechaFin) confirmadoEn.fechaFin = pagina!.url;
     if (hora) confirmadoEn.hora = pagina!.url;
     if (precio) confirmadoEn.precio = pagina!.url;
+    const lugar = recortar(c.lugar ?? "", 200);
+    // Lo que esta fuente confirmó (para la confianza): título, datos que aparecen y el lugar si está escrito.
+    const campos = pagina ? ["titulo", ...Object.keys(confirmadoEn), ...(lugar && tituloEnTexto(pagina.texto, lugar) ? ["lugar"] : [])] : [];
     const evento = crearEvento({
       titulo,
       fecha,
       fechaFin,
       hora,
-      lugar: recortar(c.lugar ?? "", 200),
+      lugar,
       municipio: recortar(c.municipio ?? "", 120),
       departamento: departamentoNormalizado(c.departamento),
       categoria: categoriaNormalizada(c.categoria),
@@ -237,19 +253,41 @@ export async function verificarCandidatos(
       confirmadoEn,
       sugerencias,
       descripcion: recortar(c.descripcion ?? "", 300),
-      imagenUrl: pagina ? imagenDe(pagina.html) : null,
-      notaVerificacion: [nota, recortar(c.nota_verificacion ?? "", 400)].filter(Boolean).join(" "),
+      imagenUrl: pagina && !red ? imagenDe(pagina.html) : null,
+      notaVerificacion: [red ? `Post de ${red.cuenta} leído con la API oficial de ${red.via === "instagram" ? "Instagram" : "Facebook"}.` : "", nota, recortar(c.nota_verificacion ?? "", 400)]
+        .filter(Boolean)
+        .join(" "),
       granjaId: contexto.granjaId,
       ejecucionId: contexto.ejecucionId,
+      origen: red ? red.via : (contexto.origen ?? "cazador"),
+      fuente: {
+        via: red ? red.via : "web",
+        cuenta: red?.cuenta ?? "",
+        publicado: red?.publicado || null,
+        campos,
+        datos: { fecha: fecha ?? fechaSugerida, hora: hora ?? horaSugerida, lugar: lugar || null, precio: precio ?? (c.precio ? recortar(c.precio, 120) : null) },
+        imagenUrl: red?.imagenUrl ?? null,
+      },
     });
     referencias.push({ titulo: evento.titulo, fecha: evento.fecha ?? fechaSugerida, origen: "esta búsqueda" });
-    // 4. Imagen oficial: de la fuente y, si no hay, de la página de boletos. Queda pendiente de tu confirmación.
-    const imagen = await buscarImagenEvento(
-      { titulo: evento.titulo, fuenteUrl: evento.fuenteUrl, boletosUrl: evento.boletosUrl },
+    // 4. Imagen oficial: de la fuente y, si no hay, de la página de boletos (o la del post leído por API).
+    // Queda pendiente de tu confirmación.
+    const imagen = red
+      ? await (async () => {
+          if (!red.imagenUrl) return { medio: null, motivo: "El post no tiene imagen." } as const;
+          try {
+            const { medio } = await descargarImagen(red.imagenUrl, `Post de ${red.cuenta} · ${evento.titulo}`, deps.descargar, { via: red.via, cuenta: red.cuenta });
+            return { medio, url: fuente!, dominio: red.cuenta, red: true } as const;
+          } catch {
+            return { medio: null, motivo: "imagen del post no válida" } as const;
+          }
+        })()
+      : await buscarImagenEvento(
+      { id: evento.id, titulo: evento.titulo, fuenteUrl: evento.fuenteUrl, boletosUrl: evento.boletosUrl },
       { descargar: deps.descargar, htmlFuente: pagina ? { url: pagina.url, html: pagina.html } : null },
     ).catch(() => ({ medio: null, motivo: "error" }) as const);
     if (imagen.medio) {
-      ponerImagenFuente(evento.id, imagen.medio.id, imagen.url, permisoPendiente(imagen.dominio));
+      ponerImagenFuente(evento.id, imagen.medio.id, imagen.url, red ? permisoPendienteRed(red.via, red.cuenta) : permisoPendiente(imagen.dominio));
       resultado.conImagen++;
     }
     resultado.nuevos.push({

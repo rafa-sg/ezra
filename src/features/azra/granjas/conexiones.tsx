@@ -304,6 +304,14 @@ export function ConexionesGranjas({
               {g("guiaTitulo")} · {nombres[guia.canal]}
             </h2>
             <p>{g(`guia_${guia.canal}`)}</p>
+            {guia.canal === "facebook" && (
+              <>
+                <h3>{g("guia_lecturaTitulo")}</h3>
+                <p>{g("guia_lecturaInstagram")}</p>
+                <p>{g("guia_lecturaFacebook")}</p>
+              </>
+            )}
+            {guia.canal === "tiktok" && <p className="ep-nota">{g("guia_lecturaTiktok")}</p>}
             <h3>{g("guiaFalta")}</h3>
             <ul>
               {guia.configFaltante.map((n) => (

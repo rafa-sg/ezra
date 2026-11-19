@@ -119,7 +119,7 @@ export class ErrorProveedor extends WorkflowError {
     super(mensaje, status);
   }
 }
-async function leerJson(solicitar: Solicitar, url: string, init: RequestInit = {}, tiempo = 30000) {
+export async function leerJson(solicitar: Solicitar, url: string, init: RequestInit = {}, tiempo = 30000) {
   let respuesta: Response;
   try {
     respuesta = await solicitar(url, {
@@ -410,8 +410,14 @@ export const instagram: Adaptador = {
 };
 
 /* ── Facebook (inicio de sesión de Facebook para Páginas) ── */
-const permisosFacebook = ["pages_show_list", "pages_read_engagement", "pages_manage_posts"];
-const graphFb = () => `https://graph.facebook.com/${versionGraph()}`;
+/**
+ * instagram_basic e instagram_manage_insights (con pages_read_engagement) son los que pide
+ * Business Discovery para leer posts recientes de cuentas profesionales de terceros. Solo
+ * funcionan con el inicio de sesión de Facebook: la conexión de Instagram no sirve para esto.
+ */
+export const permisosLecturaInstagram = ["instagram_basic", "instagram_manage_insights", "pages_read_engagement"];
+const permisosFacebook = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "instagram_basic", "instagram_manage_insights"];
+export const graphFb = () => `https://graph.facebook.com/${versionGraph()}`;
 async function verificarFacebook(secreto: Secreto, solicitar: Solicitar): Promise<Verificacion> {
   const token = encodeURIComponent(secreto.acceso);
   const permisos = (
