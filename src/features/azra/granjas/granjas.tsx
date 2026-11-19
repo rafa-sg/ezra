@@ -378,12 +378,15 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
                 <p className="eg-resumen-ejecucion">
                   {detalle.resumenEventos.verificado && (
                     <>
-                      <b>{detalle.resumenEventos.nuevos}</b> {g("r_nuevos")} · <b>{detalle.resumenEventos.duplicados}</b> {g("r_duplicados")} ·{" "}
+                      <b>{detalle.resumenEventos.nuevos}</b> {g("r_nuevos")} · <b>{detalle.resumenEventos.actualizados}</b> {g("r_actualizados")} ·{" "}
+                      <b>{detalle.resumenEventos.duplicados}</b> {g("r_duplicados")}
+                      {detalle.resumenEventos.fuentesSumadas ? ` (${detalle.resumenEventos.fuentesSumadas} ${g("r_fuentesSumadas")})` : ""} ·{" "}
                       <b>{detalle.resumenEventos.conImagen}</b> {g("r_conImagen")} ·{" "}
                     </>
                   )}
                   <b>{new Intl.NumberFormat("es-SV").format(detalle.resumenEventos.tokens)}</b> {g("r_tokens")} ({detalle.resumenEventos.llamadas} {g("r_llamadas")}
-                  {detalle.resumenEventos.errores ? `, ${detalle.resumenEventos.errores} ${g("r_conError")}` : ""})
+                  {detalle.resumenEventos.errores ? `, ${detalle.resumenEventos.errores} ${g("r_conError")}` : ""}) ·{" "}
+                  {detalle.resumenEventos.costo === null ? g("r_sinTarifa") : `${g("r_costo")} US$ ${detalle.resumenEventos.costo.toFixed(4)}`}
                 </p>
               )}
             </div>

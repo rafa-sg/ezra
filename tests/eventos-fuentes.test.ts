@@ -343,3 +343,78 @@ test("confianza: tipo de la mejor fuente, coincidencias, datos por confirmar, co
   assert.equal(eventos.leerEvento(e.id).confianza.puntos, 70);
   guardarAjuste("confianza_dominios", confianzaDominiosSchema, {});
 });
+
+/* ── Parte 4: actualización diaria ── */
+test("diaria: un evento repetido suma su URL como fuente y recalcula la confianza; si su fuente cambia fecha o precio queda «Actualizado»", async () => {
+  const hoy = tiempo.diaLocal();
+  const dia = tiempo.sumarDias(hoy, 15);
+  const nuevoDia = tiempo.sumarDias(hoy, 18);
+  const candidato = (fuente: string, fecha: string, precio: string) => ({
+    titulo: "Festival del Café de Ataco",
+    fecha,
+    hora: null,
+    lugar: "Concepción de Ataco",
+    municipio: "Ataco",
+    departamento: "Ahuachapán",
+    categoria: "feria",
+    precio,
+    boletos_url: null,
+    fuente_url: fuente,
+    imagen_url: null,
+    descripcion: null,
+    fecha_fin: null,
+    nota_verificacion: null,
+  });
+  const pag = (fecha: string, precio: string) => html("", `<h1>Festival del Café de Ataco</h1><p>${textoFecha(fecha)} en Concepción de Ataco. Entrada ${precio}</p>`);
+  const ctx = (dominios: string[]) => ({ hoy, diasAdelante: 60, dominios, restantes: 10, referencias: eventos.referenciasLocales(), granjaId: null, ejecucionId: null });
+  const mitur = "https://elsalvador.travel/esp/event/festival-cafe-ataco/";
+  // Día 1: entra nuevo desde MITUR.
+  const r1 = await verificador.verificarCandidatos([candidato(mitur, dia, "$10")], ctx(["elsalvador.travel"]), { descargar: web({ [mitur]: pag(dia, "$10") }) });
+  assert.equal(r1.nuevos.length, 1);
+  const id = r1.nuevos[0].id;
+  let e = eventos.leerEvento(id);
+  assert.equal(e.confianza.puntos, 75, "MITUR 85 − hora por confirmar");
+  e = eventos.aprobarEvento(id, e.revision);
+  // Día 2: Smart Ticket publica el mismo evento (misma fecha) → se suma como fuente; no hay otra tarjeta.
+  const st = "https://www.smartticket.fun/es/event/festival-cafe-ataco";
+  const r2 = await verificador.verificarCandidatos([candidato(st, dia, "$10")], ctx(["elsalvador.travel", "smartticket.fun"]), { descargar: web({ [st]: pag(dia, "$10") }) });
+  assert.equal(r2.nuevos.length, 0);
+  assert.deepEqual(r2.duplicados.map((d) => [d.id, d.fuenteNueva]), [[id, true]]);
+  e = eventos.leerEvento(id);
+  assert.equal(e.fuentes.length, 2);
+  assert.equal(e.confianza.puntos, 90, "ticketera 90 + 10 por coincidir − 10 hora por confirmar");
+  assert.equal(e.estado, "aprobado", "sumar una fuente que coincide no cambia la revisión");
+  // Día 3: MITUR cambia la fecha y el precio en su propia página → «Actualizado» con antes y después; vuelve a revisión.
+  const r3 = await verificador.verificarCandidatos([candidato(mitur, nuevoDia, "$15")], ctx(["elsalvador.travel", "smartticket.fun"]), { descargar: web({ [mitur]: pag(nuevoDia, "$15") }) });
+  assert.equal(r3.nuevos.length, 0, "la misma URL es el mismo evento aunque cambie la fecha");
+  assert.equal(r3.actualizados.length, 1);
+  e = eventos.leerEvento(id);
+  assert.equal(e.fecha, nuevoDia);
+  assert.equal(e.precio, "$15");
+  assert.deepEqual(
+    e.cambios.map((c) => [c.campo, c.antes, c.despues]),
+    [
+      ["fecha", dia, nuevoDia],
+      ["precio", "$10", "$15"],
+    ],
+  );
+  assert.equal(e.estado, "nuevo", "cambió un hecho: vuelve a tu revisión");
+  assert.ok(e.confianza.desglose.some((l) => /contradicen \(fecha\)/.test(l.concepto)), "Smart Ticket sigue diciendo la fecha anterior: −20");
+  // Otra fuente (no la propia) que dice otra fecha no cambia el evento: solo baja la confianza.
+  const prensa = "https://www.elsalvador.com/eventos/cafe-ataco";
+  const r4 = await verificador.verificarCandidatos([candidato(prensa, nuevoDia, "$20")], ctx(["elsalvador.com"]), { descargar: web({ [prensa]: pag(nuevoDia, "$20") }) });
+  assert.equal(r4.actualizados.length, 0);
+  assert.equal(eventos.leerEvento(id).precio, "$15");
+  // Un dato escrito por el propietario nunca lo cambia una fuente.
+  e = eventos.leerEvento(id);
+  e = eventos.editarEvento(id, e.revision, { titulo: e.titulo, fecha: e.fecha, fechaFin: null, hora: null, lugar: e.lugar, municipio: e.municipio, departamento: e.departamento, categoria: e.categoria, precio: "$12 (preventa)", boletosUrl: null, fuenteUrl: e.fuenteUrl, descripcion: "" });
+  await verificador.verificarCandidatos([candidato(mitur, nuevoDia, "$15")], ctx(["elsalvador.travel"]), { descargar: web({ [mitur]: pag(nuevoDia, "$15") }) });
+  assert.equal(eventos.leerEvento(id).precio, "$12 (preventa)");
+  // Ya enviado a Spotmi: el cambio no se aplica, queda anotado.
+  eventos.marcarSpotmi(id, { estado: "propuesto", propuestaId: "p-1", clave: "k-1" });
+  const otroDia = tiempo.sumarDias(hoy, 25);
+  await verificador.verificarCandidatos([candidato(mitur, otroDia, "$12")], ctx(["elsalvador.travel"]), { descargar: web({ [mitur]: pag(otroDia, "$12") }) });
+  e = eventos.leerEvento(id);
+  assert.equal(e.fecha, nuevoDia);
+  assert.match(e.notaVerificacion, /Cambio detectado sin aplicar \(ya está en Spotmi\): fecha/);
+});

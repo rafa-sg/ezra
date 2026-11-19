@@ -298,6 +298,11 @@ export function referenciasLocales(): Referencia[] {
     origen: "Ezra",
   }));
 }
+/** Evento al que ya pertenece una URL (su fuente principal o cualquiera de sus fuentes). */
+export function eventoPorUrl(url: string): string | null {
+  const f = base().prepare("select evento_id as id from evento_fuentes where url = ? union select id from eventos where fuente_url = ? limit 1").get(url, url) as { id: string } | undefined;
+  return f?.id ?? null;
+}
 /** Eventos que trajo hoy una ejecución de la granja (las importaciones no cuentan para su máximo diario). */
 export function eventosCreadosHoy(granjaId: string | null, ahora = new Date()) {
   const hoy = diaLocal(ahora);

@@ -89,7 +89,7 @@ export const datosGranjaSchema = z.object({
       customPurpose: z.string().trim().max(60).optional(),
       // Granja «Eventos de El Salvador»: cuántos eventos nuevos por día y cuántos días hacia delante.
       eventos: z
-        .object({ maxPorDia: z.number().int().min(1).max(30).default(10), diasAdelante: z.number().int().min(1).max(60).default(14) })
+        .object({ maxPorDia: z.number().int().min(1).max(30).default(10), diasAdelante: z.number().int().min(1).max(60).default(60) })
         .optional(),
       // Granja «Post para Instagram»: cuenta de destino (solo texto) y posts por día.
       instagram: z
@@ -443,7 +443,7 @@ recetas.unshift({
     formato: "publicacion",
     canales: ["spotmi"],
     politicaFuentes: { dominios: dominiosEventos, maxFuentesPorPaso: 5 },
-    ajustes: { zonaHoraria: "America/El_Salvador", purpose: "eventos_el_salvador", eventos: { maxPorDia: 10, diasAdelante: 45 } },
+    ajustes: { zonaHoraria: "America/El_Salvador", purpose: "eventos_el_salvador", eventos: { maxPorDia: 10, diasAdelante: 60 } },
   },
   pasos: [
     {

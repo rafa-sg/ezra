@@ -1196,5 +1196,9 @@
   "g_ev_conf_eventos": "Eventos",
   "g_ev_conf_restablecer": "Restablecer",
   "g_ev_conf_guardada": "Confianza por dominio guardada.",
-  "g_ev_actualizado": "Actualizado"
+  "g_ev_actualizado": "Actualizado",
+  "g_r_actualizados": "actualizados",
+  "g_r_fuentesSumadas": "con fuente nueva",
+  "g_r_costo": "costo estimado",
+  "g_r_sinTarifa": "costo sin estimar (falta la tarifa del modelo en Consumo)"
 }

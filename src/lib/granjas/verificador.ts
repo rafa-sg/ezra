@@ -14,11 +14,18 @@ import {
   palabrasClave,
   recortar,
   sinAcentos,
+  agregarFuente,
+  aplicarCambios,
+  eventoPorUrl,
+  guardarConfianza,
+  leerEvento,
+  type CambioEvento,
   type Evento,
   type OrigenEvento,
   type Referencia,
 } from "./eventos";
 import { diaValido, sumarDias } from "./tiempo";
+import { lugaresCompatibles } from "./confianza";
 
 /**
  * Verificador sin IA. Lee la página fuente y solo da por confirmados la fecha, la
@@ -112,10 +119,15 @@ export type DepsVerificador = {
 export type ResultadoVerificacion = {
   revisados: number;
   nuevos: { id: string; titulo: string; porConfirmar: string[]; imagen: boolean }[];
-  duplicados: { titulo: string; de: string }[];
+  /** Ya estaba: si es de Ezra se suma la URL como fuente nueva (fuenteNueva) en vez de crear otra tarjeta. */
+  duplicados: { titulo: string; de: string; id?: string; fuenteNueva?: boolean }[];
+  /** Eventos existentes cuya fecha, hora, lugar o precio cambió según su propia fuente. */
+  actualizados: { id: string; titulo: string; cambios: Omit<CambioEvento, "fecha" | "url">[] }[];
   descartados: { titulo: string; motivo: string }[];
   spotmi: "consultado" | "no_disponible";
   limite: number;
+  /** Eventos nuevos que no entraron porque se alcanzó el máximo del día. */
+  omitidosPorLimite: number;
   conImagen: number;
 };
 export async function verificarCandidatos(
@@ -133,7 +145,7 @@ export async function verificarCandidatos(
   },
   deps: DepsVerificador = {},
 ): Promise<ResultadoVerificacion> {
-  const resultado: ResultadoVerificacion = { revisados: 0, nuevos: [], duplicados: [], descartados: [], spotmi: "consultado", limite: contexto.restantes, conImagen: 0 };
+  const resultado: ResultadoVerificacion = { revisados: 0, nuevos: [], duplicados: [], actualizados: [], descartados: [], spotmi: "consultado", limite: contexto.restantes, conImagen: 0, omitidosPorLimite: 0 };
   let spotmi: Referencia[] = [];
   try {
     spotmi = deps.catalogoSpotmi ? await deps.catalogoSpotmi() : [];
@@ -145,7 +157,6 @@ export async function verificarCandidatos(
   const hasta = sumarDias(contexto.hoy, contexto.diasAdelante);
   const resolver = deps.resolver ?? resolverRedireccion;
   for (const c of candidatos) {
-    if (resultado.nuevos.length >= contexto.restantes) break;
     resultado.revisados++;
     const titulo = recortar(c.titulo, 160);
     const descartar = (motivo: string) => resultado.descartados.push({ titulo, motivo });
@@ -176,11 +187,18 @@ export async function verificarCandidatos(
       descartar(`${host} no está en las fuentes permitidas.`);
       continue;
     }
-    // 2. Duplicados antes de leer, con lo que se sabe.
+    // 2. Duplicados antes de leer, con lo que se sabe. Una URL que ya es fuente de un evento es ese evento
+    // (aunque haya cambiado la fecha). Los de Spotmi se cuentan y se dejan; los de Ezra suman la fuente.
     const fechaSugerida = c.fecha && diaValido(c.fecha.slice(0, 10)) ? c.fecha.slice(0, 10) : null;
-    const previo = buscarDuplicado({ titulo, fecha: fechaSugerida }, referencias);
-    if (previo) {
+    const porUrl = eventoPorUrl(fuente!);
+    const previo: Referencia | null = porUrl ? { id: porUrl, titulo: leerEvento(porUrl).titulo, fecha: null, origen: "Ezra" } : buscarDuplicado({ titulo, fecha: fechaSugerida }, referencias);
+    if (previo && !previo.id) {
       resultado.duplicados.push({ titulo, de: `${previo.origen}: ${previo.titulo}` });
+      continue;
+    }
+    // Máximo de eventos nuevos alcanzado: los que ya existen igual suman su fuente; los nuevos esperan a mañana.
+    if (!previo && resultado.nuevos.length >= contexto.restantes) {
+      resultado.omitidosPorLimite++;
       continue;
     }
     // 3. Lectura de la fuente: solo lo que aparece queda confirmado.
@@ -194,7 +212,12 @@ export async function verificarCandidatos(
         nota = `No se pudo leer la fuente (${error instanceof WorkflowError ? error.message : "error de red"}). Fecha, hora y precio quedan por confirmar.`;
       }
     if (pagina && !tituloEnTexto(pagina.texto, titulo)) {
-      descartar("La página fuente no menciona este evento.");
+      if (previo?.id) resultado.duplicados.push({ titulo, de: `${previo.origen}: ${previo.titulo}`, id: previo.id });
+      else descartar("La página fuente no menciona este evento.");
+      continue;
+    }
+    if (previo?.id) {
+      await sumarAExistente(previo.id, { c, titulo, red, fuente: pagina?.url ?? fuente!, pagina, fechaSugerida }, resultado, deps);
       continue;
     }
     const fecha = pagina && fechaSugerida && fechaEnTexto(pagina.texto, fechaSugerida, pagina.html) ? fechaSugerida : null;
@@ -269,7 +292,7 @@ export async function verificarCandidatos(
         imagenUrl: red?.imagenUrl ?? null,
       },
     });
-    referencias.push({ titulo: evento.titulo, fecha: evento.fecha ?? fechaSugerida, origen: "esta búsqueda" });
+    referencias.push({ titulo: evento.titulo, fecha: evento.fecha ?? fechaSugerida, origen: "esta búsqueda", id: evento.id });
     // 4. Imagen oficial: de la fuente y, si no hay, de la página de boletos (o la del post leído por API).
     // Queda pendiente de tu confirmación.
     const imagen = red
@@ -298,4 +321,74 @@ export async function verificarCandidatos(
     });
   }
   return resultado;
+}
+
+/**
+ * Un evento que ya está en la bandeja vuelve a aparecer: se suma la URL a sus fuentes (o se
+ * refresca si ya estaba) y se recalcula la confianza. Si la fuente es la misma página (o el mismo
+ * sitio) que su fuente principal y ahora confirma otra fecha, hora, precio o lugar, se actualiza el
+ * evento y se anota el antes y el después. Si no tenía imagen y esta fuente trae una, se busca.
+ */
+async function sumarAExistente(
+  id: string,
+  d: { c: Candidato | CandidatoRed; titulo: string; red: CandidatoRed["red"] | null; fuente: string; pagina: { url: string; texto: string; html: string } | null; fechaSugerida: string | null },
+  resultado: ResultadoVerificacion,
+  deps: DepsVerificador,
+) {
+  const e = leerEvento(id);
+  const { c, red, pagina } = d;
+  const fecha = pagina && d.fechaSugerida && fechaEnTexto(pagina.texto, d.fechaSugerida, pagina.html) ? d.fechaSugerida : null;
+  const horaSugerida = c.hora && /^([01]\d|2[0-3]):[0-5]\d$/.test(c.hora) ? c.hora : null;
+  const hora = pagina && horaSugerida && horaEnTexto(pagina.texto, horaSugerida, pagina.html, fecha) ? horaSugerida : null;
+  const precio = pagina && c.precio ? precioEnTexto(pagina.texto, c.precio) : null;
+  const lugar = recortar(c.lugar ?? "", 200);
+  const lugarConfirmado = Boolean(pagina && lugar && tituloEnTexto(pagina.texto, lugar));
+  const campos = pagina ? ["titulo", ...(fecha ? ["fecha"] : []), ...(hora ? ["hora"] : []), ...(precio ? ["precio"] : []), ...(lugarConfirmado ? ["lugar"] : [])] : [];
+  const nueva = agregarFuente(id, {
+    url: d.fuente,
+    via: red ? red.via : "web",
+    cuenta: red?.cuenta ?? "",
+    publicado: red?.publicado || null,
+    campos,
+    datos: { fecha: fecha ?? d.fechaSugerida, hora: hora ?? horaSugerida, lugar: lugar || null, precio: precio ?? (c.precio ? recortar(c.precio, 120) : null) },
+    imagenUrl: red?.imagenUrl ?? null,
+  });
+  // Solo la propia fuente (misma página o mismo sitio) puede cambiar un dato ya guardado.
+  const sitio = (u: string) => {
+    try {
+      return new URL(u).hostname.replace(/^www\./, "");
+    } catch {
+      return u;
+    }
+  };
+  const propia = d.fuente === e.fuenteUrl || sitio(d.fuente) === sitio(e.fuenteUrl);
+  const cambios: Omit<CambioEvento, "fecha">[] = [];
+  if (propia) {
+    if (fecha && fecha !== e.fecha) cambios.push({ campo: "fecha", antes: e.fecha, despues: fecha, url: d.fuente });
+    if (hora && hora !== e.hora) cambios.push({ campo: "hora", antes: e.hora, despues: hora, url: d.fuente });
+    if (precio && precio !== e.precio) cambios.push({ campo: "precio", antes: e.precio, despues: precio, url: d.fuente });
+    if (lugarConfirmado && (!e.lugar || !lugaresCompatibles(lugar, e.lugar))) cambios.push({ campo: "lugar", antes: e.lugar || null, despues: lugar, url: d.fuente });
+  }
+  const { aplicados } = cambios.length ? aplicarCambios(id, cambios) : { aplicados: [] };
+  if (aplicados.length) resultado.actualizados.push({ id, titulo: e.titulo, cambios: aplicados.map(({ campo, antes, despues }) => ({ campo, antes, despues })) });
+  resultado.duplicados.push({ titulo: d.titulo, de: `Ezra: ${e.titulo}`, id, fuenteNueva: nueva });
+  // Imagen: si el evento no tenía, se intenta con esta fuente (queda pendiente de tu confirmación).
+  if (!e.imagenMedioId) {
+    try {
+      if (red?.imagenUrl) {
+        const { medio } = await descargarImagen(red.imagenUrl, `Post de ${red.cuenta} · ${e.titulo}`, deps.descargar, { via: red.via, cuenta: red.cuenta });
+        ponerImagenFuente(id, medio.id, d.fuente, permisoPendienteRed(red.via, red.cuenta));
+        resultado.conImagen++;
+      } else if (pagina && !red) {
+        const r = await buscarImagenEvento({ id, titulo: e.titulo, fuenteUrl: d.fuente, boletosUrl: null }, { descargar: deps.descargar, htmlFuente: pagina });
+        if (r.medio) {
+          ponerImagenFuente(id, r.medio.id, r.url, permisoPendiente(r.dominio));
+          resultado.conImagen++;
+        }
+      }
+    } catch {
+      /* sin imagen: el evento sigue igual */
+    }
+  }
+  guardarConfianza(id);
 }

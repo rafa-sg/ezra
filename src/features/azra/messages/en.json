@@ -1196,5 +1196,9 @@
   "g_ev_conf_eventos": "Events",
   "g_ev_conf_restablecer": "Reset",
   "g_ev_conf_guardada": "Confidence per domain saved.",
-  "g_ev_actualizado": "Updated"
+  "g_ev_actualizado": "Updated",
+  "g_r_actualizados": "updated",
+  "g_r_fuentesSumadas": "with a new source",
+  "g_r_costo": "estimated cost",
+  "g_r_sinTarifa": "cost not estimated (model rate missing in Usage)"
 }

@@ -210,7 +210,7 @@ test("granja «Eventos de El Salvador»: cazador (Gemini simulado) → verificad
   assert.equal(eventos.listarEventos().length, 2);
   assert.ok(eventos.listarEventos().every((x) => x.ejecucionId === e.id && x.estado === "nuevo" && x.fecha && x.departamento === "La Libertad"));
   const { resumenEjecucionEventos } = await import("../src/lib/granjas/pasos-eventos");
-  assert.deepEqual(resumenEjecucionEventos(e.id), { verificado: true, nuevos: 2, duplicados: 0, descartados: 0, conImagen: 0, tokens: 0, llamadas: 0, errores: 0 });
+  assert.deepEqual(resumenEjecucionEventos(e.id), { verificado: true, nuevos: 2, actualizados: 0, duplicados: 0, fuentesSumadas: 0, descartados: 0, conImagen: 0, tokens: 0, llamadas: 0, errores: 0, costo: 0 });
   // Una importación (sin ejecución) no cuenta para el máximo diario de la granja.
   const importado = eventos.crearEvento({ titulo: "Importado hoy", fecha: en(3), hora: null, lugar: "", municipio: "", departamento: "", categoria: "otro", precio: null, boletosUrl: null, fuenteUrl: "https://elsalvador.travel/x", confirmadoEn: {}, sugerencias: {}, descripcion: "", imagenUrl: null, notaVerificacion: "", granjaId: granja.id, ejecucionId: null });
   assert.equal(eventos.eventosCreadosHoy(granja.id), 2, "solo cuentan los de una ejecución");
