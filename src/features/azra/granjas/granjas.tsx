@@ -8,6 +8,7 @@ import { Lienzo } from "./lienzo";
 import { Inspector, type AccionesPaso } from "./inspector";
 import { VistaPrevia } from "./vista-previa";
 import { AvisoPresupuesto } from "./consumo";
+import { PanoramaGranjas } from "./panorama";
 import { PanelHorario, resumenHorario, type HorariosRespuesta } from "./horario";
 import { pedir, nodoNuevo, type ConexionesRespuesta, type Detalle, type Grafo, type MedioResumen, type Nodo, type Resumen } from "./cliente";
 import "./granjas.css";
@@ -219,12 +220,13 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
     // Una receta sin pasos (la guía turística, aún sin interfaz) no se ofrece.
     const otras = resumen.recetas.filter((r) => !recetasDestacadas.includes(r.clave) && r.pasos > 0);
     const archivadas = resumen.granjas.filter((x) => x.estado === "archivada").length;
-    const visibles = resumen.granjas.filter((x) => verArchivadas || x.estado !== "archivada");
+    const visibles = verArchivadas ? resumen.granjas.filter((x) => x.estado === "archivada") : [];
     return (
       <div className="eg-granjas">
         {error && <p className="ep-alerta" role="alert">{error}</p>}
         {aviso && <p className="ep-aviso" role="status">{aviso}</p>}
         <AvisoPresupuesto estado={resumen.presupuesto} g={g} fecha={fecha} />
+        <PanoramaGranjas g={g} tr={tr} fecha={fecha} onAbrir={(id) => void abrir(id)} />
         <section>
           <h2 className="eg-subtitulo">{g("recetas")}</h2>
           <div className="eg-recetas">
@@ -254,15 +256,16 @@ export function SeccionGranjas({ g, tr, fecha }: { g: (clave: string) => string;
           )}
         </section>
         <section>
+          {/* Las granjas en uso están arriba (panorama); aquí quedan las archivadas, para restaurarlas. */}
           <div className="eg-bloque-cabecera">
-            <h2 className="eg-subtitulo">{g("tusGranjas")}</h2>
+            <h2 className="eg-subtitulo">{tr("ez_archivadas")}</h2>
             <label className="ep-checkbox">
               <input type="checkbox" checked={verArchivadas} onChange={(e) => setVerArchivadas(e.target.checked)} />
               {g("verArchivadas")}
               {archivadas > 0 && !verArchivadas ? ` · ${archivadas} ${g("archivadasOcultas")}` : ""}
             </label>
           </div>
-          {!visibles.length && <p className="ep-nota">{g("sinGranjas")}</p>}
+          {verArchivadas && !visibles.length && <p className="ep-nota">{g("sinGranjas")}</p>}
           <div className="eg-lista">
             {visibles.map((gr) => (
               <button key={gr.id} className={`eg-tarjeta-granja eg-${gr.estado}`} onClick={() => void abrir(gr.id)}>

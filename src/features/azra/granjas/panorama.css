@@ -1,0 +1,315 @@
+/* Panorama de Granjas (Fase 2): tarjetas, mapa oscuro de conexiones y flujo de agentes. Depende de tokens.css. */
+.azra .ez-panorama {
+  display: grid;
+  gap: 28px;
+  margin-bottom: 40px;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-panorama-cabecera {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+.azra .ez-panorama-cabecera p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--ep-suave);
+  font-size: 16px;
+}
+.azra .ez-granjas-tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+}
+.azra .ez-granja {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--ez-transicion), box-shadow var(--ez-transicion);
+}
+.azra .ez-granja:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ez-sombra-l);
+}
+.azra .ez-granja:focus-visible {
+  outline: 3px solid var(--ez-violeta);
+  outline-offset: 2px;
+}
+.azra .ez-granja-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.azra .ez-granja-cabecera strong {
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.azra .ez-granja-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .ez-granja-numeros {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.azra .ez-granja-numeros > span {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--ep-superficie-2);
+}
+.azra .ez-granja-numeros strong {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.azra .ez-granja-numeros small {
+  color: var(--ep-suave);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+.azra .ez-granja-abrir {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ep-texto-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.azra .ez-chip-error {
+  background: var(--ep-error-fondo, #fef3f2);
+  color: var(--ep-error, #b42318);
+}
+
+/* ── Sección oscura: mapa de conexiones ── */
+.azra .ez-conexiones {
+  position: relative;
+  overflow: hidden;
+  padding: 36px 32px 32px;
+  border-radius: var(--ez-radio-xl);
+  background: radial-gradient(900px 420px at 50% -10%, rgba(59, 108, 255, 0.25), transparent 65%), #050507;
+  color: var(--ep-texto);
+  box-shadow: var(--ez-sombra-l);
+}
+.azra .ez-conexiones-cabecera {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.azra .ez-mapa {
+  margin: 8px 0 0;
+}
+.azra .ez-mapa svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.azra .ez-mapa figcaption {
+  margin-top: 4px;
+  color: var(--ep-suave);
+  font-size: 12px;
+  text-align: center;
+}
+.azra .ez-mapa-puntos circle {
+  fill: rgba(255, 255, 255, 0.16);
+}
+.azra .ez-arco {
+  fill: none;
+  stroke-width: 1.6;
+}
+.azra .ez-arco-fino {
+  stroke: rgba(124, 155, 255, 0.28);
+  stroke-width: 1;
+}
+.azra .ez-arco-apagado {
+  opacity: 0.25;
+  stroke-dasharray: 4 6;
+}
+.azra .ez-pulsos circle {
+  fill: #cfe0ff;
+  filter: drop-shadow(0 0 4px #7c9bff);
+}
+.azra .ez-pulsos .ez-pulso-fino {
+  fill: #9fb7ff;
+}
+.azra .ez-nodo-halo {
+  fill: rgba(59, 108, 255, 0.55);
+}
+.azra .ez-nodo-centro {
+  fill: #8fb0ff;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+.azra .ez-nodo-texto {
+  fill: #c9cbd6;
+  font-size: 12px;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-guia {
+  stroke: rgba(201, 203, 214, 0.45);
+  stroke-width: 1;
+  fill: none;
+}
+.azra .ez-nodo-titulo {
+  fill: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-nodo-apagado {
+  opacity: 0.45;
+}
+.azra .ez-hub rect {
+  fill: #fff;
+}
+.azra .ez-hub text {
+  fill: #0b0b0f;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--ez-fuente);
+  letter-spacing: -0.02em;
+}
+.azra .ez-mapa-etiqueta rect {
+  fill: rgba(20, 22, 32, 0.92);
+  stroke: rgba(255, 255, 255, 0.14);
+}
+.azra .ez-mapa-etiqueta circle {
+  fill: #6f8fff;
+}
+.azra .ez-mapa-etiqueta text {
+  fill: #e6e8f2;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--ez-fuente);
+}
+
+/* ── Flujo de agentes ── */
+.azra .ez-flujo-titulo {
+  margin: 24px 0 14px;
+  color: var(--ep-texto);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+}
+.azra .ez-flujo {
+  display: flex;
+  gap: 0;
+  margin: 0;
+  padding: 0 0 6px;
+  overflow-x: auto;
+  list-style: none;
+}
+.azra .ez-flujo-paso {
+  position: relative;
+  display: flex;
+  flex: 1 0 140px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  text-align: center;
+}
+/* Conector hacia el paso siguiente, con un pulso si el paso está trabajando. */
+.azra .ez-flujo-paso:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 34px;
+  left: calc(50% + 40px);
+  width: calc(100% - 80px);
+  height: 2px;
+  background: linear-gradient(90deg, rgba(124, 155, 255, 0.5), rgba(124, 155, 255, 0.15));
+}
+.azra .ez-flujo-paso.ez-trabajando:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 31px;
+  left: calc(50% + 40px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cfe0ff;
+  box-shadow: 0 0 10px #7c9bff;
+  animation: ez-recorre 1.6s linear infinite;
+}
+@keyframes ez-recorre {
+  to {
+    transform: translateX(60px);
+    opacity: 0;
+  }
+}
+.azra .ez-flujo-avatar {
+  display: grid;
+  place-items: center;
+  width: 70px;
+  height: 70px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background: #15151c;
+}
+.azra .ez-trabajando .ez-flujo-avatar {
+  border-color: rgba(124, 155, 255, 0.8);
+  box-shadow: 0 0 0 4px rgba(59, 108, 255, 0.18);
+}
+.azra .ez-flujo-avatar .ep-pixel {
+  width: 52px;
+  height: 52px;
+}
+.azra .ez-flujo-ig {
+  background: linear-gradient(135deg, #feda75, #d62976 50%, #4f5bd5);
+  color: #fff;
+}
+.azra .ez-flujo-paso strong {
+  color: var(--ep-texto);
+  font-size: 13px;
+}
+.azra .ez-flujo-paso small {
+  color: var(--ep-suave);
+  font-size: 11.5px;
+}
+.azra .ez-conexiones .ez-vacio {
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .azra .ez-conexiones {
+    padding: 24px 12px;
+    border-radius: 20px;
+  }
+  .azra .ez-mapa-etiqueta,
+  .azra .ez-nodo-etiqueta,
+  .azra .ez-nodo-lado .ez-nodo-texto {
+    display: none;
+  }
+  /* El SVG se reduce a ~40 %: los nombres de fuentes y destinos crecen para seguir legibles. */
+  .azra .ez-nodo-titulo {
+    font-size: 22px;
+  }
+  .azra .ez-hub text {
+    font-size: 22px;
+  }
+  .azra .ez-flujo-paso {
+    flex-basis: 120px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-granja,
+  .azra .ez-granja:hover {
+    transition: none;
+    transform: none;
+  }
+  .azra .ez-flujo-paso.ez-trabajando::before {
+    animation: none;
+  }
+}
