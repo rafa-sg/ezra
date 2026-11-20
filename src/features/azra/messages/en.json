@@ -1496,5 +1496,19 @@
   "p_ac_imagen": "Confirm image",
   "p_ac_posts": "See posts",
   "p_verCalendario": "See calendar",
-  "g_detallesTecnicos": "Technical details"
+  "g_detallesTecnicos": "Technical details",
+  "g_p_carrusel": "Carousel",
+  "g_p_lamina": "Slide",
+  "g_p_redisenarCon": "Redesign with",
+  "g_p_redisenado": "Design updated.",
+  "g_p_disenando": "Designing… (Claude or Astra may take 1–2 min)",
+  "g_p_prov_local": "No AI (template)",
+  "g_p_prov_claude": "Claude",
+  "g_p_prov_astra": "Astra",
+  "g_p_prov_gemini": "Gemini",
+  "g_p_diseno_plantilla": "Template design (no AI)",
+  "g_p_diseno_manual": "Design edited by you",
+  "g_p_diseno_claude": "Design chosen by Claude",
+  "g_p_diseno_astra": "Design chosen by Astra",
+  "g_p_diseno_gemini": "Design chosen by Gemini"
 }

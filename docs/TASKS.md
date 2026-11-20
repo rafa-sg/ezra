@@ -96,6 +96,15 @@
 - [x] Pruebas nuevas en `tests/gemini-errores.test.ts` y `tests/eventos-fuentes.test.ts`. Check 141/141.
 - [ ] La ejecución de las 04:30 sigue dependiendo de que `npm run dev` esté abierto y la Mac despierta (LaunchAgent y `pmset`, abajo).
 
+### 20 nov · Director de arte: post y carrusel con Claude, Astra o Gemini
+- [x] `src/lib/granjas/director.ts`: la IA elige estilo (afiche, dividido, tipográfico), paleta (noche, atardecer, selva, volcán, crema), encuadre, gancho, titular y 0–4 láminas de carrusel, como JSON. Validación: estilos y paletas cerrados, titular del mismo evento, sin hora ni precio sin confirmar, sin enlaces ni cuentas; dos intentos y luego plantilla con la nota del motivo.
+- [x] `diseno.ts`: tres estilos, cinco paletas, láminas interiores y lámina de cierre (la escribe Ezra). Todo PNG 1080×1350 en local; la IA no genera píxeles.
+- [x] Migración 10 (`posts_ig.diseno`, `diseno_origen`, `diseno_nota`, `carrusel`). «Rehacer imagen» sin IA conserva el diseño elegido.
+- [x] Granja: el paso «Diseñador de post» acepta Claude, Astra o Gemini (la receta sigue en local por defecto). Web: Eventos › Posts › «Rediseñar con…» (`/api/granjas/posts`, `src/lib/granjas/director-web.ts`). Astra y Claude gastan de los 30 intentos al mes (cada intento cuenta); Gemini, del presupuesto de tokens.
+- [x] UI: miniaturas del carrusel, descarga por lámina, quién hizo el diseño.
+- [x] Check 145/145, build en `.next-verificar`, integración 7/7. No revisado en navegador todavía; sin llamadas reales a Claude ni Astra.
+- [ ] Siguiente: video vertical 9:16 (guion de Claude/Astra + ffmpeg) y referencia IA con Astra: Codex 0.162 tiene `image_generation` y guarda en `~/.codex/generated_images/<sesión>/`; la prueba del 20 nov no corrió (límite de uso de ChatGPT hasta las 12:07).
+
 ### Te toca (propietario)
 - [ ] Supabase: correr `work/supabase-probar-sin-aplicar.sql` en el SQL Editor (debe terminar en «PRUEBAS TERMINADAS»), luego `work/supabase-aplicar.sql`, luego `pnpm exec supabase login` y `pnpm exec supabase migration repair --status applied 20261103 20261117 --linked` en spotmi-web.
 - [ ] Crear la cuenta editorial (Authentication → Users), habilitarla con `work/supabase-habilitar-editorial.sql` y poner `SPOTMI_EDITORIAL_EMAIL` y `SPOTMI_EDITORIAL_PASSWORD` en `.env.local`. Reiniciar `npm run dev` y pulsar Conexiones → Spotmi web → Conectar.

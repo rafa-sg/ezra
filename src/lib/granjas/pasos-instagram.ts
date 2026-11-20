@@ -15,7 +15,8 @@ import {
   validarTextoIG,
   type PostIG,
 } from "./instagram";
-import { renderizarPost } from "./diseno";
+import { renderizarCarrusel } from "./diseno";
+import { dirigirDiseno, type GenerarDiseno, type OrigenDiseno } from "./director";
 import type { ResultadoLocal } from "./pasos-eventos";
 
 /**
@@ -103,24 +104,41 @@ export async function datosDePost(post: PostIG) {
     },
   };
 }
-export async function disenarPost(postId: string) {
+/** Director de arte con IA (Claude, Astra o Gemini); null = sin IA. */
+export type IADiseno = { generar: GenerarDiseno; proveedor: Exclude<OrigenDiseno, "plantilla" | "manual"> } | null;
+/**
+ * Diseña el post: con IA pide un diseño nuevo al director de arte; sin IA conserva el diseño
+ * que ya tenía (o el de plantilla). Dibuja la portada y, si hay láminas, el carrusel completo.
+ */
+export async function disenarPost(postId: string, ia: IADiseno = null) {
   const post = leerPost(postId);
   const { evento, datos } = await datosDePost(post);
-  const png = await renderizarPost(datos);
-  const medio = await guardarMedio(png, {
-    nombre: `Post IG · ${evento.titulo}`.slice(0, 200),
-    procedencia: {
-      origen: "render",
-      herramienta: "next/og",
-      nota: `Plantilla Spotmi 1080×1350 renderizada en local, sin IA${datos.fondo ? ", con la imagen oficial autorizada" : ""}.`,
-      fuentes: datos.fondo && evento.imagenMedioId ? [leerMedio(evento.imagenMedioId).sha256] : [],
-    },
-    licencia: datos.fondo ? `Fondo: ${evento.imagenPermiso}` : "Diseño propio de Spotmi (plantilla local).",
-    generado: false,
-  });
-  return { post: ponerImagen(postId, medio.id), medio };
+  const conImagen = Boolean(datos.fondo);
+  const dirigido =
+    ia || !post.diseno
+      ? await dirigirDiseno(evento, conImagen, ia)
+      : { diseno: post.diseno, origen: post.disenoOrigen ?? ("plantilla" as const), nota: post.disenoNota };
+  const laminas = await renderizarCarrusel(datos, dirigido.diseno);
+  const quien = dirigido.origen === "plantilla" || dirigido.origen === "manual" ? "sin IA" : `diseño elegido por ${dirigido.origen}`;
+  const medios = [];
+  for (const [i, png] of laminas.entries())
+    medios.push(
+      await guardarMedio(png, {
+        nombre: `Post IG · ${evento.titulo}${laminas.length > 1 ? ` · ${i + 1} de ${laminas.length}` : ""}`.slice(0, 200),
+        procedencia: {
+          origen: "render",
+          herramienta: "next/og",
+          nota: `Plantilla Spotmi 1080×1350 renderizada en local (${quien})${i === 0 && datos.fondo ? ", con la imagen oficial autorizada" : ""}.`,
+          fuentes: i === 0 && datos.fondo && evento.imagenMedioId ? [leerMedio(evento.imagenMedioId).sha256] : [],
+        },
+        licencia: i === 0 && datos.fondo ? `Fondo: ${evento.imagenPermiso}` : "Diseño propio de Spotmi (plantilla local).",
+        generado: false,
+      }),
+    );
+  const actualizado = ponerImagen(postId, medios[0].id, { carrusel: medios.map((m) => m.id), diseno: dirigido.diseno, origen: dirigido.origen, nota: dirigido.nota });
+  return { post: actualizado, medio: medios[0], medios };
 }
-export async function disenarPaso(ejecucion: Ejecucion, entradas: Artefacto[]): Promise<ResultadoLocal> {
+export async function disenarPaso(ejecucion: Ejecucion, entradas: Artefacto[], ia: IADiseno = null): Promise<ResultadoLocal> {
   const ids = new Set<string>();
   for (const a of entradas)
     try {
@@ -132,17 +150,30 @@ export async function disenarPaso(ejecucion: Ejecucion, entradas: Artefacto[]): 
     return { artefactos: [{ tipo: "texto", contenido: JSON.stringify({ imagenes: [] }) }], detalle: "No llegaron posts para diseñar." };
   const artefactos: ResultadoLocal["artefactos"] = [];
   const errores: string[] = [];
+  let conIA = 0;
+  let carruseles = 0;
   for (const id of ids) {
     try {
-      const { post, medio } = await disenarPost(id);
-      artefactos.push({ tipo: "imagen", contenido: JSON.stringify({ postId: post.id, eventoId: post.eventoId }), medioId: medio.id, medioSha: medio.sha256 });
+      const { post, medios } = await disenarPost(id, ia);
+      for (const [i, medio] of medios.entries())
+        artefactos.push({ tipo: "imagen", contenido: JSON.stringify({ postId: post.id, eventoId: post.eventoId, lamina: i + 1, de: medios.length }), medioId: medio.id, medioSha: medio.sha256 });
+      if (post.disenoOrigen && post.disenoOrigen !== "plantilla") conIA++;
+      if (medios.length > 1) carruseles++;
     } catch (error) {
       errores.push(error instanceof Error ? error.message.slice(0, 160) : "error");
     }
   }
   return {
     artefactos: artefactos.length ? artefactos : [{ tipo: "texto", contenido: JSON.stringify({ errores }) }],
-    detalle: `${artefactos.length} imagen(es) 1080×1350 lista(s)${errores.length ? ` · ${errores.length} con error: ${errores[0]}` : ""}.`,
+    detalle: [
+      `${ids.size - errores.length} post(s) diseñado(s) · ${artefactos.length} imagen(es) 1080×1350`,
+      carruseles ? `${carruseles} carrusel(es)` : "",
+      ia ? `${conIA} con diseño de ${ia.proveedor}, ${ids.size - errores.length - conIA} con plantilla` : "",
+      errores.length ? `${errores.length} con error: ${errores[0]}` : "",
+    ]
+      .filter(Boolean)
+      .join(" · ")
+      .concat("."),
     bloqueado: !artefactos.length,
   };
 }

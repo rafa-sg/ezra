@@ -5,6 +5,8 @@ import type { PostIG } from "@/lib/granjas/instagram";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
 
+type Proveedor = "local" | "claude" | "astra" | "gemini";
+const proveedores: Proveedor[] = ["local", "claude", "astra", "gemini"];
 type PostVista = PostIG & { evento: { id: string; titulo: string; fecha: string | null; hora: string | null; lugar: string; imagenAutorizada: boolean } };
 const nombreArchivo = (p: PostVista) =>
   `post-${p.evento.fecha ?? "sin-fecha"}-${p.evento.titulo
@@ -22,6 +24,9 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [subiendo, setSubiendo] = useState<{ post: PostVista; url: string } | null>(null);
+  const [proveedor, setProveedor] = useState<Record<string, Proveedor>>({});
+  const [lamina, setLamina] = useState<Record<string, number>>({});
+  const [disenando, setDisenando] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   useEffect(() => {
     let vivo = true;
@@ -77,14 +82,39 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
       <ul className="eg-lista-posts">
         {posts.map((p) => {
           const texto = textos[p.id] ?? p.texto;
+          const laminas = p.carrusel.length ? p.carrusel : p.medioId ? [p.medioId] : [];
+          const actual = Math.min(lamina[p.id] ?? 0, Math.max(0, laminas.length - 1));
+          const elegido = proveedor[p.id] ?? "local";
           return (
             <li key={p.id} className="eg-post">
               <div className="eg-post-imagen">
-                {p.medioId ? (
+                {laminas.length ? (
                   // Medio local servido solo a la administración.
-                  <img src={`/api/granjas/medios/${p.medioId}`} alt={`${g("p_imagenAlt")}: ${p.evento.titulo}`} width={1080} height={1350} loading="lazy" />
+                  <img
+                    src={`/api/granjas/medios/${laminas[actual]}`}
+                    alt={`${g("p_imagenAlt")}: ${p.evento.titulo}${laminas.length > 1 ? ` (${actual + 1}/${laminas.length})` : ""}`}
+                    width={1080}
+                    height={1350}
+                    loading="lazy"
+                  />
                 ) : (
                   <span className="ep-nota">{g("p_estado_borrador")}</span>
+                )}
+                {laminas.length > 1 && (
+                  <div className="eg-post-laminas" role="group" aria-label={g("p_carrusel")}>
+                    {laminas.map((m, i) => (
+                      <button
+                        key={m}
+                        type="button"
+                        className={i === actual ? "eg-lamina activa" : "eg-lamina"}
+                        aria-pressed={i === actual}
+                        aria-label={`${g("p_lamina")} ${i + 1}`}
+                        onClick={() => setLamina({ ...lamina, [p.id]: i })}
+                      >
+                        <img src={`/api/granjas/medios/${m}`} alt="" width={54} height={68} loading="lazy" />
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
               <div className="eg-post-texto">
@@ -96,6 +126,13 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
                 </div>
                 <h3>{p.evento.titulo}</h3>
                 {p.nota && <p className="ep-nota">{p.nota}</p>}
+                {p.disenoOrigen && (
+                  <p className="ep-nota">
+                    {g(`p_diseno_${p.disenoOrigen}`)}
+                    {laminas.length > 1 ? ` · ${g("p_carrusel")} (${laminas.length})` : ""}
+                    {p.disenoNota ? ` · ${p.disenoNota}` : ""}
+                  </p>
+                )}
                 <label className="eg-campo">
                   <span className="eg-oculto">{g("p_copiar")}</span>
                   <textarea rows={10} maxLength={2200} value={texto} readOnly={p.estado === "subido"} onChange={(e) => setTextos({ ...textos, [p.id]: e.target.value })} />
@@ -116,10 +153,10 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
                     <Copy size={15} />
                     {g("p_copiar")}
                   </button>
-                  {p.medioId && (
-                    <a className="ep-boton" href={`/api/granjas/medios/${p.medioId}?descargar=${nombreArchivo(p)}`}>
+                  {laminas.length > 0 && (
+                    <a className="ep-boton" href={`/api/granjas/medios/${laminas[actual]}?descargar=${nombreArchivo(p)}${laminas.length > 1 ? `-${actual + 1}` : ""}`}>
                       <Download size={15} />
-                      {g("p_descargar")}
+                      {laminas.length > 1 ? `${g("p_descargar")} ${actual + 1}/${laminas.length}` : g("p_descargar")}
                     </a>
                   )}
                   {p.estado !== "subido" && texto !== p.texto && (
@@ -129,10 +166,30 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
                     </button>
                   )}
                   {p.estado !== "subido" && (
-                    <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "redisenar", id: p.id }, g("p_guardado"))}>
-                      <RefreshCw size={15} />
-                      {g("p_redisenar")}
-                    </button>
+                    <span className="eg-redisenar">
+                      <label>
+                        <span className="eg-oculto">{g("p_redisenarCon")}</span>
+                        <select value={elegido} disabled={ocupado} onChange={(e) => setProveedor({ ...proveedor, [p.id]: e.target.value as Proveedor })}>
+                          {proveedores.map((x) => (
+                            <option key={x} value={x}>
+                              {g(`p_prov_${x}`)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        className="ep-boton"
+                        disabled={ocupado}
+                        onClick={async () => {
+                          setDisenando(p.id);
+                          if (await accion({ accion: "redisenar", id: p.id, proveedor: elegido }, g("p_redisenado"))) setLamina({ ...lamina, [p.id]: 0 });
+                          setDisenando(null);
+                        }}
+                      >
+                        <RefreshCw size={15} className={disenando === p.id ? "eg-girando" : undefined} />
+                        {disenando === p.id ? g("p_disenando") : g("p_redisenar")}
+                      </button>
+                    </span>
                   )}
                   {p.estado === "listo" && (
                     <button className="ep-boton ep-primario" disabled={ocupado} onClick={() => setSubiendo({ post: p, url: "" })}>

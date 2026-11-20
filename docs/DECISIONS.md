@@ -532,3 +532,7 @@ Se añadió «Preparar referencia para Gemini» a tarjetas sin medio o con refer
 - **Inicio:** guía compacta con progreso real y pasos desplegables (desaparece al completarla); «Requiere tu atención» es la sección principal con filas compactas (título, motivo, estado y acción concreta) y el siguiente paso integrado cuando no hay pendientes; «En curso» compacto; fechas, aprobados y granjas en una columna secundaria.
 - **Otras pantallas:** Eventos sin imagen usa un espacio reservado compacto sin repetir el título; los detalles técnicos de conexiones, n8n y almacenamiento quedan plegados; Consumo no dibuja una gráfica vacía.
 - **Especificidad:** `granjas.css` y `event-catalog.css` se cargan después de `estudio.css`; las reglas del tema claro sobre clases `eg-`/`ec-` llevan `.ep-estudio` delante para ganar.
+
+## 2026-11-20 · Director de arte con Claude y Astra
+Pedido del propietario: usar Astra o Claude para hacer posts, imágenes y videos desde la web. Claude y Astra no generan píxeles por este camino: deciden el diseño (JSON cerrado) y Ezra lo dibuja en local con next/og; así cada post usa material oficial o propio y no hay costo de imágenes. La receta «Post para Instagram» sigue con el diseñador en local por defecto porque 3 posts al día con Claude agotarían los 30 intentos mensuales en unos 10 días; el propietario elige Claude/Astra por paso o por post. Hallazgo: Codex (Astra) sí tiene generación de imágenes con la sesión de ChatGPT; se conectará como fuente de «referencia IA» (nunca oficial) tras probarla.
+

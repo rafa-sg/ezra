@@ -1326,6 +1326,59 @@
   aspect-ratio: 1080 / 1350;
   background: #EFF8FF;
 }
+/* Miniaturas del carrusel: imgs de 54×68 sin heredar el ancho completo de la portada. */
+.azra .eg-post-laminas {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  overflow-x: auto;
+}
+.azra .eg-post-imagen .eg-lamina {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.azra .eg-post-imagen .eg-lamina img {
+  width: 54px;
+  height: 68px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+.azra .eg-post-imagen .eg-lamina.activa,
+.azra .eg-post-imagen .eg-lamina:focus-visible {
+  border-color: var(--ep-acento, #155EEF);
+  outline: none;
+}
+.azra .eg-redisenar {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.azra .eg-redisenar select {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--ep-borde, #E4E7EC);
+  border-radius: 6px;
+  background: var(--ep-tarjeta, #FFFFFF);
+  color: inherit;
+  font: inherit;
+}
+.azra .eg-girando {
+  animation: eg-gira 1s linear infinite;
+}
+@keyframes eg-gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .eg-girando {
+    animation: none;
+  }
+}
 .azra .eg-post-texto {
   display: flex;
   flex-direction: column;

@@ -36,6 +36,10 @@ export function usosGranjasDelMes(ahora = ahoraIso()) {
  * y vale para Astra y Claude, que no informan tokens. Gemini se controla con el
  * presupuesto de tokens (Consumo), que se comprueba en cada llamada.
  */
+/** Reserva un intento de Astra o Claude para una acción fuera de una granja (p. ej. «Rediseñar» desde la web). */
+export async function reservarIntentoWeb(referencia: string, proveedor: string, deps: Pick<Dependencias, "usosLegado">) {
+  reservarIA(referencia, proveedor, await deps.usosLegado());
+}
 function reservarIA(pasoId: string, proveedor: string, legado: number) {
   if (proveedor === "gemini") return;
   transaccion((db) => {
@@ -87,19 +91,29 @@ Devuelve el resultado en texto, seguido de fuentes verificadas y pendientes.`;
 }
 
 function encargoParaAdaptador(nodo: Nodo, ejecucion: Ejecucion): Encargo {
-  const ahora = ahoraIso();
-  return {
+  return encargoMinimo({
     id: nodo.id,
-    version: 1,
-    titulo: nodo.titulo.length >= 3 ? nodo.titulo : `${nodo.titulo} · paso`,
+    titulo: nodo.titulo,
     agente: nodo.agente!,
     proveedor: nodo.proveedor as Encargo["proveedor"],
-    canales: (ejecucion.instantanea.canales.length ? ejecucion.instantanea.canales : ["spotmi"]).filter((c) =>
-      (todosLosCanales as readonly string[]).includes(c),
-    ) as Encargo["canales"],
-    encargo: nodo.instrucciones,
-    resultado: "",
+    canales: ejecucion.instantanea.canales,
+    instrucciones: nodo.instrucciones,
     fuentes: nodo.fuentes,
+  });
+}
+/** Encargo mínimo para llamar a un proveedor (granja o acción suelta desde la web). */
+export function encargoMinimo(d: { id: string; titulo: string; agente: Encargo["agente"]; proveedor: Encargo["proveedor"]; canales: string[]; instrucciones: string; fuentes: Encargo["fuentes"] }): Encargo {
+  const ahora = ahoraIso();
+  return {
+    id: d.id,
+    version: 1,
+    titulo: d.titulo.length >= 3 ? d.titulo : `${d.titulo} · paso`,
+    agente: d.agente,
+    proveedor: d.proveedor,
+    canales: (d.canales.length ? d.canales : ["spotmi"]).filter((c) => (todosLosCanales as readonly string[]).includes(c)) as Encargo["canales"],
+    encargo: d.instrucciones,
+    resultado: "",
+    fuentes: d.fuentes,
     fechaPrevista: "",
     estado: "pendiente",
     comprobaciones: { hechos: false, derechos: false, marca: false },
@@ -254,6 +268,26 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
             { maxTokens: 1500, ...(nodo.proveedor === "gemini" ? { busqueda: busquedaActiva(nodo) } : {}) },
           );
           return r.texto;
+        }),
+      );
+    }
+    // Diseñador con IA (director de arte): Claude, Astra o Gemini eligen el diseño; Ezra lo dibuja en local.
+    if (nodo.agente === "disenador_post" && esGranjaInstagram(ejecucion) && nodo.proveedor !== "manual") {
+      const legado = await deps.usosLegado();
+      const proveedor = nodo.proveedor as "astra" | "claude" | "gemini";
+      return await especialista(() =>
+        disenarPaso(ejecucion, entradas, {
+          proveedor,
+          generar: async (prompt) => {
+            reservarIA(pasoId, proveedor, legado);
+            const r = await deps.generar(
+              encargoParaAdaptador(nodo, ejecucion),
+              prompt,
+              { origen: "granja", paso: nodo.titulo, granjaId: ejecucion.granjaId, ejecucionId: ejecucion.id, pasoId },
+              { maxTokens: 1500, ...(proveedor === "gemini" ? { busqueda: false } : {}) },
+            );
+            return r.texto;
+          },
         }),
       );
     }

@@ -1496,5 +1496,19 @@
   "p_ac_imagen": "Confirmar imagen",
   "p_ac_posts": "Ver posts",
   "p_verCalendario": "Ver calendario",
-  "g_detallesTecnicos": "Detalles técnicos"
+  "g_detallesTecnicos": "Detalles técnicos",
+  "g_p_carrusel": "Carrusel",
+  "g_p_lamina": "Lámina",
+  "g_p_redisenarCon": "Rediseñar con",
+  "g_p_redisenado": "Diseño actualizado.",
+  "g_p_disenando": "Diseñando… (con Claude o Astra puede tardar 1–2 min)",
+  "g_p_prov_local": "Sin IA (plantilla)",
+  "g_p_prov_claude": "Claude",
+  "g_p_prov_astra": "Astra",
+  "g_p_prov_gemini": "Gemini",
+  "g_p_diseno_plantilla": "Diseño de plantilla (sin IA)",
+  "g_p_diseno_manual": "Diseño editado por ti",
+  "g_p_diseno_claude": "Diseño elegido por Claude",
+  "g_p_diseno_astra": "Diseño elegido por Astra",
+  "g_p_diseno_gemini": "Diseño elegido por Gemini"
 }

@@ -408,6 +408,13 @@ const migraciones: string[] = [
   update eventos set imagen_origen = case imagen_tipo when 'ia' then 'ia' when 'prensa' then 'prensa' when 'red' then 'original' when 'afiche' then 'web' else null end
     where imagen_medio_id is not null;
   `,
+  // 10 · Director de arte: el diseño elegido (JSON), quién lo hizo y las láminas del carrusel.
+  `
+  alter table posts_ig add column diseno text;
+  alter table posts_ig add column diseno_origen text;
+  alter table posts_ig add column carrusel text not null default '[]';
+  alter table posts_ig add column diseno_nota text not null default '';
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

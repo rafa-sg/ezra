@@ -2,6 +2,7 @@ import { WorkflowError } from "../workflow";
 import { ahoraIso, auditar, base, transaccion } from "./db";
 import { leerEvento, marcarInstagram, sinAcentos, type CategoriaEvento, type Evento } from "./eventos";
 import { diaLocal, instanteLocal, sumarDias } from "./tiempo";
+import { disenoSchema, type DisenoPost, type OrigenDiseno } from "./director";
 
 /**
  * Posts de Instagram: Ezra prepara texto e imagen; el propietario los sube a mano.
@@ -125,6 +126,11 @@ export type PostIG = {
   textoOrigen: string;
   nota: string;
   medioId: string | null;
+  /** Todas las láminas en orden (la primera es la portada = medioId). Vacío en posts anteriores al carrusel. */
+  carrusel: string[];
+  diseno: DisenoPost | null;
+  disenoOrigen: OrigenDiseno | null;
+  disenoNota: string;
   estado: "borrador" | "listo" | "subido";
   igUrl: string | null;
   subido: string | null;
@@ -133,6 +139,23 @@ export type PostIG = {
   actualizado: string;
 };
 type Fila = Record<string, string | number | null>;
+function leerLista(v: unknown): string[] {
+  try {
+    const l = JSON.parse(String(v ?? "[]"));
+    return Array.isArray(l) ? l.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+function leerDiseno(v: unknown): DisenoPost | null {
+  if (v === null || v === undefined) return null;
+  try {
+    const r = disenoSchema.safeParse(JSON.parse(String(v)));
+    return r.success ? r.data : null;
+  } catch {
+    return null;
+  }
+}
 const aPost = (f: Fila): PostIG => ({
   id: String(f.id),
   eventoId: String(f.evento_id),
@@ -143,6 +166,10 @@ const aPost = (f: Fila): PostIG => ({
   textoOrigen: String(f.texto_origen),
   nota: String(f.nota),
   medioId: f.medio_id === null ? null : String(f.medio_id),
+  carrusel: leerLista(f.carrusel),
+  diseno: leerDiseno(f.diseno),
+  disenoOrigen: (f.diseno_origen ?? null) as OrigenDiseno | null,
+  disenoNota: String(f.diseno_nota ?? ""),
   estado: f.estado as PostIG["estado"],
   igUrl: f.ig_url === null ? null : String(f.ig_url),
   subido: f.subido === null ? null : String(f.subido),
@@ -190,12 +217,23 @@ export function crearPost(datos: { eventoId: string; granjaId: string | null; ej
     .run(id, datos.eventoId, datos.granjaId, datos.ejecucionId, datos.cuenta, datos.texto, datos.textoOrigen, datos.nota.slice(0, 500), ahora, ahora);
   return leerPost(id);
 }
-export function ponerImagen(postId: string, medioId: string) {
+export function ponerImagen(postId: string, medioId: string, extra: { carrusel?: string[]; diseno?: DisenoPost; origen?: OrigenDiseno; nota?: string } = {}) {
   return transaccion(() => {
     const p = leerPost(postId);
     base()
-      .prepare("update posts_ig set medio_id = ?, estado = case when estado = 'subido' then 'subido' else 'listo' end, revision = revision + 1, actualizado = ? where id = ?")
-      .run(medioId, ahoraIso(), postId);
+      .prepare(
+        `update posts_ig set medio_id = ?, carrusel = ?, diseno = ?, diseno_origen = ?, diseno_nota = ?,
+         estado = case when estado = 'subido' then 'subido' else 'listo' end, revision = revision + 1, actualizado = ? where id = ?`,
+      )
+      .run(
+        medioId,
+        JSON.stringify(extra.carrusel ?? [medioId]),
+        extra.diseno ? JSON.stringify(extra.diseno) : p.diseno ? JSON.stringify(p.diseno) : null,
+        extra.origen ?? p.disenoOrigen,
+        (extra.nota ?? p.disenoNota).slice(0, 500),
+        ahoraIso(),
+        postId,
+      );
     if (p.estado !== "subido") marcarInstagram(p.eventoId, "post_listo");
     return leerPost(postId);
   });
