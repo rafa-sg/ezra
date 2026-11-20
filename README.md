@@ -188,11 +188,12 @@ No subas cambios directamente a `main`.
 | `Cannot connect to the Docker daemon` | Abrí Docker Desktop y esperá a que diga *running* (en Linux: `sudo systemctl start docker`). |
 | `port is already allocated` o `address already in use` en el 3000 | Otra app usa el puerto 3000. Cerrala, o cambiá en `compose.yaml` `127.0.0.1:3000:3000` por `127.0.0.1:3001:3000` y abrí http://127.0.0.1:3001. |
 | `env_file … unknown field "path"` | Docker Compose es antiguo. Actualizá Docker Desktop (hace falta Compose v2.24 o posterior). |
-| Error de Clerk «Missing publishableKey» o «The publishableKey passed to Clerk is invalid» | Falta `.env.docker` o tiene las claves mal copiadas. Revisalo y reiniciá con `docker compose up`. |
+| La página queda en blanco y la terminal dice «Clerk keys are missing from your environment» o «The publishableKey passed to Clerk is invalid» | Falta `.env.docker` o tiene las claves mal copiadas. Revisalo y reiniciá con `docker compose up`. |
 | La página dice «Este piloto solo está disponible en tu computadora» | Abrí exactamente http://127.0.0.1:3000 o http://localhost:3000, no la IP de tu red. |
 | Entrás pero dice que tu cuenta no tiene acceso | Ejecutá el paso 5 con el **mismo** correo con el que entraste. Si ya había otro correo configurado, empezá de cero con `docker compose down -v`. |
 | El código 424242 no funciona | El correo debe contener `+clerk_test`. En el panel de Clerk, comprobá que la aplicación esté en *Development*. |
 | Los cambios no aparecen en el navegador (Windows) | El proyecto está en una carpeta de Windows. Clonalo dentro de Ubuntu (`cd ~` en la ventana de Ubuntu) y trabajá desde ahí. |
+| Al construir aparece `npm warn allow-scripts protobufjs…` | Es un aviso normal; podés ignorarlo. |
 | `npm ci` falla al construir | Revisá tu conexión. Si cambiaste dependencias, `package-lock.json` debe estar actualizado. |
 | Todo raro después de muchos cambios | `docker compose down` y `docker compose up --build`. Tus datos se conservan. |
 

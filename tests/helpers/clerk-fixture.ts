@@ -128,5 +128,10 @@ export async function clerkTestEnvironment(directory: string) {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
   }
-  return { CLERK_API_URL: await backend(), CLERK_SECRET_KEY: "sk_test_offline_fixture_only" };
+  return {
+    CLERK_API_URL: await backend(),
+    CLERK_SECRET_KEY: "sk_test_offline_fixture_only",
+    // Clave publicable del mismo emisor ficticio: las pruebas no dependen de un .env.local.
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: `pk_test_${Buffer.from("offline-fixture.clerk.accounts.dev$").toString("base64")}`,
+  };
 }
