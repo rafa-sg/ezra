@@ -298,7 +298,12 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
             {g("c_actualizar")}
           </button>
         </div>
-        <GraficaDias serie={datos.serie} limite={datos.presupuesto.tokensDia} g={g} locale={locale} />
+        {/* Sin llamadas en 30 días, una gráfica vacía no aporta: basta una línea. */}
+        {datos.serie.some((x) => x.tokens > 0) ? (
+          <GraficaDias serie={datos.serie} limite={datos.presupuesto.tokensDia} g={g} locale={locale} />
+        ) : (
+          <p className="ep-vacio-breve">{g("c_vacio")}</p>
+        )}
       </section>
       {!datos.caras.length ? (
         <p className="ep-nota">{g("c_vacio")}</p>

@@ -133,6 +133,8 @@ export function ConexionesGranjas({
                 </p>
               )}
               {(c.verificado || c.identidad) && (
+              <details className="eg-detalles-tecnicos">
+                <summary>{g("detallesTecnicos")}</summary>
               <dl className="eg-datos">
                 <dt>{g("cuenta")}</dt>
                 <dd>
@@ -157,6 +159,7 @@ export function ConexionesGranjas({
                     : "—"}
                 </dd>
               </dl>
+              </details>
               )}
               {c.aviso && <p className="ep-nota">{c.aviso}</p>}
               {c.canal === "tiktok" && <p className="ep-nota">{g("tiktokPolitica")}</p>}
@@ -188,7 +191,7 @@ export function ConexionesGranjas({
                 {["sin_configurar", "requiere_oauth"].includes(c.estado) ? (
                   <button
                     type="button"
-                    className="ep-boton ep-primario"
+                    className="ep-boton"
                     disabled={ocupado === c.canal}
                     onClick={() => conectar(c)}
                   >
@@ -255,6 +258,8 @@ export function ConexionesGranjas({
             <HardDrive size={18} /> {g("almacenTitulo")}
           </h2>
           <p>{g("almacenAyuda")}</p>
+          <details className="eg-detalles-tecnicos">
+            <summary>{g("detallesTecnicos")}</summary>
           <dl className="eg-datos">
             <dt>{g("almacenBase")}</dt>
             <dd>
@@ -294,6 +299,7 @@ export function ConexionesGranjas({
             <dd>{almacen.trabajador}</dd>
           </dl>
           <p className="ep-nota">{g("almacenLocal")}</p>
+          </details>
           <a className="ep-boton" href="/api/granjas/almacenamiento?descargar=1">
             <Download size={15} />
             {g("descargarRespaldo")}

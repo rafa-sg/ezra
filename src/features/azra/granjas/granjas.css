@@ -3,12 +3,12 @@
   display: flex;
   gap: 6px;
   margin-bottom: 24px;
-  border-bottom: 1px solid var(--ep-borde, #2b3b4d);
+  border-bottom: 1px solid var(--ep-borde, #E4E7EC);
 }
 .azra .eg-pestanas button {
   min-height: 44px;
   padding: 8px 14px;
-  color: #c9d4de;
+  color: #182230;
   background: transparent;
   border: 0;
   border-bottom: 2px solid transparent;
@@ -17,13 +17,13 @@
   align-items: center;
 }
 .azra .eg-pestanas button.eg-pestana-activa {
-  color: #d7ee9c;
-  border-bottom-color: #d7ee9c;
+  color: #4F46E5;
+  border-bottom-color: #C7D2FE;
 }
 .azra .eg-pestanas button span {
   padding: 1px 7px;
   border-radius: 4px;
-  background: #2a3a4b;
+  background: #F2F4F7;
   font-size: 12px;
 }
 .azra .eg-granjas,
@@ -53,9 +53,9 @@
   width: 100%;
   min-height: 44px;
   padding: 9px 11px;
-  color: #f3f3e9;
-  background: #0d1928;
-  border: 1px solid #3c4c5c;
+  color: #182230;
+  background: #F2F4F7;
+  border: 1px solid #E4E7EC;
   border-radius: 7px;
   font: inherit;
   min-width: 0;
@@ -81,7 +81,7 @@
 .azra .eg-granjas textarea:focus-visible,
 .azra .eg-conexiones select:focus-visible,
 .azra .eg-colocar select:focus-visible {
-  outline: 3px solid #d7ee9c;
+  outline: 3px solid #4F46E5;
   outline-offset: 1px;
 }
 .azra .eg-oculto {
@@ -110,10 +110,10 @@
   gap: 8px;
   min-height: 150px;
   padding: 18px;
-  color: #f3f3e9;
+  color: #182230;
   text-align: left;
-  background: #172638;
-  border: 1px solid #2f4052;
+  background: #FFFFFF;
+  border: 1px solid #E4E7EC;
   border-radius: 10px;
   transition:
     border-color 0.15s,
@@ -121,20 +121,20 @@
 }
 .azra .eg-receta:hover,
 .azra .eg-tarjeta-granja:hover {
-  border-color: #d7ee9c;
+  border-color: #C7D2FE;
 }
 .azra .eg-receta svg {
-  color: #d7ee9c;
+  color: #4F46E5;
 }
 .azra .eg-receta span,
 .azra .eg-tarjeta-granja span:not(.ep-pill) {
-  color: #a9b6c4;
+  color: #667085;
   font-size: 13px;
 }
 .azra .eg-receta small,
 .azra .eg-tarjeta-granja small {
   margin-top: auto;
-  color: #8193a4;
+  color: #667085;
   font-size: 12px;
 }
 .azra .eg-tarjeta-granja.eg-archivada {
@@ -159,12 +159,12 @@
 .azra .eg-ejecucion {
   justify-content: space-between;
   padding: 14px 16px;
-  background: #142233;
-  border: 1px solid #2f4052;
+  background: #FFFFFF;
+  border: 1px solid #E4E7EC;
   border-radius: 10px;
 }
 .azra .eg-agregar > span {
-  color: #a9b6c4;
+  color: #667085;
   font-size: 13px;
 }
 .azra .eg-agregar .ep-boton {
@@ -195,11 +195,11 @@
   min-height: 36px;
   width: 36px;
   padding: 0;
-  background: #142233;
+  background: #FFFFFF;
 }
 .azra .eg-zoom {
   min-width: 46px;
-  color: #a9b6c4;
+  color: #667085;
   font-size: 12px;
   text-align: right;
 }
@@ -207,14 +207,12 @@
   position: relative;
   height: 560px;
   overflow: hidden;
-  border: 1px solid #2f4052;
+  border: 1px solid #E4E7EC;
   border-radius: 12px;
   cursor: grab;
   touch-action: none;
-  background-color: #0e1a29;
-  background-image:
-    linear-gradient(#1a2a3c 1px, transparent 1px),
-    linear-gradient(90deg, #1a2a3c 1px, transparent 1px);
+  background-color: #F2F4F7;
+  background-image: #F2F4F7;
   background-size: 28px 28px;
 }
 .azra .eg-lienzo.eg-moviendo {
@@ -233,22 +231,22 @@
 }
 .azra .eg-arista {
   fill: none;
-  stroke: #5c7186;
+  stroke: #E4E7EC;
   stroke-width: 2.5;
 }
 .azra .eg-arista-espera {
   stroke-dasharray: 7 6;
 }
 .azra .eg-arista-activa {
-  stroke: #d7ee9c;
+  stroke: #C7D2FE;
 }
 .azra .eg-arista-nueva {
-  stroke: #d7ee9c;
+  stroke: #C7D2FE;
   stroke-dasharray: 5 5;
 }
 .azra .eg-token {
-  fill: #d7ee9c;
-  stroke: #0e1a29;
+  fill: #4F46E5;
+  stroke: #E4E7EC;
   stroke-width: 2;
 }
 .azra .eg-nodo {
@@ -269,25 +267,23 @@
   width: 100%;
   height: 100%;
   padding: 12px;
-  color: #f3f3e9;
+  color: #182230;
   text-align: left;
-  background: #172638;
-  border: 1px solid #36495d;
+  background: #FFFFFF;
+  border: 1px solid #E4E7EC;
   border-radius: 12px;
-  box-shadow: 0 10px 24px #0007;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.06);
   cursor: pointer;
 }
 .azra .eg-nodo-revision .eg-nodo-boton {
-  border-color: #6b6234;
+  border-color: #FEDF89;
 }
 .azra .eg-nodo-publicacion .eg-nodo-boton {
-  border-color: #5e7340;
+  border-color: #C7D2FE;
 }
 .azra .eg-nodo.eg-seleccionado .eg-nodo-boton {
-  border-color: #d7ee9c;
-  box-shadow:
-    0 0 0 2px #d7ee9c55,
-    0 10px 24px #0007;
+  border-color: #C7D2FE;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.06);
 }
 .azra .eg-nodo-arte {
   grid-area: arte;
@@ -314,7 +310,7 @@
   grid-area: tipo;
   align-self: center;
   padding-right: 22px;
-  color: #a9b6c4;
+  color: #667085;
   font-size: 10px;
   line-height: 1.3;
   text-transform: uppercase;
@@ -332,8 +328,8 @@
   gap: 3px;
   align-items: center;
   padding: 2px 6px;
-  color: #ffd9a8;
-  background: #4a3a24;
+  color: #B54708;
+  background: #F2F4F7;
   border-radius: 10px;
   font-size: 11px;
 }
@@ -343,9 +339,9 @@
   width: 16px;
   height: 16px;
   margin-top: -8px;
-  border: 2px solid #0e1a29;
+  border: 2px solid #E4E7EC;
   border-radius: 50%;
-  background: #5c7186;
+  background: #F2F4F7;
 }
 .azra .eg-asa-entrada {
   left: -8px;
@@ -355,7 +351,7 @@
   width: 20px;
   height: 20px;
   margin-top: -10px;
-  background: #d7ee9c;
+  background: #4F46E5;
   cursor: crosshair;
 }
 .azra .eg-ayuda-lienzo {
@@ -368,41 +364,41 @@
   padding: 2px 7px;
   border-radius: 4px;
   font-size: 11px;
-  background: #24364a;
-  color: #c9d4de;
+  background: #F2F4F7;
+  color: #182230;
 }
 .azra .eg-estado-recolectando,
 .azra .eg-estado-generando,
 .azra .eg-estado-en_cola {
-  background: #2c4255;
-  color: #bfe3f2;
+  background: #EFF8FF;
+  color: #175CD3;
 }
 .azra .eg-estado-esperando_manual,
 .azra .eg-estado-en_revision,
 .azra .eg-estado-esperando_autorizacion,
 .azra .eg-estado-desactualizado {
-  background: #4a4224;
-  color: #f4e3a6;
+  background: #F2F4F7;
+  color: #B54708;
 }
 .azra .eg-estado-aprobado,
 .azra .eg-estado-completado,
 .azra .eg-rec-publicado,
 .azra .eg-rec-propuesta_enviada,
 .azra .eg-rec-borrador_subido {
-  background: #2f4a2c;
-  color: #d7ee9c;
+  background: #F2F4F7;
+  color: #4F46E5;
 }
 .azra .eg-estado-bloqueado,
 .azra .eg-estado-fallido,
 .azra .eg-rec-fallido,
 .azra .eg-rec-desconocido {
-  background: #4b2d2a;
-  color: #ffcfc4;
+  background: #F2F4F7;
+  color: #B42318;
 }
 .azra .eg-estado-cancelado,
 .azra .eg-rec-cancelado {
-  background: #2a2f36;
-  color: #9aa6b2;
+  background: #F2F4F7;
+  color: #667085;
 }
 
 /* Personajes: solo se mueven si el paso está trabajando de verdad. */
@@ -413,7 +409,7 @@
   animation: eg-teclea 0.6s steps(2) infinite;
 }
 .azra .eg-pixel-generando .eg-pantalla {
-  fill: #2b4a35;
+  fill: #F2F4F7;
 }
 .azra .eg-pixel-recolectando .eg-lupa {
   animation: eg-busca 1.4s steps(4) infinite;
@@ -421,7 +417,7 @@
 .azra .eg-pixel-esperando .eg-antena,
 .azra .eg-pixel-esperando_manual .eg-antena,
 .azra .eg-pixel-en_revision .eg-antena {
-  fill: #f1c775;
+  fill: #FFFAEB;
 }
 .azra .eg-pixel-cancelado,
 .azra .eg-pixel-desactualizado {
@@ -458,12 +454,12 @@
   max-height: 760px;
   overflow-y: auto;
   padding: 18px;
-  background: #142233;
-  border: 1px solid #2f4052;
+  background: #FFFFFF;
+  border: 1px solid #E4E7EC;
   border-radius: 12px;
 }
 .azra .eg-inspector.eg-vacio {
-  color: #a9b6c4;
+  color: #667085;
 }
 .azra .eg-orden {
   margin: 0;
@@ -481,7 +477,7 @@
   margin: 0;
   padding: 0;
   border: 0;
-  color: #c9d4de;
+  color: #182230;
   font-size: 13px;
 }
 .azra .eg-campo legend {
@@ -511,7 +507,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px dashed #3c4c5c;
+  border: 1px dashed #E4E7EC;
   border-radius: 8px;
 }
 .azra .eg-inspector .ep-checkbox span {
@@ -519,7 +515,7 @@
   flex-direction: column;
 }
 .azra .eg-inspector .ep-checkbox small {
-  color: #8193a4;
+  color: #667085;
 }
 .azra .eg-conexiones-nodo ul,
 .azra .eg-faltantes ul,
@@ -547,9 +543,9 @@
 .azra .eg-faltantes {
   margin: 0;
   padding: 12px 14px;
-  color: #ffe2b8;
-  background: #3b3022;
-  border: 1px solid #6e5634;
+  color: #B54708;
+  background: #F2F4F7;
+  border: 1px solid #FEDF89;
   border-radius: 8px;
   font-size: 13px;
 }
@@ -562,7 +558,7 @@
   flex-direction: column;
   gap: 10px;
   padding-top: 14px;
-  border-top: 1px solid #2f4052;
+  border-top: 1px solid #E4E7EC;
 }
 .azra .eg-paso h3,
 .azra .eg-paso h4,
@@ -583,7 +579,7 @@
   font-size: 13px;
 }
 .azra .eg-datos dt {
-  color: #8193a4;
+  color: #667085;
 }
 .azra .eg-datos dd {
   margin: 0;
@@ -591,8 +587,8 @@
 }
 .azra .eg-artefacto {
   padding: 10px;
-  background: #0f1c2b;
-  border: 1px solid #2b3b4d;
+  background: #F2F4F7;
+  border: 1px solid #E4E7EC;
   border-radius: 8px;
 }
 .azra .eg-artefacto.eg-reemplazado {
@@ -606,7 +602,7 @@
   flex-wrap: wrap;
 }
 .azra .eg-procedencia {
-  color: #c3d6a6;
+  color: #4F46E5;
   font-size: 12px;
 }
 .azra .eg-contenido {
@@ -616,7 +612,7 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 12px;
-  color: #dbe3ea;
+  color: #182230;
 }
 .azra .eg-medio {
   display: block;
@@ -624,23 +620,23 @@
   max-height: 340px;
   margin-top: 8px;
   border-radius: 8px;
-  background: #0b1520;
+  background: #F2F4F7;
 }
 .azra .eg-bloque {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  background: #101d2d;
-  border: 1px solid #2b3b4d;
+  background: #F7F8FA;
+  border: 1px solid #E4E7EC;
   border-radius: 8px;
 }
 .azra .ep-boton.eg-peligro {
-  border-color: #8b5a4d;
-  color: #ffd9cf;
+  border-color: #FECDCA;
+  color: #B42318;
 }
 .azra .ep-boton.eg-peligro:hover {
-  background: #4b2d2a;
+  background: #F2F4F7;
 }
 
 /* Vista previa y publicación */
@@ -649,8 +645,8 @@
   flex-direction: column;
   gap: 16px;
   padding: 20px;
-  background: #142233;
-  border: 1px solid #3f5531;
+  background: #FFFFFF;
+  border: 1px solid #E4E7EC;
   border-radius: 12px;
 }
 .azra .eg-vista-cabecera {
@@ -665,8 +661,8 @@
   overflow-wrap: anywhere;
 }
 .azra .ep-pill.eg-ok {
-  background: #2f4a2c;
-  color: #d7ee9c;
+  background: #F2F4F7;
+  color: #4F46E5;
 }
 .azra .eg-canales-vista {
   display: grid;
@@ -679,8 +675,8 @@
   gap: 10px;
   min-width: 0;
   padding: 14px;
-  background: #0f1c2b;
-  border: 1px solid #2b3b4d;
+  background: #F2F4F7;
+  border: 1px solid #E4E7EC;
   border-radius: 10px;
 }
 .azra .eg-tarjeta-canal header {
@@ -691,9 +687,9 @@
 }
 .azra .eg-sin-medio {
   padding: 26px 12px;
-  color: #8193a4;
+  color: #667085;
   text-align: center;
-  border: 1px dashed #3c4c5c;
+  border: 1px dashed #E4E7EC;
   border-radius: 8px;
 }
 .azra .eg-simulacion {
@@ -708,12 +704,12 @@
   overflow-wrap: anywhere;
 }
 .azra .eg-sim-bien {
-  background: #1e3324;
-  border: 1px solid #3f6a45;
+  background: #FFFFFF;
+  border: 1px solid #ABEFC6;
 }
 .azra .eg-sim-mal {
-  background: #3b2622;
-  border: 1px solid #7a4a3e;
+  background: #F2F4F7;
+  border: 1px solid #FECDCA;
 }
 .azra .eg-sim-mal ul,
 .azra .eg-simulacion ol {
@@ -725,7 +721,7 @@
   flex-direction: column;
   gap: 10px;
   padding-top: 12px;
-  border-top: 1px solid #2f4052;
+  border-top: 1px solid #E4E7EC;
 }
 .azra .eg-recibos li {
   display: flex;
@@ -733,7 +729,7 @@
   gap: 8px;
   align-items: center;
   padding: 10px;
-  background: #0f1c2b;
+  background: #F2F4F7;
   border-radius: 8px;
   overflow-wrap: anywhere;
 }
@@ -741,18 +737,18 @@
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  color: #d7ee9c;
+  color: #4F46E5;
 }
 .azra .eg-recibos code,
 .azra .eg-vista code,
 .azra .eg-almacen code,
 .azra .eg-guia code {
   font-size: 12px;
-  color: #c3d6a6;
+  color: #4F46E5;
   overflow-wrap: anywhere;
 }
 .azra .eg-historial {
-  color: #c9d4de;
+  color: #182230;
 }
 .azra .eg-historial ul {
   margin: 8px 0 0;
@@ -774,34 +770,34 @@
   min-width: 0;
 }
 .azra .ep-pill.eg-con-conectada_publicacion {
-  background: #2f4a2c;
-  color: #d7ee9c;
+  background: #F2F4F7;
+  color: #4F46E5;
 }
 .azra .ep-pill.eg-con-vencida,
 .azra .ep-pill.eg-con-verificacion_fallida {
-  background: #4b2d2a;
-  color: #ffcfc4;
-  border-color: #7a4a3e;
+  background: #F2F4F7;
+  color: #B42318;
+  border-color: #FECDCA;
 }
 .azra .ep-pill.eg-con-restringida,
 .azra .ep-pill.eg-con-conectada_lectura {
-  background: #4a4224;
-  color: #f4e3a6;
-  border-color: #6e5634;
+  background: #F2F4F7;
+  color: #B54708;
+  border-color: #FEDF89;
 }
 .azra .ep-pill.eg-con-sin_configurar,
 .azra .ep-pill.eg-con-requiere_oauth {
-  background: #24364a;
-  color: #c9d4de;
-  border-color: #3c4c5c;
+  background: #F2F4F7;
+  color: #182230;
+  border-color: #E4E7EC;
 }
 .azra .eg-almacen {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 20px;
-  background: #142233;
-  border: 1px solid #2f4052;
+  background: #FFFFFF;
+  border: 1px solid #E4E7EC;
   border-radius: 12px;
 }
 .azra .eg-almacen h2 {
@@ -827,14 +823,14 @@
 .azra .eg-bloque-codigo {
   display: block;
   padding: 10px;
-  background: #0b1520;
+  background: #F2F4F7;
   border-radius: 6px;
 }
 .azra .eg-colocar {
   gap: 10px;
   padding: 14px;
   margin-bottom: 16px;
-  border: 1px solid #3f5531;
+  border: 1px solid #E4E7EC;
   border-radius: 8px;
 }
 
@@ -883,7 +879,7 @@
 /* Cada fuente (nombre + enlace) se agrupa para distinguirla de la siguiente. */
 .azra .eg-inspector .eg-fuente:has(input + input) {
   padding: 10px;
-  border: 1px solid #2b3b4d;
+  border: 1px solid #E4E7EC;
   border-radius: 8px;
 }
 
@@ -894,8 +890,8 @@
   gap: 12px;
   min-width: 0;
   padding: 18px;
-  background: var(--ep-tarjeta, #172638);
-  border: 1px solid var(--ep-borde, #2b3b4d);
+  background: var(--ep-tarjeta, #FFFFFF);
+  border: 1px solid var(--ep-borde, #E4E7EC);
   border-radius: 8px;
 }
 .azra .eg-bloque-cabecera {
@@ -924,13 +920,13 @@
   flex-direction: column;
   gap: 4px;
   padding: 16px;
-  background: var(--ep-tarjeta, #172638);
-  border: 1px solid var(--ep-borde, #2b3b4d);
+  background: var(--ep-tarjeta, #FFFFFF);
+  border: 1px solid var(--ep-borde, #E4E7EC);
   border-radius: 8px;
   min-width: 0;
 }
 .azra .eg-kpi > span {
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
   font-size: 13px;
 }
 .azra .eg-kpi strong {
@@ -939,7 +935,7 @@
   letter-spacing: -0.03em;
 }
 .azra .eg-kpi small {
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -962,25 +958,25 @@
   font-size: 13px;
 }
 .azra .eg-medidor-texto span {
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
 }
 .azra .eg-medidor-barra {
   height: 8px;
   border-radius: 4px;
-  background: #22344a;
+  background: #F2F4F7;
   overflow: hidden;
 }
 .azra .eg-medidor-barra span {
   display: block;
   height: 100%;
   border-radius: 4px;
-  background: #7a9b30;
+  background: #4F46E5;
 }
 .azra .eg-medidor-barra span.eg-alto {
-  background: #d9a441;
+  background: #FFFAEB;
 }
 .azra .eg-medidor-barra span.eg-lleno {
-  background: #d9735b;
+  background: #FEF3F2;
 }
 .azra .eg-formulario-linea {
   display: flex;
@@ -996,10 +992,10 @@
   gap: 10px;
   align-items: center;
   padding: 12px 15px;
-  border: 1px solid #a8873e;
+  border: 1px solid #FEDF89;
   border-radius: 7px;
-  background: #3b3420;
-  color: #fbe8b8;
+  background: #F2F4F7;
+  color: #B54708;
   font-size: 13px;
 }
 .azra .eg-presupuesto-alerta {
@@ -1013,7 +1009,7 @@
   min-width: 0;
 }
 .azra .eg-grafica figcaption {
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
   font-size: 13px;
 }
 .azra .eg-grafica-lienzo {
@@ -1027,21 +1023,21 @@
   overflow: visible;
 }
 .azra .eg-grafica-rejilla {
-  stroke: #2b3b4d;
+  stroke: #E4E7EC;
   stroke-width: 1;
 }
 .azra .eg-grafica-eje {
-  fill: var(--ep-suave, #a9b6c4);
+  fill: var(--ep-suave, #F2F4F7);
   font-size: 11px;
 }
 .azra .eg-grafica-barra {
-  fill: #7a9b30;
+  fill: #4F46E5;
 }
 .azra .eg-grafica-barra.eg-activa {
-  fill: #96b94a;
+  fill: #4F46E5;
 }
 .azra .eg-grafica-limite {
-  stroke: #c9d4de;
+  stroke: #E4E7EC;
   stroke-width: 1.5;
   stroke-dasharray: 5 4;
 }
@@ -1054,8 +1050,8 @@
   gap: 2px;
   padding: 8px 10px;
   border-radius: 6px;
-  background: #0b1624;
-  border: 1px solid #3a4c60;
+  background: #F2F4F7;
+  border: 1px solid #E4E7EC;
   font-size: 12px;
   white-space: nowrap;
   pointer-events: none;
@@ -1075,12 +1071,12 @@
 .azra .eg-tabla-desplazable th,
 .azra .eg-tabla-desplazable td {
   padding: 8px 10px;
-  border-bottom: 1px solid var(--ep-borde, #2b3b4d);
+  border-bottom: 1px solid var(--ep-borde, #E4E7EC);
   text-align: left;
   vertical-align: top;
 }
 .azra .eg-tabla-desplazable th {
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -1091,11 +1087,11 @@
   min-width: 110px;
 }
 .azra .eg-fila-error td {
-  color: #ffd9c7;
+  color: #B42318;
 }
 .azra .eg-error-celda {
   display: block;
-  color: #ffb79c;
+  color: #B42318;
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -1111,7 +1107,7 @@
 .azra .eg-otras-recetas summary,
 .azra .eg-especialistas summary {
   cursor: pointer;
-  color: #c9d4de;
+  color: #182230;
   display: inline-flex;
   gap: 8px;
   align-items: center;
@@ -1169,8 +1165,8 @@
   gap: 10px;
   min-width: 0;
   padding: 16px;
-  background: var(--ep-tarjeta, #172638);
-  border: 1px solid var(--ep-borde, #2b3b4d);
+  background: var(--ep-tarjeta, #FFFFFF);
+  border: 1px solid var(--ep-borde, #E4E7EC);
   border-radius: 8px;
 }
 .azra .eg-evento-descartado {
@@ -1184,7 +1180,7 @@
   justify-content: space-between;
 }
 .azra .eg-evento-categoria {
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
   font-size: 12px;
 }
 .azra .eg-evento h3 {
@@ -1203,7 +1199,7 @@
   gap: 8px;
 }
 .azra .eg-evento-datos dt {
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
 }
 .azra .eg-evento-datos dd {
   margin: 0;
@@ -1217,19 +1213,19 @@
   display: inline-flex;
   gap: 3px;
   align-items: center;
-  color: #c3d6ac;
+  color: #4F46E5;
   font-size: 11px;
 }
 .azra .eg-por-confirmar {
   display: inline-block;
   padding: 1px 7px;
-  border: 1px dashed #a8873e;
+  border: 1px dashed #FEDF89;
   border-radius: 4px;
-  color: #fbe8b8;
+  color: #B54708;
   font-size: 12px;
 }
 .azra .eg-evento-descripcion {
-  color: #d5dde5;
+  color: #182230;
   font-size: 13px;
   overflow-wrap: anywhere;
 }
@@ -1271,7 +1267,7 @@
 .azra .eg-dias legend {
   width: 100%;
   margin-bottom: 6px;
-  color: #c9d4de;
+  color: #182230;
   font-size: 13px;
 }
 .azra .eg-dia {
@@ -1280,13 +1276,13 @@
   align-items: center;
   min-height: 40px;
   padding: 4px 12px;
-  border: 1px solid var(--ep-borde, #2b3b4d);
+  border: 1px solid var(--ep-borde, #E4E7EC);
   border-radius: 6px;
   cursor: pointer;
 }
 .azra .eg-dia:has(input:checked) {
-  border-color: #7a9b30;
-  background: #22341f;
+  border-color: #C7D2FE;
+  background: #FFFFFF;
 }
 .azra .eg-horario-estado {
   margin: 0;
@@ -1296,14 +1292,14 @@
   font-size: 13px;
 }
 .azra .eg-horario-estado dt {
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
 }
 .azra .eg-horario-estado dd {
   margin: 0;
   overflow-wrap: anywhere;
 }
 .azra .eg-tarjeta-horario {
-  color: #c3d6ac;
+  color: #4F46E5;
 }
 .azra .eg-lista-posts {
   list-style: none;
@@ -1318,8 +1314,8 @@
   grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
   gap: 18px;
   padding: 16px;
-  background: var(--ep-tarjeta, #172638);
-  border: 1px solid var(--ep-borde, #2b3b4d);
+  background: var(--ep-tarjeta, #FFFFFF);
+  border: 1px solid var(--ep-borde, #E4E7EC);
   border-radius: 8px;
 }
 .azra .eg-post-imagen img {
@@ -1328,7 +1324,7 @@
   height: auto;
   border-radius: 6px;
   aspect-ratio: 1080 / 1350;
-  background: #002f4b;
+  background: #EFF8FF;
 }
 .azra .eg-post-texto {
   display: flex;
@@ -1354,7 +1350,7 @@
   gap: 14px;
 }
 .azra .eg-agenda-eventos time {
-  color: #d7ee9c;
+  color: #4F46E5;
   font-weight: 600;
   text-transform: capitalize;
 }
@@ -1370,11 +1366,11 @@
   display: flex;
   flex-direction: column;
   padding-left: 12px;
-  border-left: 2px solid var(--ep-borde, #2b3b4d);
+  border-left: 2px solid var(--ep-borde, #E4E7EC);
   font-size: 13px;
 }
 .azra .eg-agenda-eventos li li span {
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
 }
 .azra .eg-calendario-encargos {
   margin-top: 24px !important;
@@ -1413,7 +1409,7 @@
   height: 120px;
   object-fit: cover;
   border-radius: 6px;
-  background: #002f4b;
+  background: #EFF8FF;
 }
 .azra .eg-evento-imagen > div {
   display: flex;
@@ -1423,24 +1419,24 @@
   overflow-wrap: anywhere;
 }
 .azra .eg-pill-pendiente {
-  color: #fbe8b8;
-  background: #3b3420;
-  border-color: #a8873e;
+  color: #B54708;
+  background: #F2F4F7;
+  border-color: #FEDF89;
 }
 .azra .eg-lista-importacion {
   margin: 0;
   padding-left: 18px;
   font-size: 13px;
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
   overflow-wrap: anywhere;
 }
 .azra .eg-resumen-ejecucion {
   margin: 4px 0 0;
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
   font-size: 13px;
 }
 .azra .eg-resumen-ejecucion b {
-  color: var(--ep-texto, #f3f3e9);
+  color: var(--ep-texto, #182230);
 }
 /* Sin imagen: cuadro azul marino de Spotmi con el día y el mes. */
 .azra .eg-cuadro-fecha {
@@ -1451,8 +1447,8 @@
   width: 96px;
   height: 96px;
   border-radius: 12px;
-  color: #fff;
-  background: #002f4b;
+  color: #182230;
+  background: #EFF8FF;
   line-height: 1;
 }
 .azra .eg-cuadro-fecha strong {
@@ -1469,7 +1465,7 @@
   width: 100%;
   height: 8px;
   margin-top: 8px;
-  accent-color: #4ea1ff;
+  accent-color: #4F46E5;
 }
 /* Cuentas a seguir y fuentes de cada evento. */
 .azra .eg-plegable > summary {
@@ -1507,7 +1503,7 @@
 }
 .azra .eg-fuentes-evento summary {
   cursor: pointer;
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
   font-size: 13px;
 }
 .azra .eg-fuentes-evento ul {
@@ -1539,7 +1535,7 @@
   cursor: help;
 }
 .azra .eg-confianza-anillo:focus-visible {
-  outline: 2px solid #4ea1ff;
+  outline: 2px solid #4F46E5;
   outline-offset: 2px;
 }
 .azra .eg-confianza-anillo svg {
@@ -1553,7 +1549,7 @@
 }
 .azra .eg-confianza-fondo {
   fill: none;
-  stroke: var(--ep-borde, #2b3b4d);
+  stroke: var(--ep-borde, #E4E7EC);
   stroke-width: 4;
 }
 .azra .eg-confianza-valor {
@@ -1562,16 +1558,16 @@
   stroke-linecap: round;
 }
 .azra .eg-confianza-alta .eg-confianza-valor {
-  stroke: #3ccf7d;
+  stroke: #ABEFC6;
 }
 .azra .eg-confianza-media .eg-confianza-valor {
-  stroke: #f2c94c;
+  stroke: #FEDF89;
 }
 .azra .eg-confianza-baja .eg-confianza-valor {
-  stroke: #ff6b6b;
+  stroke: #FECDCA;
 }
 .azra .eg-confianza-texto {
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
   font-size: 13px;
 }
 .azra .eg-confianza-desglose {
@@ -1582,10 +1578,10 @@
   display: none;
   width: min(340px, calc(100vw - 48px));
   padding: 10px 12px;
-  border: 1px solid var(--ep-borde, #2b3b4d);
+  border: 1px solid var(--ep-borde, #E4E7EC);
   border-radius: 8px;
-  background: #0f1b2a;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  background: #F2F4F7;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.06);
   font-size: 13px;
 }
 .azra .eg-confianza:hover .eg-confianza-desglose,
@@ -1606,12 +1602,12 @@
   overflow-wrap: anywhere;
 }
 .azra .eg-confianza-desglose small {
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
 }
 .azra .eg-pill-actualizado {
-  color: #cfe6ff;
-  background: #1d3550;
-  border-color: #4ea1ff;
+  color: #175CD3;
+  background: #EFF8FF;
+  border-color: #B2DDFF;
 }
 .azra .eg-cambios {
   margin: 0;
@@ -1620,10 +1616,10 @@
   overflow-wrap: anywhere;
 }
 .azra .eg-cambios del {
-  color: #ff9b9b;
+  color: #B42318;
 }
 .azra .eg-cambios ins {
-  color: #9ff0bf;
+  color: #067647;
   text-decoration: none;
 }
 .azra .eg-check {
@@ -1645,7 +1641,7 @@
 .azra .eg-tabla-confianza th,
 .azra .eg-tabla-confianza td {
   padding: 6px 8px;
-  border-bottom: 1px solid var(--ep-borde, #2b3b4d);
+  border-bottom: 1px solid var(--ep-borde, #E4E7EC);
   text-align: left;
   white-space: nowrap;
 }
@@ -1703,9 +1699,9 @@
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--ep-borde, #2b3b4d);
+  border: 1px solid var(--ep-borde, #E4E7EC);
   border-radius: 14px;
-  background: var(--ep-tarjeta, #172638);
+  background: var(--ep-tarjeta, #FFFFFF);
 }
 .azra .eg-tarjeta-evento.eg-evento-descartado {
   opacity: 0.6;
@@ -1715,7 +1711,7 @@
   aspect-ratio: 4 / 5;
   overflow: hidden;
   border-radius: 14px 14px 10px 10px;
-  background: #002f4b;
+  background: #EFF8FF;
 }
 /* El afiche completo (contain) sobre un fondo desenfocado de la misma imagen: nunca se corta su texto. */
 .azra .eg-tarjeta-fondo {
@@ -1753,8 +1749,8 @@
   padding: 4px 9px;
   overflow: hidden;
   border-radius: 999px;
-  color: #f3f3e9;
-  background: rgb(10 20 32 / 0.78);
+  color: #182230;
+  background: #F2F4F7;
   backdrop-filter: blur(4px);
   font-size: 12px;
   line-height: 1.3;
@@ -1786,17 +1782,17 @@
   bottom: 10px;
   right: 10px;
   max-width: 45%;
-  color: #172224;
-  background: #d7ee9c;
+  color: #FFFFFF;
+  background: #4F46E5;
   font-weight: 600;
 }
 .azra .eg-etiqueta-ia {
-  color: #f3e8ff;
-  background: #5b3b8c;
+  color: #182230;
+  background: #4F46E5;
 }
 .azra .eg-etiqueta-prensa {
-  color: #172224;
-  background: #cfd8e3;
+  color: #FFFFFF;
+  background: #F2F4F7;
 }
 .azra .eg-tarjeta-cuerpo {
   display: grid;
@@ -1820,14 +1816,14 @@
   gap: 7px;
   align-items: flex-start;
   margin: 0;
-  color: var(--ep-suave, #a9b6c4);
+  color: var(--ep-suave, #667085);
   font-size: 13px;
   overflow-wrap: anywhere;
 }
 .azra .eg-tarjeta-linea svg {
   flex: 0 0 auto;
   margin-top: 1px;
-  color: #d7ee9c;
+  color: #4F46E5;
 }
 .azra .eg-tarjeta-linea span::first-letter {
   text-transform: uppercase;
@@ -1843,16 +1839,16 @@
 .azra .eg-precio {
   padding: 5px 11px;
   border-radius: 999px;
-  color: #172224;
-  background: #d7ee9c;
+  color: #FFFFFF;
+  background: #4F46E5;
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
 }
 .azra .eg-precio-pendiente {
-  color: #fbe8b8;
+  color: #B54708;
   background: transparent;
-  border: 1px dashed #a8873e;
+  border: 1px dashed #FEDF89;
   font-weight: 500;
 }
 .azra .eg-ver-mas {
@@ -1862,7 +1858,7 @@
   min-height: 36px;
   padding: 0 4px;
   border: 0;
-  color: #d7ee9c;
+  color: #4F46E5;
   background: none;
   font: inherit;
   font-weight: 600;
@@ -1873,7 +1869,7 @@
   text-decoration: underline;
 }
 .azra .eg-ver-mas:focus-visible {
-  outline: 2px solid #d7ee9c;
+  outline: 2px solid #4F46E5;
   outline-offset: 2px;
 }
 .azra .eg-tarjeta-rapidas {
@@ -1921,7 +1917,7 @@
   margin: 6px 0;
   padding: 10px;
   border-radius: 8px;
-  background: #0f1b2a;
+  background: #F2F4F7;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   overflow-wrap: anywhere;
@@ -1931,7 +1927,7 @@
     transition: border-color 0.15s ease;
   }
   .azra .eg-tarjeta-evento:hover {
-    border-color: #506174;
+    border-color: #E4E7EC;
   }
 }
 /* El desglose sobre la imagen no puede salirse de la tarjeta (que recorta): se ajusta a su ancho. */
@@ -1982,9 +1978,9 @@
 .azra .eg-original-motivo {
   margin: 0;
   padding: 12px 14px;
-  border-left: 3px solid #f2c94c;
+  border-left: 3px solid #FEDF89;
   border-radius: 8px;
-  background: rgb(242 201 76 / 0.1);
+  background: #FFFAEB;
   overflow-wrap: anywhere;
 }
 .azra .eg-original-medios {
@@ -2007,10 +2003,10 @@
   cursor: pointer;
 }
 .azra .eg-original-medios button.eg-elegida {
-  border-color: #4f46e5;
+  border-color: #C7D2FE;
 }
 .azra .eg-original-medios button:focus-visible {
-  outline: 2px solid #4f46e5;
+  outline: 2px solid #4F46E5;
   outline-offset: 2px;
 }
 .azra .eg-original-medios img {
@@ -2019,7 +2015,7 @@
   aspect-ratio: 4 / 5;
   object-fit: contain;
   border-radius: 8px;
-  background: rgb(0 0 0 / 0.25);
+  background: #F2F4F7;
 }
 .azra .eg-original-fotograma {
   display: flex;
@@ -2036,7 +2032,7 @@
   max-height: 70vh;
   padding: 12px;
   border-radius: 10px;
-  background: rgb(0 0 0 / 0.25);
+  background: #F2F4F7;
 }
 /* El afiche completo, sin cortar fechas ni logos. */
 .azra .eg-original-vista img {
@@ -2064,7 +2060,7 @@
 .azra .eg-original-sugerencias {
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgb(79 70 229 / 0.12);
+  background: #4F46E5;
 }
 .azra .eg-original-checks {
   display: grid;

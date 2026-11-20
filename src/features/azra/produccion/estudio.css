@@ -52,7 +52,7 @@
 .azra .ep-estudio a:focus-visible,
 .azra .ep-modal button:focus-visible,
 .azra .ep-modal a:focus-visible {
-  outline: 3px solid #d7ee9c;
+  outline: 3px solid #4F46E5;
   outline-offset: 4px;
 }
 .azra .ep-cabecera {
@@ -94,9 +94,9 @@
   gap: 9px;
   min-height: 44px;
   padding: 10px 16px;
-  border: 1px solid #3c4c5c;
+  border: 1px solid #E4E7EC;
   border-radius: 7px;
-  color: #f3f3e9;
+  color: #182230;
   background: transparent;
   text-decoration: none;
   font-size: 13px;
@@ -107,20 +107,20 @@
     border-color 0.15s;
 }
 .azra .ep-boton:hover {
-  background: #25374a;
-  border-color: #71808c;
+  background: #F2F4F7;
+  border-color: #E4E7EC;
 }
 .azra .ep-boton.ep-primario {
-  color: #172224;
-  background: #d7ee9c;
-  border-color: #d7ee9c;
+  color: #FFFFFF;
+  background: #4F46E5;
+  border-color: #C7D2FE;
 }
 .azra .ep-boton.ep-primario:hover {
-  background: #e6f6bb;
+  background: #4F46E5;
 }
 .azra .ep-boton.ep-texto {
   border-color: transparent;
-  color: #c9d4de;
+  color: #182230;
   padding-left: 0;
 }
 .azra .ep-nav {
@@ -149,10 +149,10 @@
 }
 .azra .ep-nav > button > span {
   font-size: 12px;
-  background: #2b3c4b;
+  background: #F2F4F7;
   padding: 1px 7px;
   border-radius: 4px;
-  color: #dae2e7;
+  color: #182230;
 }
 .azra .ep-cuerpo {
   max-width: 1560px;
@@ -174,7 +174,7 @@
     monospace !important;
   letter-spacing: 1.7px !important;
   text-transform: uppercase;
-  color: #a6bb9d;
+  color: #667085;
   margin: 0 0 17px !important;
   display: flex;
   align-items: center;
@@ -183,7 +183,7 @@
 .azra .ep-eyebrow > span {
   width: 5px;
   height: 5px;
-  background: #d7ee9c;
+  background: #4F46E5;
 }
 .azra .ep-hero h1 {
   font-size: clamp(32px, 3.25vw, 52px);
@@ -213,7 +213,7 @@
   flex-wrap: wrap;
   gap: 22px;
   margin-top: 29px;
-  color: #a4b1bd;
+  color: #667085;
   font-size: 12px;
 }
 .azra .ep-datos > span {
@@ -222,11 +222,11 @@
   align-items: center;
 }
 .azra .ep-datos b {
-  color: #e9ece6;
+  color: #182230;
   font-weight: 600;
 }
 .azra .ep-datos > span + span {
-  border-left: 1px solid #384351;
+  border-left: 1px solid #E4E7EC;
   padding-left: 20px;
 }
 .azra .ep-hero-ilustracion {
@@ -234,21 +234,19 @@
   overflow: hidden;
   align-self: stretch;
   min-height: 280px;
-  background-image:
-    linear-gradient(#27364655 1px, transparent 1px),
-    linear-gradient(90deg, #27364655 1px, transparent 1px);
+  background-image: #F2F4F7;
   background-size: 28px 28px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  border: 1px solid #2c3b4a;
+  border: 1px solid #E4E7EC;
   border-radius: 12px;
   padding: 22px 23px;
 }
 .azra .ep-orbita {
   position: absolute;
   inset: 20% 10%;
-  background: #8fbd8330;
+  background: #ECFDF3;
   filter: blur(55px);
   border-radius: 100%;
   z-index: -1;
@@ -257,7 +255,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #8b9ba8;
+  color: #667085;
   font-size: 12px;
   letter-spacing: 2px;
   font-family: monospace;
@@ -265,7 +263,7 @@
 .azra .ep-terminal-luz {
   width: 6px;
   height: 6px;
-  background: #d7ee9c;
+  background: #4F46E5;
   border-radius: 50%;
 }
 .azra .ep-personajes {
@@ -292,11 +290,11 @@
 .azra .ep-ruta {
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid #33434f;
+  border-top: 1px solid #E4E7EC;
   padding-top: 16px;
   margin-top: 15px;
   gap: 6px;
-  color: #c9d2d4;
+  color: #182230;
   font-size: 12px;
 }
 .azra .ep-ruta > span {
@@ -305,7 +303,7 @@
   gap: 5px;
 }
 .azra .ep-ruta b {
-  color: #9cac8c;
+  color: #667085;
   font-family: monospace;
   font-weight: 400;
 }
@@ -334,7 +332,7 @@
 }
 .azra .ep-numero {
   font: 500 30px monospace;
-  color: #6f8492;
+  color: #667085;
 }
 .azra .ep-agentes {
   display: grid;
@@ -358,12 +356,12 @@
 .azra .ep-agente:hover {
   transform: translateY(-3px);
   border-color: var(--agente);
-  background: #1b2d40;
+  background: #F2F4F7;
 }
 .azra .ep-agente-arriba {
   display: flex;
   justify-content: space-between;
-  color: #90a1af;
+  color: #667085;
   font: 12px monospace;
 }
 .azra .ep-agente-arriba > svg {
@@ -381,7 +379,7 @@
 }
 .azra .ep-agente p {
   min-height: 44px;
-  color: #aebbc6;
+  color: #667085;
   font-size: 12px;
   line-height: 1.65;
   letter-spacing: 0;
@@ -397,7 +395,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #314253;
+  border-top: 1px solid #E4E7EC;
   padding: 12px 0;
   font-size: 12px;
   font-weight: 500;
@@ -417,21 +415,21 @@
   align-items: center;
   justify-content: center;
   gap: 14px;
-  border: 1px dashed #435263;
+  border: 1px dashed #E4E7EC;
   border-radius: 10px;
   padding: 42px 20px;
   text-align: center;
-  color: #afbdc8;
+  color: #667085;
 }
 .azra .ep-vacio h3 {
   font-size: 18px;
-  color: #e5ebe8;
+  color: #182230;
 }
 .azra .ep-vacio p {
   font-size: 13px;
 }
 .azra .ep-vacio > svg {
-  color: #d7ee9c;
+  color: #4F46E5;
 }
 .azra .ep-tarea {
   display: flex;
@@ -440,15 +438,15 @@
   width: 100%;
   min-width: 0;
   text-align: left;
-  background: #1c2c3d;
-  border: 1px solid #364657;
+  background: #F2F4F7;
+  border: 1px solid #E4E7EC;
   border-radius: 8px;
   padding: 17px;
-  color: #ecede5;
+  color: #182230;
   transition: border-color 0.15s;
 }
 .azra .ep-tarea:hover {
-  border-color: #b4c38f;
+  border-color: #C7D2FE;
 }
 .azra .ep-tarea strong {
   font-size: 16px;
@@ -459,7 +457,7 @@
   justify-content: space-between;
   gap: 12px;
   font-size: 12px;
-  color: #b4c79d;
+  color: #4F46E5;
 }
 .azra .ep-chips {
   display: flex;
@@ -467,21 +465,21 @@
   gap: 5px;
 }
 .azra .ep-chips > span {
-  border: 1px solid #3b4a5a;
+  border: 1px solid #E4E7EC;
   border-radius: 4px;
   padding: 2px 7px;
   font-size: 12px;
-  color: #bac7d0;
+  color: #667085;
 }
 .azra .ep-tarea-pie {
-  border-top: 1px solid #354455;
+  border-top: 1px solid #E4E7EC;
   padding-top: 10px;
   display: flex;
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
   font-size: 12px;
-  color: #a8b5c0;
+  color: #667085;
 }
 .azra .ep-kanban {
   display: grid;
@@ -490,11 +488,11 @@
   margin-top: 24px;
 }
 .azra .ep-columna {
-  background: #142232;
+  background: #FFFFFF;
   padding: 14px;
   border-radius: 9px;
   min-height: 280px;
-  border: 1px solid #263648;
+  border: 1px solid #E4E7EC;
 }
 .azra .ep-columna h2 {
   display: flex;
@@ -505,7 +503,7 @@
 }
 .azra .ep-columna h2 > span:last-child {
   margin-left: auto;
-  color: #aebbc7;
+  color: #667085;
   font: 12px monospace;
 }
 .azra .ep-columna .ep-tarea {
@@ -516,16 +514,16 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #889dae;
+  background: #F2F4F7;
 }
 .azra .ep-preparando {
-  background: #a69ae2;
+  background: #4F46E5;
 }
 .azra .ep-revision {
-  background: #e5b57b;
+  background: #FFFAEB;
 }
 .azra .ep-aprobado {
-  background: #c4df91;
+  background: #4F46E5;
 }
 .azra .ep-agregar {
   display: flex;
@@ -533,8 +531,8 @@
   gap: 8px;
   justify-content: center;
   background: none;
-  color: #b5c2ce;
-  border: 1px dashed #485969;
+  color: #667085;
+  border: 1px dashed #E4E7EC;
   border-radius: 6px;
   min-height: 44px;
   width: 100%;
@@ -544,30 +542,30 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #405163;
+  border: 1px solid #E4E7EC;
   border-radius: 7px;
   padding: 0 13px;
   min-height: 44px;
   max-width: 450px;
   width: 100%;
-  color: #8ea2b4;
-  background: #142436;
+  color: #667085;
+  background: #FFFFFF;
 }
 .azra .ep-busqueda input {
   background: none;
   border: 0;
   outline: none;
-  color: #e7ede8;
+  color: #182230;
   font: inherit;
   min-width: 0;
   width: 100%;
   height: 44px;
 }
 .azra .ep-busqueda input::placeholder {
-  color: #9baaba;
+  color: #667085;
 }
 .azra .ep-busqueda:focus-within {
-  outline: 2px solid #d7ee9c;
+  outline: 2px solid #4F46E5;
   outline-offset: 2px;
 }
 .azra .ep-filtros {
@@ -581,7 +579,7 @@
   align-items: center;
   gap: 7px;
   min-height: 44px;
-  color: #d5e3b8;
+  color: #4F46E5;
   font-size: 13px;
 }
 .azra .ep-fichas {
@@ -591,21 +589,21 @@
   margin-top: 22px;
 }
 .azra .ep-ficha {
-  border: 1px solid #3c4c5a;
+  border: 1px solid #E4E7EC;
   border-radius: 10px;
   overflow: hidden;
-  background: #182839;
+  background: #FFFFFF;
 }
 .azra .ep-ficha-imagen {
   height: 190px;
   position: relative;
-  background: #233648;
+  background: #F2F4F7;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   gap: 12px;
-  color: #9eb2c3;
+  color: #667085;
 }
 .azra .ep-ficha-imagen img {
   width: 100%;
@@ -616,8 +614,8 @@
   position: absolute;
   left: 12px;
   top: 12px;
-  background: #101d2de6;
-  color: #e2eacb;
+  background: #F7F8FA;
+  color: #182230;
   font-size: 12px;
   padding: 5px 9px;
   border-radius: 4px;
@@ -630,7 +628,7 @@
   margin-bottom: 12px;
 }
 .azra .ep-ficha p {
-  color: #b1c0cc;
+  color: #667085;
   margin-bottom: 6px;
   font-size: 13px;
 }
@@ -640,7 +638,7 @@
   gap: 8px;
   min-height: 44px;
   font-size: 12px;
-  color: #d3e8ab;
+  color: #4F46E5;
 }
 .azra .ep-ficha .ep-boton {
   width: 100%;
@@ -654,10 +652,10 @@
 .azra .ep-conexion {
   display: flex;
   gap: 20px;
-  border: 1px solid #354757;
+  border: 1px solid #E4E7EC;
   border-radius: 9px;
   padding: 27px;
-  background: #172738;
+  background: #FFFFFF;
 }
 .azra .ep-conexion > div:last-child {
   min-width: 0;
@@ -668,8 +666,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #314237;
-  color: #d5ebac;
+  background: #F2F4F7;
+  color: #4F46E5;
   border-radius: 9px;
   font-size: 23px;
   flex-shrink: 0;
@@ -680,13 +678,13 @@
 }
 .azra .ep-conexion p {
   font-size: 13px;
-  color: #b1becc;
+  color: #667085;
   line-height: 1.8;
   margin: 15px 0 20px;
 }
 .azra .ep-conexion code {
   display: block;
-  color: #c0cdaf;
+  color: #667085;
   font-size: 12px;
   overflow-wrap: anywhere;
   margin: 12px 0;
@@ -694,9 +692,9 @@
 .azra .ep-pill {
   display: inline-block;
   padding: 4px 8px;
-  color: #c3d6ac;
-  background: #293c3c;
-  border: 1px solid #40524a;
+  color: #4F46E5;
+  background: #F2F4F7;
+  border: 1px solid #E4E7EC;
   border-radius: 4px;
   font-size: 12px;
 }
@@ -711,35 +709,35 @@
   align-items: center;
   gap: 25px;
   padding-bottom: 18px;
-  border-bottom: 1px solid #354657;
+  border-bottom: 1px solid #E4E7EC;
 }
 .azra .ep-agenda-fila time {
-  color: #c3d6a6;
+  color: #4F46E5;
   font-size: 14px;
 }
 .azra .ep-pie {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  border-top: 1px solid #314052;
+  border-top: 1px solid #E4E7EC;
   padding: 24px 40px;
-  color: #93a4b4;
+  color: #667085;
   font-size: 12px;
 }
 .azra .ep-pie > span:first-child {
   font-size: 13px;
-  color: #becdb3;
+  color: #667085;
 }
 .azra .ep-pie > span:first-child > span {
-  color: #d7ee9c;
+  color: #4F46E5;
 }
 .azra .ep-alerta {
   margin: 18px 0;
   padding: 14px 17px;
-  border: 1px solid #b78466;
+  border: 1px solid #FECDCA;
   border-radius: 7px;
-  background: #49322d;
-  color: #ffe5ce;
+  background: #F2F4F7;
+  color: #B54708;
   font-size: 13px;
   display: flex;
   gap: 15px;
@@ -750,8 +748,8 @@
 .azra .ep-alerta button {
   min-height: 44px;
   background: transparent;
-  color: #ffe5ce;
-  border: 1px solid #b98b75;
+  color: #B54708;
+  border: 1px solid #FECDCA;
   border-radius: 5px;
   padding: 6px 12px;
 }
@@ -759,15 +757,15 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  color: #d4eab2;
+  color: #4F46E5;
   padding: 12px 0;
   font-size: 13px;
 }
 .azra .ep-modal {
   --ep-suave: #a9b6c4;
-  background: #132234 !important;
-  color: #f1f2e9 !important;
-  border: 1px solid #506174 !important;
+  background: #FFFFFF !important;
+  color: #182230 !important;
+  border: 1px solid #E4E7EC !important;
   max-width: 850px !important;
   width: calc(100vw - 32px) !important;
   padding: 28px !important;
@@ -777,7 +775,7 @@
   box-sizing: border-box;
 }
 .azra .ep-modal::backdrop {
-  background: #07101bbd;
+  background: #F2F4F7;
   backdrop-filter: blur(4px);
 }
 .azra .ep-editor-cabecera {
@@ -785,7 +783,7 @@
   align-items: start;
   justify-content: space-between;
   gap: 25px;
-  border-bottom: 1px solid #34475a;
+  border-bottom: 1px solid #E4E7EC;
   padding-bottom: 23px;
   margin-bottom: 24px;
 }
@@ -811,7 +809,7 @@
   display: grid;
   gap: 7px;
   font-size: 13px;
-  color: #cfdae1;
+  color: #182230;
   min-width: 0;
 }
 .azra .ep-formulario input:not([type="checkbox"]),
@@ -820,11 +818,11 @@
   min-width: 0;
   width: 100%;
   min-height: 44px;
-  border: 1px solid #4b6073;
+  border: 1px solid #E4E7EC;
   border-radius: 6px;
   padding: 10px 12px;
-  color: #eef2e9;
-  background: #1c3043;
+  color: #182230;
+  background: #F2F4F7;
   font:
     14px/1.5 Arial,
     sans-serif;
@@ -836,7 +834,7 @@
 .azra .ep-formulario input:focus,
 .azra .ep-formulario textarea:focus,
 .azra .ep-formulario select:focus {
-  outline: 2px solid #d2e9a6;
+  outline: 2px solid #4F46E5;
   outline-offset: 2px;
 }
 .azra .ep-dos {
@@ -854,7 +852,7 @@
 }
 .azra .ep-formulario legend {
   font-size: 13px;
-  color: #cfdae1;
+  color: #182230;
   margin-bottom: 9px;
 }
 .azra .ep-canales {
@@ -868,25 +866,25 @@
   align-items: center;
   min-height: 44px;
   font-size: 13px;
-  color: #cdd9df;
+  color: #182230;
   line-height: 1.6;
 }
 .azra .ep-checkbox input {
   width: 18px;
   height: 18px;
-  accent-color: #d7ee9c;
+  accent-color: #4F46E5;
   flex-shrink: 0;
 }
 .azra .ep-fuente {
-  border: 1px solid #3a4d5e;
-  background: #192a3b;
+  border: 1px solid #E4E7EC;
+  background: #FFFFFF;
   padding: 15px;
   border-radius: 7px;
   display: grid;
   gap: 13px;
 }
 .azra .ep-nota {
-  color: #aebdcc;
+  color: #667085;
   font-size: 12px;
   line-height: 1.7;
   margin: 0;
@@ -897,27 +895,27 @@
   padding: 18px 0 5px;
   position: sticky;
   bottom: -28px;
-  background: #132234;
-  border-top: 1px solid #374a5c;
+  background: #FFFFFF;
+  border-top: 1px solid #E4E7EC;
   z-index: 2;
 }
 .azra .ep-handoff {
   margin-top: 22px;
   padding-top: 22px;
-  border-top: 1px solid #405265;
+  border-top: 1px solid #E4E7EC;
   display: grid;
   gap: 18px;
 }
 .azra .ep-gemini {
   padding: 17px;
-  border: 1px solid #475676;
+  border: 1px solid #B2DDFF;
   border-radius: 8px;
   display: grid;
   gap: 13px;
 }
 .azra .ep-gemini p {
   font-size: 13px;
-  color: #bccbd7;
+  color: #667085;
   margin: 0;
   line-height: 1.7;
 }
@@ -1183,11 +1181,11 @@
 
 .azra .ep-ambito {
   font-size: 12px !important;
-  color: #b4c2a7;
+  color: #667085;
   padding-top: 16px;
 }
 .azra .ep-continuar {
-  border: 1px solid #58714b;
+  border: 1px solid #E4E7EC;
   border-radius: 8px;
   padding: 18px;
   display: grid;
@@ -1199,9 +1197,9 @@
   font-size: 13px;
 }
 .azra .ep-continuar select {
-  background: #1c3043;
-  color: #eef2e9;
-  border: 1px solid #4b6073;
+  background: #F2F4F7;
+  color: #182230;
+  border: 1px solid #E4E7EC;
   border-radius: 6px;
   min-height: 44px;
   padding: 10px;
@@ -1211,8 +1209,8 @@
 /* Único marco activo del producto: el CSS y el menú anteriores no se cargan. */
 .azra.ep-shell {
   min-height: 100dvh;
-  background: #101d2d;
-  color: #f3f3e9;
+  background: #F7F8FA;
+  color: #182230;
   font:
     14px/1.5 Arial,
     Helvetica,
@@ -1232,20 +1230,20 @@
   gap: 16px;
   padding: 12px 40px;
   min-height: 68px;
-  border-bottom: 1px solid #2b3b4d;
-  background: #101d2d;
+  border-bottom: 1px solid #E4E7EC;
+  background: #F7F8FA;
 }
 .azra .ep-session-brand {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   min-height: 44px;
-  color: #eef3df;
+  color: #182230;
   text-decoration: none;
   font-size: 17px;
 }
 .azra .ep-session-brand svg {
-  color: #d7ee9c;
+  color: #4F46E5;
 }
 .azra .ep-session-brand strong {
   font-weight: 600;
@@ -1253,7 +1251,7 @@
 }
 .azra .ep-session-brand span {
   font-weight: 400;
-  color: #83968c;
+  color: #667085;
   margin: 0 6px;
 }
 .azra .ep-session-options {
@@ -1264,7 +1262,7 @@
 }
 .azra .ep-idiomas {
   display: flex;
-  border: 1px solid #405165;
+  border: 1px solid #E4E7EC;
   border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0;
@@ -1273,21 +1271,21 @@
   min-width: 44px;
   min-height: 44px;
   background: none;
-  color: #b5c2cf;
+  color: #667085;
   border: 0;
   font-size: 12px;
   cursor: pointer;
 }
 .azra .ep-idiomas button[aria-pressed="true"] {
-  background: #d7ee9c;
-  color: #172224;
+  background: #4F46E5;
+  color: #FFFFFF;
 }
 .azra .ep-session-user {
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #acbac8;
+  color: #667085;
   font-size: 12px;
 }
 .azra .ep-session-exit {
@@ -1298,17 +1296,17 @@
   min-height: 44px;
   padding: 10px 12px;
   background: none;
-  border: 1px solid #405165;
+  border: 1px solid #E4E7EC;
   border-radius: 6px;
-  color: #e4eadb;
+  color: #182230;
   font-size: 12px;
   cursor: pointer;
   flex-shrink: 0;
 }
 .azra .ep-session-error {
   padding: 10px 20px;
-  background: #49322d;
-  color: #ffe5ce;
+  background: #F2F4F7;
+  color: #B54708;
   font-size: 13px;
 }
 .azra .ep-saltar {
@@ -1317,8 +1315,8 @@
   left: 15px;
   z-index: 10000;
   padding: 12px;
-  background: #d7ee9c;
-  color: #172224;
+  background: #4F46E5;
+  color: #FFFFFF;
 }
 .azra .ep-saltar:focus {
   top: 10px;
@@ -1329,7 +1327,7 @@
   margin: auto;
   max-height: calc(100dvh - 32px);
   overflow: auto;
-  box-shadow: 0 24px 48px #0005;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.06);
 }
 .azra .ep-acceso-nuevo {
   display: flex;
@@ -1339,18 +1337,18 @@
   gap: 15px;
   padding: 18px 20px;
   margin-top: 22px;
-  background: #1c3043;
-  border: 1px solid #536950;
+  background: #F2F4F7;
+  border: 1px solid #E4E7EC;
   border-radius: 8px;
 }
 .azra .ep-acceso-nuevo strong {
   font-size: 16px;
-  color: #d7ee9c;
+  color: #4F46E5;
 }
 .azra .ep-acceso-nuevo p {
   max-width: 750px;
   font-size: 13px;
-  color: #c0cdda;
+  color: #182230;
   margin-top: 7px;
   line-height: 1.7;
 }
@@ -1414,15 +1412,15 @@
   }
   .azra .ep-marco > .ep-nav > button:hover {
     color: var(--ep-texto);
-    background: #1b2c40;
+    background: #F2F4F7;
   }
   .azra .ep-marco > .ep-nav > button[aria-current] {
-    color: #172224;
+    color: #FFFFFF;
     background: var(--ep-lima);
   }
   .azra .ep-marco > .ep-nav > button[aria-current] > span {
-    color: #172224;
-    background: #ffffffaa;
+    color: #FFFFFF;
+    background: #F2F4F7;
   }
   .azra .ep-marco > .ep-nav > button > span {
     margin-left: auto;
@@ -1443,9 +1441,9 @@
   align-items: center;
   margin: 8px 0 22px;
   padding: 18px 20px;
-  border: 1px solid #4b5f3a;
+  border: 1px solid #E4E7EC;
   border-radius: 14px;
-  background: linear-gradient(120deg, #1d2f22, var(--ep-tarjeta));
+  background: #F2F4F7;
 }
 .azra .ep-guia-tarjeta > svg {
   color: var(--ep-lima);
@@ -1507,7 +1505,7 @@
   cursor: pointer;
 }
 .azra .ep-cifra:hover {
-  border-color: #506174 !important;
+  border-color: #E4E7EC !important;
 }
 .azra .ep-cifra span {
   color: var(--ep-suave);
@@ -1560,7 +1558,7 @@
   cursor: pointer;
 }
 .azra .ep-inicio-lista button:hover {
-  background: #1b2c40 !important;
+  background: #F2F4F7 !important;
 }
 .azra .ep-inicio-lista button > svg {
   flex: 0 0 auto;
@@ -1587,20 +1585,20 @@
   height: 10px;
   margin-top: 6px;
   border-radius: 50%;
-  background: #6b7a8a;
+  background: #F2F4F7;
 }
 .azra .ep-ej-completada {
-  background: #3ccf7d;
+  background: #ECFDF3;
 }
 .azra .ep-ej-en_curso {
-  background: #4ea1ff;
+  background: #EFF8FF;
 }
 .azra .ep-ej-esperando_dueno {
-  background: #f2c94c;
+  background: #FFFAEB;
 }
 .azra .ep-ej-fallida,
 .azra .ep-ej-bloqueada {
-  background: #ff6b6b;
+  background: #FEF3F2;
 }
 @media (max-width: 1023px) {
   .azra .ep-inicio-cifras {
@@ -1672,7 +1670,7 @@
   border: 1px solid var(--ep-borde) !important;
   border-radius: 12px;
   color: var(--ep-texto) !important;
-  background: #0f1b2a !important;
+  background: #F2F4F7 !important;
   cursor: pointer;
 }
 .azra .ep-ob-objetivo span,
@@ -1742,7 +1740,7 @@
   overflow: auto;
   padding: 10px;
   border-radius: 8px;
-  background: #0f1b2a;
+  background: #F2F4F7;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 12px;
@@ -1842,13 +1840,13 @@
 .azra .ep-nav > .ep-nav-nuevo {
   justify-content: center;
   margin-bottom: 10px;
-  color: #172224 !important;
+  color: #FFFFFF !important;
   background: var(--ep-lima) !important;
   border: 0 !important;
   font-weight: 600;
 }
 .azra .ep-nav > .ep-nav-nuevo:hover {
-  background: #e6f6bb !important;
+  background: #4F46E5 !important;
 }
 @media (max-width: 1023px) {
   .azra .ep-nav > .ep-nav-nuevo {
@@ -1887,7 +1885,7 @@
 }
 .azra .ep-chip-neutro {
   color: var(--ep-suave);
-  background: #1e2e42;
+  background: #F2F4F7;
 }
 /* Siguiente acción en tarjetas y editor. */
 .azra .ep-siguiente {
@@ -2065,7 +2063,7 @@
 }
 .azra .ep-boton.ep-peligro {
   color: var(--ep-error);
-  border-color: #6b3a40;
+  border-color: #FECDCA;
 }
 .azra .ep-editar {
   margin: 4px 0 12px;
@@ -2217,4 +2215,896 @@
 .azra .eg-habilita {
   margin: 8px 0 !important;
   font-size: 13px;
+}
+
+/* ═══ Tema claro (19 nov) ════════════════════════════════════════════════════
+   Paleta: fondo #F7F8FA, superficies #FFFFFF, texto #182230 / #667085, bordes #E4E7EC,
+   acento #4F46E5, selección #EEF2FF. Colores semánticos aparte (éxito, advertencia, error,
+   información). Espaciado 4·8·12·16·24·32, radios 8–12, sombras mínimas. */
+.azra.ep-shell,
+.azra .ep-estudio,
+.azra .ep-modal {
+  --ep-fondo: #f7f8fa;
+  --ep-tarjeta: #ffffff;
+  --ep-superficie: #ffffff;
+  --ep-superficie-2: #f2f4f7;
+  --ep-borde: #e4e7ec;
+  --ep-borde-suave: #eaecf0;
+  --ep-borde-control: #d0d5dd;
+  --ep-texto: #182230;
+  --ep-texto-2: #344054;
+  --ep-suave: #667085;
+  --ep-lima: #4f46e5;
+  --ep-acento: #4f46e5;
+  --ep-acento-hover: #4338ca;
+  --ep-seleccion: #eef2ff;
+  --ep-atencion: #b54708;
+  --ep-atencion-fondo: #fffaeb;
+  --ep-proceso: #175cd3;
+  --ep-proceso-fondo: #eff8ff;
+  --ep-hecho: #067647;
+  --ep-hecho-fondo: #ecfdf3;
+  --ep-error: #b42318;
+  --ep-error-fondo: #fef3f2;
+  --ep-radio: 10px;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+.azra.ep-shell {
+  background: var(--ep-fondo);
+  color: var(--ep-texto);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.azra .ep-estudio {
+  min-height: calc(100vh - 56px);
+  background: var(--ep-fondo);
+  color: var(--ep-texto);
+  font-size: 14px;
+}
+.azra .ep-estudio h1,
+.azra .ep-estudio h2,
+.azra .ep-estudio h3,
+.azra .ep-modal h2,
+.azra .ep-modal h3 {
+  color: var(--ep-texto);
+  letter-spacing: -0.01em;
+}
+.azra .ep-estudio button:focus-visible,
+.azra .ep-estudio a:focus-visible,
+.azra .ep-modal button:focus-visible,
+.azra .ep-modal a:focus-visible,
+.azra.ep-shell button:focus-visible,
+.azra.ep-shell a:focus-visible {
+  outline: 2px solid var(--ep-acento);
+  outline-offset: 2px;
+}
+
+/* Cabecera compacta */
+.azra .ep-session-bar {
+  min-height: 56px;
+  padding: 8px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--ep-borde);
+}
+.azra .ep-session-brand {
+  gap: 8px;
+  min-height: 40px;
+  font-size: 15px;
+}
+.azra .ep-session-brand svg {
+  color: var(--ep-acento);
+}
+.azra .ep-session-espacio {
+  margin: 0 !important;
+  padding-left: 10px;
+  border-left: 1px solid var(--ep-borde);
+  color: var(--ep-suave) !important;
+  font-weight: 500 !important;
+}
+.azra .ep-cuenta {
+  position: relative;
+}
+.azra .ep-cuenta-boton {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 40px;
+  padding: 4px 8px 4px 4px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--ep-texto-2);
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.azra .ep-cuenta-boton:hover,
+.azra .ep-cuenta-boton[aria-expanded="true"] {
+  background: var(--ep-superficie-2);
+}
+.azra .ep-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--ep-acento);
+  background: var(--ep-seleccion);
+  font-size: 12px;
+  font-weight: 700;
+}
+.azra .ep-cuenta-nombre {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.azra .ep-oculto-visual {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.azra .ep-cuenta-panel {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  right: 0;
+  display: grid;
+  gap: 8px;
+  width: 260px;
+  padding: 12px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgb(16 24 40 / 0.12);
+}
+.azra .ep-cuenta-email {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ep-suave);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .ep-cuenta-grupo {
+  display: grid;
+  gap: 2px;
+  padding: 8px 0;
+  border-top: 1px solid var(--ep-borde-suave);
+  border-bottom: 1px solid var(--ep-borde-suave);
+}
+.azra .ep-cuenta-grupo > span {
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+.azra .ep-cuenta-grupo button,
+.azra .ep-cuenta-salir {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--ep-texto-2);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.azra .ep-cuenta-grupo button:hover,
+.azra .ep-cuenta-salir:hover {
+  background: var(--ep-superficie-2);
+}
+.azra .ep-cuenta-grupo button[aria-pressed="true"] {
+  color: var(--ep-acento);
+  font-weight: 600;
+}
+.azra .ep-cuenta-grupo button:not([aria-pressed="true"]) {
+  padding-left: 30px;
+}
+@media (max-width: 599px) {
+  .azra .ep-cuenta-nombre {
+    display: none;
+  }
+  .azra .ep-session-bar {
+    padding: 8px 16px;
+  }
+}
+
+/* Barra lateral: selección con fondo tenue (no como el botón principal) */
+.azra .ep-nav-toggle {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .azra .ep-marco {
+    grid-template-columns: 232px minmax(0, 1fr);
+  }
+  .azra .ep-marco > .ep-nav {
+    min-height: calc(100vh - 56px);
+    padding: 16px 12px;
+    background: #ffffff;
+    border-right: 1px solid var(--ep-borde);
+  }
+  .azra .ep-marco > .ep-nav > button {
+    min-height: 38px;
+    color: #475467;
+    font-weight: 500;
+  }
+  .azra .ep-marco > .ep-nav > button:hover {
+    color: var(--ep-texto);
+    background: var(--ep-superficie-2);
+  }
+  .azra .ep-marco > .ep-nav > button[aria-current] {
+    color: var(--ep-acento);
+    background: var(--ep-seleccion);
+    font-weight: 600;
+  }
+  .azra .ep-marco > .ep-nav > button > span,
+  .azra .ep-marco > .ep-nav > button[aria-current] > span {
+    color: var(--ep-texto-2);
+    background: var(--ep-superficie-2);
+  }
+  .azra .ep-marco > .ep-cuerpo {
+    max-width: 1280px;
+    padding: 0 32px 40px;
+  }
+}
+@media (max-width: 1023px) {
+  .azra .ep-nav-toggle {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: calc(100% - 32px);
+    min-height: 44px;
+    margin: 12px 16px 0;
+    padding: 0 12px;
+    border: 1px solid var(--ep-borde-control);
+    border-radius: 8px;
+    color: var(--ep-texto);
+    background: #ffffff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .azra .ep-marco > .ep-nav {
+    display: none;
+  }
+  .azra .ep-marco > .ep-nav.ep-nav-abierta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 8px 16px 0;
+    padding: 8px;
+    border: 1px solid var(--ep-borde);
+    border-radius: 10px;
+    background: #ffffff;
+  }
+  .azra .ep-marco > .ep-nav.ep-nav-abierta > button {
+    min-height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    color: #475467;
+  }
+  .azra .ep-marco > .ep-nav.ep-nav-abierta > button[aria-current] {
+    color: var(--ep-acento);
+    background: var(--ep-seleccion);
+  }
+  .azra .ep-cuerpo {
+    padding: 0 16px 32px;
+  }
+}
+
+/* Encabezado de sección */
+.azra .ep-marco .ep-seccion-cabecera {
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  padding: 24px 0 16px;
+}
+.azra .ep-marco .ep-seccion-cabecera h1 {
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+.azra .ep-marco .ep-seccion-cabecera p:not(.ep-eyebrow) {
+  margin-top: 4px;
+  color: var(--ep-suave);
+  font-size: 14px;
+}
+.azra .ep-marco .ep-seccion-cabecera > svg {
+  display: none;
+}
+
+/* Botones: uno principal sólido; secundarios discretos; terciarios como enlace */
+.azra .ep-boton {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--ep-borde-control);
+  border-radius: 8px;
+  color: var(--ep-texto-2);
+  background: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: none;
+}
+.azra .ep-boton:hover:not(:disabled) {
+  color: var(--ep-texto);
+  background: var(--ep-superficie-2);
+}
+.azra .ep-boton.ep-primario {
+  color: #ffffff;
+  background: var(--ep-acento);
+  border-color: var(--ep-acento);
+}
+.azra .ep-boton.ep-primario:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--ep-acento-hover);
+  border-color: var(--ep-acento-hover);
+}
+.azra .ep-boton.ep-texto {
+  padding-left: 8px;
+  padding-right: 8px;
+  border-color: transparent;
+  color: #475467;
+  background: transparent;
+}
+.azra .ep-boton.ep-texto:hover:not(:disabled) {
+  color: var(--ep-texto);
+  background: var(--ep-superficie-2);
+}
+.azra .ep-boton.ep-peligro,
+.azra .ep-boton.eg-peligro {
+  color: var(--ep-error);
+  border-color: #fecdca;
+  background: #ffffff;
+}
+.azra .ep-enlace,
+.azra .ep-enlace-eg {
+  color: var(--ep-acento) !important;
+  text-decoration: none;
+  font-weight: 500;
+}
+.azra .ep-enlace:hover,
+.azra .ep-enlace-eg:hover {
+  text-decoration: underline;
+}
+
+/* Formularios */
+.azra .ep-estudio input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.azra .ep-estudio select,
+.azra .ep-estudio textarea,
+.azra .ep-modal input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.azra .ep-modal select,
+.azra .ep-modal textarea {
+  color: var(--ep-texto);
+  background: #ffffff;
+  border: 1px solid var(--ep-borde-control);
+  border-radius: 8px;
+}
+.azra .ep-estudio input::placeholder,
+.azra .ep-modal input::placeholder,
+.azra .ep-estudio textarea::placeholder,
+.azra .ep-modal textarea::placeholder {
+  color: #98a2b3;
+}
+.azra .ep-estudio input[type="checkbox"],
+.azra .ep-modal input[type="checkbox"],
+.azra .ep-estudio input[type="radio"],
+.azra .ep-modal input[type="radio"] {
+  accent-color: var(--ep-acento);
+}
+.azra .ep-estudio label,
+.azra .ep-modal label {
+  color: var(--ep-texto-2);
+}
+
+/* Avisos compactos */
+.azra .ep-alerta {
+  color: var(--ep-error);
+  background: var(--ep-error-fondo);
+  border: 1px solid #fecdca;
+  border-radius: 8px;
+}
+.azra .ep-aviso {
+  color: var(--ep-hecho);
+  background: var(--ep-hecho-fondo);
+  border: 1px solid #abefc6;
+  border-radius: 8px;
+}
+.azra .ep-nota {
+  color: var(--ep-suave);
+}
+.azra .ep-estudio .eg-presupuesto-aviso {
+  color: var(--ep-atencion);
+  background: var(--ep-atencion-fondo);
+  border-color: #fedf89;
+}
+.azra .ep-pill {
+  color: var(--ep-texto-2);
+  background: var(--ep-superficie-2);
+  border-color: transparent;
+}
+
+/* Modales */
+.azra .ep-modal {
+  color: var(--ep-texto) !important;
+  background: #ffffff !important;
+  border: 1px solid var(--ep-borde) !important;
+  box-shadow: 0 20px 40px rgb(16 24 40 / 0.18) !important;
+}
+.azra .ep-modal::backdrop {
+  background: rgb(16 24 40 / 0.45);
+  backdrop-filter: none;
+}
+.azra .ep-modal .az-dialog-close {
+  color: var(--ep-texto-2);
+  background: #ffffff;
+  border: 1px solid var(--ep-borde-control);
+}
+
+/* Inicio */
+.azra .ep-guia-compacta {
+  margin-bottom: 24px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 10px;
+  background: #ffffff;
+}
+.azra .ep-guia-compacta > summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+.azra .ep-guia-compacta > summary::-webkit-details-marker {
+  display: none;
+}
+.azra .ep-guia-titulo {
+  font-weight: 600;
+}
+.azra .ep-guia-cuenta {
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .ep-progreso {
+  flex: 1 1 120px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ep-superficie-2);
+}
+.azra .ep-progreso > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ep-acento);
+}
+.azra .ep-guia-pasos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0;
+  padding: 0 16px 12px 36px;
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .ep-guia-pasos .ep-hecho {
+  color: var(--ep-hecho);
+}
+.azra .ep-guia-pasos .ep-actual {
+  color: var(--ep-texto);
+  font-weight: 600;
+}
+.azra .ep-inicio-rejilla {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+@media (max-width: 1023px) {
+  .azra .ep-inicio-rejilla {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+.azra .ep-inicio-principal {
+  display: grid;
+  gap: 24px;
+}
+.azra .ep-inicio-h2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.azra .ep-inicio-h3 {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 6px;
+  color: var(--ep-texto-2) !important;
+  font-size: 13px;
+  font-weight: 600;
+}
+.azra .ep-contador {
+  min-width: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  color: var(--ep-acento);
+  background: var(--ep-seleccion);
+  font-size: 12px;
+  text-align: center;
+}
+.azra .ep-contador-suave {
+  color: var(--ep-suave);
+  background: var(--ep-superficie-2);
+}
+.azra .ep-filas {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ep-borde);
+  border-radius: 10px;
+  background: #ffffff;
+  list-style: none;
+}
+.azra .ep-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+}
+.azra .ep-fila + .ep-fila {
+  border-top: 1px solid var(--ep-borde-suave);
+}
+.azra .ep-fila-primera {
+  box-shadow: inset 3px 0 0 var(--ep-acento);
+}
+.azra .ep-fila-sugerida {
+  background: #fcfcfd;
+}
+.azra .ep-fila-texto {
+  display: grid;
+  min-width: 0;
+}
+.azra .ep-fila-texto strong {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .ep-fila-texto small {
+  color: var(--ep-suave);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.azra .ep-fila .ep-boton {
+  min-height: 34px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+@media (max-width: 599px) {
+  .azra .ep-fila {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .azra .ep-fila .ep-chip {
+    display: none;
+  }
+}
+.azra .ep-vacio-breve {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px dashed var(--ep-borde);
+  border-radius: 10px;
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .ep-inicio-lateral {
+  display: grid;
+  gap: 24px;
+}
+.azra .ep-agenda-breve,
+.azra .ep-lista-simple {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .ep-agenda-breve li {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+}
+.azra .ep-agenda-breve time {
+  color: var(--ep-texto-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.azra .ep-agenda-breve span,
+.azra .ep-lista-simple li {
+  display: grid;
+  min-width: 0;
+}
+.azra .ep-agenda-breve small,
+.azra .ep-lista-simple small {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+.azra .ep-enlace-titulo {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--ep-texto) !important;
+  font-weight: 500;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .ep-punto {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #98a2b3;
+}
+.azra .ep-punto.ep-ej-completada {
+  background: #12b76a;
+}
+.azra .ep-punto.ep-ej-en_curso {
+  background: #2e90fa;
+}
+.azra .ep-punto.ep-ej-esperando_dueno {
+  background: #f79009;
+}
+.azra .ep-punto.ep-ej-fallida,
+.azra .ep-punto.ep-ej-bloqueada {
+  background: #f04438;
+}
+.azra .ep-inicio-pie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+
+/* Encargos: tarjetas compactas y columnas sin caja */
+.azra .ep-columna {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.azra .ep-columna > h2 {
+  font-size: 13px;
+  color: var(--ep-texto-2);
+}
+.azra .ep-tarea {
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 10px;
+  color: var(--ep-texto);
+  background: #ffffff;
+  box-shadow: none;
+}
+.azra .ep-tarea:hover {
+  border-color: #c7d2fe;
+}
+.azra .ep-tarea strong {
+  font-size: 14px;
+}
+.azra .ep-agregar {
+  color: var(--ep-suave);
+  border-color: var(--ep-borde-control);
+  background: transparent;
+}
+
+/* Revisión y bloques del estudio sobre fondo claro */
+.azra .ep-revisar,
+.azra .ep-siguiente-editor,
+.azra .ep-revisar-contenido,
+.azra .ep-agenda2-leyenda,
+.azra .ep-agenda2-dias ul li,
+.azra .ep-sin-fecha li,
+.azra .ep-inicio-bloque,
+.azra .ep-conexion,
+.azra .ep-estudio .eg-bloque {
+  background: #ffffff;
+  border-color: var(--ep-borde);
+}
+.azra .ep-revisar-contenido,
+.azra .ep-siguiente-editor {
+  background: var(--ep-superficie-2);
+}
+.azra .ep-chip-neutro {
+  color: var(--ep-texto-2);
+  background: var(--ep-superficie-2);
+}
+.azra .ep-chip-atencion {
+  color: var(--ep-atencion);
+  background: var(--ep-atencion-fondo);
+}
+.azra .ep-chip-proceso {
+  color: var(--ep-proceso);
+  background: var(--ep-proceso-fondo);
+}
+.azra .ep-chip-hecho {
+  color: var(--ep-hecho);
+  background: var(--ep-hecho-fondo);
+}
+.azra .ep-chip-error {
+  color: var(--ep-error);
+  background: var(--ep-error-fondo);
+}
+.azra .ep-pie {
+  color: var(--ep-suave);
+  border-top: 1px solid var(--ep-borde);
+}
+/* Controles nativos en claro (el sistema anterior forzaba «color-scheme: dark»). */
+.azra.ep-shell,
+.azra .ep-estudio,
+.azra .ep-modal,
+.azra .ep-estudio input,
+.azra .ep-estudio select,
+.azra .ep-estudio textarea,
+.azra .ep-modal input,
+.azra .ep-modal select,
+.azra .ep-modal textarea {
+  color-scheme: light;
+}
+.azra .ep-busqueda {
+  border-color: var(--ep-borde-control);
+  border-radius: 8px;
+}
+.azra .ep-busqueda input {
+  border: 0 !important;
+  min-height: 0 !important;
+  background: transparent !important;
+}
+.azra .ep-busqueda input:focus-visible {
+  outline: none;
+}
+.azra .ep-eyebrow {
+  color: var(--ep-suave) !important;
+  font-family: inherit !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  letter-spacing: 0.04em !important;
+}
+.azra .ep-agenda-breve li {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+.azra .ep-agenda-breve time {
+  display: grid;
+  line-height: 1.3;
+}
+.azra .ep-agenda-breve time small {
+  color: var(--ep-suave);
+  font-weight: 400;
+}
+/* Detalles técnicos plegados (conexiones, n8n, almacenamiento). */
+.azra .ep-estudio .eg-detalles-tecnicos {
+  margin: 8px 0;
+}
+.azra .ep-estudio .eg-detalles-tecnicos > summary {
+  color: var(--ep-suave);
+  font-size: 13px;
+  cursor: pointer;
+}
+.azra .ep-estudio .eg-detalles-tecnicos > .eg-datos {
+  margin-top: 8px;
+}
+/* Tarjetas que no se estiran a la altura de la más alta. */
+.azra .ep-estudio .eg-recetas,
+.azra .ep-conexiones {
+  align-items: start;
+}
+.azra .ep-conexion {
+  padding: 16px;
+  gap: 12px;
+}
+.azra .ep-estudio .eg-habilita,
+.azra .ep-conexion p {
+  margin: 4px 0 !important;
+}
+/* ── Eventos en el tema claro ── */
+.azra .ep-estudio .eg-editorial-grid,
+.azra .ep-estudio .eg-cuadricula-eventos {
+  align-items: start;
+}
+.azra .ep-estudio .eg-editorial-grid .eg-tarjeta-imagen {
+  background: #ffffff;
+}
+/* Sin imagen: espacio reservado compacto, sin repetir el título (ya está debajo). */
+.azra .ep-estudio .ec-cover:has(.ec-placeholder) {
+  aspect-ratio: auto;
+  min-height: 72px;
+}
+.azra .ep-estudio .ec-placeholder {
+  gap: 2px;
+  padding: 14px 16px;
+  color: var(--ep-suave);
+  background: var(--ep-superficie-2);
+}
+.azra .ep-estudio .ec-placeholder strong {
+  display: none;
+}
+.azra .ep-estudio .ec-placeholder > span {
+  color: var(--ep-texto-2);
+  font-weight: 600;
+}
+/* Una sola acción principal: en las tarjetas, Aprobar y Buscar imagen son secundarias. */
+.azra .ep-estudio .eg-tarjeta-rapidas .ep-boton.ep-primario,
+.azra .ep-estudio .eg-cover-acciones .ep-boton.ep-primario {
+  color: var(--ep-acento);
+  background: #ffffff;
+  border-color: #c7d2fe;
+}
+.azra .ep-estudio .eg-tarjeta-rapidas .ep-boton.ep-primario:hover:not(:disabled),
+.azra .ep-estudio .eg-cover-acciones .ep-boton.ep-primario:hover:not(:disabled) {
+  color: var(--ep-acento-hover);
+  background: var(--ep-seleccion);
+  border-color: #c7d2fe;
+}
+.azra .ep-estudio .eg-precio {
+  color: var(--ep-acento);
+  background: var(--ep-seleccion);
+  font-weight: 600;
+}
+.azra .ep-estudio .eg-precio-pendiente {
+  color: var(--ep-atencion);
+  background: var(--ep-atencion-fondo);
+  border: 0;
+}
+.azra .ep-estudio .eg-tarjeta-evento {
+  border-color: var(--ep-borde);
+  border-radius: 10px;
+}
+.azra .ep-estudio .eg-tarjeta-cuerpo h3 {
+  font-size: 16px;
+}
+.azra .ep-estudio .eg-plegable {
+  padding: 12px 16px;
+}
+.azra .ep-estudio .eg-plegable > summary {
+  font-size: 14px;
+}
+.azra .ep-estudio .eg-presupuesto-aviso,
+.azra .ep-alerta,
+.azra .ep-aviso {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.azra .ep-estudio .eg-pestanas button[aria-selected="true"],
+.azra .ep-estudio .eg-pestana-activa {
+  color: var(--ep-acento) !important;
+  border-color: var(--ep-acento) !important;
+}
+/* Consumo y formularios de ajustes: «Guardar» discreto (la pantalla no tiene una acción principal única). */
+.azra .ep-estudio .eg-formulario-linea .ep-boton.ep-primario,
+.azra .ep-estudio .eg-tabla-tarifas ~ .ep-acciones .ep-boton.ep-primario,
+.azra .ep-estudio .eg-consumo .ep-acciones .ep-boton.ep-primario {
+  color: var(--ep-acento);
+  background: #ffffff;
+  border-color: #c7d2fe;
+}
+.azra .ep-estudio .eg-horario .ep-boton.ep-primario {
+  color: var(--ep-acento);
+  background: #ffffff;
+  border-color: #c7d2fe;
 }
