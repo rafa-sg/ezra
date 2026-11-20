@@ -19,3 +19,11 @@ handoff/
 
 .next-verificar/
 /x
+
+# Entorno de colaboración
+.env.docker
+!.env.docker.example
+.next-*/
+.venv/
+.clerk/
+output/

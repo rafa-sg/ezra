@@ -1,0 +1,31 @@
+# Lo que NO entra a la imagen de Docker (contexto de construcción).
+# Secretos y configuración personal
+.env*
+!.env.example
+!.env.docker.example
+.clerk/
+# Datos reales, respaldos, medios y trabajo local
+data/
+work/
+handoff/
+output/
+x/
+# Dependencias y archivos generados (se instalan o generan dentro del contenedor)
+node_modules/
+.next/
+.next-*/
+out/
+*.tsbuildinfo
+coverage/
+test-results/
+playwright-report/
+.venv/
+# Git, herramientas de IA y del sistema
+.git/
+.claude/
+.agents/
+.DS_Store
+*.log
+Dockerfile
+compose.yaml
+.dockerignore

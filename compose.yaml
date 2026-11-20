@@ -1,0 +1,46 @@
+# Entorno de desarrollo de Ezra con Docker: `docker compose up --build`
+# La web queda en http://127.0.0.1:3000 y solo en tu computadora.
+name: ezra
+
+services:
+  web:
+    build: .
+    image: ezra-dev
+    ports:
+      - "127.0.0.1:3000:3000"
+    # Tu configuración (claves de desarrollo de Clerk). Copia .env.docker.example a .env.docker.
+    env_file:
+      - path: .env.docker
+        required: false
+    environment:
+      EZRA_DATA_DIR: /datos
+      # Apagados siempre en este entorno, aunque .env.docker diga otra cosa:
+      # trabajador y horarios de las granjas, IA de pago y publicación en redes.
+      EZRA_GRANJAS_TRABAJADOR: "0"
+      EZRA_PRODUCCION_IA: "0"
+      GEMINI_API_KEY: ""
+      INSTAGRAM_APP_ID: ""
+      INSTAGRAM_APP_SECRET: ""
+      META_APP_ID: ""
+      META_APP_SECRET: ""
+      TIKTOK_CLIENT_KEY: ""
+      TIKTOK_CLIENT_SECRET: ""
+      SPOTMI_EDITORIAL_EMAIL: ""
+      SPOTMI_EDITORIAL_PASSWORD: ""
+      N8N_WEBHOOK_URL: ""
+      N8N_IDEAS_WEBHOOK_URL: ""
+      N8N_DRAFT_WEBHOOK_URL: ""
+    # Solo se monta el código. Tus .env*, data/, work/ y node_modules/ de la computadora
+    # nunca entran al contenedor.
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./scripts:/app/scripts
+      - ./assets:/app/assets
+      - ./docs:/app/docs
+      - datos:/datos
+
+volumes:
+  # Datos de desarrollo de esta computadora (SQLite, medios, accesos). Sobrevive a
+  # `docker compose down`; solo se borra con `docker compose down -v`.
+  datos:
