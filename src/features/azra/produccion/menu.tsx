@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useSyncExternalStore, type ComponentType } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType } from "react";
 import { createPortal } from "react-dom";
 import { ArrowUpRight, Menu } from "lucide-react";
 
@@ -17,9 +17,72 @@ function EnBarra({ id, children }: { id: string; children: React.ReactNode }) {
   return destino ? createPortal(children, destino) : <div className="ez-barra-respaldo">{children}</div>;
 }
 
+/** Anillo con el % del día (SVG). */
+function AnilloDia({ porcentaje, tr }: { porcentaje: number; tr: (c: string) => string }) {
+  const r = 9;
+  const c = 2 * Math.PI * r;
+  return (
+    <span className="ez-anillo" title={`${porcentaje} % ${tr("ez_menu_dia")} · ${tr("ez_menu_diaAyuda")}`}>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <circle cx="12" cy="12" r={r} fill="none" stroke="currentColor" strokeOpacity="0.16" strokeWidth="3" />
+        <circle cx="12" cy="12" r={r} fill="none" stroke="url(#ez-anillo-grad)" strokeWidth="3" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - porcentaje / 100)} transform="rotate(-90 12 12)" />
+        <defs>
+          <linearGradient id="ez-anillo-grad" x1="0" x2="1">
+            <stop offset="0" stopColor="#7c74ff" />
+            <stop offset="1" stopColor="#3b6cff" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <span>
+        {porcentaje} %<span className="ez-oculto"> {tr("ez_menu_dia")}</span>
+      </span>
+    </span>
+  );
+}
+
 /**
- * Navegación del estudio: píldora negra «Menú · N % del día» en el centro de la barra y botón
- * «Nuevo encargo» a la derecha. El menú se cierra con Escape o al hacer clic fuera, y devuelve el foco.
+ * Barra de secciones (escritorio): todas visibles en una cápsula, la activa marcada con una píldora
+ * negra que se desliza. La posición del indicador se escribe como variables CSS (sin re-render).
+ */
+function BarraNav({ items, actual, porcentaje, tr, onIr, deshabilitado }: { items: ItemMenu[]; actual: string; porcentaje: number | null; tr: (c: string) => string; onIr: (id: string) => void; deshabilitado?: boolean }) {
+  const nav = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = nav.current;
+    if (!el) return;
+    const colocar = () => {
+      const activo = el.querySelector<HTMLElement>("button[aria-current]");
+      el.style.setProperty("--ez-ind-x", `${activo ? activo.offsetLeft : 0}px`);
+      el.style.setProperty("--ez-ind-w", `${activo ? activo.offsetWidth : 0}px`);
+      el.classList.toggle("ez-nav-con-activo", Boolean(activo));
+    };
+    colocar();
+    const obs = new ResizeObserver(colocar);
+    obs.observe(el);
+    el.querySelectorAll("button").forEach((b) => obs.observe(b));
+    return () => obs.disconnect();
+  }, [actual, items]);
+  return (
+    <nav ref={nav} className="ez-nav-barra" aria-label={tr("productionStudio")}>
+      <span className="ez-nav-indicador" aria-hidden="true" />
+      {items.map(({ id, icono: Icono, etiqueta, contador }) => (
+        <button key={id} aria-current={actual === id ? "page" : undefined} disabled={deshabilitado} onClick={() => onIr(id)} title={etiqueta}>
+          <Icono size={16} aria-hidden />
+          <span className="ez-nav-etiqueta">{etiqueta}</span>
+          {contador ? (
+            <span className="ez-nav-contador" aria-label={`${contador} ${tr("ez_porRevisar")}`}>
+              {contador}
+            </span>
+          ) : null}
+        </button>
+      ))}
+      {porcentaje !== null && <AnilloDia porcentaje={porcentaje} tr={tr} />}
+    </nav>
+  );
+}
+
+/**
+ * Navegación del estudio: en escritorio, todas las secciones en la barra; en pantallas angostas,
+ * la píldora negra «Menú · N % del día». Botón «Nuevo encargo» a la derecha. El menú se cierra con Escape o al hacer clic fuera, y devuelve el foco.
  */
 export function MenuEstudio({
   items,
@@ -77,6 +140,7 @@ export function MenuEstudio({
   return (
     <>
       <EnBarra id="ez-barra-centro">
+        <BarraNav items={items} actual={actual} porcentaje={porcentaje} tr={tr} onIr={onIr} deshabilitado={deshabilitado} />
         <div className="ez-menu">
           <button
             ref={boton}

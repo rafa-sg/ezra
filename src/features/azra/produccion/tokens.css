@@ -317,10 +317,150 @@
   display: flex;
   justify-content: flex-end;
 }
-/* La acción y la cuenta comparten la columna derecha. */
+/* Marca · secciones (centradas en el espacio libre) · acción · cuenta. */
 .azra .ep-session-bar {
   grid-template-areas: "marca centro accion cuenta";
-  grid-template-columns: 1fr auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 16px;
+}
+.azra .ez-barra-centro {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* ── Secciones en la barra (escritorio) ── */
+.azra .ez-nav-barra {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 4px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--ez-sombra-s), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+/* Píldora negra que se desliza hasta la sección activa. */
+.azra .ez-nav-indicador {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: var(--ez-ind-w, 0);
+  border-radius: 12px;
+  background: var(--ez-negro);
+  box-shadow: 0 6px 16px -8px rgba(11, 11, 15, 0.7);
+  opacity: 0;
+  transform: translateX(var(--ez-ind-x, 0));
+  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1), width 380ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease;
+}
+.azra .ez-nav-con-activo .ez-nav-indicador {
+  opacity: 1;
+}
+.azra .ez-nav-barra > button {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--ep-suave);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 200ms ease, background 200ms ease;
+}
+.azra .ez-nav-barra > button:hover:not([aria-current]):not(:disabled) {
+  color: var(--ep-texto);
+  background: rgba(15, 15, 20, 0.05);
+}
+.azra .ez-nav-barra > button[aria-current] {
+  color: #fff;
+  font-weight: 600;
+}
+.azra .ez-nav-barra > button:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 1px;
+}
+.azra .ez-nav-barra > button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.azra .ez-nav-contador {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--ez-negro);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.azra .ez-nav-barra > button[aria-current] .ez-nav-contador {
+  background: #fff;
+  color: var(--ez-negro);
+}
+.azra .ez-anillo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  padding: 0 10px 0 10px;
+  border-left: 1px solid var(--ep-borde);
+  color: var(--ep-texto-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.azra .ez-anillo svg circle:last-of-type {
+  transition: stroke-dashoffset 600ms ease;
+}
+/* El menú desplegable queda solo para pantallas angostas. */
+@media (min-width: 1024px) {
+  .azra .ez-barra-centro .ez-menu {
+    display: none;
+  }
+}
+@media (max-width: 1023px) {
+  .azra .ez-nav-barra {
+    display: none;
+  }
+}
+/* Ancho medio: íconos; el nombre solo en la sección activa (los demás lo muestran al pasar el cursor). */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .azra .ez-nav-barra > button:not([aria-current]) .ez-nav-etiqueta {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .azra .ez-nav-barra > button {
+    padding: 0 10px;
+  }
+  .azra .ep-cuenta-nombre {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-nav-indicador,
+  .azra .ez-nav-barra > button,
+  .azra .ez-anillo svg circle:last-of-type {
+    transition: none;
+  }
 }
 .azra .ez-cta {
   min-height: 38px;
