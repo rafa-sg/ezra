@@ -1,0 +1,499 @@
+/*
+ * Tokens del estudio Ezra (estilo Avvyren + OrbAI). Se mapean sobre las variables --ep-* que ya usan
+ * todas las pantallas, así heredan el estilo sin reescribirse. Tres temas por sección:
+ *   claro   — fondo #F7F7F8 con degradados lavanda y azul (Avvyren)
+ *   oscuro  — negro con tarjetas grafito (sección de mapa)
+ *   liquido — escala de grises con el fondo líquido y tarjetas blancas flotantes (OrbAI)
+ */
+.azra.ep-shell,
+.azra .ep-estudio,
+.azra .ep-modal {
+  /* Tipografía display del sistema (sin descargar fuentes). */
+  --ez-fuente: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ez-tracking-titulo: -0.035em;
+  --ez-radio-s: 10px;
+  --ez-radio: 16px;
+  --ez-radio-l: 20px;
+  --ez-radio-xl: 28px;
+  --ez-pill: 999px;
+  --ez-sombra-s: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+  --ez-sombra: 0 10px 30px -12px rgba(30, 27, 75, 0.18), 0 2px 6px rgba(16, 24, 40, 0.06);
+  --ez-sombra-l: 0 30px 70px -24px rgba(30, 27, 75, 0.35), 0 8px 20px -8px rgba(16, 24, 40, 0.12);
+  --ez-halo: radial-gradient(60% 80% at 20% 0%, rgba(124, 116, 255, 0.28), transparent 70%), radial-gradient(60% 80% at 100% 100%, rgba(80, 160, 255, 0.24), transparent 70%);
+  --ez-transicion: 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  --ez-negro: #0b0b0f;
+  --ez-azul: #3b6cff;
+  --ez-violeta: #7c74ff;
+  --ez-verde: #12b76a;
+}
+
+/* ── Tema claro (por defecto) ── */
+.azra.ep-shell,
+.azra .ep-estudio,
+.azra [data-tema="claro"],
+.azra .ep-modal {
+  --ep-fondo: #f7f7f8;
+  --ep-tarjeta: #ffffff;
+  --ep-superficie: #ffffff;
+  --ep-superficie-2: #f2f2f5;
+  --ep-borde: #e7e7ec;
+  --ep-borde-suave: #ededf2;
+  --ep-borde-control: #d6d6de;
+  --ep-texto: #0f0f14;
+  --ep-texto-2: #34343f;
+  --ep-suave: #6b6b78;
+  --ep-acento: #111117;
+  --ep-acento-hover: #2a2a33;
+  --ep-seleccion: #efeffb;
+  --ez-fondo-pagina: radial-gradient(1200px 600px at 100% -10%, rgba(124, 116, 255, 0.16), transparent 60%), radial-gradient(900px 500px at -10% 30%, rgba(80, 160, 255, 0.12), transparent 60%), #f7f7f8;
+  --ez-titulo-2: #8a8a96;
+}
+/* ── Tema oscuro ── */
+.azra [data-tema="oscuro"] {
+  --ep-fondo: #050507;
+  --ep-tarjeta: #111116;
+  --ep-superficie: #111116;
+  --ep-superficie-2: #1a1a21;
+  --ep-borde: rgba(255, 255, 255, 0.09);
+  --ep-borde-suave: rgba(255, 255, 255, 0.06);
+  --ep-borde-control: rgba(255, 255, 255, 0.16);
+  --ep-texto: #f5f5f7;
+  --ep-texto-2: #d4d4dc;
+  --ep-suave: #9a9aa8;
+  --ep-acento: #f5f5f7;
+  --ep-acento-hover: #ffffff;
+  --ep-seleccion: rgba(124, 116, 255, 0.18);
+  --ep-atencion-fondo: rgba(247, 144, 9, 0.14);
+  --ep-proceso-fondo: rgba(46, 144, 250, 0.14);
+  --ep-hecho-fondo: rgba(18, 183, 106, 0.14);
+  --ep-error-fondo: rgba(240, 68, 56, 0.14);
+  --ep-atencion: #fdb022;
+  --ep-proceso: #84caff;
+  --ep-hecho: #47cd89;
+  --ep-error: #f97066;
+  --ez-fondo-pagina: radial-gradient(900px 500px at 80% -10%, rgba(59, 108, 255, 0.22), transparent 60%), #050507;
+  --ez-titulo-2: #7d7d8a;
+  --ez-sombra: 0 20px 50px -20px rgba(0, 0, 0, 0.8);
+  --ez-sombra-l: 0 30px 80px -30px rgba(0, 0, 0, 0.9);
+  color-scheme: dark;
+}
+/* ── Tema líquido ── */
+.azra [data-tema="liquido"] {
+  --ep-fondo: #e9e9ec;
+  --ep-tarjeta: #ffffff;
+  --ep-superficie: #ffffff;
+  --ep-superficie-2: #f4f4f6;
+  --ep-borde: rgba(15, 15, 20, 0.07);
+  --ep-texto: #0b0b0f;
+  --ep-suave: #63636e;
+  --ep-acento: #0b0b0f;
+  --ez-fondo-pagina: linear-gradient(180deg, #f1f1f3, #dedee2);
+  --ez-titulo-2: #8d8d97;
+  --ez-sombra: 0 24px 60px -24px rgba(0, 0, 0, 0.35), 0 4px 12px -4px rgba(0, 0, 0, 0.08);
+  --ez-sombra-l: 0 40px 90px -30px rgba(0, 0, 0, 0.45);
+}
+
+.azra.ep-shell,
+.azra .ep-estudio {
+  font-family: var(--ez-fuente);
+}
+.azra .ep-estudio {
+  background: var(--ez-fondo-pagina);
+}
+
+/* ── Piezas compartidas ── */
+.azra .ez-titulo {
+  margin: 0;
+  font-weight: 600;
+  font-size: clamp(36px, 5.4vw, 76px);
+  line-height: 1.02;
+  letter-spacing: var(--ez-tracking-titulo);
+  color: var(--ep-texto);
+}
+.azra .ez-titulo em {
+  display: block;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ez-titulo-2);
+}
+.azra .ez-titulo-seccion {
+  margin: 0;
+  font-weight: 600;
+  font-size: clamp(26px, 3vw, 40px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+.azra .ez-titulo-seccion em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ez-titulo-2);
+}
+.azra .ez-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--ez-pill);
+  background: var(--ez-negro);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.azra [data-tema="oscuro"] .ez-pill {
+  background: #fff;
+  color: var(--ez-negro);
+}
+.azra .ez-boton-negro,
+.azra .ez-boton-blanco {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform var(--ez-transicion), box-shadow var(--ez-transicion), background var(--ez-transicion);
+  text-decoration: none;
+}
+.azra .ez-boton-negro {
+  border: 1px solid var(--ez-negro);
+  background: var(--ez-negro);
+  color: #fff;
+  box-shadow: 0 8px 20px -8px rgba(11, 11, 15, 0.55);
+}
+.azra .ez-boton-blanco {
+  border: 1px solid var(--ep-borde);
+  background: var(--ep-tarjeta);
+  color: var(--ep-texto);
+  box-shadow: var(--ez-sombra-s);
+}
+.azra [data-tema="oscuro"] .ez-boton-negro {
+  background: #fff;
+  color: var(--ez-negro);
+  border-color: #fff;
+}
+.azra .ez-boton-negro:hover,
+.azra .ez-boton-blanco:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--ez-sombra);
+}
+.azra .ez-boton-negro:focus-visible,
+.azra .ez-boton-blanco:focus-visible {
+  outline: 3px solid var(--ez-violeta);
+  outline-offset: 2px;
+}
+.azra .ez-boton-negro:disabled,
+.azra .ez-boton-blanco:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+/* Tarjeta con borde de 1 px, radio 18 y halo de degradado detrás. */
+.azra .ez-tarjeta {
+  position: relative;
+  border: 1px solid var(--ep-borde);
+  border-radius: var(--ez-radio-l);
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra);
+}
+.azra .ez-con-halo {
+  position: relative;
+  isolation: isolate;
+}
+.azra .ez-con-halo::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  z-index: -1;
+  border-radius: calc(var(--ez-radio-l) + 14px);
+  background: var(--ez-halo);
+  filter: blur(6px);
+}
+.azra .ez-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--ez-pill);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--ep-superficie-2);
+  color: var(--ep-texto-2);
+}
+.azra .ez-chip-vivo {
+  background: var(--ep-hecho-fondo, #ecfdf3);
+  color: var(--ep-hecho, #067647);
+}
+.azra .ez-chip-vivo::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ez-latido 1.8s ease-in-out infinite;
+}
+@keyframes ez-latido {
+  50% {
+    opacity: 0.35;
+  }
+}
+/* Aparición con fundido y desenfoque al entrar en pantalla (IntersectionObserver añade .ez-visible). */
+.azra .ez-aparece {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(14px);
+  transition: opacity 500ms ease, filter 500ms ease, transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.azra .ez-aparece.ez-visible {
+  opacity: 1;
+  filter: none;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-aparece {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    transition: none;
+  }
+  .azra .ez-chip-vivo::before {
+    animation: none;
+  }
+  .azra .ez-boton-negro,
+  .azra .ez-boton-blanco {
+    transition: none;
+  }
+}
+.azra [data-tema="oscuro"] .ep-boton.ep-primario,
+.azra [data-tema="oscuro"] .ep-boton.ep-primario:hover:not(:disabled) {
+  color: var(--ez-negro);
+}
+
+/* ── Barra superior: logo · Menú (centro) · acción + cuenta (derecha) ── */
+.azra .ep-session-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--ep-borde-suave);
+  background: rgba(247, 247, 248, 0.82);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+}
+.azra .ep-session-bar > :last-child {
+  justify-self: end;
+}
+.azra .ep-session-bar .ep-session-brand {
+  justify-self: start;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+.azra .ez-logo {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--ez-negro);
+  color: #fff;
+}
+.azra .ep-session-brand .ez-logo svg {
+  color: #fff;
+}
+.azra .ez-barra-centro {
+  justify-self: center;
+}
+.azra .ez-barra-accion {
+  display: flex;
+  justify-content: flex-end;
+}
+/* La acción y la cuenta comparten la columna derecha. */
+.azra .ep-session-bar {
+  grid-template-areas: "marca centro accion cuenta";
+  grid-template-columns: 1fr auto minmax(0, 1fr) auto;
+}
+.azra .ez-cta {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 11px;
+  font-size: 13px;
+}
+.azra .ez-menu {
+  position: relative;
+}
+.azra .ez-menu-pildora {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 6px 0 16px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--ez-negro);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -12px rgba(11, 11, 15, 0.7);
+  transition: transform var(--ez-transicion);
+}
+.azra .ez-menu-pildora:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.azra .ez-menu-pildora:focus-visible {
+  outline: 3px solid var(--ez-violeta);
+  outline-offset: 2px;
+}
+.azra .ez-menu-pildora:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.azra .ez-menu-dia {
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.azra .ez-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.azra .ez-menu-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  width: min(440px, calc(100vw - 32px));
+  padding: 10px;
+  transform: translateX(-50%);
+  border: 1px solid var(--ep-borde);
+  border-radius: var(--ez-radio-l);
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra-l);
+  animation: ez-menu-abre 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes ez-menu-abre {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px) scale(0.98);
+  }
+}
+.azra .ez-menu-panel > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--ep-texto-2);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.azra .ez-menu-panel > button span:first-of-type {
+  flex: 1;
+}
+.azra .ez-menu-panel > button:hover {
+  background: var(--ep-superficie-2);
+  color: var(--ep-texto);
+}
+.azra .ez-menu-panel > button[aria-current] {
+  background: var(--ez-negro);
+  color: #fff;
+}
+.azra .ez-menu-panel > button:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+}
+.azra .ez-menu-nota {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+  margin: 6px 4px 2px;
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+.azra .ez-barra-respaldo {
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px 0;
+}
+/* Sin barra lateral: el cuerpo ocupa todo el ancho; el Inicio va de borde a borde. */
+.azra .ep-estudio .ep-marco {
+  display: block;
+}
+.azra .ep-marco > .ep-cuerpo {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 32px 40px;
+}
+.azra .ep-marco > .ep-cuerpo.ep-cuerpo-ancho {
+  max-width: none;
+  padding: 0;
+}
+.azra .ep-cuerpo-ancho > .ep-alerta,
+.azra .ep-cuerpo-ancho > .ep-aviso {
+  margin: 16px 24px 0;
+}
+@media (max-width: 767px) {
+  .azra .ep-session-bar {
+    grid-template-areas: "marca accion cuenta" "centro centro centro";
+    grid-template-columns: 1fr auto auto;
+    padding: 8px 16px;
+  }
+  .azra .ep-session-bar .ep-session-brand {
+    grid-area: marca;
+  }
+  .azra .ez-barra-centro {
+    grid-area: centro;
+    justify-self: stretch;
+  }
+  .azra .ez-barra-accion {
+    grid-area: accion;
+  }
+  .azra .ep-session-bar > :last-child {
+    grid-area: cuenta;
+  }
+  .azra .ez-menu-pildora {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .azra .ez-menu-panel {
+    grid-template-columns: 1fr;
+  }
+  .azra .ep-session-espacio {
+    display: none;
+  }
+  .azra .ep-marco > .ep-cuerpo {
+    padding: 20px 16px 32px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-menu-panel {
+    animation: none;
+  }
+  .azra .ez-menu-pildora {
+    transition: none;
+  }
+}

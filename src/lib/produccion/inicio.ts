@@ -5,13 +5,62 @@ import { listarGranjas } from "../granjas/almacen";
 import { listarConexiones } from "../granjas/conexiones";
 import { estadoPresupuesto, imagenesIaHoy, leerLimiteImagenes } from "../granjas/consumo";
 import { listarEventos } from "../granjas/eventos";
-import { diaLocal, sumarDias } from "../granjas/tiempo";
+import { diaLocal, instanteLocal, sumarDias } from "../granjas/tiempo";
 
 /**
  * Inicio del estudio: todo sale de lo guardado (encargos en JSON, granjas, eventos y consumo en
  * SQLite, conexiones comprobadas). Nada se calcula a partir de supuestos ni de datos de ejemplo.
  */
 export type Pendiente = { tipo: string; titulo: string; detalle: string; seccion: "encargos" | "granjas" | "eventos" | "conexiones" | "consumo"; id?: string };
+
+/** Acciones del propietario que cuentan como «resueltas» para el % del día (salen de la auditoría). */
+export const ACCIONES_RESUELTAS = ["evento.aprobar", "evento.descartar", "evento.imagen.confirmar", "post.subido", "paso.aprobar", "pieza.aprobar"];
+export const DIAS_SERIE = 30;
+export type PuntoSerie = { dia: string; eventos: number; postsCreados: number; postsSubidos: number; tokens: number; proximas: number };
+
+/**
+ * Series por día para el Pulso: 30 días hacia atrás (eventos encontrados, posts preparados y subidos,
+ * tokens de Gemini) y 14 hacia adelante (fechas próximas). Todo de lo guardado, en hora de El Salvador.
+ */
+export function seriesPulso(ahora: Date, proximas: { fecha: string }[]): { pasado: PuntoSerie[]; futuro: { dia: string; proximas: number }[] } {
+  const hoy = diaLocal(ahora);
+  const desde = sumarDias(hoy, -(DIAS_SERIE - 1));
+  const desdeIso = instanteLocal(desde).toISOString();
+  const pasado = new Map<string, PuntoSerie>();
+  for (let i = 0; i < DIAS_SERIE; i++) {
+    const dia = sumarDias(desde, i);
+    pasado.set(dia, { dia, eventos: 0, postsCreados: 0, postsSubidos: 0, tokens: 0, proximas: 0 });
+  }
+  const sumar = (iso: string | null, campo: "eventos" | "postsCreados" | "postsSubidos" | "tokens", n = 1) => {
+    if (!iso) return;
+    const p = pasado.get(diaLocal(new Date(iso)));
+    if (p) p[campo] += n;
+  };
+  for (const f of base().prepare("select creado from eventos where creado >= ?").all(desdeIso) as { creado: string }[]) sumar(f.creado, "eventos");
+  for (const f of base().prepare("select creado, subido from posts_ig where creado >= ? or subido >= ?").all(desdeIso, desdeIso) as { creado: string; subido: string | null }[]) {
+    if (f.creado >= desdeIso) sumar(f.creado, "postsCreados");
+    if (f.subido && f.subido >= desdeIso) sumar(f.subido, "postsSubidos");
+  }
+  for (const f of base().prepare("select fecha, total_tokens from consumo_ia where fecha >= ?").all(desdeIso) as { fecha: string; total_tokens: number }[])
+    sumar(f.fecha, "tokens", Number(f.total_tokens) || 0);
+  const futuro = Array.from({ length: 14 }, (_, i) => {
+    const dia = sumarDias(hoy, i);
+    return { dia, proximas: proximas.filter((p) => p.fecha.slice(0, 10) === dia).length };
+  });
+  return { pasado: [...pasado.values()], futuro };
+}
+
+/** % del día: lo que resolviste hoy frente a lo que queda pendiente ahora. Sin nada que hacer, 100 %. */
+export function progresoDia(ahora: Date, pendientesActuales: number, aprobadosHoyEncargos: number) {
+  const hoy = diaLocal(ahora);
+  const marcas = ACCIONES_RESUELTAS.map(() => "?").join(", ");
+  const fila = base()
+    .prepare(`select count(*) as n from auditoria where accion in (${marcas}) and fecha >= ? and fecha < ?`)
+    .get(...ACCIONES_RESUELTAS, instanteLocal(hoy).toISOString(), instanteLocal(sumarDias(hoy, 1)).toISOString()) as { n: number };
+  const resueltas = Number(fila.n) + aprobadosHoyEncargos;
+  const total = resueltas + pendientesActuales;
+  return { resueltas, pendientes: pendientesActuales, porcentaje: total ? Math.round((resueltas / total) * 100) : 100 };
+}
 
 export async function resumenInicio(ahora = new Date()) {
   const produccion = await leerProduccion();
@@ -92,13 +141,24 @@ export async function resumenInicio(ahora = new Date()) {
     .slice(0, 5)
     .map((e) => ({ id: e.id, titulo: e.titulo, version: e.version, fechaPrevista: e.fechaPrevista, actualizado: e.actualizado }));
 
+  const aprobadosHoy = encargos.filter((e) => e.estado === "aprobado" && diaLocal(new Date(e.actualizado)) === hoy).length;
   return {
+    series: seriesPulso(ahora, proximas),
+    progreso: progresoDia(ahora, pendientes.length, aprobadosHoy),
+    granjasActivas: granjas.length,
     siguiente,
     enCurso,
     terminados,
     encargos: { total: encargos.length, porEstado, recientes: encargos.slice(0, 5).map((e) => ({ id: e.id, titulo: e.titulo, estado: e.estado, version: e.version, actualizado: e.actualizado })) },
     granjas: ejecuciones,
-    eventos: { nuevos: nuevos.length, aprobados: eventos.filter((e) => e.estado === "aprobado").length, imagenesPendientes, postsListos },
+    eventos: {
+      nuevos: nuevos.length,
+      aprobados: eventos.filter((e) => e.estado === "aprobado").length,
+      enBandeja: eventos.filter((e) => e.estado !== "descartado" && (!e.fecha || (e.fechaFin ?? e.fecha) >= hoy)).length,
+      imagenesPendientes,
+      postsListos,
+      postsSubidos: Number((base().prepare("select count(*) as n from posts_ig where estado = 'subido'").get() as { n: number }).n),
+    },
     conexiones,
     consumo: { dia: presupuesto.dia, mes: presupuesto.mes, agotado: presupuesto.agotado, imagenesIA: { hoy: imagenesIaHoy(ahora), limite: leerLimiteImagenes() } },
     proximas,

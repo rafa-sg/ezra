@@ -26,7 +26,6 @@ import {
   MessageSquareWarning,
   Ban,
   CircleArrowRight,
-  Menu,
 } from "lucide-react";
 import { useLanguage, type MessageKey } from "../i18n";
 import { useClerk } from "@clerk/nextjs";
@@ -53,10 +52,12 @@ import { ColocarEnGranja } from "../granjas/colocar";
 import { SeccionConsumo } from "../granjas/consumo";
 import { SeccionEventos } from "../granjas/eventos";
 import { Inicio, type DestinoInicio } from "./inicio";
+import { MenuEstudio } from "./menu";
 import { AgendaCalendario } from "./agenda";
 import { Bienvenida, leerGuia } from "./bienvenida";
 import type { EstadoOnboarding } from "@/lib/produccion/onboarding";
 import "./estudio.css";
+import "./tokens.css";
 
 // Barra lateral estilo Buffer: Inicio y Encargos arriba; las secciones anteriores siguen igual.
 const secciones = ["inicio", "encargos", "granjas", "eventos", "calendario", "conexiones", "consumo"] as const;
@@ -99,7 +100,8 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   const tr = (clave: string) => t(clave as MessageKey);
   const g = (clave: string) => t(`g_${clave}` as MessageKey);
   const [seccion, setSeccion] = useState<Seccion>("inicio");
-  const [navAbierta, setNavAbierta] = useState(false);
+  // % del día para la píldora del menú (se recalcula con cada cambio que refresca el Inicio).
+  const [progresoDia, setProgresoDia] = useState<number | null>(null);
   const [guia, setGuia] = useState<EstadoOnboarding | null>(null);
   const [guiaAbierta, setGuiaAbierta] = useState(false);
   // Cada guardado sube este número y el Inicio vuelve a leer sus datos.
@@ -130,15 +132,16 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   const encargos = produccion?.encargos ?? [];
   // Menú desplegable de móvil: Escape lo cierra y devuelve el foco al botón.
   useEffect(() => {
-    if (!navAbierta) return;
-    const tecla = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setNavAbierta(false);
-      (document.querySelector(".ep-nav-toggle") as HTMLButtonElement | null)?.focus();
+    if (soloLectura) return;
+    let vivo = true;
+    fetch("/api/produccion/inicio", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { progreso?: { porcentaje: number } } | null) => vivo && setProgresoDia(d?.progreso?.porcentaje ?? null))
+      .catch(() => vivo && setProgresoDia(null));
+    return () => {
+      vivo = false;
     };
-    document.addEventListener("keydown", tecla);
-    return () => document.removeEventListener("keydown", tecla);
-  }, [navAbierta]);
+  }, [versionInicio, soloLectura]);
   // Aviso del navegador si cierras o recargas con cambios del encargo sin guardar.
   useEffect(() => {
     if (!modificado) return;
@@ -214,7 +217,6 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   }, [soloLectura]);
   function navegar(nueva: Seccion) {
     setSeccion(nueva);
-    setNavAbierta(false);
     setBusqueda("");
     setAviso("");
   }
@@ -451,26 +453,22 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
       </header>
       )}
       <div className="ep-marco">
-      {/* En móvil el menú es desplegable; en escritorio es una barra lateral fija. */}
-      <button className="ep-nav-toggle" aria-expanded={navAbierta} aria-controls="ep-nav" onClick={() => setNavAbierta(!navAbierta)}>
-        <Menu size={18} aria-hidden="true" />
-        {tr(navegacion.find((n) => n.id === seccion)?.etiqueta ?? "p_inicio")}
-      </button>
-      <nav id="ep-nav" className={`ep-nav ${navAbierta ? "ep-nav-abierta" : ""}`} aria-label={tr("productionStudio")}>
-        {navegacion.map(({ id, icono: Icono, etiqueta }) => (
-          <button
-            key={id}
-            aria-current={!soloLectura && seccion === id ? "page" : undefined}
-            disabled={soloLectura}
-            onClick={() => navegar(id)}
-          >
-            <Icono size={17} />
-            {tr(etiqueta)}
-            {id === "encargos" && encargos.some((e) => e.estado === "revision") && <span>{encargos.filter((e) => e.estado === "revision").length}</span>}
-          </button>
-        ))}
-      </nav>
-      <div className="ep-cuerpo">
+      {/* Navegación en la barra superior: píldora «Menú · % del día» y «Nuevo encargo». */}
+      <MenuEstudio
+        items={navegacion.map(({ id, icono, etiqueta }) => ({
+          id,
+          icono,
+          etiqueta: tr(etiqueta),
+          contador: id === "encargos" ? encargos.filter((e) => e.estado === "revision").length : undefined,
+        }))}
+        actual={soloLectura ? "" : seccion}
+        porcentaje={progresoDia}
+        tr={tr}
+        onIr={(id) => navegar(id as Seccion)}
+        onNuevo={() => crear()}
+        deshabilitado={soloLectura || !produccion}
+      />
+      <div className={`ep-cuerpo ${seccion === "inicio" && !soloLectura ? "ep-cuerpo-ancho" : ""}`}>
         {soloLectura ? (
           <div className="ep-acceso-nuevo">
             <div>

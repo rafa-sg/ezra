@@ -1,0 +1,43 @@
+import { z } from "zod";
+
+/**
+ * Modelo de la personalización del estudio, sin dependencias del servidor: lo usan la API y la
+ * interfaz (el navegador no puede importar la base de datos).
+ */
+export const widgetsPulso = ["kpis", "grafica", "atencion", "proximas", "instagram", "granjas", "agentes"] as const;
+export type WidgetPulso = (typeof widgetsPulso)[number];
+export const temas = ["claro", "oscuro", "liquido"] as const;
+export const seccionesTema = ["inicio", "encargos", "granjas", "eventos", "calendario", "conexiones", "consumo"] as const;
+export const tamanos = ["s", "m", "l"] as const;
+
+const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+export const preferenciasSchema = z.object({
+  revision: z.number().int().min(0).default(0),
+  widgets: z
+    .array(z.object({ id: z.enum(widgetsPulso), visible: z.boolean(), tamano: z.enum(tamanos), titulo: z.string().trim().max(40).default("") }))
+    .max(widgetsPulso.length)
+    .refine((l) => new Set(l.map((w) => w.id)).size === l.length, "Un widget repetido.")
+    .default([]),
+  temas: z.partialRecord(z.enum(seccionesTema), z.enum(temas)).default({}),
+  agentes: z.record(z.string().regex(/^[a-z_]{2,40}$/), z.object({ nombre: z.string().trim().max(30).default(""), rol: z.string().trim().max(90).default("") })).default({}),
+  coloresGranja: z.record(z.string().max(64), color).default({}),
+});
+export type Preferencias = z.infer<typeof preferenciasSchema>;
+
+/** Tablero por defecto: lo urgente arriba, luego el pulso y el resto. */
+export const widgetsPorDefecto: Preferencias["widgets"] = [
+  { id: "kpis", visible: true, tamano: "l", titulo: "" },
+  { id: "atencion", visible: true, tamano: "m", titulo: "" },
+  { id: "grafica", visible: true, tamano: "m", titulo: "" },
+  { id: "proximas", visible: true, tamano: "s", titulo: "" },
+  { id: "instagram", visible: true, tamano: "s", titulo: "" },
+  { id: "granjas", visible: true, tamano: "s", titulo: "" },
+  { id: "agentes", visible: true, tamano: "l", titulo: "" },
+];
+
+/**
+ * Cambios que manda la interfaz: solo las claves presentes. No usa los valores por defecto del
+ * esquema (rellenarían lo que no se mandó y borrarían, por ejemplo, el orden al cambiar el tema).
+ * La validación completa se hace después, sobre el resultado combinado.
+ */
+export const cambiosSchema = z.partialRecord(z.enum(["widgets", "temas", "agentes", "coloresGranja"]), z.unknown());

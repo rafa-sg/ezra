@@ -7,6 +7,7 @@ import { LanguageProvider, useLanguage } from "./i18n";
 import { href } from "./routes";
 import { setAccountScope } from "./account/service";
 import "./produccion/estudio.css";
+import "./produccion/tokens.css";
 
 export type ShellUser = {
   email: string;
@@ -37,10 +38,15 @@ function Shell({ children, user }: ShellProps) {
       </a>
       <header className="ep-session-bar">
         <Link href={href("produccion")} className="ep-session-brand">
-          <Sparkles size={18} />
+          <span className="ez-logo" aria-hidden="true">
+            <Sparkles size={15} />
+          </span>
           <strong>ezrá</strong>
           <span className="ep-session-espacio">Spotmi</span>
         </Link>
+        {/* Espacios que llena el estudio: menú (centro) y acción principal (derecha). */}
+        <div id="ez-barra-centro" className="ez-barra-centro" />
+        <div id="ez-barra-accion" className="ez-barra-accion" />
         <MenuCuenta user={user} locale={locale} setLocale={setLocale} salir={salir} saliendo={saliendo} t={t} />
       </header>
       {error && (
