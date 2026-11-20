@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, Copy, Download, ExternalLink, RefreshCw, Save } from "lucide-react";
+import { Check, Clapperboard, Copy, Download, ExternalLink, RefreshCw, Save } from "lucide-react";
 import type { PostIG } from "@/lib/granjas/instagram";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
@@ -16,6 +16,11 @@ const nombreArchivo = (p: PostVista) =>
     .replace(/[^a-z0-9]+/g, "-")
     .slice(0, 40)}`;
 
+/** Texto del guion para la etiqueta accesible del video (titular y escenas). */
+function textoVideo(guion: unknown, titulo: string) {
+  const g = guion as { titular?: string; escenas?: { texto?: string; detalle?: string }[] } | null;
+  return [g?.titular ?? titulo, ...(g?.escenas ?? []).flatMap((e) => [e.texto, e.detalle])].filter(Boolean).join(". ");
+}
 /** Posts listos para subir a mano. Ezra no usa la API de Instagram. */
 export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: (iso: string) => string }) {
   const [posts, setPosts] = useState<PostVista[] | null>(null);
@@ -27,6 +32,7 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
   const [proveedor, setProveedor] = useState<Record<string, Proveedor>>({});
   const [lamina, setLamina] = useState<Record<string, number>>({});
   const [disenando, setDisenando] = useState<string | null>(null);
+  const [filmando, setFilmando] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   useEffect(() => {
     let vivo = true;
@@ -100,6 +106,25 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
                 ) : (
                   <span className="ep-nota">{g("p_estado_borrador")}</span>
                 )}
+                {p.video && (
+                  <figure className="eg-post-video">
+                    {/* Video mudo: todo su contenido es texto en pantalla, que la etiqueta repite; no hay diálogo que subtitular. */}
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video
+                      src={`/api/granjas/medios/${p.video.medioId}`}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      width={1080}
+                      height={1920}
+                      aria-label={`${g("p_videoAlt")}: ${textoVideo(p.video.guion, p.evento.titulo)}`}
+                    />
+                    <figcaption className="ep-nota">
+                      {g(`p_video_${p.video.origen}`)}
+                      {p.video.nota ? ` · ${p.video.nota}` : ""}
+                    </figcaption>
+                  </figure>
+                )}
                 {laminas.length > 1 && (
                   <div className="eg-post-laminas" role="group" aria-label={g("p_carrusel")}>
                     {laminas.map((m, i) => (
@@ -165,6 +190,24 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
                       {g("p_guardarTexto")}
                     </button>
                   )}
+                  {p.video && (
+                    <a className="ep-boton" href={`/api/granjas/medios/${p.video.medioId}?descargar=${nombreArchivo(p)}-video`}>
+                      <Download size={15} />
+                      {g("p_descargarVideo")}
+                    </a>
+                  )}
+                  <button
+                    className="ep-boton"
+                    disabled={ocupado}
+                    onClick={async () => {
+                      setFilmando(p.id);
+                      await accion({ accion: "video", id: p.id, proveedor: elegido }, g("p_videoListo"));
+                      setFilmando(null);
+                    }}
+                  >
+                    <Clapperboard size={15} className={filmando === p.id ? "eg-girando" : undefined} />
+                    {filmando === p.id ? g("p_filmando") : p.video ? g("p_rehacerVideo") : g("p_crearVideo")}
+                  </button>
                   {p.estado !== "subido" && (
                     <span className="eg-redisenar">
                       <label>

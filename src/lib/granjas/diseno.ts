@@ -29,7 +29,7 @@ async function leerSiExiste(ruta: string) {
 }
 // Rutas locales: el empaquetador no debe rastrearlas.
 const raiz = () => process.cwd();
-async function recursos() {
+export async function recursos() {
   const regular = await leerSiExiste(path.join(/* turbopackIgnore: true */ raiz(), "node_modules/next/dist/compiled/@vercel/og/Geist-Regular.ttf"));
   // Negrita del sistema (macOS); si no existe, todo queda en Geist regular.
   const negrita = await leerSiExiste("/System/Library/Fonts/Supplemental/Arial Bold.ttf");
@@ -41,13 +41,13 @@ async function recursos() {
   return { fuentes, logo: logo ? `data:image/png;base64,${logo.toString("base64")}` : null };
 }
 const tamanoTitulo = (t: string) => (t.length <= 26 ? 92 : t.length <= 48 ? 76 : t.length <= 75 ? 62 : 52);
-const div = (style: CSSProperties, ...hijos: ReactNode[]) => h("div", { style: { display: "flex", ...style } }, ...hijos);
+export const div = (style: CSSProperties, ...hijos: ReactNode[]) => h("div", { style: { display: "flex", ...style } }, ...hijos);
 const capa: CSSProperties = { position: "absolute", top: 0, left: 0, width: ANCHO_POST, height: ALTO_POST };
-const posicion = { arriba: "center top", centro: "center center", abajo: "center bottom" } as const;
+export const posicion = { arriba: "center top", centro: "center center", abajo: "center bottom" } as const;
 /** Opacidad en hexadecimal para los degradados sobre la paleta. */
-const alfa = (hex: string, a: number) => `${hex}${Math.round(a * 255).toString(16).padStart(2, "0")}`;
+export const alfa = (hex: string, a: number) => `${hex}${Math.round(a * 255).toString(16).padStart(2, "0")}`;
 
-function marca(logo: string | null, p: Paleta) {
+export function marca(logo: string | null, p: Paleta) {
   return div(
     { alignItems: "center", gap: 18 },
     logo && p.texto === "#ffffff" ? h("img", { src: logo, width: 66, height: 69 }) : null,

@@ -1,5 +1,6 @@
 import test, { before } from "node:test";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
@@ -185,4 +186,57 @@ test("granja «Post para Instagram» con Claude de director: carrusel guardado, 
   const { post: sinCupo } = await pasosIG.disenarPost(post.id, lleno);
   assert.equal(sinCupo.disenoOrigen, "plantilla");
   assert.match(sinCupo.disenoNota, /límite de 30 intentos/);
+});
+
+test("video: guion validado (titular del evento, nada sin confirmar, máx. 4 escenas) y plantilla si la IA falla", async () => {
+  const video = await import("../src/lib/granjas/video");
+  const e = eventoAprobado("Festival del Maíz de Suchitoto", 5);
+  const bueno = { paleta: "selva", titular: "Festival del Maíz", escenas: [{ texto: "¿Plan para el sábado?", detalle: "", segundos: 3 }] };
+  assert.deepEqual(video.validarGuion(JSON.stringify(bueno), e).problemas, []);
+  const casos: [object, RegExp][] = [
+    [{ ...bueno, titular: "Concierto de otra banda" }, /nombrar el evento/],
+    [{ ...bueno, escenas: [{ texto: "Abre a las 8 p. m.", segundos: 3 }] }, /hora o un precio/],
+    [{ ...bueno, escenas: [{ texto: "Info en www.x.com", segundos: 3 }] }, /enlaces/],
+    [{ ...bueno, escenas: Array(5).fill({ texto: "x", segundos: 3 }) }, /escenas/],
+    [{ ...bueno, escenas: [{ texto: "x", segundos: 30 }] }, /segundos/],
+    [{ ...bueno, escenas: [] }, /escenas/],
+  ];
+  for (const [g, motivo] of casos) assert.match(video.validarGuion(JSON.stringify(g), e).problemas.join(" "), motivo);
+  const prompts: string[] = [];
+  const r = await video.escribirGuion(e, false, {
+    proveedor: "claude",
+    generar: async (p) => {
+      prompts.push(p);
+      return "{}";
+    },
+  });
+  assert.equal(r.origen, "plantilla");
+  assert.equal(prompts.length, 2);
+  assert.match(r.nota, /El guion de claude no cumplió/);
+  assert.ok(video.guionSchema.safeParse(r.guion).success, "la plantilla cumple el esquema");
+});
+
+test("video del post: MP4 vertical 1080×1920 real con ffmpeg, guardado en el post y un intento del límite", { skip: !existsSync("/opt/homebrew/bin/ffmpeg") }, async () => {
+  db.base().exec("delete from posts_ig; delete from eventos; delete from usos_ia;");
+  const e = eventoAprobado("Festival del Maíz de Suchitoto", 3);
+  const post = instagram.crearPost({ eventoId: e.id, granjaId: null, ejecucionId: null, cuenta: "@spotmi.sv", texto: instagram.textoPlantilla(e), textoOrigen: "plantilla", nota: "" });
+  const deps: Dependencias = {
+    generar: async (_encargo, prompt) => {
+      assert.match(prompt, /Guionista de video vertical/);
+      return { texto: JSON.stringify({ paleta: "atardecer", titular: "Festival del Maíz", escenas: [{ texto: "¿Ya tienes plan?", detalle: "", segundos: 2 }] }), busquedaHtml: "" };
+    },
+    recolectar: async () => [],
+    renderizar: async () => {
+      throw new Error("no");
+    },
+    usosLegado: async () => 0,
+  };
+  const { post: conVideo, medio } = await pasosIG.crearVideoPost(post.id, await directorWeb.iaDisenoWeb("claude", post.id, deps));
+  assert.equal(conVideo.video?.origen, "claude");
+  assert.equal(conVideo.video?.medioId, medio.id);
+  assert.equal(medio.mime, "video/mp4");
+  assert.deepEqual([medio.ancho, medio.alto], [1080, 1920]);
+  assert.ok(Math.abs((medio.duracion ?? 0) - 9) < 0.5, `portada 3,5 + 2 + cierre 3,5 s (fue ${medio.duracion})`);
+  assert.equal(pasos.usosGranjasDelMes(), 1);
+  assert.equal(conVideo.medioId, null, "el video no toca la imagen del post");
 });

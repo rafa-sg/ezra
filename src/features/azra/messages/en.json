@@ -1510,5 +1510,16 @@
   "g_p_diseno_manual": "Design edited by you",
   "g_p_diseno_claude": "Design chosen by Claude",
   "g_p_diseno_astra": "Design chosen by Astra",
-  "g_p_diseno_gemini": "Design chosen by Gemini"
+  "g_p_diseno_gemini": "Design chosen by Gemini",
+  "g_p_crearVideo": "Create 9:16 video",
+  "g_p_rehacerVideo": "Redo video",
+  "g_p_filmando": "Building the video… (Claude or Astra may take 1–2 min)",
+  "g_p_videoListo": "Video ready.",
+  "g_p_descargarVideo": "Download video",
+  "g_p_video_plantilla": "Video with template script (no AI), no music",
+  "g_p_video_claude": "Video with Claude's script, no music",
+  "g_p_video_astra": "Video with Astra's script, no music",
+  "g_p_video_gemini": "Video with Gemini's script, no music",
+  "g_p_video_manual": "Video with your edited script, no music",
+  "g_p_videoAlt": "Vertical video"
 }

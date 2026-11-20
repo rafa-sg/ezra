@@ -1,7 +1,9 @@
 import type { Artefacto } from "./almacen";
 import type { Ejecucion } from "./ejecucion";
 import { leerEvento } from "./eventos";
-import { convertirAPng, leerBytesMedio, leerMedio, guardarMedio } from "./medios";
+import { convertirAPng, herramientasVideo, leerBytesMedio, leerMedio, guardarMedio } from "./medios";
+import { cuadrosVideo, duracionGuion, escribirGuion, montarVideo } from "./video";
+import { WorkflowError } from "../workflow";
 import {
   crearPost,
   eventosParaPost,
@@ -9,6 +11,7 @@ import {
   partesFecha,
   horaLegible,
   ponerImagen,
+  ponerVideo,
   postsCreadosHoy,
   promptRedactor,
   textoPlantilla,
@@ -137,6 +140,33 @@ export async function disenarPost(postId: string, ia: IADiseno = null) {
     );
   const actualizado = ponerImagen(postId, medios[0].id, { carrusel: medios.map((m) => m.id), diseno: dirigido.diseno, origen: dirigido.origen, nota: dirigido.nota });
   return { post: actualizado, medio: medios[0], medios };
+}
+/**
+ * Video vertical 9:16 del post: la IA (o la plantilla) escribe el guion; Ezra dibuja las escenas y
+ * ffmpeg las une. La portada usa el afiche solo si su permiso está confirmado (igual que el post).
+ */
+export async function crearVideoPost(postId: string, ia: IADiseno = null) {
+  const { ffmpeg } = await herramientasVideo();
+  if (!ffmpeg) throw new WorkflowError("Falta ffmpeg en esta Mac para armar el video. Instálalo o configura EZRA_FFMPEG_BIN.", 503);
+  const post = leerPost(postId);
+  const { evento, datos } = await datosDePost(post);
+  const escrito = await escribirGuion(evento, Boolean(datos.fondo), ia);
+  const mp4 = await montarVideo(await cuadrosVideo(datos, escrito.guion), ffmpeg);
+  const quien = escrito.origen === "plantilla" ? "guion de plantilla, sin IA" : `guion de ${escrito.origen}`;
+  const medio = await guardarMedio(mp4, {
+    nombre: `Video IG · ${evento.titulo}`.slice(0, 200),
+    procedencia: {
+      origen: "render",
+      herramienta: "ffmpeg",
+      nota: `Video vertical 1080×1920 de ${duracionGuion(escrito.guion).toFixed(1)} s armado en local (${quien})${datos.fondo ? ", con la imagen oficial autorizada" : ""}. Sin música.`,
+      fuentes: datos.fondo && evento.imagenMedioId ? [leerMedio(evento.imagenMedioId).sha256] : [],
+    },
+    licencia: datos.fondo ? `Fondo: ${evento.imagenPermiso}` : "Diseño propio de Spotmi (plantilla local).",
+    generado: false,
+  });
+  // Sin ffprobe no hay medidas; con ffprobe, el video debe ser vertical 1080×1920 y durar algo.
+  if (medio.ancho !== null && (medio.ancho !== 1080 || medio.alto !== 1920 || !medio.duracion)) throw new WorkflowError("El montaje no produjo un video vertical reproducible.", 502);
+  return { post: ponerVideo(postId, { medioId: medio.id, guion: escrito.guion, origen: escrito.origen, nota: escrito.nota }), medio };
 }
 export async function disenarPaso(ejecucion: Ejecucion, entradas: Artefacto[], ia: IADiseno = null): Promise<ResultadoLocal> {
   const ids = new Set<string>();

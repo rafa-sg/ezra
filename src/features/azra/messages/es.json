@@ -1510,5 +1510,16 @@
   "g_p_diseno_manual": "Diseño editado por ti",
   "g_p_diseno_claude": "Diseño elegido por Claude",
   "g_p_diseno_astra": "Diseño elegido por Astra",
-  "g_p_diseno_gemini": "Diseño elegido por Gemini"
+  "g_p_diseno_gemini": "Diseño elegido por Gemini",
+  "g_p_crearVideo": "Crear video 9:16",
+  "g_p_rehacerVideo": "Rehacer video",
+  "g_p_filmando": "Armando el video… (con Claude o Astra puede tardar 1–2 min)",
+  "g_p_videoListo": "Video listo.",
+  "g_p_descargarVideo": "Descargar video",
+  "g_p_video_plantilla": "Video con guion de plantilla (sin IA), sin música",
+  "g_p_video_claude": "Video con guion de Claude, sin música",
+  "g_p_video_astra": "Video con guion de Astra, sin música",
+  "g_p_video_gemini": "Video con guion de Gemini, sin música",
+  "g_p_video_manual": "Video con guion editado por ti, sin música",
+  "g_p_videoAlt": "Video vertical"
 }

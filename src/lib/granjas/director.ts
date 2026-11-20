@@ -41,7 +41,7 @@ export function disenoBase(e: Pick<Evento, "titulo">, conImagen: boolean): Disen
   return { estilo: conImagen ? "afiche" : "tipografico", paleta: "noche", encuadre: "centro", gancho: "", titular: e.titulo.slice(0, 70), laminas: [] };
 }
 
-const palabras = (t: string) =>
+export const palabras = (t: string) =>
   t
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -67,13 +67,13 @@ export function validarDiseno(texto: string, e: Evento, conImagen: boolean): { d
   const propias = new Set(palabras(e.titulo));
   if (propias.size && !palabras(d.titular).some((p) => propias.has(p))) problemas.push("El titular debe nombrar el evento.");
   const textos = [d.gancho, d.titular, ...d.laminas.flatMap((l) => [l.titulo, l.texto])].join("\n");
-  if (mencionaNoConfirmado(textos, e)) problemas.push("Mencionas una hora o un precio que no están confirmados.");
-  if (/https?:\/\/|www\.|@\w/.test(textos)) problemas.push("No pongas enlaces ni cuentas en la imagen.");
+  problemas.push(...problemasDeTexto(textos, e));
   return { diseno: problemas.length ? null : d, problemas };
 }
 
-export function promptDirector(e: Evento, conImagen: boolean, problemasPrevios: string[] = []) {
-  const datos = {
+/** Datos confirmados del evento para los prompts (null = no confirmado). */
+export function datosParaPrompt(e: Evento, conImagen: boolean) {
+  return {
     titulo: e.titulo,
     fecha: e.fecha ? fechaLarga(e.fecha) : null,
     hora: e.hora ? horaLegible(e.hora) : null,
@@ -83,6 +83,16 @@ export function promptDirector(e: Evento, conImagen: boolean, problemasPrevios: 
     descripcion: e.descripcion || null,
     imagenAutorizada: conImagen,
   };
+}
+/** Hora o precio sin confirmar, enlaces o cuentas: lo que nunca puede ir en una imagen o un video. */
+export function problemasDeTexto(textos: string, e: Evento) {
+  const problemas: string[] = [];
+  if (mencionaNoConfirmado(textos, e)) problemas.push("Mencionas una hora o un precio que no están confirmados.");
+  if (/https?:\/\/|www\.|@\w/.test(textos)) problemas.push("No pongas enlaces ni cuentas en la imagen.");
+  return problemas;
+}
+export function promptDirector(e: Evento, conImagen: boolean, problemasPrevios: string[] = []) {
+  const datos = datosParaPrompt(e, conImagen);
   return `# Spotmi · Director de arte de Instagram
 Diseña el post de Instagram (1080×1350) de este evento de El Salvador. Ezra lo dibuja con su plantilla; tú decides:
 - "estilo": ${conImagen ? '"afiche" (la imagen oficial a pantalla completa con degradado), "dividido" (imagen arriba y datos en un panel abajo) o "tipografico" (sin imagen, fecha grande)' : '"tipografico" (el evento no tiene imagen autorizada: es el único permitido)'}.

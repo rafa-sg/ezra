@@ -131,6 +131,7 @@ export type PostIG = {
   diseno: DisenoPost | null;
   disenoOrigen: OrigenDiseno | null;
   disenoNota: string;
+  video: { medioId: string; guion: unknown; origen: OrigenDiseno; nota: string } | null;
   estado: "borrador" | "listo" | "subido";
   igUrl: string | null;
   subido: string | null;
@@ -145,6 +146,13 @@ function leerLista(v: unknown): string[] {
     return Array.isArray(l) ? l.filter((x): x is string => typeof x === "string") : [];
   } catch {
     return [];
+  }
+}
+function leerJson(v: unknown): unknown {
+  try {
+    return v === null || v === undefined ? null : JSON.parse(String(v));
+  } catch {
+    return null;
   }
 }
 function leerDiseno(v: unknown): DisenoPost | null {
@@ -170,6 +178,9 @@ const aPost = (f: Fila): PostIG => ({
   diseno: leerDiseno(f.diseno),
   disenoOrigen: (f.diseno_origen ?? null) as OrigenDiseno | null,
   disenoNota: String(f.diseno_nota ?? ""),
+  video: f.video_medio_id
+    ? { medioId: String(f.video_medio_id), guion: leerJson(f.video_guion), origen: String(f.video_origen ?? "plantilla") as OrigenDiseno, nota: String(f.video_nota ?? "") }
+    : null,
   estado: f.estado as PostIG["estado"],
   igUrl: f.ig_url === null ? null : String(f.ig_url),
   subido: f.subido === null ? null : String(f.subido),
@@ -248,6 +259,14 @@ export function editarTextoPost(postId: string, revision: number, texto: string)
     auditar("post.editar", postId);
     return leerPost(postId);
   });
+}
+export function ponerVideo(postId: string, video: { medioId: string; guion: unknown; origen: OrigenDiseno; nota: string }) {
+  leerPost(postId);
+  base()
+    .prepare("update posts_ig set video_medio_id = ?, video_guion = ?, video_origen = ?, video_nota = ?, revision = revision + 1, actualizado = ? where id = ?")
+    .run(video.medioId, JSON.stringify(video.guion), video.origen, video.nota.slice(0, 500), ahoraIso(), postId);
+  auditar("post.video", postId, { origen: video.origen });
+  return leerPost(postId);
 }
 /** Solo guarda el enlace que pega el propietario: Ezra no publica en Instagram. */
 export function marcarSubido(postId: string, revision: number, enlace: string) {

@@ -103,7 +103,8 @@
 - [x] Granja: el paso «Diseñador de post» acepta Claude, Astra o Gemini (la receta sigue en local por defecto). Web: Eventos › Posts › «Rediseñar con…» (`/api/granjas/posts`, `src/lib/granjas/director-web.ts`). Astra y Claude gastan de los 30 intentos al mes (cada intento cuenta); Gemini, del presupuesto de tokens.
 - [x] UI: miniaturas del carrusel, descarga por lámina, quién hizo el diseño.
 - [x] Check 145/145, build en `.next-verificar`, integración 7/7. No revisado en navegador todavía; sin llamadas reales a Claude ni Astra.
-- [ ] Siguiente: video vertical 9:16 (guion de Claude/Astra + ffmpeg) y referencia IA con Astra: Codex 0.162 tiene `image_generation` y guarda en `~/.codex/generated_images/<sesión>/`; la prueba del 20 nov no corrió (límite de uso de ChatGPT hasta las 12:07).
+- [x] Video vertical 9:16 (`src/lib/granjas/video.ts`, migración 11 con `posts_ig.video_*`): Claude, Astra o Gemini escriben el guion (paleta, titular, 1–4 escenas de 2–5 s) con las mismas reglas; Ezra agrega portada (afiche autorizado o tipográfica) y cierre, dibuja cada escena 1080×1920 y ffmpeg las une con acercamiento lento y fundidos. Sin música (se pone en Instagram/TikTok). Eventos › Posts › «Crear video 9:16» con el proveedor elegido; reproductor y descarga. Muestra real: 13,5 s en 3 s. Check 147/147. Base real en versión 11 (respaldo `granjas-v10-…`).
+- [ ] Siguiente: referencia IA con Astra: Codex 0.162 tiene `image_generation` y guarda en `~/.codex/generated_images/<sesión>/`; la prueba del 20 nov no corrió (límite de uso de ChatGPT hasta las 12:07).
 
 ### Te toca (propietario)
 - [ ] Supabase: correr `work/supabase-probar-sin-aplicar.sql` en el SQL Editor (debe terminar en «PRUEBAS TERMINADAS»), luego `work/supabase-aplicar.sql`, luego `pnpm exec supabase login` y `pnpm exec supabase migration repair --status applied 20261103 20261117 --linked` en spotmi-web.

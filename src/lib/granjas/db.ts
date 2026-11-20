@@ -415,6 +415,13 @@ const migraciones: string[] = [
   alter table posts_ig add column carrusel text not null default '[]';
   alter table posts_ig add column diseno_nota text not null default '';
   `,
+  // 11 · Video vertical del post: el MP4, su guion (JSON), quién lo escribió y la nota.
+  `
+  alter table posts_ig add column video_medio_id text references medios(id);
+  alter table posts_ig add column video_guion text;
+  alter table posts_ig add column video_origen text;
+  alter table posts_ig add column video_nota text not null default '';
+  `,
 ];
 
 export const versionEsquema = migraciones.length;
