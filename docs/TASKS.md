@@ -333,3 +333,11 @@ Verificación conjunta al integrar: 129/129 pruebas unitarias; compilación Webp
 
 ## 2026-11-18 · Referencia manual de Gemini desde tarjetas
 Se añadió «Preparar referencia para Gemini» a tarjetas sin medio o con referencia IA. Usa referencia_prompt existente, adapta la composición manual a 3:2 y ofrece copiar, abrir Gemini y subir JPEG/PNG/WebP mediante el flujo existente referencia_subida. No llama a generación facturada ni cambia la política de publicación: referencia IA solo en bandeja, nunca fotografía oficial ni portada pública. La interfaz aclara que falta de imagen en Ezra no prueba ausencia en todas las fuentes. Lint del archivo, TypeScript y 10 pruebas de eventos/catálogo pasan; pendiente revisión manual en navegador y generación real en la app de Gemini. No se modifican archivos de inicio/onboarding de Claude.
+
+## 2026-11-19 · Estudio funcional, rediseño e imagen original
+- [x] Estudio: Inicio con siguiente paso, guía de inicio con pasos obligatorios u opcionales, encargos con historial, revisión (aprobar, solicitar cambios, rechazar), calendario por tipo de fecha y .ics, conexiones con «qué habilita» (`1f10445`, `19239dd`).
+- [x] Trabajo pendiente de Codex (catálogo editorial y referencia manual de Gemini) guardado en su propio commit (`94ab703`) a pedido del propietario.
+- [x] Imagen original de Instagram/Facebook: «Buscar imagen original», vincular el enlace, carrusel y video por API cuando hay acceso, captura con recorte cuando no, comprobaciones del evento, referencia interna con permiso pendiente, invalidación de posts. Pruebas en `tests/imagen-original.test.ts`; arnés `work/imagen-original-visual.mts` a 1440 y 390.
+- [ ] Propietario: para recuperar automáticamente de cuentas de terceros (como @bolsadevaloressv), conectar Facebook con los permisos de Business Discovery (ver Conexiones › Facebook › guía). Mientras tanto: captura con recorte.
+- [ ] Confirmar con una llamada real que `/me/media` responde con el token de Instagram (inicio de sesión de Instagram); la documentación de Meta no lo dice explícitamente.
+- [ ] Siguiente: rediseño claro pedido el 19 nov (paleta #F7F8FA / #4F46E5, menú de cuenta, Inicio compacto).

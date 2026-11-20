@@ -25,6 +25,7 @@ import { ConfianzaDominios, CuentasSeguir, PegarEnlace, type FilaConfianza } fro
 import type { CuentasSeguidas, EstadoLectura } from "@/lib/granjas/redes";
 
 import { EventCatalog, EventCover } from "./event-catalog";
+import { ImagenOriginal } from "./imagen-original";
 
 type EventoVista = Evento & { ficha: string };
 type Respuesta = {
@@ -153,6 +154,8 @@ export function SeccionEventos({
     forzar: boolean;
   } | null>(null);
   const archivoIA = useRef<HTMLInputElement>(null);
+  // «Buscar imagen original» / «Subir o pegar captura» (panel aparte).
+  const [original, setOriginal] = useState<{ evento: EventoVista; modo: "buscar" | "captura" } | null>(null);
   const [geminiReference, setGeminiReference] = useState<{ event: EventoVista; text: string; copied: boolean } | null>(null);
   async function prepareGeminiReference(event: EventoVista) {
     setOcupado(true);
@@ -701,10 +704,19 @@ export function SeccionEventos({
                 </div>
                 {etiquetaImagen(e) && <div className="eg-cover-note">{etiquetaImagen(e)}</div>}
                 {(!e.imagenMedioId || e.imagenTipo === "ia") && (
-                  <div className="eg-cover-note">
-                    <button className="ep-boton" disabled={ocupado} onClick={() => void prepareGeminiReference(e)}>
-                      <Sparkles size={15} aria-hidden="true" /> {locale === "es" ? "Preparar referencia para Gemini" : "Prepare Gemini reference"}
+                  <div className="eg-cover-note eg-cover-acciones">
+                    <button className="ep-boton ep-primario" disabled={ocupado} onClick={() => setOriginal({ evento: e, modo: "buscar" })}>
+                      <Search size={15} aria-hidden="true" /> {locale === "es" ? "Buscar imagen original" : "Find original image"}
                     </button>
+                    <span>
+                      <button className="ep-enlace-eg" disabled={ocupado} onClick={() => setOriginal({ evento: e, modo: "captura" })}>
+                        {locale === "es" ? "Subir captura" : "Upload capture"}
+                      </button>
+                      {" · "}
+                      <button className="ep-enlace-eg" disabled={ocupado} onClick={() => void prepareGeminiReference(e)}>
+                        {locale === "es" ? "Referencia con Gemini" : "Gemini reference"}
+                      </button>
+                    </span>
                   </div>
                 )}
               </div>
@@ -811,6 +823,20 @@ export function SeccionEventos({
         </div>
       </section>
 
+      {original && (
+        <ImagenOriginal
+          key={`${original.evento.id}-${original.modo}`}
+          evento={original.evento}
+          modoInicial={original.modo}
+          locale={locale}
+          onCerrar={() => setOriginal(null)}
+          onGuardado={async (m) => {
+            setOriginal(null);
+            setAviso(m);
+            await cargar();
+          }}
+        />
+      )}
       <Modal open={Boolean(geminiReference)} onClose={() => !ocupado && setGeminiReference(null)} label={locale === "es" ? "Referencia con Gemini" : "Gemini reference"} className="ep-modal" dismissOnBackdrop>
         {geminiReference && <div className="eg-guia">
           <h2>{locale === "es" ? "Referencia con Gemini" : "Gemini reference"}</h2>
@@ -968,6 +994,17 @@ export function SeccionEventos({
                         {e.imagenBaja ? ` · ${g("ev_bajaResolucion")}` : ""}
                       </small>
                       <small className="ep-nota">{e.imagenPermiso}</small>
+                      {e.imagenPublicacion && (
+                        <small className="ep-nota">
+                          {g("ev_or_publicacion")}:{" "}
+                          <a href={e.imagenPublicacion.url} target="_blank" rel="noreferrer noopener">
+                            {e.imagenPublicacion.plataforma} · {e.imagenPublicacion.cuenta}
+                          </a>{" "}
+                          · {g(e.imagenPublicacion.verificada ? "ev_or_verificada" : "ev_or_sinVerificar")}
+                          {e.imagenPublicacion.recuperada ? ` · ${g("ev_or_recuperada")} ${fecha(e.imagenPublicacion.recuperada)}` : ""}
+                          {e.imagenOrigen ? ` · ${g(`ev_or_origen_${e.imagenOrigen}`)}` : ""}
+                        </small>
+                      )}
                       <small className="ep-nota">
                         {g(
                           e.imagenTipo === "ia"
@@ -1110,6 +1147,12 @@ export function SeccionEventos({
                   >
                     <Search size={15} />
                     {g("ev_buscarImagen")}
+                  </button>
+                )}
+                {!e.imagenConfirmada && (
+                  <button className="ep-boton" disabled={ocupado} onClick={() => (setAbierto(null), setOriginal({ evento: e, modo: "buscar" }))}>
+                    <Search size={15} />
+                    {locale === "es" ? "Buscar imagen original" : "Find original image"}
                   </button>
                 )}
                 <button

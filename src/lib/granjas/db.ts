@@ -392,6 +392,22 @@ const migraciones: string[] = [
     select lower(hex(randomblob(16))), id, imagen_medio_id, imagen_tipo, imagen_url, imagen_permiso, 'Imagen existente al migrar.', actualizado
     from eventos where imagen_medio_id is not null;
   `,
+  // 9 · Origen de la imagen: publicación original (Instagram/Facebook), captura, fotograma o referencia IA,
+  // con la publicación de origen, la plataforma, la cuenta (y si se verificó por API) y cuándo se recuperó.
+  `
+  alter table eventos add column imagen_origen text;
+  alter table eventos add column imagen_publicacion_url text;
+  alter table eventos add column imagen_plataforma text;
+  alter table eventos add column imagen_cuenta text;
+  alter table eventos add column imagen_cuenta_verificada integer not null default 0;
+  alter table eventos add column imagen_recuperada text;
+  alter table evento_imagenes add column origen text;
+  alter table evento_imagenes add column plataforma text;
+  alter table evento_imagenes add column cuenta text;
+  alter table evento_imagenes add column publicacion_url text;
+  update eventos set imagen_origen = case imagen_tipo when 'ia' then 'ia' when 'prensa' then 'prensa' when 'red' then 'original' when 'afiche' then 'web' else null end
+    where imagen_medio_id is not null;
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

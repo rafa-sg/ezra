@@ -27,6 +27,7 @@ import { verificarCandidatos } from "@/lib/granjas/verificador";
 import { eventosPublicosSpotmi } from "@/lib/granjas/spotmi-publico";
 import { listarGranjas } from "@/lib/granjas/almacen";
 import { completarImagenEvento } from "@/lib/granjas/completar-imagenes";
+import { buscarMediosPublicacion, fotogramaDeVideo, guardarImagenOriginal, leerDatosAfiche, vincularPublicacion } from "@/lib/granjas/imagen-original";
 import { estadoImagenesIA, generarReferencia, ponerReferenciaSubida } from "@/lib/granjas/imagen-ia";
 import { promptImagenEvento, revisarPrompt, textoParaModelo } from "@/lib/granjas/prompt-imagen";
 import { importarEventos, MAX_IMPORTAR } from "@/lib/granjas/importar";
@@ -57,6 +58,12 @@ const accion = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("buscar_imagen"), id }),
   // «Completar imágenes»: la interfaz recorre los eventos sin imagen de a uno y muestra el progreso.
   z.object({ accion: z.literal("completar_imagen"), id, ia: z.boolean().default(false) }),
+  // «Buscar imagen original»: publicación de Instagram/Facebook del evento (solo vías autorizadas).
+  z.object({ accion: z.literal("publicacion_buscar"), id, url: z.string().trim().min(10).max(2000), cuenta: z.string().trim().max(60).optional() }),
+  z.object({ accion: z.literal("publicacion_vincular"), id, url: z.string().trim().min(10).max(2000) }),
+  z.object({ accion: z.literal("fotograma"), id, videoUrl: z.string().url().max(2000), segundo: z.number().min(0).max(600) }),
+  z.object({ accion: z.literal("imagen_original"), id, datos: z.unknown() }),
+  z.object({ accion: z.literal("leer_afiche"), id, medioId: id }),
   // Imagen de referencia IA: ver el prompt armado, revisar uno editado y generar o regenerar.
   z.object({ accion: z.literal("referencia_prompt"), id, prompt: z.string().trim().max(2000).optional() }),
   // Referencia hecha en la app de Gemini y subida a mano (no usa la API ni el límite diario).
@@ -164,6 +171,21 @@ export async function POST(request: Request) {
       const resultado = await completarImagenEvento(a.id, { ...cacheLote(), referenciaIA });
       return Response.json({ resultado, evento: leerEvento(a.id) });
     }
+    if (a.accion === "publicacion_buscar") {
+      leerEvento(a.id);
+      return Response.json({ busqueda: await buscarMediosPublicacion(a.url, { cuenta: a.cuenta }) });
+    }
+    if (a.accion === "publicacion_vincular") return Response.json({ ...vincularPublicacion(a.id, a.url), evento: leerEvento(a.id) });
+    if (a.accion === "fotograma") {
+      // Solo videos que entregó la API de Meta (su CDN), nunca un enlace cualquiera.
+      const host = new URL(a.videoUrl).hostname;
+      if (!/(^|\.)(cdninstagram\.com|fbcdn\.net)$/.test(host)) throw new WorkflowError("Solo se extraen fotogramas de videos entregados por la API de Meta.", 422);
+      const e = leerEvento(a.id);
+      const medio = await fotogramaDeVideo(a.videoUrl, a.segundo, `Fotograma · ${e.titulo}`);
+      return Response.json({ medio: { id: medio.id, ancho: medio.ancho, alto: medio.alto } });
+    }
+    if (a.accion === "imagen_original") return Response.json({ evento: await guardarImagenOriginal(a.id, a.datos) });
+    if (a.accion === "leer_afiche") return Response.json({ datos: await leerDatosAfiche(a.medioId, { granjaId: leerEvento(a.id).granjaId }) });
     if (a.accion === "referencia_prompt") {
       const e = leerEvento(a.id);
       const base = promptImagenEvento(e);
