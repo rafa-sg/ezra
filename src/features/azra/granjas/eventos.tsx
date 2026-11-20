@@ -1,12 +1,30 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, CalendarDays, Check, Copy, Download, ExternalLink, Image as Imagen, MapPin, Pencil, RefreshCw, Search, Send, Sparkles, Upload, X } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Check,
+  Copy,
+  Download,
+  ExternalLink,
+  Image as Imagen,
+  MapPin,
+  Pencil,
+  RefreshCw,
+  Search,
+  Send,
+  Sparkles,
+  Upload,
+  X,
+} from "lucide-react";
 import type { Evento, EstadoVisible } from "@/lib/granjas/eventos";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
 import { ListaPosts } from "./posts";
 import { ConfianzaDominios, CuentasSeguir, PegarEnlace, type FilaConfianza } from "./eventos-redes";
 import type { CuentasSeguidas, EstadoLectura } from "@/lib/granjas/redes";
+
+import { EventCatalog, EventCover } from "./event-catalog";
 
 type EventoVista = Evento & { ficha: string };
 type Respuesta = {
@@ -20,11 +38,31 @@ type Respuesta = {
   cuentas: CuentasSeguidas;
   lectura: { instagram: EstadoLectura; facebook: EstadoLectura };
   confianza: FilaConfianza[];
-  imagenesIA: { activa: boolean; motivo: string; aviso: string; hoy: number; limite: number; modelo: string };
+  imagenesIA: {
+    activa: boolean;
+    motivo: string;
+    aviso: string;
+    hoy: number;
+    limite: number;
+    modelo: string;
+  };
 };
-type ResultadoImagen = { id: string; titulo: string; estado: "afiche" | "ticketera" | "red" | "prensa" | "ia" | "sin_imagen" | "ya_tenia"; motivo: string; boletos?: string };
+type ResultadoImagen = {
+  id: string;
+  titulo: string;
+  estado: "afiche" | "ticketera" | "red" | "prensa" | "ia" | "sin_imagen" | "ya_tenia";
+  motivo: string;
+  boletos?: string;
+};
 type Lote = { total: number; hechos: ResultadoImagen[]; activo: boolean };
-const estados: EstadoVisible[] = ["nuevo", "aprobado", "descartado", "propuesto", "aceptado", "subido_ig"];
+const estados: EstadoVisible[] = [
+  "nuevo",
+  "aprobado",
+  "descartado",
+  "propuesto",
+  "aceptado",
+  "subido_ig",
+];
 type Formulario = {
   titulo: string;
   fecha: string;
@@ -60,35 +98,80 @@ const host = (url: string) => {
     return url;
   }
 };
-const hoyLocal = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/El_Salvador" }).format(new Date());
+const hoyLocal = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/El_Salvador" }).format(new Date());
 
 /** Bandeja de eventos: el propietario decide; Spotmi solo recibe propuestas pendientes de lo aprobado. */
-export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => string; fecha: (iso: string) => string; locale: string }) {
+export function SeccionEventos({
+  g,
+  fecha,
+  locale,
+}: {
+  g: (clave: string) => string;
+  fecha: (iso: string) => string;
+  locale: string;
+}) {
   const [datos, setDatos] = useState<Respuesta | null>(null);
-  const [filtro, setFiltro] = useState<{ estado: EstadoVisible | ""; desde: string; hasta: string }>({ estado: "", desde: "", hasta: "" });
+  const [filtro, setFiltro] = useState<{
+    estado: EstadoVisible | "";
+    desde: string;
+    hasta: string;
+  }>({ estado: "", desde: "", hasta: "" });
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [editando, setEditando] = useState<{ evento: EventoVista; form: Formulario } | null>(null);
-  const [descartando, setDescartando] = useState<{ evento: EventoVista; motivo: string } | null>(null);
-  const [imagen, setImagen] = useState<{ evento: EventoVista; url: string; permiso: string } | null>(null);
+  const [descartando, setDescartando] = useState<{ evento: EventoVista; motivo: string } | null>(
+    null,
+  );
+  const [imagen, setImagen] = useState<{
+    evento: EventoVista;
+    url: string;
+    permiso: string;
+  } | null>(null);
   const [diaExportar, setDiaExportar] = useState(hoyLocal);
-  const [pestana, setPestana] = useState<"bandeja" | "posts">("bandeja");
+  const [pestana, setPestana] = useState<"bandeja" | "posts" | "catalogo">("bandeja");
   const archivo = useRef<HTMLInputElement>(null);
-  type Importacion = { nuevos: number; duplicados: { titulo: string; de: string }[]; descartados: { titulo: string; motivo: string }[]; conImagen: number; conDatosPorConfirmar: number; invalidos: { posicion: number; motivo: string }[] };
+  type Importacion = {
+    nuevos: number;
+    duplicados: { titulo: string; de: string }[];
+    descartados: { titulo: string; motivo: string }[];
+    conImagen: number;
+    conDatosPorConfirmar: number;
+    invalidos: { posicion: number; motivo: string }[];
+  };
   const [importacion, setImportacion] = useState<Importacion | null>(null);
   const [lote, setLote] = useState<Lote | null>(null);
   const [conIA, setConIA] = useState(false);
   // Panel lateral con la ficha completa y todas las acciones.
   const [abierto, setAbierto] = useState<string | null>(null);
   // Editor del prompt de la imagen de referencia IA.
-  const [prompt, setPrompt] = useState<{ evento: EventoVista; texto: string; avisos: string[]; forzar: boolean } | null>(null);
+  const [prompt, setPrompt] = useState<{
+    evento: EventoVista;
+    texto: string;
+    avisos: string[];
+    forzar: boolean;
+  } | null>(null);
   const archivoIA = useRef<HTMLInputElement>(null);
+  const [geminiReference, setGeminiReference] = useState<{ event: EventoVista; text: string; copied: boolean } | null>(null);
+  async function prepareGeminiReference(event: EventoVista) {
+    setOcupado(true);
+    setError("");
+    try {
+      const result = await pedir<{ paraModelo: string }>("/api/granjas/eventos", { accion: "referencia_prompt", id: event.id });
+      const text = result.paraModelo.replace("vertical 4:5", "horizontal 3:2") + " This is an AI-generated conceptual reference, not documentation of the actual event. Do not recreate a specific venue or imply confirmed performers, attendance or attractions. Generate an inviting editorial image with a clear focal subject and restrained, natural lighting.";
+      setGeminiReference({ event, text, copied: false });
+    } catch (error) { setError((error as Error).message); }
+    finally { setOcupado(false); }
+  }
   /** Copia el prompt armado (con «Avoid: …») para pegarlo en la app de Gemini. */
   async function copiarPrompt(e: EventoVista) {
     setError("");
     try {
-      const r = await pedir<{ paraModelo: string }>("/api/granjas/eventos", { accion: "referencia_prompt", id: e.id });
+      const r = await pedir<{ paraModelo: string }>("/api/granjas/eventos", {
+        accion: "referencia_prompt",
+        id: e.id,
+      });
       await navigator.clipboard.writeText(r.paraModelo);
       setAviso(g("ev_ia_promptCopiado"));
     } catch (x) {
@@ -102,12 +185,19 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
     try {
       const formulario = new FormData();
       formulario.set("archivo", file);
-      formulario.set("licencia", "Imagen de referencia generada con IA (app de Gemini, subida por ti)");
+      formulario.set(
+        "licencia",
+        "Imagen de referencia generada con IA (app de Gemini, subida por ti)",
+      );
       formulario.set("generado", "1");
       const r = await fetch("/api/granjas/medios", { method: "POST", body: formulario });
       const j = (await r.json().catch(() => ({}))) as { medio?: { id: string }; error?: string };
       if (!r.ok || !j.medio) throw new Error(j.error ?? g("ev_ia_subidaFallo"));
-      await pedir("/api/granjas/eventos", { accion: "referencia_subida", id: e.id, medioId: j.medio.id });
+      await pedir("/api/granjas/eventos", {
+        accion: "referencia_subida",
+        id: e.id,
+        medioId: j.medio.id,
+      });
       setAviso(g("ev_ia_subida"));
     } catch (x) {
       setError((x as Error).message);
@@ -120,7 +210,10 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
   async function abrirPrompt(e: EventoVista) {
     setError("");
     try {
-      const r = await pedir<{ prompt: string }>("/api/granjas/eventos", { accion: "referencia_prompt", id: e.id });
+      const r = await pedir<{ prompt: string }>("/api/granjas/eventos", {
+        accion: "referencia_prompt",
+        id: e.id,
+      });
       setAbierto(null);
       setPrompt({ evento: e, texto: r.prompt, avisos: [], forzar: false });
     } catch (x) {
@@ -140,9 +233,20 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
       if (detener.current) break;
       let r: ResultadoImagen;
       try {
-        r = (await pedir<{ resultado: ResultadoImagen }>("/api/granjas/eventos", { accion: "completar_imagen", id, ia: conIA })).resultado;
+        r = (
+          await pedir<{ resultado: ResultadoImagen }>("/api/granjas/eventos", {
+            accion: "completar_imagen",
+            id,
+            ia: conIA,
+          })
+        ).resultado;
       } catch (e) {
-        r = { id, titulo: datos?.eventos.find((x) => x.id === id)?.titulo ?? id, estado: "sin_imagen", motivo: (e as Error).message };
+        r = {
+          id,
+          titulo: datos?.eventos.find((x) => x.id === id)?.titulo ?? id,
+          estado: "sin_imagen",
+          motivo: (e as Error).message,
+        };
       }
       setLote((l) => (l ? { ...l, hechos: [...l.hechos, r] } : l));
     }
@@ -160,8 +264,13 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
       } catch {
         throw new Error(g("ev_imp_jsonInvalido"));
       }
-      const lista = Array.isArray(eventos) ? eventos : (eventos as { eventos?: unknown[] })?.eventos;
-      const r = await pedir<{ importacion: Importacion }>("/api/granjas/eventos", { accion: "importar", eventos: lista ?? [] });
+      const lista = Array.isArray(eventos)
+        ? eventos
+        : (eventos as { eventos?: unknown[] })?.eventos;
+      const r = await pedir<{ importacion: Importacion }>("/api/granjas/eventos", {
+        accion: "importar",
+        eventos: lista ?? [],
+      });
       setImportacion(r.importacion);
     } catch (e) {
       setError((e as Error).message);
@@ -171,7 +280,10 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
       await cargar();
     }
   }
-  const consulta = `estado=${filtro.estado}&desde=${filtro.desde}&hasta=${filtro.hasta}`;
+  const consulta =
+    pestana === "catalogo"
+      ? ""
+      : `estado=${filtro.estado}&desde=${filtro.desde}&hasta=${filtro.hasta}`;
   const cargar = useCallback(async () => {
     try {
       setDatos(await pedir<Respuesta>(`/api/granjas/eventos?${consulta}`));
@@ -218,13 +330,26 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
     }
   }
   const diaCorto = (dia: string) =>
-    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(
-      new Date(`${dia}T12:00:00Z`),
-    );
+    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(`${dia}T12:00:00Z`));
   const horaCorta = (hora: string) =>
-    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(`2000-01-01T${hora}:00Z`));
+    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "UTC",
+    }).format(new Date(`2000-01-01T${hora}:00Z`));
   const fechaLarga = (dia: string) =>
-    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${dia}T12:00:00Z`));
+    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      timeZone: "UTC",
+    }).format(new Date(`${dia}T12:00:00Z`));
   /** Organizador o dominio de la fuente (la cuenta si vino de una red). */
   const origenVisible = (e: EventoVista) => {
     const f = e.fuentes.find((x) => x.url === e.fuenteUrl) ?? e.fuentes[0];
@@ -243,7 +368,12 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
       <>
         {campo === "fecha" ? diaCorto(valor) : campo === "hora" ? horaCorta(valor) : valor}{" "}
         <small className="eg-confirmado">
-          <Check size={12} aria-hidden="true" /> {g(e.confirmadoEn[campo] === "propietario" ? "ev_confirmadoPropietario" : "ev_confirmadoFuente")}
+          <Check size={12} aria-hidden="true" />{" "}
+          {g(
+            e.confirmadoEn[campo] === "propietario"
+              ? "ev_confirmadoPropietario"
+              : "ev_confirmadoFuente",
+          )}
         </small>
       </>
     ) : (
@@ -259,9 +389,22 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
     );
   const pestanas = (
     <div className="eg-pestanas" role="tablist" aria-label={g("ev_tab_bandeja")}>
-      {(["bandeja", "posts"] as const).map((p) => (
-        <button key={p} role="tab" aria-selected={pestana === p} className={pestana === p ? "eg-pestana-activa" : ""} onClick={() => setPestana(p)}>
-          {g(`ev_tab_${p}`)}
+      {(["bandeja", "posts", "catalogo"] as const).map((p) => (
+        <button
+          key={p}
+          role="tab"
+          aria-selected={pestana === p}
+          className={pestana === p ? "eg-pestana-activa" : ""}
+          onClick={() => {
+            if (p !== pestana && (p === "catalogo" || pestana === "catalogo")) setDatos(null);
+            setPestana(p);
+          }}
+        >
+          {p === "catalogo"
+            ? locale === "es"
+              ? "Vista previa Spotmi"
+              : "Spotmi preview"
+            : g(`ev_tab_${p}`)}
         </button>
       ))}
     </div>
@@ -273,11 +416,30 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
         <ListaPosts g={g} fecha={fecha} />
       </div>
     );
-  if (!datos) return <p role="status">{error || g("cargando")}</p>;
+  if (!datos)
+    return (
+      <div className="eg-eventos">
+        {pestanas}
+        <p role="status">{error || g("cargando")}</p>
+      </div>
+    );
+  if (pestana === "catalogo")
+    return (
+      <div className="eg-eventos">
+        {pestanas}
+        <EventCatalog events={datos.eventos} locale={locale} g={g} />
+      </div>
+    );
   const enPanel = abierto ? (datos.eventos.find((x) => x.id === abierto) ?? null) : null;
   const visibles = datos.eventos
     .filter((e) => !cuidado || e.confianza.puntos < 50)
-    .sort((a, b) => (orden === "confianza_baja" ? a.confianza.puntos - b.confianza.puntos : orden === "confianza_alta" ? b.confianza.puntos - a.confianza.puntos : 0));
+    .sort((a, b) =>
+      orden === "confianza_baja"
+        ? a.confianza.puntos - b.confianza.puntos
+        : orden === "confianza_alta"
+          ? b.confianza.puntos - a.confianza.puntos
+          : 0,
+    );
   return (
     <div className="eg-eventos">
       {pestanas}
@@ -291,18 +453,34 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           {aviso}
         </p>
       )}
-      <p className={datos.spotmi ? "ep-nota" : "eg-presupuesto-aviso"}>{g(datos.spotmi ? "ev_spotmiConectado" : "ev_spotmiNoConectado")}</p>
+      <p className={datos.spotmi ? "ep-nota" : "eg-presupuesto-aviso"}>
+        {g(datos.spotmi ? "ev_spotmiConectado" : "ev_spotmiNoConectado")}
+      </p>
       {(datos.imagenesIA.aviso || !datos.imagenesIA.activa) && (
         <p className="eg-presupuesto-aviso" role="status">
           {g("ev_ia_titulo")}: {datos.imagenesIA.aviso || datos.imagenesIA.motivo}
         </p>
       )}
-      <CuentasSeguir key={JSON.stringify(datos.cuentas)} g={g} cuentas={datos.cuentas} lectura={datos.lectura} alGuardar={cargar} />
-      <ConfianzaDominios key={JSON.stringify(datos.confianza)} g={g} filas={datos.confianza} alGuardar={cargar} />
+      <CuentasSeguir
+        key={JSON.stringify(datos.cuentas)}
+        g={g}
+        cuentas={datos.cuentas}
+        lectura={datos.lectura}
+        alGuardar={cargar}
+      />
+      <ConfianzaDominios
+        key={JSON.stringify(datos.confianza)}
+        g={g}
+        filas={datos.confianza}
+        alGuardar={cargar}
+      />
       <div className="eg-filtros" role="group" aria-label={g("ev_estado")}>
         <label className="eg-campo">
           {g("ev_estado")}
-          <select value={filtro.estado} onChange={(e) => setFiltro({ ...filtro, estado: e.target.value as EstadoVisible | "" })}>
+          <select
+            value={filtro.estado}
+            onChange={(e) => setFiltro({ ...filtro, estado: e.target.value as EstadoVisible | "" })}
+          >
             <option value="">
               {g("ev_todos")} ({datos.total})
             </option>
@@ -315,11 +493,19 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
         </label>
         <label className="eg-campo">
           {g("ev_desde")}
-          <input type="date" value={filtro.desde} onChange={(e) => setFiltro({ ...filtro, desde: e.target.value })} />
+          <input
+            type="date"
+            value={filtro.desde}
+            onChange={(e) => setFiltro({ ...filtro, desde: e.target.value })}
+          />
         </label>
         <label className="eg-campo">
           {g("ev_hasta")}
-          <input type="date" value={filtro.hasta} onChange={(e) => setFiltro({ ...filtro, hasta: e.target.value })} />
+          <input
+            type="date"
+            value={filtro.hasta}
+            onChange={(e) => setFiltro({ ...filtro, hasta: e.target.value })}
+          />
         </label>
         <label className="eg-campo">
           {g("ev_conf_orden")}
@@ -333,7 +519,11 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           <input type="checkbox" checked={cuidado} onChange={(e) => setCuidado(e.target.checked)} />
           {g("ev_conf_cuidado")} ({datos.eventos.filter((e) => e.confianza.puntos < 50).length})
         </label>
-        <button className="ep-boton ep-texto" disabled={!filtro.estado && !filtro.desde && !filtro.hasta && !cuidado} onClick={() => (setFiltro({ estado: "", desde: "", hasta: "" }), setCuidado(false))}>
+        <button
+          className="ep-boton ep-texto"
+          disabled={!filtro.estado && !filtro.desde && !filtro.hasta && !cuidado}
+          onClick={() => (setFiltro({ estado: "", desde: "", hasta: "" }), setCuidado(false))}
+        >
           {g("ev_limpiar")}
         </button>
         <PegarEnlace
@@ -345,8 +535,21 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
             await cargar();
           }}
         />
-        <input ref={archivo} type="file" accept="application/json,.json" className="eg-oculto" tabIndex={-1} aria-hidden="true" onChange={(e) => e.target.files?.[0] && void importar(e.target.files[0])} />
-        <button className="ep-boton" disabled={ocupado} onClick={() => archivo.current?.click()} title={g("ev_importarAyuda")}>
+        <input
+          ref={archivo}
+          type="file"
+          accept="application/json,.json"
+          className="eg-oculto"
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(e) => e.target.files?.[0] && void importar(e.target.files[0])}
+        />
+        <button
+          className="ep-boton"
+          disabled={ocupado}
+          onClick={() => archivo.current?.click()}
+          title={g("ev_importarAyuda")}
+        >
           <Upload size={15} />
           {g("ev_importar")}
         </button>
@@ -357,18 +560,35 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           </button>
         ) : (
           <>
-            <button className="ep-boton" disabled={ocupado || !datos.sinImagen.length} onClick={() => void completarImagenes(datos.sinImagen)} title={g("ev_img_ayuda")}>
+            <button
+              className="ep-boton"
+              disabled={ocupado || !datos.sinImagen.length}
+              onClick={() => void completarImagenes(datos.sinImagen)}
+              title={g("ev_img_ayuda")}
+            >
               <Imagen size={15} />
               {g("ev_img_completar")} ({datos.sinImagen.length})
             </button>
-            <label className="eg-check" title={datos.imagenesIA.activa ? g("ev_ia_loteAyuda") : datos.imagenesIA.motivo}>
-              <input type="checkbox" checked={conIA && datos.imagenesIA.activa} disabled={!datos.imagenesIA.activa} onChange={(e) => setConIA(e.target.checked)} />
+            <label
+              className="eg-check"
+              title={datos.imagenesIA.activa ? g("ev_ia_loteAyuda") : datos.imagenesIA.motivo}
+            >
+              <input
+                type="checkbox"
+                checked={conIA && datos.imagenesIA.activa}
+                disabled={!datos.imagenesIA.activa}
+                onChange={(e) => setConIA(e.target.checked)}
+              />
               {g("ev_ia_lote")} ({datos.imagenesIA.hoy}/{datos.imagenesIA.limite})
             </label>
           </>
         )}
         {datos.spotmi && (datos.conteo.propuesto ?? 0) > 0 && (
-          <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "consultar_spotmi" }, g("ev_estadoActualizado"))}>
+          <button
+            className="ep-boton"
+            disabled={ocupado}
+            onClick={() => void accion({ accion: "consultar_spotmi" }, g("ev_estadoActualizado"))}
+          >
             <RefreshCw size={15} />
             {g("ev_actualizarSpotmi")}
           </button>
@@ -386,10 +606,19 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           ) : (
             <>
               <strong>
-                {g("ev_img_resumen")}: {lote.hechos.filter((h) => h.estado === "afiche" || h.estado === "ticketera").length} {g("ev_img_oficiales")} ·{" "}
-                {lote.hechos.filter((h) => h.estado === "red").length} {g("ev_img_red")} · {lote.hechos.filter((h) => h.estado === "prensa").length} {g("ev_img_prensa")} ·{" "}
-                {lote.hechos.filter((h) => h.estado === "ia").length} {g("ev_img_ia")} · {lote.hechos.filter((h) => h.estado === "sin_imagen").length} {g("ev_img_sin")}
-                {lote.hechos.length < lote.total ? ` · ${lote.total - lote.hechos.length} ${g("ev_img_sinRevisar")}` : ""}
+                {g("ev_img_resumen")}:{" "}
+                {
+                  lote.hechos.filter((h) => h.estado === "afiche" || h.estado === "ticketera")
+                    .length
+                }{" "}
+                {g("ev_img_oficiales")} · {lote.hechos.filter((h) => h.estado === "red").length}{" "}
+                {g("ev_img_red")} · {lote.hechos.filter((h) => h.estado === "prensa").length}{" "}
+                {g("ev_img_prensa")} · {lote.hechos.filter((h) => h.estado === "ia").length}{" "}
+                {g("ev_img_ia")} · {lote.hechos.filter((h) => h.estado === "sin_imagen").length}{" "}
+                {g("ev_img_sin")}
+                {lote.hechos.length < lote.total
+                  ? ` · ${lote.total - lote.hechos.length} ${g("ev_img_sinRevisar")}`
+                  : ""}
               </strong>
               <p className="ep-nota">{g("ev_img_pendientes")}</p>
               {lote.hechos.some((h) => h.estado !== "ya_tenia") && (
@@ -418,10 +647,17 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
       {importacion && (
         <div className="eg-bloque" role="status">
           <strong>
-            {g("ev_importado")}: {importacion.nuevos} {g("ev_imp_nuevos")} · {importacion.duplicados.length} {g("ev_imp_duplicados")} · {importacion.descartados.length} {g("ev_imp_descartados")} · {importacion.conImagen} {g("ev_imp_conImagen")} · {importacion.conDatosPorConfirmar} {g("ev_imp_porConfirmar")}
-            {importacion.invalidos.length ? ` · ${importacion.invalidos.length} ${g("ev_imp_invalidos")}` : ""}
+            {g("ev_importado")}: {importacion.nuevos} {g("ev_imp_nuevos")} ·{" "}
+            {importacion.duplicados.length} {g("ev_imp_duplicados")} ·{" "}
+            {importacion.descartados.length} {g("ev_imp_descartados")} · {importacion.conImagen}{" "}
+            {g("ev_imp_conImagen")} · {importacion.conDatosPorConfirmar} {g("ev_imp_porConfirmar")}
+            {importacion.invalidos.length
+              ? ` · ${importacion.invalidos.length} ${g("ev_imp_invalidos")}`
+              : ""}
           </strong>
-          {(importacion.duplicados.length > 0 || importacion.descartados.length > 0 || importacion.invalidos.length > 0) && (
+          {(importacion.duplicados.length > 0 ||
+            importacion.descartados.length > 0 ||
+            importacion.invalidos.length > 0) && (
             <ul className="eg-lista-importacion">
               {importacion.duplicados.map((d) => (
                 <li key={`d-${d.titulo}`}>
@@ -449,29 +685,35 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
       ) : !visibles.length ? (
         <p className="ep-nota">{g("ev_vacioFiltro")}</p>
       ) : (
-        <ul className="eg-cuadricula-eventos">
+        <ul className="eg-cuadricula-eventos eg-editorial-grid">
           {visibles.map((e) => (
             <li key={e.id} className={`eg-tarjeta-evento eg-evento-${e.estadoVisible}`}>
               <div className="eg-tarjeta-imagen">
-                {e.imagenMedioId ? (
-                  <>
-                    <img className="eg-tarjeta-fondo" src={`/api/granjas/medios/${e.imagenMedioId}`} alt="" aria-hidden="true" loading="lazy" />
-                    <img className="eg-tarjeta-afiche" src={`/api/granjas/medios/${e.imagenMedioId}`} alt={`${g("ev_imagen")}: ${e.titulo}`} loading="lazy" />
-                  </>
-                ) : (
-                  <CuadroFecha fecha={e.fecha} locale={locale} grande />
-                )}
-                <span className="eg-sobre eg-sobre-categoria">{g(`ev_cat_${e.categoria}`)}</span>
-                <div className="eg-sobre eg-sobre-confianza">
+                <EventCover
+                  src={e.imagenMedioId ? `/api/granjas/medios/${e.imagenMedioId}` : null}
+                  title={e.titulo}
+                  category={g(`ev_cat_${e.categoria}`)}
+                  fallback={locale === "es" ? "Portada por confirmar" : "Cover pending"}
+                />
+                <div className="eg-cover-review">
+                  <span>{origenVisible(e)}</span>
                   <AnilloConfianza g={g} confianza={e.confianza} compacto />
                 </div>
-                <span className="eg-sobre eg-sobre-fuente">{origenVisible(e)}</span>
-                {etiquetaImagen(e) && <span className={`eg-sobre eg-sobre-etiqueta eg-etiqueta-${e.imagenTipo ?? "sin"}`}>{etiquetaImagen(e)}</span>}
+                {etiquetaImagen(e) && <div className="eg-cover-note">{etiquetaImagen(e)}</div>}
+                {(!e.imagenMedioId || e.imagenTipo === "ia") && (
+                  <div className="eg-cover-note">
+                    <button className="ep-boton" disabled={ocupado} onClick={() => void prepareGeminiReference(e)}>
+                      <Sparkles size={15} aria-hidden="true" /> {locale === "es" ? "Preparar referencia para Gemini" : "Prepare Gemini reference"}
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="eg-tarjeta-cuerpo">
                 <div className="eg-tarjeta-estado">
                   <span className="ep-pill">{g(`ev_estado_${e.estadoVisible}`)}</span>
-                  {e.cambios.length > 0 && <span className="ep-pill eg-pill-actualizado">{g("ev_actualizado")}</span>}
+                  {e.cambios.length > 0 && (
+                    <span className="ep-pill eg-pill-actualizado">{g("ev_actualizado")}</span>
+                  )}
                 </div>
                 <h3>{e.titulo}</h3>
                 <p className="eg-tarjeta-linea">
@@ -484,27 +726,52 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                 </p>
                 <p className="eg-tarjeta-linea">
                   <MapPin size={15} aria-hidden="true" />
-                  <span>{[e.lugar, e.municipio].filter(Boolean).join(" · ") || e.departamento || g("ev_lugarPorConfirmar")}</span>
+                  <span>
+                    {[e.lugar, e.municipio].filter(Boolean).join(" · ") ||
+                      e.departamento ||
+                      g("ev_lugarPorConfirmar")}
+                  </span>
                 </p>
               </div>
               <div className="eg-tarjeta-pie">
                 <span className={`eg-precio ${e.precioDesde ? "" : "eg-precio-pendiente"}`}>
-                  {!e.precioDesde ? g("ev_precioPorConfirmar") : e.precioDesde.tipo === "gratis" ? g("ev_gratis") : `${g("ev_desde")} $${Number.isInteger(e.precioDesde.valor) ? e.precioDesde.valor : e.precioDesde.valor.toFixed(2)}`}
+                  {!e.precioDesde
+                    ? g("ev_precioPorConfirmar")
+                    : e.precioDesde.tipo === "gratis"
+                      ? g("ev_gratis")
+                      : `${g("ev_desde")} $${Number.isInteger(e.precioDesde.valor) ? e.precioDesde.valor : e.precioDesde.valor.toFixed(2)}`}
                 </span>
-                <button className="eg-ver-mas" onClick={() => setAbierto(e.id)} aria-label={`${g("ev_verMas")}: ${e.titulo}`}>
+                <button
+                  className="eg-ver-mas"
+                  onClick={() => setAbierto(e.id)}
+                  aria-label={`${g("ev_verMas")}: ${e.titulo}`}
+                >
                   {g("ev_verMas")} <ArrowRight size={15} aria-hidden="true" />
                 </button>
               </div>
               {e.estado !== "descartado" && (e.estado === "nuevo" || !e.spotmiPropuestaId) && (
                 <div className="eg-tarjeta-rapidas">
                   {e.estado === "nuevo" && (
-                    <button className="ep-boton ep-primario" disabled={ocupado} onClick={() => void accion({ accion: "aprobar", id: e.id, revision: e.revision }, g("ev_estado_aprobado"))}>
+                    <button
+                      className="ep-boton ep-primario"
+                      disabled={ocupado}
+                      onClick={() =>
+                        void accion(
+                          { accion: "aprobar", id: e.id, revision: e.revision },
+                          g("ev_estado_aprobado"),
+                        )
+                      }
+                    >
                       <Check size={15} />
                       {g("ev_aprobar")}
                     </button>
                   )}
                   {!e.spotmiPropuestaId && (
-                    <button className="ep-boton eg-peligro" disabled={ocupado} onClick={() => setDescartando({ evento: e, motivo: "" })}>
+                    <button
+                      className="ep-boton eg-peligro"
+                      disabled={ocupado}
+                      onClick={() => setDescartando({ evento: e, motivo: "" })}
+                    >
                       <X size={15} />
                       {g("ev_descartar")}
                     </button>
@@ -521,35 +788,82 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
         <div className="eg-formulario-linea">
           <label className="eg-campo">
             {g("ev_diaHallazgo")}
-            <input type="date" value={diaExportar} onChange={(e) => setDiaExportar(e.target.value)} />
+            <input
+              type="date"
+              value={diaExportar}
+              onChange={(e) => setDiaExportar(e.target.value)}
+            />
           </label>
-          <a className="ep-boton" href={`/api/granjas/eventos/exportar?dia=${diaExportar}&formato=csv`}>
+          <a
+            className="ep-boton"
+            href={`/api/granjas/eventos/exportar?dia=${diaExportar}&formato=csv`}
+          >
             <Download size={15} />
             {g("ev_csv")}
           </a>
-          <a className="ep-boton" href={`/api/granjas/eventos/exportar?dia=${diaExportar}&formato=json`}>
+          <a
+            className="ep-boton"
+            href={`/api/granjas/eventos/exportar?dia=${diaExportar}&formato=json`}
+          >
             <Download size={15} />
             {g("ev_json")}
           </a>
         </div>
       </section>
 
-      <Modal open={Boolean(enPanel)} onClose={() => setAbierto(null)} label={enPanel?.titulo ?? g("ev_verMas")} className="ep-modal eg-panel-lateral" dismissOnBackdrop>
+      <Modal open={Boolean(geminiReference)} onClose={() => !ocupado && setGeminiReference(null)} label={locale === "es" ? "Referencia con Gemini" : "Gemini reference"} className="ep-modal" dismissOnBackdrop>
+        {geminiReference && <div className="eg-guia">
+          <h2>{locale === "es" ? "Referencia con Gemini" : "Gemini reference"}</h2>
+          <strong>{geminiReference.event.titulo}</strong>
+          <p>{locale === "es" ? "Si ya revisaste las fuentes y no encontraste una imagen, copiá este prompt en Gemini, generá la referencia y subila aquí. No encontrar una imagen en Ezra no significa que no exista en otra fuente." : "If you checked the sources and found no image, paste this prompt into Gemini, generate a reference and upload it here. A missing image in Ezra does not prove none exists elsewhere."}</p>
+          <label className="eg-campo">Prompt<textarea rows={8} readOnly value={geminiReference.text} /></label>
+          <div className="ep-acciones">
+            <button className="ep-boton ep-primario" onClick={async () => {
+              try { await navigator.clipboard.writeText(geminiReference.text); setGeminiReference({ ...geminiReference, copied: true }); }
+              catch { setError(g("ev_copiaFallo")); }
+            }}><Copy size={15} />{geminiReference.copied ? (locale === "es" ? "Copiado" : "Copied") : (locale === "es" ? "1. Copiar prompt" : "1. Copy prompt")}</button>
+            <a className="ep-boton" href="https://gemini.google.com/app" target="_blank" rel="noopener noreferrer">{locale === "es" ? "2. Abrir Gemini ↗" : "2. Open Gemini ↗"}</a>
+          </div>
+          <label className="eg-campo">{locale === "es" ? "3. Subir la imagen generada" : "3. Upload generated image"}
+            <input type="file" accept="image/jpeg,image/png,image/webp" disabled={ocupado} onChange={async event => {
+              const file = event.target.files?.[0];
+              if (file) await subirReferencia(geminiReference.event, file);
+              event.target.value = "";
+            }} />
+          </label>
+          {ocupado && <p role="status">{g("cargando")}</p>}
+          {error && <p role="alert">{error}</p>}
+          {aviso && <p role="status">{aviso}</p>}
+          <p className="ep-nota">{locale === "es" ? "Se guarda como IA · referencia en la bandeja, nunca como foto oficial. No se envía a Spotmi ni a Instagram. Este flujo no llama a la API de Gemini." : "Saved as AI reference in the inbox, never as an official photo. Not sent to Spotmi or Instagram. This workflow does not call the Gemini API."}</p>
+        </div>}
+      </Modal>
+      <Modal
+        open={Boolean(enPanel)}
+        onClose={() => setAbierto(null)}
+        label={enPanel?.titulo ?? g("ev_verMas")}
+        className="ep-modal eg-panel-lateral"
+        dismissOnBackdrop
+      >
         {enPanel &&
           ((e) => (
             <div className={`eg-panel-evento eg-evento-${e.estadoVisible}`}>
               <div className="eg-evento-cabecera">
                 <span className="ep-pill">{g(`ev_estado_${e.estadoVisible}`)}</span>
                 <span className="eg-evento-categoria">{g(`ev_cat_${e.categoria}`)}</span>
-                {e.origen !== "cazador" && e.origen !== "desconocido" && <span className="eg-evento-categoria">· {g(`ev_origen_${e.origen}`)}</span>}
-                {e.cambios.length > 0 && <span className="ep-pill eg-pill-actualizado">{g("ev_actualizado")}</span>}
+                {e.origen !== "cazador" && e.origen !== "desconocido" && (
+                  <span className="eg-evento-categoria">· {g(`ev_origen_${e.origen}`)}</span>
+                )}
+                {e.cambios.length > 0 && (
+                  <span className="ep-pill eg-pill-actualizado">{g("ev_actualizado")}</span>
+                )}
               </div>
               <h2 className="eg-panel-titulo">{e.titulo}</h2>
               {e.cambios.length > 0 && (
                 <ul className="eg-cambios" aria-label={g("ev_actualizado")}>
                   {e.cambios.slice(-3).map((c) => (
                     <li key={`${c.campo}-${c.fecha}`}>
-                      {g(`ev_campo_${c.campo}`)}: <del>{c.antes ?? g("ev_porConfirmar")}</del> → <ins>{c.despues ?? g("ev_porConfirmar")}</ins>{" "}
+                      {g(`ev_campo_${c.campo}`)}: <del>{c.antes ?? g("ev_porConfirmar")}</del> →{" "}
+                      <ins>{c.despues ?? g("ev_porConfirmar")}</ins>{" "}
                       <small className="ep-nota">
                         · {host(c.url)} · {fecha(c.fecha)}
                       </small>
@@ -576,7 +890,11 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                 </div>
                 <div>
                   <dt>{g("ev_lugar")}</dt>
-                  <dd>{[e.lugar, e.municipio, e.departamento].filter(Boolean).join(", ") || <span className="eg-por-confirmar">{g("ev_porConfirmar")}</span>}</dd>
+                  <dd>
+                    {[e.lugar, e.municipio, e.departamento].filter(Boolean).join(", ") || (
+                      <span className="eg-por-confirmar">{g("ev_porConfirmar")}</span>
+                    )}
+                  </dd>
                 </div>
                 <div>
                   <dt>{g("ev_precio")}</dt>
@@ -615,7 +933,8 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                       {f.campos.length > 0 && (
                         <small className="ep-nota">
                           {" "}
-                          · {g("ev_fuentes_confirmo")}: {f.campos.map((c) => g(`ev_campo_${c}`)).join(", ")}
+                          · {g("ev_fuentes_confirmo")}:{" "}
+                          {f.campos.map((c) => g(`ev_campo_${c}`)).join(", ")}
                         </small>
                       )}
                       <small className="ep-nota">
@@ -629,17 +948,35 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
               <div className="eg-evento-imagen">
                 {e.imagenMedioId ? (
                   <>
-                    <img src={`/api/granjas/medios/${e.imagenMedioId}`} alt={`${g("ev_imagen")}: ${e.titulo}`} loading="lazy" />
+                    <img
+                      src={`/api/granjas/medios/${e.imagenMedioId}`}
+                      alt={`${g("ev_imagen")}: ${e.titulo}`}
+                      loading="lazy"
+                    />
                     <div>
                       <span className={`ep-pill ${e.imagenConfirmada ? "" : "eg-pill-pendiente"}`}>
-                        {e.imagenTipo === "ia" ? g("ev_imagenEstadoIA") : g(e.imagenConfirmada ? "ev_imagenEstadoConfirmada" : "ev_imagenEstadoPendiente")}
+                        {e.imagenTipo === "ia"
+                          ? g("ev_imagenEstadoIA")
+                          : g(
+                              e.imagenConfirmada
+                                ? "ev_imagenEstadoConfirmada"
+                                : "ev_imagenEstadoPendiente",
+                            )}
                       </span>
                       <small className="ep-nota">
                         {g(`ev_imagenTipo_${e.imagenTipo ?? "afiche"}`)}
                         {e.imagenBaja ? ` · ${g("ev_bajaResolucion")}` : ""}
                       </small>
                       <small className="ep-nota">{e.imagenPermiso}</small>
-                      <small className="ep-nota">{g(e.imagenTipo === "ia" ? "ev_imagenIAAyuda" : e.imagenConfirmada ? "ev_imagenConfirmadaAyuda" : "ev_imagenPendienteAyuda")}</small>
+                      <small className="ep-nota">
+                        {g(
+                          e.imagenTipo === "ia"
+                            ? "ev_imagenIAAyuda"
+                            : e.imagenConfirmada
+                              ? "ev_imagenConfirmadaAyuda"
+                              : "ev_imagenPendienteAyuda",
+                        )}
+                      </small>
                     </div>
                   </>
                 ) : (
@@ -654,7 +991,8 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   <summary>{g("ev_ia_promptUsado")}</summary>
                   <p className="eg-prompt-ia">{e.imagenes.at(-1)!.ia!.prompt}</p>
                   <small className="ep-nota">
-                    {g("ev_ia_negativo")}: {e.imagenes.at(-1)!.ia!.negativo} · {e.imagenes.at(-1)!.ia!.modelo} · {e.imagenes.at(-1)!.ia!.version}
+                    {g("ev_ia_negativo")}: {e.imagenes.at(-1)!.ia!.negativo} ·{" "}
+                    {e.imagenes.at(-1)!.ia!.modelo} · {e.imagenes.at(-1)!.ia!.version}
                   </small>
                 </details>
               )}
@@ -677,7 +1015,8 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
               {e.descripcion && <p className="eg-evento-descripcion">{e.descripcion}</p>}
               {e.spotmiPropuestaId && (
                 <p className="ep-nota">
-                  {g("ev_propuesta")}: <code>{e.spotmiPropuestaId}</code> · {e.spotmiEstado ? g(`ev_spotmi_${e.spotmiEstado}`) : ""}
+                  {g("ev_propuesta")}: <code>{e.spotmiPropuestaId}</code> ·{" "}
+                  {e.spotmiEstado ? g(`ev_spotmi_${e.spotmiEstado}`) : ""}
                   {e.spotmiConsultado ? ` · ${fecha(e.spotmiConsultado)}` : ""}
                 </p>
               )}
@@ -693,7 +1032,16 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
               )}
               <div className="ep-acciones eg-evento-acciones">
                 {e.estado === "nuevo" && (
-                  <button className="ep-boton ep-primario" disabled={ocupado} onClick={() => void accion({ accion: "aprobar", id: e.id, revision: e.revision }, g("ev_estado_aprobado"))}>
+                  <button
+                    className="ep-boton ep-primario"
+                    disabled={ocupado}
+                    onClick={() =>
+                      void accion(
+                        { accion: "aprobar", id: e.id, revision: e.revision },
+                        g("ev_estado_aprobado"),
+                      )
+                    }
+                  >
                     <Check size={15} />
                     {g("ev_aprobar")}
                   </button>
@@ -703,35 +1051,79 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                     className="ep-boton ep-primario"
                     disabled={ocupado || !datos.spotmi}
                     title={datos.spotmi ? undefined : g("ev_spotmiNoConectado")}
-                    onClick={() => void accion({ accion: "enviar_spotmi", id: e.id }, g("ev_enviado"))}
+                    onClick={() =>
+                      void accion({ accion: "enviar_spotmi", id: e.id }, g("ev_enviado"))
+                    }
                   >
                     <Send size={15} />
                     {g("ev_enviarSpotmi")}
                   </button>
                 )}
                 {e.spotmiPropuestaId && (
-                  <button className="ep-boton" disabled={ocupado || !datos.spotmi} onClick={() => void accion({ accion: "consultar_spotmi", id: e.id }, g("ev_estadoActualizado"))}>
+                  <button
+                    className="ep-boton"
+                    disabled={ocupado || !datos.spotmi}
+                    onClick={() =>
+                      void accion(
+                        { accion: "consultar_spotmi", id: e.id },
+                        g("ev_estadoActualizado"),
+                      )
+                    }
+                  >
                     <RefreshCw size={15} />
                     {g("ev_consultarSpotmi")}
                   </button>
                 )}
-                <button className="ep-boton" disabled={ocupado} onClick={() => (setAbierto(null), setEditando({ evento: e, form: aFormulario(e) }))}>
+                <button
+                  className="ep-boton"
+                  disabled={ocupado}
+                  onClick={() => (
+                    setAbierto(null),
+                    setEditando({ evento: e, form: aFormulario(e) })
+                  )}
+                >
                   <Pencil size={15} />
                   {g("ev_editar")}
                 </button>
                 {e.imagenMedioId && !e.imagenConfirmada && e.imagenTipo !== "ia" && (
-                  <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "confirmar_imagen", id: e.id, revision: e.revision }, g("ev_imagenConfirmadaOk"))}>
+                  <button
+                    className="ep-boton"
+                    disabled={ocupado}
+                    onClick={() =>
+                      void accion(
+                        { accion: "confirmar_imagen", id: e.id, revision: e.revision },
+                        g("ev_imagenConfirmadaOk"),
+                      )
+                    }
+                  >
                     <Check size={15} />
                     {g("ev_usarImagenFuente")}
                   </button>
                 )}
                 {e.imagenTipo !== "afiche" && !e.imagenConfirmada && (
-                  <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "buscar_imagen", id: e.id }, g("ev_imagenEncontrada"))}>
+                  <button
+                    className="ep-boton"
+                    disabled={ocupado}
+                    onClick={() =>
+                      void accion({ accion: "buscar_imagen", id: e.id }, g("ev_imagenEncontrada"))
+                    }
+                  >
                     <Search size={15} />
                     {g("ev_buscarImagen")}
                   </button>
                 )}
-                <button className="ep-boton" disabled={ocupado} onClick={() => (setAbierto(null), setImagen({ evento: e, url: e.imagenUrl ?? "", permiso: e.imagenConfirmada ? e.imagenPermiso : "" }))}>
+                <button
+                  className="ep-boton"
+                  disabled={ocupado}
+                  onClick={() => (
+                    setAbierto(null),
+                    setImagen({
+                      evento: e,
+                      url: e.imagenUrl ?? "",
+                      permiso: e.imagenConfirmada ? e.imagenPermiso : "",
+                    })
+                  )}
+                >
                   <Imagen size={15} />
                   {g("ev_cambiarImagen")}
                 </button>
@@ -741,16 +1133,35 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                       className="ep-boton"
                       disabled={ocupado || !datos.imagenesIA.activa}
                       title={datos.imagenesIA.activa ? g("ev_ia_ayuda") : datos.imagenesIA.motivo}
-                      onClick={() => void accion({ accion: "generar_referencia", id: e.id, regenerar: e.imagenTipo === "ia" }, g("ev_ia_generada"))}
+                      onClick={() =>
+                        void accion(
+                          {
+                            accion: "generar_referencia",
+                            id: e.id,
+                            regenerar: e.imagenTipo === "ia",
+                          },
+                          g("ev_ia_generada"),
+                        )
+                      }
                     >
                       <Sparkles size={15} />
                       {g(e.imagenTipo === "ia" ? "ev_ia_regenerar" : "ev_ia_generar")}
                     </button>
-                    <button className="ep-boton" disabled={ocupado || !datos.imagenesIA.activa} title={datos.imagenesIA.activa ? undefined : datos.imagenesIA.motivo} onClick={() => void abrirPrompt(e)}>
+                    <button
+                      className="ep-boton"
+                      disabled={ocupado || !datos.imagenesIA.activa}
+                      title={datos.imagenesIA.activa ? undefined : datos.imagenesIA.motivo}
+                      onClick={() => void abrirPrompt(e)}
+                    >
                       <Pencil size={15} />
                       {g("ev_ia_editarPrompt")}
                     </button>
-                    <button className="ep-boton" disabled={ocupado} title={g("ev_ia_copiarAyuda")} onClick={() => void copiarPrompt(e)}>
+                    <button
+                      className="ep-boton"
+                      disabled={ocupado}
+                      title={g("ev_ia_copiarAyuda")}
+                      onClick={() => void copiarPrompt(e)}
+                    >
                       <Copy size={15} />
                       {g("ev_ia_copiarPrompt")}
                     </button>
@@ -761,9 +1172,16 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                       className="eg-oculto"
                       tabIndex={-1}
                       aria-hidden="true"
-                      onChange={(x) => x.target.files?.[0] && void subirReferencia(e, x.target.files[0])}
+                      onChange={(x) =>
+                        x.target.files?.[0] && void subirReferencia(e, x.target.files[0])
+                      }
                     />
-                    <button className="ep-boton" disabled={ocupado} title={g("ev_ia_subirAyuda")} onClick={() => archivoIA.current?.click()}>
+                    <button
+                      className="ep-boton"
+                      disabled={ocupado}
+                      title={g("ev_ia_subirAyuda")}
+                      onClick={() => archivoIA.current?.click()}
+                    >
                       <Upload size={15} />
                       {g("ev_ia_subir")}
                     </button>
@@ -774,7 +1192,11 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   {g("ev_copiarFicha")}
                 </button>
                 {e.estado !== "descartado" && !e.spotmiPropuestaId && (
-                  <button className="ep-boton eg-peligro" disabled={ocupado} onClick={() => (setAbierto(null), setDescartando({ evento: e, motivo: "" }))}>
+                  <button
+                    className="ep-boton eg-peligro"
+                    disabled={ocupado}
+                    onClick={() => (setAbierto(null), setDescartando({ evento: e, motivo: "" }))}
+                  >
                     <X size={15} />
                     {g("ev_descartar")}
                   </button>
@@ -783,7 +1205,13 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
             </div>
           ))(enPanel)}
       </Modal>
-      <Modal open={Boolean(prompt)} onClose={() => setPrompt(null)} label={g("ev_ia_editarPrompt")} className="ep-modal" dismissOnBackdrop>
+      <Modal
+        open={Boolean(prompt)}
+        onClose={() => setPrompt(null)}
+        label={g("ev_ia_editarPrompt")}
+        className="ep-modal"
+        dismissOnBackdrop
+      >
         {prompt && (
           <form
             className="eg-guia"
@@ -792,12 +1220,22 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
               setOcupado(true);
               setError("");
               try {
-                const r = await pedir<{ avisos: string[] }>("/api/granjas/eventos", { accion: "referencia_prompt", id: prompt.evento.id, prompt: prompt.texto });
+                const r = await pedir<{ avisos: string[] }>("/api/granjas/eventos", {
+                  accion: "referencia_prompt",
+                  id: prompt.evento.id,
+                  prompt: prompt.texto,
+                });
                 if (r.avisos.length && !prompt.forzar) {
                   setPrompt({ ...prompt, avisos: r.avisos });
                   return;
                 }
-                await pedir("/api/granjas/eventos", { accion: "generar_referencia", id: prompt.evento.id, prompt: prompt.texto, forzar: prompt.forzar, regenerar: prompt.evento.imagenTipo === "ia" });
+                await pedir("/api/granjas/eventos", {
+                  accion: "generar_referencia",
+                  id: prompt.evento.id,
+                  prompt: prompt.texto,
+                  forzar: prompt.forzar,
+                  regenerar: prompt.evento.imagenTipo === "ia",
+                });
                 setAviso(g("ev_ia_generada"));
                 setPrompt(null);
               } catch (x) {
@@ -814,7 +1252,14 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
             <p className="ep-nota">{g("ev_ia_promptAyuda")}</p>
             <label className="eg-campo">
               {g("ev_ia_prompt")}
-              <textarea rows={8} maxLength={2000} value={prompt.texto} onChange={(x) => setPrompt({ ...prompt, texto: x.target.value, avisos: [], forzar: false })} />
+              <textarea
+                rows={8}
+                maxLength={2000}
+                value={prompt.texto}
+                onChange={(x) =>
+                  setPrompt({ ...prompt, texto: x.target.value, avisos: [], forzar: false })
+                }
+              />
             </label>
             {prompt.avisos.length > 0 && (
               <div className="ep-alerta" role="alert">
@@ -824,13 +1269,20 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   ))}
                 </ul>
                 <label className="eg-check">
-                  <input type="checkbox" checked={prompt.forzar} onChange={(x) => setPrompt({ ...prompt, forzar: x.target.checked })} />
+                  <input
+                    type="checkbox"
+                    checked={prompt.forzar}
+                    onChange={(x) => setPrompt({ ...prompt, forzar: x.target.checked })}
+                  />
                   {g("ev_ia_forzar")}
                 </label>
               </div>
             )}
             <div className="ep-acciones">
-              <button className="ep-boton ep-primario" disabled={ocupado || prompt.texto.trim().length < 20}>
+              <button
+                className="ep-boton ep-primario"
+                disabled={ocupado || prompt.texto.trim().length < 20}
+              >
                 <Sparkles size={15} />
                 {g("ev_ia_generar")}
               </button>
@@ -841,7 +1293,13 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           </form>
         )}
       </Modal>
-      <Modal open={Boolean(editando)} onClose={() => setEditando(null)} label={g("ev_editar")} className="ep-modal" dismissOnBackdrop>
+      <Modal
+        open={Boolean(editando)}
+        onClose={() => setEditando(null)}
+        label={g("ev_editar")}
+        className="ep-modal"
+        dismissOnBackdrop
+      >
         {editando && (
           <form
             className="eg-guia eg-form-evento"
@@ -889,15 +1347,30 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   maxLength={max}
                   required={campo === "titulo" || campo === "fuenteUrl"}
                   value={editando.form[campo]}
-                  placeholder={["fecha", "hora", "precio"].includes(campo) ? g("ev_porConfirmar") : undefined}
-                  onChange={(x) => setEditando({ ...editando, form: { ...editando.form, [campo]: x.target.value } })}
+                  placeholder={
+                    ["fecha", "hora", "precio"].includes(campo) ? g("ev_porConfirmar") : undefined
+                  }
+                  onChange={(x) =>
+                    setEditando({
+                      ...editando,
+                      form: { ...editando.form, [campo]: x.target.value },
+                    })
+                  }
                 />
               </label>
             ))}
             <div className="eg-dos">
               <label className="eg-campo">
                 {g("ev_departamento")}
-                <select value={editando.form.departamento} onChange={(x) => setEditando({ ...editando, form: { ...editando.form, departamento: x.target.value } })}>
+                <select
+                  value={editando.form.departamento}
+                  onChange={(x) =>
+                    setEditando({
+                      ...editando,
+                      form: { ...editando.form, departamento: x.target.value },
+                    })
+                  }
+                >
                   <option value="">—</option>
                   {datos.departamentos.map((d) => (
                     <option key={d} value={d}>
@@ -908,7 +1381,15 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
               </label>
               <label className="eg-campo">
                 {g("ev_categoria")}
-                <select value={editando.form.categoria} onChange={(x) => setEditando({ ...editando, form: { ...editando.form, categoria: x.target.value } })}>
+                <select
+                  value={editando.form.categoria}
+                  onChange={(x) =>
+                    setEditando({
+                      ...editando,
+                      form: { ...editando.form, categoria: x.target.value },
+                    })
+                  }
+                >
                   {datos.categorias.map((c) => (
                     <option key={c} value={c}>
                       {g(`ev_cat_${c}`)}
@@ -919,7 +1400,17 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
             </div>
             <label className="eg-campo">
               {g("ev_descripcion")}
-              <textarea rows={4} maxLength={300} value={editando.form.descripcion} onChange={(x) => setEditando({ ...editando, form: { ...editando.form, descripcion: x.target.value } })} />
+              <textarea
+                rows={4}
+                maxLength={300}
+                value={editando.form.descripcion}
+                onChange={(x) =>
+                  setEditando({
+                    ...editando,
+                    form: { ...editando.form, descripcion: x.target.value },
+                  })
+                }
+              />
               <small>{editando.form.descripcion.length}/300</small>
             </label>
             <div className="ep-acciones">
@@ -933,13 +1424,27 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           </form>
         )}
       </Modal>
-      <Modal open={Boolean(descartando)} onClose={() => setDescartando(null)} label={g("ev_descartar")} className="ep-modal" dismissOnBackdrop>
+      <Modal
+        open={Boolean(descartando)}
+        onClose={() => setDescartando(null)}
+        label={g("ev_descartar")}
+        className="ep-modal"
+        dismissOnBackdrop
+      >
         {descartando && (
           <form
             className="eg-guia"
             onSubmit={async (ev) => {
               ev.preventDefault();
-              const ok = await accion({ accion: "descartar", id: descartando.evento.id, revision: descartando.evento.revision, motivo: descartando.motivo }, g("ev_estado_descartado"));
+              const ok = await accion(
+                {
+                  accion: "descartar",
+                  id: descartando.evento.id,
+                  revision: descartando.evento.revision,
+                  motivo: descartando.motivo,
+                },
+                g("ev_estado_descartado"),
+              );
               if (ok) setDescartando(null);
             }}
           >
@@ -948,11 +1453,21 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
             </h2>
             <label className="eg-campo">
               {g("ev_motivo")}
-              <textarea rows={3} required minLength={3} maxLength={300} value={descartando.motivo} onChange={(x) => setDescartando({ ...descartando, motivo: x.target.value })} />
+              <textarea
+                rows={3}
+                required
+                minLength={3}
+                maxLength={300}
+                value={descartando.motivo}
+                onChange={(x) => setDescartando({ ...descartando, motivo: x.target.value })}
+              />
             </label>
             <p className="ep-nota">{g("ev_motivoAyuda")}</p>
             <div className="ep-acciones">
-              <button className="ep-boton eg-peligro" disabled={ocupado || descartando.motivo.trim().length < 3}>
+              <button
+                className="ep-boton eg-peligro"
+                disabled={ocupado || descartando.motivo.trim().length < 3}
+              >
                 {g("ev_descartar")}
               </button>
               <button type="button" className="ep-boton" onClick={() => setDescartando(null)}>
@@ -962,28 +1477,60 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
           </form>
         )}
       </Modal>
-      <Modal open={Boolean(imagen)} onClose={() => setImagen(null)} label={g("ev_imagen")} className="ep-modal" dismissOnBackdrop>
+      <Modal
+        open={Boolean(imagen)}
+        onClose={() => setImagen(null)}
+        label={g("ev_imagen")}
+        className="ep-modal"
+        dismissOnBackdrop
+      >
         {imagen && (
           <form
             className="eg-guia"
             onSubmit={async (ev) => {
               ev.preventDefault();
-              const ok = await accion({ accion: "imagen", id: imagen.evento.id, revision: imagen.evento.revision, url: imagen.url, permiso: imagen.permiso }, g("ev_imagenAutorizada"));
+              const ok = await accion(
+                {
+                  accion: "imagen",
+                  id: imagen.evento.id,
+                  revision: imagen.evento.revision,
+                  url: imagen.url,
+                  permiso: imagen.permiso,
+                },
+                g("ev_imagenAutorizada"),
+              );
               if (ok) setImagen(null);
             }}
           >
             <h2>{g("ev_autorizarImagen")}</h2>
             <label className="eg-campo">
               {g("ev_imagenUrl")}
-              <input type="url" required maxLength={1000} value={imagen.url} onChange={(x) => setImagen({ ...imagen, url: x.target.value })} />
+              <input
+                type="url"
+                required
+                maxLength={1000}
+                value={imagen.url}
+                onChange={(x) => setImagen({ ...imagen, url: x.target.value })}
+              />
             </label>
             <label className="eg-campo">
               {g("ev_permiso")}
-              <input required minLength={3} maxLength={500} value={imagen.permiso} onChange={(x) => setImagen({ ...imagen, permiso: x.target.value })} />
+              <input
+                required
+                minLength={3}
+                maxLength={500}
+                value={imagen.permiso}
+                onChange={(x) => setImagen({ ...imagen, permiso: x.target.value })}
+              />
             </label>
             <p className="ep-nota">{g("ev_permisoAyuda")}</p>
             <div className="ep-acciones">
-              <button className="ep-boton ep-primario" disabled={ocupado || imagen.permiso.trim().length < 3 || !imagen.url.startsWith("https://")}>
+              <button
+                className="ep-boton ep-primario"
+                disabled={
+                  ocupado || imagen.permiso.trim().length < 3 || !imagen.url.startsWith("https://")
+                }
+              >
                 {g("ev_autorizarImagen")}
               </button>
               {imagen.evento.imagenMedioId && (
@@ -992,7 +1539,16 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
                   className="ep-boton eg-peligro"
                   disabled={ocupado}
                   onClick={async () => {
-                    const ok = await accion({ accion: "imagen", id: imagen.evento.id, revision: imagen.evento.revision, medioId: null, permiso: "" }, g("ev_quitarImagen"));
+                    const ok = await accion(
+                      {
+                        accion: "imagen",
+                        id: imagen.evento.id,
+                        revision: imagen.evento.revision,
+                        medioId: null,
+                        permiso: "",
+                      },
+                      g("ev_quitarImagen"),
+                    );
                     if (ok) setImagen(null);
                   }}
                 >
@@ -1011,18 +1567,39 @@ export function SeccionEventos({ g, fecha, locale }: { g: (clave: string) => str
 }
 
 /** Círculo de confianza (verde ≥ 80, amarillo 50–79, rojo < 50); el desglose aparece al pasar el cursor o con el teclado. */
-function AnilloConfianza({ g, confianza, compacto = false }: { g: (clave: string) => string; confianza: Evento["confianza"]; compacto?: boolean }) {
+function AnilloConfianza({
+  g,
+  confianza,
+  compacto = false,
+}: {
+  g: (clave: string) => string;
+  confianza: Evento["confianza"];
+  compacto?: boolean;
+}) {
   const p = confianza.puntos;
   const nivel = p >= 80 ? "alta" : p >= 50 ? "media" : "baja";
   const radio = 16;
   const largo = 2 * Math.PI * radio;
-  const desglose = confianza.desglose.map((l) => `${l.concepto}: ${l.puntos > 0 ? "+" : ""}${l.puntos}`).join("\n");
+  const desglose = confianza.desglose
+    .map((l) => `${l.concepto}: ${l.puntos > 0 ? "+" : ""}${l.puntos}`)
+    .join("\n");
   return (
     <div className={`eg-confianza eg-confianza-${nivel}`}>
-      <button type="button" className="eg-confianza-anillo" aria-label={`${g("ev_conf_nombre")}: ${p} %. ${desglose.replace(/\n/g, ". ")}`}>
+      <button
+        type="button"
+        className="eg-confianza-anillo"
+        aria-label={`${g("ev_conf_nombre")}: ${p} %. ${desglose.replace(/\n/g, ". ")}`}
+      >
         <svg viewBox="0 0 40 40" width="44" height="44" aria-hidden="true">
           <circle cx="20" cy="20" r={radio} className="eg-confianza-fondo" />
-          <circle cx="20" cy="20" r={radio} className="eg-confianza-valor" strokeDasharray={`${(p / 100) * largo} ${largo}`} transform="rotate(-90 20 20)" />
+          <circle
+            cx="20"
+            cy="20"
+            r={radio}
+            className="eg-confianza-valor"
+            strokeDasharray={`${(p / 100) * largo} ${largo}`}
+            transform="rotate(-90 20 20)"
+          />
         </svg>
         <span>{p}%</span>
       </button>
@@ -1051,12 +1628,29 @@ function AnilloConfianza({ g, confianza, compacto = false }: { g: (clave: string
 }
 
 /** Sin imagen: el mismo cuadro azul marino de Spotmi con el día grande y el mes. */
-function CuadroFecha({ fecha, locale, grande = false }: { fecha: string | null; locale: string; grande?: boolean }) {
+function CuadroFecha({
+  fecha,
+  locale,
+  grande = false,
+}: {
+  fecha: string | null;
+  locale: string;
+  grande?: boolean;
+}) {
   const d = fecha ? new Date(`${fecha}T12:00:00Z`) : null;
   return (
     <div className={`eg-cuadro-fecha ${grande ? "eg-cuadro-grande" : ""}`} aria-hidden="true">
       <strong>{d ? d.getUTCDate() : "?"}</strong>
-      <span>{d ? new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { month: "short", timeZone: "UTC" }).format(d).replace(".", "") : "—"}</span>
+      <span>
+        {d
+          ? new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
+              month: "short",
+              timeZone: "UTC",
+            })
+              .format(d)
+              .replace(".", "")
+          : "—"}
+      </span>
     </div>
   );
 }
@@ -1086,7 +1680,12 @@ export function AgendaEventos({ g, locale }: { g: (clave: string) => string; loc
           {dias.map((dia) => (
             <li key={dia}>
               <time dateTime={dia}>
-                {new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${dia}T12:00:00Z`))}
+                {new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  timeZone: "UTC",
+                }).format(new Date(`${dia}T12:00:00Z`))}
               </time>
               <ul>
                 {eventos
@@ -1095,7 +1694,8 @@ export function AgendaEventos({ g, locale }: { g: (clave: string) => string; loc
                     <li key={e.id}>
                       <strong>{e.titulo}</strong>
                       <span>
-                        {[e.hora, e.lugar || e.municipio].filter(Boolean).join(" · ")} · {g(`ev_estado_${e.estadoVisible}`)}
+                        {[e.hora, e.lugar || e.municipio].filter(Boolean).join(" · ")} ·{" "}
+                        {g(`ev_estado_${e.estadoVisible}`)}
                       </span>
                     </li>
                   ))}

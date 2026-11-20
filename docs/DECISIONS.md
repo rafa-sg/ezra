@@ -497,3 +497,13 @@ Prevalece sobre «Imágenes con IA: no» del 18 nov: el propietario pidió la im
 - **Uso (propietario): solo en la bandeja.** La referencia IA se guarda con `generado = 1`, licencia «Imagen de referencia generada con IA (Gemini)», prompt, negativo, versión y modelo. Nunca se confirma como oficial, nunca llega al post de Instagram (el diseñador la ignora) ni a Spotmi, y se muestra con la etiqueta «IA · referencia».
 - **Sin facturación.** Si Google responde 429 con la cuota gratuita en 0, se guarda un aviso que la bandeja muestra hasta el primer éxito, y el lote o la granja dejan de pedir imágenes en esa ejecución.
 - **Precio «Desde $X».** El menor monto del texto de precio; «Gratis» solo si el texto lo dice sin montos; si no, «Precio por confirmar». Se calcula al leer y se guarda como instantánea `precio_desde`.
+
+
+## 2026-11-18 · Catálogo editorial integrado en Ezra
+Por solicitud del propietario, Codex integró las tarjetas 3:2 y la pestaña Vista previa Spotmi desde la copia aislada. Se conservaron los archivos en curso de Claude (inicio, onboarding, encargos y backend de producción). Vista local con búsqueda, filtros, eventos aprobados vigentes y enlaces a fuentes. Imágenes públicas de la vista previa solo con confirmación y permiso; referencias IA excluidas. No se modifica el sitio público ni data/. Validación previa aislada: 129 pruebas y build; verificación conjunta en curso.
+
+Verificación conjunta al integrar: 129/129 pruebas unitarias; compilación Webpack de instantánea combinada en copia aislada correcta. Lint del módulo de eventos correcto. Lint global detectó cinco símbolos sin usar en estudio.tsx mientras Claude lo modifica; se preservó su trabajo. Integración HTTP y revisión en navegador siguen pendientes por las limitaciones del entorno documentadas anteriormente.
+
+
+## 2026-11-18 · Referencia manual de Gemini desde tarjetas
+Se añadió «Preparar referencia para Gemini» a tarjetas sin medio o con referencia IA. Usa referencia_prompt existente, adapta la composición manual a 3:2 y ofrece copiar, abrir Gemini y subir JPEG/PNG/WebP mediante el flujo existente referencia_subida. No llama a generación facturada ni cambia la política de publicación: referencia IA solo en bandeja, nunca fotografía oficial ni portada pública. La interfaz aclara que falta de imagen en Ezra no prueba ausencia en todas las fuentes. Lint del archivo, TypeScript y 10 pruebas de eventos/catálogo pasan; pendiente revisión manual en navegador y generación real en la app de Gemini. No se modifican archivos de inicio/onboarding de Claude.
