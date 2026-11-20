@@ -20,7 +20,7 @@ export const agentes = [
 ] as const;
 export const canales = ["spotmi", "instagram", "tiktok", "facebook"] as const;
 export const proveedores = ["astra", "claude", "gemini"] as const;
-export const estados = ["pendiente", "preparando", "revision", "aprobado"] as const;
+export const estados = ["pendiente", "preparando", "revision", "aprobado", "rechazado"] as const;
 export const enlaceSeguro = z
   .string()
   .max(2000)
@@ -66,7 +66,7 @@ export const contenidoEncargoSchema = z.object({
  * Historial de un encargo: cada versión que se reemplaza, cada cambio de estado, cada entrega de IA,
  * cada pedido de cambios y cada fecha asignada. La versión aprobada y la reemplazada guardan su texto.
  */
-export const accionesHistorial = ["creado", "editado", "generado", "pendiente", "preparando", "revision", "cambios", "aprobado", "fecha"] as const;
+export const accionesHistorial = ["creado", "editado", "generado", "pendiente", "preparando", "revision", "cambios", "aprobado", "rechazado", "fecha"] as const;
 export const entradaHistorialSchema = z.object({
   version: z.number().int().positive(),
   accion: z.enum(accionesHistorial),
@@ -181,6 +181,30 @@ export function solicitarCambios(actual: Encargo, nota: string): Encargo {
   const siguiente: Encargo = { ...actual, estado: "pendiente", comprobaciones: comprobacionesVacias(), notaCambios: limpia.slice(0, 2000), actualizado: new Date().toISOString() };
   return anotar(siguiente, "cambios", { nota: limpia, resultado: actual.resultado });
 }
+/**
+ * Rechazar: la entrega no sirve y no se va a corregir así. Exige motivo, queda en el historial con
+ * su texto y deja sin efecto una aprobación previa. Editar el encargo lo reabre como versión nueva.
+ */
+export function rechazarEncargo(actual: Encargo, motivo: string): Encargo {
+  const limpio = motivo.trim();
+  if (limpio.length < 3) throw new WorkflowError("Escribe el motivo del rechazo.", 422);
+  if (actual.estado !== "revision" && actual.estado !== "aprobado")
+    throw new WorkflowError("Solo se rechaza una entrega en revisión o aprobada.", 422);
+  const siguiente: Encargo = { ...actual, estado: "rechazado", comprobaciones: comprobacionesVacias(), notaCambios: limpio.slice(0, 2000), actualizado: new Date().toISOString() };
+  return anotar(siguiente, "rechazado", { nota: limpio, resultado: actual.resultado });
+}
+
+/** El siguiente paso útil de un encargo, según su estado y lo que tiene guardado. */
+export type SiguienteAccion = "aplicar_cambios" | "ejecutar" | "enviar_revision" | "terminar_preparacion" | "revisar" | "planificar" | "exportar" | "reabrir";
+export function siguienteAccion(e: Pick<Encargo, "estado" | "resultado" | "notaCambios" | "fechaPrevista">): SiguienteAccion {
+  if (e.estado === "rechazado") return "reabrir";
+  if (e.estado === "revision") return "revisar";
+  if (e.estado === "aprobado") return e.fechaPrevista ? "exportar" : "planificar";
+  if (e.estado === "preparando") return "terminar_preparacion";
+  if (e.notaCambios) return "aplicar_cambios";
+  return e.resultado.trim() ? "enviar_revision" : "ejecutar";
+}
+
 /** La fecha prevista no crea versión ni cambia la revisión: solo ordena el calendario (no programa nada). */
 export function asignarFecha(actual: Encargo, fechaPrevista: string): Encargo {
   const { fechaPrevista: limpia } = contenidoEncargoSchema.pick({ fechaPrevista: true }).parse({ fechaPrevista });
@@ -192,6 +216,7 @@ export function cambiarEstado(
   estado: Encargo["estado"],
   comprobaciones = comprobacionesVacias(),
 ): Encargo {
+  if (estado === "rechazado") throw new WorkflowError("Para rechazar una entrega escribe el motivo.", 422);
   if (estado === "revision" && !actual.resultado.trim())
     throw new WorkflowError("Agrega el resultado antes de enviarlo a revisión.", 422);
   if (

@@ -8,6 +8,7 @@ import {
   asignarFecha,
   cambiarEstado,
   solicitarCambios,
+  rechazarEncargo,
   contenidoEncargoSchema,
   crearEncargo,
   editarEncargo,
@@ -45,6 +46,12 @@ const accionSchema = z.discriminatedUnion("accion", [
     revision: z.number().int(),
     id: z.string().uuid(),
     nota: z.string().trim().min(3).max(2000),
+  }),
+  z.object({
+    accion: z.literal("rechazar"),
+    revision: z.number().int(),
+    id: z.string().uuid(),
+    motivo: z.string().trim().min(3).max(2000),
   }),
   z.object({
     accion: z.literal("fecha"),
@@ -132,9 +139,11 @@ export async function POST(request: Request) {
           ? editarEncargo(encargo, accion.contenido)
           : accion.accion === "cambios"
             ? solicitarCambios(encargo, accion.nota)
-            : accion.accion === "fecha"
-              ? asignarFecha(encargo, accion.fechaPrevista)
-              : cambiarEstado(encargo, accion.estado, accion.comprobaciones);
+            : accion.accion === "rechazar"
+              ? rechazarEncargo(encargo, accion.motivo)
+              : accion.accion === "fecha"
+                ? asignarFecha(encargo, accion.fechaPrevista)
+                : cambiarEstado(encargo, accion.estado, accion.comprobaciones);
       encargoId = nuevo.id;
       const encargos = actual.encargos.map((e) => (e.id === nuevo.id ? nuevo : e));
       return {

@@ -347,6 +347,11 @@ test(
         enc.historial.filter((h: { resultado?: string }) => h.resultado).map((h: { accion: string; version: number }) => `${h.accion}:v${h.version}`),
         ["cambios:v2", "editado:v2", "aprobado:v3"],
       );
+      // Rechazar exige motivo y solo vale en revisión o aprobado.
+      assert.equal((await paso2({ accion: "rechazar", id: primero.id, motivo: "" })).r.status, 422);
+      // Agenda: solo administración.
+      assert.equal((await get("/api/produccion/agenda")).status, 401);
+      assert.equal((await get("/api/produccion/agenda", sgToken)).status, 403);
       // Fecha → calendario → exportar (.ics); la fecha no quita la aprobación.
       paso = await paso2({ accion: "fecha", id: primero.id, fechaPrevista: "2026-12-05T18:30" });
       enc = paso.j.produccion.encargos.find((e: { id: string }) => e.id === primero.id);
@@ -358,6 +363,8 @@ test(
       assert.match(textoIcs, /UID:encargo-[0-9a-f-]+@ezra\.local/);
       assert.match(textoIcs, /DTSTART:20261206T003000Z/);
       assert.match(textoIcs, /\[Encargo · aprobado\] Mi primer guion/);
+      const ag = await (await get("/api/produccion/agenda", admin)).json();
+      assert.ok(ag.entradas.some((x: { tipo: string; encargoId?: string }) => x.tipo === "prevista" && x.encargoId === primero.id));
 
       // «Bot de atención»: empty start, per-business storage, optimistic revision, isolation.
       const bot = (business: string, token: string, body?: unknown) =>

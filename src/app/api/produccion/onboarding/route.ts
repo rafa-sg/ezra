@@ -2,6 +2,7 @@ import { administrador, cuerpo, errorApi } from "@/lib/granjas/api";
 import { ensurePilotBusinesses } from "@/lib/businesses";
 import { defaultBusinessId } from "@/lib/model";
 import { listarGranjas } from "@/lib/granjas/almacen";
+import { listarConexiones } from "@/lib/granjas/conexiones";
 import { geminiProduccionHabilitado } from "@/lib/ia/gemini";
 import { leerProduccion } from "@/lib/produccion/almacen";
 import { avanzarOnboarding, leerOnboarding, plantillas } from "@/lib/produccion/onboarding";
@@ -40,6 +41,8 @@ async function vista(usuario: string, organizationId: string, email: string) {
       const g = estado.granjaId ? granjas.find((x) => x.id === estado.granjaId) : undefined;
       return g ? { id: g.id, nombre: g.nombre } : null;
     })(),
+    // Estado comprobado de las conexiones externas (la guía no conecta nada: solo dice qué falta).
+    conexiones: listarConexiones().map((c) => ({ canal: c.canal, estado: c.estado })),
     // Una cuenta con trabajo previo no recibe la guía de forma automática.
     tieneTrabajo: produccion.encargos.length > 0 || granjas.some((g) => g.estado === "activa"),
   };

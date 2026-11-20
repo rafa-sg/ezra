@@ -124,6 +124,15 @@ export function ConexionesGranjas({
             <div className="eg-conexion-cuerpo">
               <h3>{nombres[c.canal]}</h3>
               <span className={`ep-pill eg-con-${c.estado}`}>{g(`con_${c.estado}`)}</span>
+              <p className="eg-habilita">
+                <b>{g("habilita")}:</b> {g(`habilita_${c.canal}`)}
+              </p>
+              {!c.verificado && !c.identidad && (
+                <p className="ep-nota">
+                  <b>{g("falta")}:</b> {c.configFaltante.length ? `${g("faltaConfig")} ${c.configFaltante.join(", ")}` : g("faltaConectar")}
+                </p>
+              )}
+              {(c.verificado || c.identidad) && (
               <dl className="eg-datos">
                 <dt>{g("cuenta")}</dt>
                 <dd>
@@ -148,6 +157,7 @@ export function ConexionesGranjas({
                     : "—"}
                 </dd>
               </dl>
+              )}
               {c.aviso && <p className="ep-nota">{c.aviso}</p>}
               {c.canal === "tiktok" && <p className="ep-nota">{g("tiktokPolitica")}</p>}
               {c.canal === "facebook" && c.opciones.length > 1 && (

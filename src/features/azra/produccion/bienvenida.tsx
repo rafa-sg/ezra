@@ -14,7 +14,10 @@ type Vista = {
   encargo: { id: string; titulo: string; estado: string; version: number } | null;
   granja: { id: string; nombre: string } | null;
   tieneTrabajo: boolean;
+  conexiones: { canal: string; estado: string }[];
 };
+/** Qué conexión externa aprovecha cada objetivo (ninguna es obligatoria para empezar). */
+const externas: Record<(typeof objetivos)[number], string[]> = { eventos: ["spotmi"], instagram: ["instagram"], contenido: [] };
 const objetivos = ["eventos", "instagram", "contenido"] as const;
 
 /** Lee el estado de la guía (para el Inicio y para abrirla sola la primera vez). */
@@ -104,6 +107,9 @@ export function Bienvenida({
               </li>
             ))}
           </ol>
+          <p className="ep-ob-requisito">
+            <span className={`ep-chip ${paso === 3 ? "ep-chip-neutro" : "ep-chip-atencion"}`}>{tr(paso === 3 ? "p_ob_opcional" : paso === 5 ? "p_ob_final" : "p_ob_obligatorio")}</span>
+          </p>
           {error && (
             <p className="ep-alerta" role="alert">
               {error}
@@ -192,6 +198,24 @@ export function Bienvenida({
                 ))}
               </fieldset>
               {!vista.proveedores[proveedor] && <p className="ep-nota">{tr("p_ob_manual")}</p>}
+              {externas[e.objetivo].length > 0 && (
+                <div className="ep-ob-externas">
+                  <h3>{tr("p_ob_externasTitulo")}</h3>
+                  <ul>
+                    {externas[e.objetivo].map((canal) => {
+                      const estado = vista.conexiones.find((c) => c.canal === canal)?.estado ?? "sin_configurar";
+                      const lista = estado === "conectada_publicacion" || estado === "conectada_lectura";
+                      return (
+                        <li key={canal}>
+                          <span className={`ep-chip ${lista ? "ep-chip-hecho" : "ep-chip-neutro"}`}>{tr(lista ? "p_ob_conectada" : "p_ob_noConectada")}</span>
+                          <span>{tr(`p_ob_ext_${canal}`)}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <p className="ep-nota">{tr("p_ob_externasAyuda")}</p>
+                </div>
+              )}
               <div className="ep-acciones">
                 <button className="ep-boton ep-primario" disabled={ocupado} onClick={() => void enviar({ accion: "configurar", crearGranja: Boolean(e.objetivo && vista.plantillas[e.objetivo].receta) && crearGranja, proveedor })}>
                   {tr("p_ob_guardarSeguir")}

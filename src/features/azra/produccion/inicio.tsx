@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, Compass, Inbox, Plus, RefreshCw, Workflow } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, Compass, Inbox, RefreshCw, Workflow } from "lucide-react";
 import type { ResumenInicio } from "@/lib/produccion/inicio";
 import type { EstadoOnboarding } from "@/lib/produccion/onboarding";
 
@@ -77,10 +77,6 @@ export function Inicio({
             <RefreshCw size={15} />
             {tr("p_actualizar")}
           </button>
-          <button className="ep-boton ep-primario" onClick={onNuevo}>
-            <Plus size={16} />
-            {tr("p_nuevo")}
-          </button>
         </div>
       </div>
 
@@ -111,36 +107,31 @@ export function Inicio({
         </section>
       )}
 
-      <div className="ep-inicio-cifras">
-        <button className="ep-cifra" onClick={() => onIr({ seccion: "encargos" })}>
-          <span>{tr("p_revision")}</span>
-          <b>{datos.encargos.porEstado.revision}</b>
-          <small>{tr("p_cifraRevision")}</small>
+      <section className="ep-siguiente-paso" aria-label={tr("p_siguientePaso")}>
+        <div>
+          <p className="ep-siguiente-etiqueta">{tr("p_siguientePaso")}</p>
+          <h2>{tr(`p_sp_${datos.siguiente.accion}`)}</h2>
+          {datos.siguiente.titulo && <p>{datos.siguiente.titulo}</p>}
+        </div>
+        <button
+          className="ep-boton ep-primario"
+          onClick={() =>
+            datos.siguiente.accion === "primer_encargo" || datos.siguiente.accion === "nuevo_encargo"
+              ? onNuevo()
+              : onIr({ seccion: datos.siguiente.seccion as DestinoInicio["seccion"], id: datos.siguiente.id })
+          }
+        >
+          {tr(`p_spb_${datos.siguiente.accion}`)}
+          <ArrowRight size={16} />
         </button>
-        <button className="ep-cifra" onClick={() => onIr({ seccion: "encargos" })}>
-          <span>{tr("p_pendiente")}</span>
-          <b>{datos.encargos.porEstado.pendiente + datos.encargos.porEstado.preparando}</b>
-          <small>{tr("p_cifraPendientes")}</small>
-        </button>
-        <button className="ep-cifra" onClick={() => onIr({ seccion: "eventos" })}>
-          <span>{tr("p_eventos")}</span>
-          <b>{datos.eventos.nuevos}</b>
-          <small>{tr("p_cifraEventos")}</small>
-        </button>
-        <button className="ep-cifra" onClick={() => onIr({ seccion: "conexiones" })}>
-          <span>{tr("p_conexiones")}</span>
-          <b>
-            {conectadas}/{datos.conexiones.length}
-          </b>
-          <small>{tr("p_cifraConexiones")}</small>
-        </button>
-      </div>
+      </section>
 
-      <div className="ep-inicio-columnas">
-        <section className="ep-inicio-bloque">
+      <div className="ep-inicio-columnas ep-inicio-tres">
+        <section className="ep-inicio-bloque ep-bloque-atencion">
           <h2>
             <Inbox size={18} aria-hidden="true" />
             {tr("p_atencion")}
+            <span className="ep-chip ep-chip-atencion">{datos.pendientes.length}</span>
           </h2>
           {!datos.pendientes.length ? (
             <p className="ep-nota">{tr("p_atencionVacio")}</p>
@@ -149,7 +140,7 @@ export function Inicio({
               {datos.pendientes.map((p, i) => (
                 <li key={`${p.tipo}-${p.id ?? i}`}>
                   <button onClick={() => onIr({ seccion: p.seccion, id: p.id })}>
-                    {p.tipo === "granja_error" || p.tipo === "presupuesto" ? <AlertTriangle size={16} aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}
+                    {p.tipo === "granja_error" || p.tipo === "presupuesto" ? <AlertTriangle size={16} aria-hidden="true" className="ep-icono-error" /> : <ArrowRight size={16} aria-hidden="true" />}
                     <span>
                       <strong>{p.titulo}</strong>
                       <small>{p.detalle}</small>
@@ -160,6 +151,59 @@ export function Inicio({
             </ul>
           )}
         </section>
+        <section className="ep-inicio-bloque ep-bloque-proceso">
+          <h2>
+            <Workflow size={18} aria-hidden="true" />
+            {tr("p_enCurso")}
+            <span className="ep-chip ep-chip-proceso">{datos.enCurso.length}</span>
+          </h2>
+          {!datos.enCurso.length ? (
+            <p className="ep-nota">{tr("p_enCursoVacio")}</p>
+          ) : (
+            <ul className="ep-inicio-lista">
+              {datos.enCurso.map((x) => (
+                <li key={`${x.tipo}-${x.id}`}>
+                  <button onClick={() => onIr({ seccion: x.seccion, id: x.tipo === "encargo" ? x.id : undefined })}>
+                    <ArrowRight size={16} aria-hidden="true" />
+                    <span>
+                      <strong>{x.titulo}</strong>
+                      <small>{x.tipo === "encargo" ? tr(`p_sig_${x.detalle}`) : tr("p_ej_en_curso")}</small>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <section className="ep-inicio-bloque ep-bloque-hecho">
+          <h2>
+            <CheckCircle2 size={18} aria-hidden="true" />
+            {tr("p_terminado")}
+            <span className="ep-chip ep-chip-hecho">{datos.encargos.porEstado.aprobado}</span>
+          </h2>
+          {!datos.terminados.length ? (
+            <p className="ep-nota">{tr("p_terminadoVacio")}</p>
+          ) : (
+            <ul className="ep-inicio-lista">
+              {datos.terminados.map((e) => (
+                <li key={e.id}>
+                  <button onClick={() => onIr({ seccion: "encargos", id: e.id })}>
+                    <CheckCircle2 size={16} aria-hidden="true" />
+                    <span>
+                      <strong>{e.titulo}</strong>
+                      <small>
+                        v{e.version} · {e.fechaPrevista ? `${tr("p_fechaPrevistaCorta")}: ${fecha(e.fechaPrevista)}` : tr("p_sinFechaCorta")}
+                      </small>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <div className="ep-inicio-columnas">
         <section className="ep-inicio-bloque">
           <h2>
             <CalendarDays size={18} aria-hidden="true" />
@@ -206,38 +250,13 @@ export function Inicio({
             </ul>
           )}
         </section>
-        <section className="ep-inicio-bloque">
-          <h2>{tr("p_recientes")}</h2>
-          {!datos.encargos.recientes.length ? (
-            <div className="ep-vacio">
-              <p>{tr("p_vacioAyuda")}</p>
-              <button className="ep-boton" onClick={onNuevo}>
-                <Plus size={16} />
-                {tr("p_nuevo")}
-              </button>
-            </div>
-          ) : (
-            <ul className="ep-inicio-lista">
-              {datos.encargos.recientes.map((e) => (
-                <li key={e.id}>
-                  <button onClick={() => onIr({ seccion: "encargos", id: e.id })}>
-                    <span className={`ep-estado ep-${e.estado}`} aria-hidden="true" />
-                    <span>
-                      <strong>{e.titulo}</strong>
-                      <small>
-                        {tr(`p_${e.estado}`)} · v{e.version} · {fecha(e.actualizado)}
-                      </small>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="ep-nota">
-            {tr("p_consumoHoy")}: {new Intl.NumberFormat("es-SV").format(datos.consumo.dia.usado)} {tr("p_tokens")}
-            {datos.consumo.dia.limite ? ` / ${new Intl.NumberFormat("es-SV").format(datos.consumo.dia.limite)}` : ""} · {tr("p_imagenesIA")} {datos.consumo.imagenesIA.hoy}/{datos.consumo.imagenesIA.limite}
-          </p>
-        </section>
+        <p className="ep-nota ep-inicio-pie">
+          <button className="ep-enlace" onClick={() => onIr({ seccion: "conexiones" })}>
+            {tr("p_conexiones")}: {conectadas}/{datos.conexiones.length} {tr("p_conectadasComprobadas")}
+          </button>{" "}
+          · {tr("p_consumoHoy")}: {new Intl.NumberFormat("es-SV").format(datos.consumo.dia.usado)} {tr("p_tokens")}
+          {datos.consumo.dia.limite ? ` / ${new Intl.NumberFormat("es-SV").format(datos.consumo.dia.limite)}` : ""} · {tr("p_imagenesIA")} {datos.consumo.imagenesIA.hoy}/{datos.consumo.imagenesIA.limite}
+        </p>
       </div>
     </div>
   );

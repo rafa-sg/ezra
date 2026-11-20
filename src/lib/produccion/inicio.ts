@@ -1,5 +1,5 @@
 import { leerProduccion } from "./almacen";
-import { estados } from "./modelo";
+import { estados, siguienteAccion } from "./modelo";
 import { base } from "../granjas/db";
 import { listarGranjas } from "../granjas/almacen";
 import { listarConexiones } from "../granjas/conexiones";
@@ -62,7 +62,40 @@ export async function resumenInicio(ahora = new Date()) {
       .map((e) => ({ tipo: "evento" as const, id: e.id, titulo: e.titulo, fecha: e.hora ? `${e.fecha}T${e.hora}` : e.fecha!, estado: e.estadoVisible })),
   ].sort((a, b) => a.fecha.localeCompare(b.fecha));
 
+  // Siguiente paso útil: lo que más pesa primero (revisar, corregir, desbloquear); si no hay nada, lo que avanza el trabajo.
+  const orden = ["encargo_revision", "encargo_cambios", "granja_error", "granja_revision", "granja_manual", "presupuesto", "eventos_nuevos", "imagenes", "posts"];
+  const urgente = [...pendientes].sort((a, b) => orden.indexOf(a.tipo) - orden.indexOf(b.tipo))[0];
+  const porEjecutar = encargos.find((e) => e.estado === "pendiente" && !e.resultado.trim());
+  const porEnviar = encargos.find((e) => (e.estado === "pendiente" || e.estado === "preparando") && e.resultado.trim());
+  const sinFecha = encargos.find((e) => e.estado === "aprobado" && !e.fechaPrevista);
+  const siguiente: { accion: string; titulo: string; seccion: Pendiente["seccion"] | "calendario"; id?: string } = urgente
+    ? { accion: urgente.tipo, titulo: urgente.titulo, seccion: urgente.seccion, id: urgente.id }
+    : !encargos.length
+      ? { accion: "primer_encargo", titulo: "", seccion: "encargos" }
+      : porEnviar
+        ? { accion: "enviar_revision", titulo: porEnviar.titulo, seccion: "encargos", id: porEnviar.id }
+        : porEjecutar
+          ? { accion: "ejecutar", titulo: porEjecutar.titulo, seccion: "encargos", id: porEjecutar.id }
+          : sinFecha
+            ? { accion: "planificar", titulo: sinFecha.titulo, seccion: "calendario" }
+            : { accion: "nuevo_encargo", titulo: "", seccion: "encargos" };
+  // En curso: encargos que avanzan (sin esperar revisión) y granjas ejecutándose ahora.
+  const enCurso = [
+    ...encargos
+      .filter((e) => (e.estado === "pendiente" || e.estado === "preparando") && !e.notaCambios)
+      .map((e) => ({ tipo: "encargo" as const, id: e.id, titulo: e.titulo, detalle: siguienteAccion(e), seccion: "encargos" as const })),
+    ...ejecuciones.filter((g) => g.ultima?.estado === "en_curso").map((g) => ({ tipo: "granja" as const, id: g.granjaId, titulo: g.nombre, detalle: "en_curso", seccion: "granjas" as const })),
+  ].slice(0, 8);
+  const terminados = encargos
+    .filter((e) => e.estado === "aprobado")
+    .sort((a, b) => b.actualizado.localeCompare(a.actualizado))
+    .slice(0, 5)
+    .map((e) => ({ id: e.id, titulo: e.titulo, version: e.version, fechaPrevista: e.fechaPrevista, actualizado: e.actualizado }));
+
   return {
+    siguiente,
+    enCurso,
+    terminados,
     encargos: { total: encargos.length, porEstado, recientes: encargos.slice(0, 5).map((e) => ({ id: e.id, titulo: e.titulo, estado: e.estado, version: e.version, actualizado: e.actualizado })) },
     granjas: ejecuciones,
     eventos: { nuevos: nuevos.length, aprobados: eventos.filter((e) => e.estado === "aprobado").length, imagenesPendientes, postsListos },

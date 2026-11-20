@@ -24,6 +24,8 @@ import {
   ListTodo,
   History,
   MessageSquareWarning,
+  Ban,
+  CircleArrowRight,
 } from "lucide-react";
 import { useLanguage, type MessageKey } from "../i18n";
 import { useClerk } from "@clerk/nextjs";
@@ -40,6 +42,7 @@ import {
   type Encargo,
   type ContenidoEncargo,
   type Produccion,
+  siguienteAccion,
 } from "@/lib/produccion/modelo";
 import type { FichaSpotmi } from "@/lib/produccion/spotmi";
 import { Pixel, colores } from "../granjas/pixel";
@@ -47,8 +50,9 @@ import { SeccionGranjas } from "../granjas/granjas";
 import { ConexionesGranjas } from "../granjas/conexiones";
 import { ColocarEnGranja } from "../granjas/colocar";
 import { SeccionConsumo } from "../granjas/consumo";
-import { AgendaEventos, SeccionEventos } from "../granjas/eventos";
+import { SeccionEventos } from "../granjas/eventos";
 import { Inicio, type DestinoInicio } from "./inicio";
+import { AgendaCalendario } from "./agenda";
 import { Bienvenida, leerGuia } from "./bienvenida";
 import type { EstadoOnboarding } from "@/lib/produccion/onboarding";
 import "./estudio.css";
@@ -99,6 +103,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   // Cada guardado sube este número y el Inicio vuelve a leer sus datos.
   const [versionInicio, setVersionInicio] = useState(0);
   const [notaCambios, setNotaCambios] = useState("");
+  const [motivoRechazo, setMotivoRechazo] = useState("");
   const [fechasCalendario, setFechasCalendario] = useState<Record<string, string>>({});
   const [especialistas, setEspecialistas] = useState<Agente[]>([...agentes]);
   const [avisoOAuth, setAvisoOAuth] = useState<string | null>(null);
@@ -121,6 +126,13 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     editor &&
     (!actual || JSON.stringify(contenidoEncargoSchema.parse(actual)) !== JSON.stringify(editor));
   const encargos = produccion?.encargos ?? [];
+  // Aviso del navegador si cierras o recargas con cambios del encargo sin guardar.
+  useEffect(() => {
+    if (!modificado) return;
+    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [modificado]);
   const fecha = (valor: string) =>
     new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
       dateStyle: "medium",
@@ -304,6 +316,13 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
       abrir(datos.produccion.encargos.find((e) => e.id === seleccionado)!);
     }
   }
+  async function rechazar() {
+    const datos = await mutar({ accion: "rechazar", id: seleccionado, motivo: motivoRechazo });
+    if (datos) {
+      setMotivoRechazo("");
+      abrir(datos.produccion.encargos.find((e) => e.id === seleccionado)!);
+    }
+  }
   async function ponerFecha(id: string, fechaPrevista: string) {
     const datos = await mutar({ accion: "fecha", id, fechaPrevista });
     if (datos) setFechasCalendario((f) => ({ ...f, [id]: "" }));
@@ -364,6 +383,10 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
           <ArrowUpRight size={16} />
         </span>
         <strong>{encargo.titulo}</strong>
+        <span className="ep-siguiente">
+          <CircleArrowRight size={15} aria-hidden="true" />
+          {tr(`p_sig_${siguienteAccion(encargo)}`)}
+        </span>
         <span className="ep-chips">
           {encargo.canales.map((c) => (
             <span key={c}>{nombresCanales[c]}</span>
@@ -388,6 +411,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   const visiblesEn = (actual?: Agente) => agentes.filter((a) => especialistas.includes(a) || a === actual);
   return (
     <div className="ep-estudio">
+      {soloLectura && (
       <header className="ep-cabecera">
         <a
           className="ep-marca"
@@ -411,8 +435,15 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
           {tr("p_nuevo")}
         </button>
       </header>
+      )}
       <div className="ep-marco">
       <nav className="ep-nav" aria-label={tr("productionStudio")}>
+        {!soloLectura && (
+          <button className="ep-nav-nuevo" disabled={!produccion} onClick={() => crear()}>
+            <Plus size={17} />
+            {tr("p_nuevo")}
+          </button>
+        )}
         {navegacion.map(({ id, icono: Icono, etiqueta }) => (
           <button
             key={id}
@@ -618,7 +649,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
               />
             </label>
             <div className="ep-kanban">
-              {estados.map((estado) => (
+              {estados.filter((x) => x !== "rechazado").map((estado) => (
                 <section key={estado} className="ep-columna">
                   <h2>
                     <span className={`ep-estado ep-${estado}`} />
@@ -639,6 +670,14 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                 </section>
               ))}
             </div>
+            {filtrados.some((e) => e.estado === "rechazado") && (
+              <details className="ep-rechazados">
+                <summary>
+                  {tr("p_rechazados")} ({filtrados.filter((e) => e.estado === "rechazado").length})
+                </summary>
+                <div className="ep-rechazados-lista">{filtrados.filter((e) => e.estado === "rechazado").map(tarjetaEncargo)}</div>
+              </details>
+            )}
             {busqueda && !filtrados.length && <p>{tr("p_sinResultados")}</p>}
             {!encargos.length && produccion && (
               <div className="ep-vacio">
@@ -695,34 +734,27 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                 <h1>{tr("p_calendario")}</h1>
                 <p>{tr("p_calendarioAyuda")}</p>
               </div>
-              <CalendarDays size={35} />
-            </div>
-            <div className="ep-acciones">
-              <a className="ep-boton" href="/api/produccion/calendario" download>
+              <a className="ep-boton ep-primario" href="/api/produccion/calendario" download>
                 <Download size={16} />
                 {tr("p_exportarIcs")}
               </a>
             </div>
-            <p className="ep-nota">{tr("p_calendarioSignificado")}</p>
-            <AgendaEventos g={g} locale={locale} />
-            <h2 className="eg-subtitulo eg-calendario-encargos">{g("cal_encargos")}</h2>
-            <div className="ep-agenda">
-              {encargos
-                .filter((e) => e.fechaPrevista)
-                .sort((a, b) => a.fechaPrevista.localeCompare(b.fechaPrevista))
-                .map((e) => (
-                  <div className="ep-agenda-fila" key={e.id}>
-                    <time dateTime={`${e.fechaPrevista}:00-06:00`}>{fecha(e.fechaPrevista)}</time>
-                    {tarjetaEncargo(e)}
-                  </div>
-                ))}
-            </div>
-            {encargos.some((e) => !e.fechaPrevista) && (
+            <AgendaCalendario
+              tr={tr}
+              fecha={fecha}
+              locale={locale}
+              version={versionInicio}
+              onAbrirEncargo={(id) => {
+                const e = encargos.find((x) => x.id === id);
+                if (e) abrir(e);
+              }}
+            />
+            {encargos.some((e) => !e.fechaPrevista && e.estado !== "rechazado") && (
               <section className="ep-sin-fecha">
                 <h2 className="eg-subtitulo">{tr("p_sinFechaTitulo")}</h2>
                 <ul>
                   {encargos
-                    .filter((e) => !e.fechaPrevista)
+                    .filter((e) => !e.fechaPrevista && e.estado !== "rechazado")
                     .map((e) => (
                       <li key={e.id}>
                         <span>
@@ -752,19 +784,6 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                     ))}
                 </ul>
               </section>
-            )}
-            {!encargos.some((e) => e.fechaPrevista) && (
-              <div className="ep-vacio">
-                <CalendarDays size={32} />
-                <h3>{tr("p_calendarioVacio")}</h3>
-                <button
-                  className="ep-boton"
-                  disabled={!produccion || soloLectura}
-                  onClick={() => crear()}
-                >
-                  {tr("p_nuevo")}
-                </button>
-              </div>
             )}
           </>
         )}
@@ -911,6 +930,120 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                 {aviso}
               </p>
             )}
+            {actual && (
+              <p className="ep-siguiente ep-siguiente-editor">
+                <CircleArrowRight size={16} aria-hidden="true" />
+                <span>
+                  <b>{tr("p_siguiente")}:</b> {tr(`p_sig_${siguienteAccion(actual)}`)}
+                </span>
+              </p>
+            )}
+            {actual && (actual.estado === "revision" || actual.estado === "rechazado") && (
+              <section className="ep-revisar" aria-label={tr("p_revisarTitulo")}>
+                <h3>
+                  {tr(actual.estado === "rechazado" ? "p_rechazadoTitulo" : "p_revisarTitulo")} · {tr("p_version")} {actual.version}
+                </h3>
+                {actual.estado === "rechazado" && actual.notaCambios && (
+                  <p className="ep-alerta">
+                    <Ban size={16} aria-hidden="true" /> {tr("p_motivoRechazo")}: {actual.notaCambios}
+                  </p>
+                )}
+                <div className="ep-revisar-contenido">{actual.resultado || tr("p_sinResultado")}</div>
+                <h4>{tr("p_revisarMedios")}</h4>
+                {actual.fuentes.some((f) => f.imagen) ? (
+                  <div className="ep-revisar-medios">
+                    {actual.fuentes
+                      .filter((f) => f.imagen)
+                      .map((f) => (
+                        <figure key={f.imagen}>
+                          <img src={f.imagen} alt={`${tr("p_imagenDe")} ${f.nombre}`} loading="lazy" referrerPolicy="no-referrer" />
+                          <figcaption>
+                            {f.nombre}
+                            {f.nota ? ` · ${f.nota}` : ""}
+                          </figcaption>
+                        </figure>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="ep-nota">{tr("p_revisarSinMedios")}</p>
+                )}
+                <h4>{tr("p_revisarFuentes")}</h4>
+                {actual.fuentes.length ? (
+                  <ul className="ep-revisar-fuentes">
+                    {actual.fuentes.map((f) => (
+                      <li key={f.url}>
+                        <a href={f.url} target="_blank" rel="noreferrer noopener">
+                          {f.nombre} <ArrowUpRight size={13} aria-hidden="true" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="ep-alerta">{tr("p_revisarSinFuentes")}</p>
+                )}
+                {actual.estado === "revision" && (
+                  <div className="ep-revisar-acciones">
+                    <fieldset className="ep-revisar-checks">
+                      <legend>{tr("p_comprobaciones")}</legend>
+                      {(["hechos", "derechos", "marca"] as const).map((c) => (
+                        <label className="ep-checkbox" key={c}>
+                          <input type="checkbox" checked={comprobaciones[c]} onChange={(e) => setComprobaciones({ ...comprobaciones, [c]: e.target.checked })} />
+                          {tr(`p_${c}`)}
+                        </label>
+                      ))}
+                    </fieldset>
+                    <button
+                      className="ep-boton ep-primario"
+                      disabled={Boolean(modificado) || ocupado || !Object.values(comprobaciones).every(Boolean) || !actual.fuentes.length}
+                      onClick={() => void estado("aprobado")}
+                    >
+                      <ShieldCheck size={17} />
+                      {tr("p_aprobarVersion")} {actual.version}
+                    </button>
+                    <p className="ep-nota">{tr("p_aprobarNoPublica")}</p>
+                    <form
+                      className="ep-pedir-cambios"
+                      onSubmit={(x) => {
+                        x.preventDefault();
+                        void pedirCambios();
+                      }}
+                    >
+                      <label className="ep-campo">
+                        {tr("p_pedirCambiosCampo")}
+                        <textarea rows={2} maxLength={2000} value={notaCambios} onChange={(x) => setNotaCambios(x.target.value)} />
+                      </label>
+                      <button className="ep-boton" disabled={Boolean(modificado) || ocupado || notaCambios.trim().length < 3}>
+                        <MessageSquareWarning size={16} />
+                        {tr("p_pedirCambios")}
+                      </button>
+                    </form>
+                    <form
+                      className="ep-pedir-cambios"
+                      onSubmit={(x) => {
+                        x.preventDefault();
+                        void rechazar();
+                      }}
+                    >
+                      <label className="ep-campo">
+                        {tr("p_rechazarCampo")}
+                        <textarea rows={2} maxLength={2000} value={motivoRechazo} onChange={(x) => setMotivoRechazo(x.target.value)} />
+                      </label>
+                      <button className="ep-boton ep-peligro" disabled={Boolean(modificado) || ocupado || motivoRechazo.trim().length < 3}>
+                        <Ban size={16} />
+                        {tr("p_rechazar")}
+                      </button>
+                      <p className="ep-nota">{tr("p_rechazarAyuda")}</p>
+                    </form>
+                  </div>
+                )}
+              </section>
+            )}
+            <details
+              className="ep-editar"
+              key={`${actual?.id ?? "nuevo"}-${actual?.estado ?? ""}`}
+              open={!actual || !["revision", "aprobado", "rechazado"].includes(actual.estado)}
+            >
+              <summary>{tr(!actual ? "p_editarNuevo" : ["revision", "aprobado", "rechazado"].includes(actual.estado) ? "p_editarPlegado" : "p_editarEncargo")}</summary>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -1121,6 +1254,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                 </button>
               </div>
             </form>
+            </details>
             {actual && (
               <section className="ep-handoff">
                 {actual.notaCambios && (
@@ -1220,7 +1354,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                   )}
                 </div>
                 <div className="ep-revision">
-                  {actual.estado !== "revision" && actual.estado !== "aprobado" && (
+                  {actual.estado !== "revision" && actual.estado !== "aprobado" && actual.estado !== "rechazado" && (
                     <button
                       className="ep-boton"
                       disabled={Boolean(modificado) || ocupado || !actual.resultado.trim()}
@@ -1230,36 +1364,8 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                       <ArrowRight size={16} />
                     </button>
                   )}
-                  {actual.estado === "revision" && (
-                    <>
-                      {(["hechos", "derechos", "marca"] as const).map((c) => (
-                        <label className="ep-checkbox" key={c}>
-                          <input
-                            type="checkbox"
-                            checked={comprobaciones[c]}
-                            onChange={(e) =>
-                              setComprobaciones({ ...comprobaciones, [c]: e.target.checked })
-                            }
-                          />
-                          {tr(`p_${c}`)}
-                        </label>
-                      ))}
-                      <button
-                        className="ep-boton ep-primario"
-                        disabled={
-                          Boolean(modificado) ||
-                          ocupado ||
-                          !Object.values(comprobaciones).every(Boolean) ||
-                          !actual.fuentes.length
-                        }
-                        onClick={() => void estado("aprobado")}
-                      >
-                        <ShieldCheck size={17} />
-                        {tr("p_aprobar")}
-                      </button>
-                    </>
-                  )}
-                  {(actual.estado === "revision" || actual.estado === "aprobado") && (
+
+                  {actual.estado === "aprobado" && (
                     <form
                       className="ep-pedir-cambios"
                       onSubmit={(x) => {
@@ -1275,7 +1381,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                         <MessageSquareWarning size={16} />
                         {tr("p_pedirCambios")}
                       </button>
-                      <p className="ep-nota">{tr(actual.estado === "aprobado" ? "p_pedirCambiosAprobado" : "p_pedirCambiosAyuda")}</p>
+                      <p className="ep-nota">{tr("p_pedirCambiosAprobado")}</p>
                     </form>
                   )}
                 </div>

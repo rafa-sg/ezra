@@ -112,3 +112,32 @@ test("calendario .ics: hora de El Salvador a UTC, día completo para eventos sin
   assert.ok(ics.split("\r\n").every((l) => Buffer.byteLength(l) <= 75), "líneas plegadas a 75 octetos");
   assert.match(ics, /END:VCALENDAR\r\n$/);
 });
+
+test("agenda: distingue fecha prevista, autorización, publicación confirmada y subida manual", async () => {
+  const { agenda } = await import("../src/lib/produccion/agenda");
+  const ahora = new Date();
+  const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/El_Salvador" }).format(ahora);
+  const actual = await almacen.leerProduccion();
+  const conFecha = modelo.asignarFecha(modelo.crearEncargo({ titulo: "Encargo con fecha", agente: "guion", proveedor: "gemini", canales: ["spotmi"], encargo: "x", resultado: "", fuentes: [], fechaPrevista: "" }), `${hoy}T15:00`);
+  await almacen.guardarProduccion(actual.revision, (p) => ({ ...p, encargos: [conFecha, ...p.encargos] }));
+  const g = granjas.crearDesdeReceta("eventos_el_salvador");
+  const iso = ahora.toISOString();
+  const b = db.base();
+  b.prepare("insert into piezas (id, granja_id, version, contenido, hash, creado, actualizado) values ('pieza1', ?, 2, ?, 'h', ?, ?)").run(g.id, JSON.stringify({ titulo: "Post autorizado" }), iso, iso);
+  b.prepare("insert into autorizaciones (id, pieza_id, hash, destinos, estado, usuario, creado, expira) values ('aut1', 'pieza1', 'h', ?, 'vigente', 'u', ?, ?)").run(JSON.stringify([{ canal: "instagram" }]), iso, iso);
+  b.prepare("insert into autorizaciones (id, pieza_id, hash, destinos, estado, usuario, creado, expira) values ('aut2', 'pieza1', 'h', ?, 'usada', 'u', ?, ?)").run(JSON.stringify([{ canal: "facebook" }]), iso, iso);
+  b.prepare("insert into recibos (id, autorizacion_id, pieza_id, hash, canal, cuenta_id, cuenta_nombre, clave_idempotencia, estado, enlace, creado, actualizado) values ('rec1', 'aut2', 'pieza1', 'h', 'facebook', 'c', 'Spotmi', 'k1', 'publicado', 'https://facebook.com/x', ?, ?)").run(iso, iso);
+  b.prepare("insert into recibos (id, autorizacion_id, pieza_id, hash, canal, cuenta_id, cuenta_nombre, clave_idempotencia, estado, creado, actualizado) values ('rec2', 'aut2', 'pieza1', 'h', 'facebook', 'c', 'Spotmi', 'k2', 'fallido', ?, ?)").run(iso, iso);
+  const a = await agenda({}, ahora);
+  const tipos = (t: string) => a.entradas.filter((x) => x.tipo === t);
+  assert.ok(tipos("prevista").some((x) => x.titulo === "Encargo con fecha" && x.dia === hoy));
+  assert.equal(tipos("autorizada").length, 2, "vigente y usada");
+  assert.match(tipos("autorizada")[0].detalle, /v2 · (instagram|facebook)/);
+  assert.equal(tipos("publicada").length, 1, "un envío fallido no es una publicación");
+  assert.equal(tipos("publicada")[0].enlace, "https://facebook.com/x");
+  // Fuera del rango no aparece.
+  assert.equal((await agenda({ desde: "2030-01-01", hasta: "2030-01-31" }, ahora)).entradas.length, 0);
+  // El inicio propone el siguiente paso más urgente (hay un encargo en revisión de la prueba anterior).
+  const r = await inicio.resumenInicio();
+  assert.equal(r.siguiente.accion, "encargo_revision");
+});

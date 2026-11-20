@@ -1780,3 +1780,441 @@
 .azra .ep-asignar-fecha input {
   max-width: 100%;
 }
+
+/* ═══ Dirección visual (19 nov) ═══════════════════════════════════════════════
+   Tipografía de sistema, superficies tranquilas, un solo color de acción (lima) y colores de
+   estado con significado: atención (ámbar), en curso (azul), terminado (verde), error (rojo).
+   Una sola franja de cabecera (la del shell) y sin títulos repetidos. */
+.azra .ep-estudio,
+.azra .ep-modal {
+  --ep-superficie: #15243a;
+  --ep-superficie-2: #0f1b2a;
+  --ep-borde-suave: #24364a;
+  --ep-atencion: #f2c94c;
+  --ep-atencion-fondo: #3a3220;
+  --ep-proceso: #6fb1ff;
+  --ep-proceso-fondo: #1a2d45;
+  --ep-hecho: #7fdca2;
+  --ep-hecho-fondo: #1d3328;
+  --ep-error: #ff8a8a;
+  --ep-error-fondo: #3a1f24;
+  --ep-radio: 10px;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+.azra .ep-marco .ep-seccion-cabecera .ep-eyebrow {
+  display: none;
+}
+.azra .ep-marco .ep-seccion-cabecera {
+  padding: 26px 0 20px;
+}
+.azra .ep-marco .ep-seccion-cabecera h1 {
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+.azra .ep-estudio h2,
+.azra .ep-estudio h3,
+.azra .ep-modal h2 {
+  letter-spacing: -0.01em;
+}
+.azra .ep-boton {
+  min-height: 40px;
+  border-radius: 8px;
+}
+.azra .ep-estudio input,
+.azra .ep-estudio select,
+.azra .ep-estudio textarea,
+.azra .ep-modal input,
+.azra .ep-modal select,
+.azra .ep-modal textarea {
+  min-height: 40px;
+  border-radius: 8px;
+}
+.azra .ep-estudio input:focus-visible,
+.azra .ep-estudio select:focus-visible,
+.azra .ep-estudio textarea:focus-visible,
+.azra .ep-modal input:focus-visible,
+.azra .ep-modal select:focus-visible,
+.azra .ep-modal textarea:focus-visible {
+  outline: 2px solid var(--ep-lima);
+  outline-offset: 1px;
+}
+/* Acción principal del estudio, arriba del menú lateral (como «Nuevo post» en Buffer). */
+.azra .ep-nav > .ep-nav-nuevo {
+  justify-content: center;
+  margin-bottom: 10px;
+  color: #172224 !important;
+  background: var(--ep-lima) !important;
+  border: 0 !important;
+  font-weight: 600;
+}
+.azra .ep-nav > .ep-nav-nuevo:hover {
+  background: #e6f6bb !important;
+}
+@media (max-width: 1023px) {
+  .azra .ep-nav > .ep-nav-nuevo {
+    margin: 10px 0;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 8px;
+  }
+}
+/* Estados con significado (chips). */
+.azra .ep-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.azra .ep-chip-atencion {
+  color: var(--ep-atencion);
+  background: var(--ep-atencion-fondo);
+}
+.azra .ep-chip-proceso {
+  color: var(--ep-proceso);
+  background: var(--ep-proceso-fondo);
+}
+.azra .ep-chip-hecho {
+  color: var(--ep-hecho);
+  background: var(--ep-hecho-fondo);
+}
+.azra .ep-chip-error {
+  color: var(--ep-error);
+  background: var(--ep-error-fondo);
+}
+.azra .ep-chip-neutro {
+  color: var(--ep-suave);
+  background: #1e2e42;
+}
+/* Siguiente acción en tarjetas y editor. */
+.azra .ep-siguiente {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--ep-texto);
+  font-size: 13px;
+}
+.azra .ep-siguiente svg {
+  flex: 0 0 auto;
+  color: var(--ep-lima);
+}
+/* ── Inicio: siguiente paso y tres grupos (atención · en curso · aprobado) ── */
+.azra .ep-siguiente-paso {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 22px;
+  padding: 18px 20px;
+  border: 1px solid var(--ep-borde-suave);
+  border-left: 3px solid var(--ep-lima);
+  border-radius: var(--ep-radio);
+  background: var(--ep-superficie);
+}
+.azra .ep-siguiente-paso h2 {
+  font-size: 20px;
+}
+.azra .ep-siguiente-paso p {
+  color: var(--ep-suave);
+}
+.azra .ep-siguiente-etiqueta {
+  margin-bottom: 4px !important;
+  color: var(--ep-lima) !important;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em;
+}
+.azra .ep-inicio-tres {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+@media (max-width: 1023px) {
+  .azra .ep-inicio-tres {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.azra .ep-inicio-bloque {
+  border-color: var(--ep-borde-suave);
+  background: var(--ep-superficie);
+}
+.azra .ep-inicio-bloque h2 .ep-chip {
+  margin-left: auto;
+}
+.azra .ep-bloque-atencion {
+  border-top: 3px solid var(--ep-atencion);
+}
+.azra .ep-bloque-proceso {
+  border-top: 3px solid var(--ep-proceso);
+}
+.azra .ep-bloque-hecho {
+  border-top: 3px solid var(--ep-hecho);
+}
+.azra .ep-bloque-hecho .ep-inicio-lista button > svg {
+  color: var(--ep-hecho);
+}
+.azra .ep-bloque-proceso .ep-inicio-lista button > svg {
+  color: var(--ep-proceso);
+}
+.azra .ep-inicio-lista .ep-icono-error {
+  color: var(--ep-error) !important;
+}
+.azra .ep-inicio-pie {
+  grid-column: 1 / -1;
+}
+.azra .ep-enlace {
+  padding: 0;
+  border: 0 !important;
+  color: var(--ep-lima) !important;
+  background: none !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+/* ── Encargos: siguiente acción, revisión y rechazados ── */
+.azra .ep-tarea .ep-siguiente {
+  color: var(--ep-suave);
+}
+.azra .ep-siguiente-editor {
+  margin: 4px 0 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--ep-superficie-2);
+}
+.azra .ep-revisar {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--ep-borde-suave);
+  border-left: 3px solid var(--ep-atencion);
+  border-radius: var(--ep-radio);
+  background: var(--ep-superficie);
+}
+.azra .ep-revisar h3 {
+  font-size: 17px;
+}
+.azra .ep-revisar h4 {
+  margin: 6px 0 0;
+  color: var(--ep-suave);
+  font-size: 13px;
+  font-weight: 600;
+}
+.azra .ep-revisar-contenido {
+  max-height: 360px;
+  overflow: auto;
+  padding: 14px;
+  border-radius: 8px;
+  background: var(--ep-superficie-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.azra .ep-revisar-medios {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.azra .ep-revisar-medios figure {
+  margin: 0;
+}
+.azra .ep-revisar-medios img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--ep-superficie-2);
+}
+.azra .ep-revisar-medios figcaption {
+  color: var(--ep-suave);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.azra .ep-revisar-fuentes {
+  margin: 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+.azra .ep-revisar-fuentes a {
+  color: var(--ep-lima);
+}
+.azra .ep-revisar-acciones {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ep-borde-suave);
+}
+.azra .ep-revisar-acciones > .ep-boton {
+  justify-self: start;
+}
+.azra .ep-revisar-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.azra .ep-revisar-checks legend {
+  margin-bottom: 6px;
+  color: var(--ep-suave);
+}
+.azra .ep-boton.ep-peligro {
+  color: var(--ep-error);
+  border-color: #6b3a40;
+}
+.azra .ep-editar {
+  margin: 4px 0 12px;
+}
+.azra .ep-editar > summary {
+  margin-bottom: 10px;
+  color: var(--ep-suave);
+  font-weight: 600;
+  cursor: pointer;
+}
+.azra .ep-rechazados {
+  margin-top: 18px;
+}
+.azra .ep-rechazados > summary {
+  color: var(--ep-suave);
+  cursor: pointer;
+}
+.azra .ep-rechazados-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+  margin-top: 10px;
+  opacity: 0.85;
+}
+/* ── Calendario: agenda por día con clase de fecha ── */
+.azra .ep-agenda2 {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.azra .ep-agenda2-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+.azra .ep-agenda2-filtro {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 32px;
+  cursor: pointer;
+}
+.azra .ep-agenda2-leyenda {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 8px 16px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--ep-radio);
+  background: var(--ep-superficie);
+  font-size: 12px;
+}
+.azra .ep-agenda2-leyenda dd {
+  margin: 4px 0 0;
+  color: var(--ep-suave);
+}
+.azra .ep-agenda2-dias {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .ep-agenda2-dias > li > h3 {
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: var(--ep-suave);
+}
+.azra .ep-agenda2-dias > li > h3::first-letter {
+  text-transform: uppercase;
+}
+.azra .ep-agenda2-dias > li.ep-hoy > h3 {
+  color: var(--ep-lima);
+}
+.azra .ep-agenda2-dias > li.ep-pasado {
+  opacity: 0.7;
+}
+.azra .ep-agenda2-dias ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .ep-agenda2-dias ul li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--ep-borde-suave);
+  border-radius: 8px;
+  background: var(--ep-superficie);
+}
+.azra .ep-agenda2-texto {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.azra .ep-agenda2-texto .ep-enlace {
+  justify-self: start;
+  color: var(--ep-texto) !important;
+  font-weight: 600;
+  text-align: left;
+}
+.azra .ep-agenda2-texto small {
+  color: var(--ep-suave);
+}
+.azra .ep-agenda2-enlace {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: var(--ep-lima) !important;
+}
+@media (max-width: 599px) {
+  .azra .ep-agenda2-dias ul li {
+    flex-wrap: wrap;
+  }
+}
+/* ── Guía: requisito del paso y conexiones externas ── */
+.azra .ep-ob-requisito {
+  margin: -4px 0 0 !important;
+}
+.azra .ep-ob-externas {
+  padding: 12px 14px;
+  border-radius: var(--ep-radio);
+  background: var(--ep-superficie-2);
+}
+.azra .ep-ob-externas h3 {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.azra .ep-ob-externas ul {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+.azra .ep-ob-externas li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+/* ── Conexiones: qué habilita cada cuenta ── */
+.azra .eg-habilita {
+  margin: 8px 0 !important;
+  font-size: 13px;
+}

@@ -6,6 +6,8 @@ import {
   asignarFecha,
   encargoSchema,
   solicitarCambios,
+  rechazarEncargo,
+  siguienteAccion,
   cambiarEstado,
   comprobacionesVacias,
   contenidoEncargoSchema,
@@ -260,4 +262,26 @@ test("historial: versión reemplazada con su texto, aprobada con su texto, cambi
   delete viejo.notaCambios;
   const leido = encargoSchema.parse(viejo);
   assert.deepEqual([leido.historial, leido.notaCambios], [[], ""]);
+});
+
+test("rechazar con motivo y siguiente paso según estado", () => {
+  const enRevision = cambiarEstado(crearEncargo({ ...contenido(), resultado: "Entrega" }), "revision");
+  assert.throws(() => rechazarEncargo(enRevision, ""), /motivo/);
+  assert.throws(() => cambiarEstado(enRevision, "rechazado"), /motivo/);
+  assert.throws(() => rechazarEncargo(crearEncargo(contenido()), "No sirve"), /en revisión o aprobada/);
+  const rechazado = rechazarEncargo(enRevision, "No corresponde a Spotmi.");
+  assert.equal(rechazado.estado, "rechazado");
+  assert.deepEqual([rechazado.historial.at(-1)!.accion, rechazado.historial.at(-1)!.resultado], ["rechazado", "Entrega"]);
+  // Editar lo rechazado lo reabre como versión nueva.
+  const reabierto = editarEncargo(rechazado, { ...contenido(), resultado: "Otra entrega" });
+  assert.equal(reabierto.estado, "pendiente");
+  assert.equal(reabierto.version, 2);
+  const base = { resultado: "", notaCambios: "", fechaPrevista: "" };
+  assert.equal(siguienteAccion({ ...base, estado: "pendiente" }), "ejecutar");
+  assert.equal(siguienteAccion({ ...base, estado: "pendiente", resultado: "x" }), "enviar_revision");
+  assert.equal(siguienteAccion({ ...base, estado: "pendiente", notaCambios: "Falta hora" }), "aplicar_cambios");
+  assert.equal(siguienteAccion({ ...base, estado: "revision" }), "revisar");
+  assert.equal(siguienteAccion({ ...base, estado: "aprobado" }), "planificar");
+  assert.equal(siguienteAccion({ ...base, estado: "aprobado", fechaPrevista: "2026-12-01T10:00" }), "exportar");
+  assert.equal(siguienteAccion({ ...base, estado: "rechazado" }), "reabrir");
 });
