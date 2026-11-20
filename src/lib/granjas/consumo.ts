@@ -187,6 +187,8 @@ export const leerTarifas = () => leerAjuste("tarifas", tarifasSchema, {});
 export const guardarTarifas = (valor: unknown) => guardarAjuste("tarifas", tarifasSchema, valor);
 export function costoLlamada(f: FilaConsumo, tarifas: Tarifas): number | null {
   const t = tarifas[f.modelo];
+  // Astra (Codex con ChatGPT) va por tu plan de ChatGPT: no tiene costo por llamada en Ezra.
+  if (!t && f.modelo.startsWith("Astra")) return 0;
   if (!t) return null;
   const entrada = ((f.prompt_tokens + f.herramientas_tokens) * t.entrada) / 1_000_000;
   const salida = ((f.candidatos_tokens + f.pensamiento_tokens) * t.salida) / 1_000_000;

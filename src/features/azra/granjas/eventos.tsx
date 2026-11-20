@@ -39,15 +39,10 @@ type Respuesta = {
   cuentas: CuentasSeguidas;
   lectura: { instagram: EstadoLectura; facebook: EstadoLectura };
   confianza: FilaConfianza[];
-  imagenesIA: {
-    activa: boolean;
-    motivo: string;
-    aviso: string;
-    hoy: number;
-    limite: number;
-    modelo: string;
-  };
+  imagenesIA: EstadoIA;
+  imagenesAstra: EstadoIA;
 };
+type EstadoIA = { activa: boolean; motivo: string; aviso: string; hoy: number; limite: number; modelo: string };
 type ResultadoImagen = {
   id: string;
   titulo: string;
@@ -1189,6 +1184,25 @@ export function SeccionEventos({
                     >
                       <Sparkles size={15} />
                       {g(e.imagenTipo === "ia" ? "ev_ia_regenerar" : "ev_ia_generar")}
+                    </button>
+                    <button
+                      className="ep-boton"
+                      disabled={ocupado || !datos.imagenesAstra.activa}
+                      title={datos.imagenesAstra.activa ? g("ev_ia_astraAyuda") : datos.imagenesAstra.motivo}
+                      onClick={() =>
+                        void accion(
+                          {
+                            accion: "generar_referencia",
+                            id: e.id,
+                            regenerar: e.imagenTipo === "ia",
+                            proveedor: "astra",
+                          },
+                          g("ev_ia_generada"),
+                        )
+                      }
+                    >
+                      <Sparkles size={15} />
+                      {g("ev_ia_astra")}
                     </button>
                     <button
                       className="ep-boton"

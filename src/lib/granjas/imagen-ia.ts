@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { WorkflowError } from "../workflow";
 import { guardarAjuste, leerAjuste } from "./ajustes";
-import { imagenesIaHoy, leerLimiteImagenes, PASO_IMAGEN_IA } from "./consumo";
+import { imagenesIaHoy, leerLimiteImagenes, PASO_IMAGEN_IA, registrarConsumo } from "./consumo";
 import { leerEvento, ponerImagenFuente, prioridadImagen } from "./eventos";
 import { herramientasVideo, guardarMedio, leerMedio } from "./medios";
 import { promptImagenEvento, revisarPrompt, textoParaModelo } from "./prompt-imagen";
@@ -17,6 +17,18 @@ import { z } from "zod";
  * post oficial o foto de prensa la reemplaza (queda en el historial).
  */
 export const LICENCIA_IA = "Imagen de referencia generada con IA (Gemini)";
+export const LICENCIA_IA_ASTRA = "Imagen de referencia generada con IA (Astra · Codex con ChatGPT)";
+export const MODELO_ASTRA = "Astra (Codex · ChatGPT)";
+export type ProveedorImagen = "gemini" | "astra";
+/** Astra no depende de Gemini: solo del límite diario de imágenes IA (Consumo) y de los 30 intentos al mes. */
+export function estadoImagenesAstra(): EstadoImagenesIA {
+  const limite = leerLimiteImagenes();
+  const hoy = imagenesIaHoy();
+  const base = { hoy, limite, modelo: MODELO_ASTRA, aviso: "" };
+  if (limite === 0) return { ...base, activa: false, motivo: "El límite diario de imágenes IA está en 0 (Consumo)." };
+  if (hoy >= limite) return { ...base, activa: false, motivo: `Se alcanzó el límite de ${limite} imágenes IA de hoy.` };
+  return { ...base, activa: true, motivo: "" };
+}
 const ejecutar = promisify(execFile);
 
 /** Último bloqueo por facturación (Google responde 429 con cuota gratuita en 0). Se borra al primer éxito. */
@@ -89,12 +101,23 @@ export type ResultadoReferencia = { ok: true; motivo: string; prompt: string; in
  */
 export async function generarReferencia(
   id: string,
-  opciones: { prompt?: string; forzar?: boolean; regenerar?: boolean; control?: boolean; contexto?: { granjaId?: string | null; ejecucionId?: string | null } } = {},
+  opciones: {
+    prompt?: string;
+    forzar?: boolean;
+    regenerar?: boolean;
+    control?: boolean;
+    contexto?: { granjaId?: string | null; ejecucionId?: string | null };
+    proveedor?: ProveedorImagen;
+    /** Pruebas: sustituyen a Codex y al conteo de intentos del estudio. */
+    astra?: (prompt: string) => Promise<{ bytes: Buffer; mime: string }>;
+    usosLegado?: () => Promise<number>;
+  } = {},
 ): Promise<ResultadoReferencia> {
+  const astra = opciones.proveedor === "astra";
   const e = leerEvento(id);
   if (e.imagenTipo && prioridadImagen[e.imagenTipo] > prioridadImagen.ia) return { ok: false, motivo: "El evento ya tiene una imagen oficial o de prensa." };
   if (e.imagenTipo === "ia" && !opciones.regenerar) return { ok: false, motivo: "Ya tiene una imagen de referencia. Usa «Regenerar»." };
-  const estado = await estadoImagenesIA();
+  const estado = astra ? estadoImagenesAstra() : await estadoImagenesIA();
   if (!estado.activa) return { ok: false, motivo: estado.motivo };
   const base = promptImagenEvento(e);
   const prompt = opciones.prompt?.trim() || base.prompt;
@@ -102,14 +125,32 @@ export async function generarReferencia(
     const avisos = revisarPrompt(prompt, e);
     if (avisos.length && !opciones.forzar) throw new WorkflowError(`Revisa el prompt antes de generar: ${avisos.join(" ")}`, 422);
   }
-  const { generarImagenGemini, esFaltaFacturacion } = await import("../ia/gemini");
+  const { generarImagenGemini, esFaltaFacturacion, geminiProduccionHabilitado } = await import("../ia/gemini");
+  // El control (texto, logos, personas) usa Gemini de texto: con Astra solo si Gemini está encendido.
+  const conControl = opciones.control !== false && (!astra || geminiProduccionHabilitado());
+  // Astra gasta de los 30 intentos al mes: un solo intento por imagen.
+  const maxIntentos = astra ? 1 : 2;
   const contexto = { origen: "granja" as const, paso: PASO_IMAGEN_IA, granjaId: opciones.contexto?.granjaId ?? e.granjaId, ejecucionId: opciones.contexto?.ejecucionId ?? null };
   let ultimoControl: Control = null;
-  for (let intento = 1; intento <= 2; intento++) {
+  for (let intento = 1; intento <= maxIntentos; intento++) {
     // Sin semilla en la API: el segundo intento es otra llamada (y pide otra composición).
     if (intento === 2 && imagenesIaHoy() >= leerLimiteImagenes()) return { ok: false, motivo: "El control falló y ya no queda cupo de imágenes IA hoy." };
     let imagen: { bytes: Buffer; mime: string };
-    try {
+    if (astra) {
+      const inicio = Date.now();
+      try {
+        const { reservarIntentoWeb } = await import("./pasos");
+        const usosLegado = opciones.usosLegado ?? (await (await import("./trabajador")).dependenciasReales()).usosLegado;
+        await reservarIntentoWeb(`imagen:${id}`, "astra", { usosLegado });
+        const texto = textoParaModelo({ prompt, negativo: base.negativo });
+        imagen = opciones.astra ? await opciones.astra(texto) : await (await import("../ia/astra-imagen")).generarImagenAstra(texto);
+        registrarConsumo({ ...contexto, modelo: MODELO_ASTRA, busqueda: false, consultasBusqueda: 0, duracionMs: Date.now() - inicio });
+      } catch (error) {
+        const motivo = error instanceof Error ? error.message.slice(0, 200) : "error";
+        registrarConsumo({ ...contexto, modelo: MODELO_ASTRA, busqueda: false, consultasBusqueda: 0, duracionMs: Date.now() - inicio, error: motivo });
+        return { ok: false, motivo: `Astra no generó la imagen: ${motivo}` };
+      }
+    } else try {
       imagen = await generarImagenGemini(contexto, textoParaModelo({ prompt: intento === 1 ? prompt : `${prompt} Use a different composition and camera angle.`, negativo: base.negativo }));
     } catch (error) {
       if (esFaltaFacturacion(error)) {
@@ -122,28 +163,28 @@ export async function generarReferencia(
     guardarBloqueo(null);
     const ajustada = await aCuatroQuintos(imagen.bytes, imagen.mime);
     const mime = ajustada.escalada ? "image/jpeg" : imagen.mime;
-    if (opciones.control !== false) {
+    if (conControl) {
       ultimoControl = await controlar(ajustada.bytes, mime, opciones.contexto ?? { granjaId: e.granjaId });
       if (ultimoControl && (ultimoControl.texto || ultimoControl.logo || ultimoControl.persona)) continue;
     }
     const medio = await guardarMedio(ajustada.bytes, {
       nombre: `Referencia IA · ${e.titulo}`.slice(0, 200),
       procedencia: { origen: "ia", nota: `Generada con ${estado.modelo} a partir del prompt de la plantilla ${base.version}.`, herramienta: estado.modelo },
-      licencia: LICENCIA_IA,
+      licencia: astra ? LICENCIA_IA_ASTRA : LICENCIA_IA,
       generado: true,
     });
     const reemplazo = e.imagenTipo === "ia";
-    ponerImagenFuente(id, medio.id, "", LICENCIA_IA, {
+    ponerImagenFuente(id, medio.id, "", astra ? LICENCIA_IA_ASTRA : LICENCIA_IA, {
       tipo: "ia",
       ia: { prompt, negativo: base.negativo, version: base.version, modelo: estado.modelo },
-      nota: `${opciones.prompt?.trim() ? "Prompt editado por el propietario. " : ""}${intento > 1 ? "Regenerada tras el control. " : ""}${ultimoControl === null && opciones.control !== false ? "Control sin respuesta." : ""}`.trim(),
+      nota: `${opciones.prompt?.trim() ? "Prompt editado por el propietario. " : ""}${intento > 1 ? "Regenerada tras el control. " : ""}${ultimoControl === null && conControl ? "Control sin respuesta." : astra && !conControl ? "Sin control automático (Gemini apagado): revísala tú." : ""}`.trim(),
       reemplazarIgual: reemplazo,
     });
     return { ok: true, motivo: estado.modelo, prompt, intentos: intento, control: ultimoControl };
   }
   const f = ultimoControl!;
   const que = [f.texto && "texto", f.logo && "logo", f.persona && "persona reconocible"].filter(Boolean).join(", ");
-  return { ok: false, motivo: `El control detectó ${que} dos veces; queda el cuadro azul.` };
+  return { ok: false, motivo: `El control detectó ${que}${maxIntentos > 1 ? " dos veces" : ""}; queda el cuadro azul.` };
 }
 
 /**

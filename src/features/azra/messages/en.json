@@ -1521,5 +1521,7 @@
   "g_p_video_astra": "Video with Astra's script, no music",
   "g_p_video_gemini": "Video with Gemini's script, no music",
   "g_p_video_manual": "Video with your edited script, no music",
-  "g_p_videoAlt": "Vertical video"
+  "g_p_videoAlt": "Vertical video",
+  "g_ev_ia_astra": "Create with Astra",
+  "g_ev_ia_astraAyuda": "Astra (Codex with your ChatGPT plan) creates an illustrative image, with no text, logos or recognizable people. Uses 1 of the 30 monthly attempts and counts toward the daily AI image limit. Takes 1–3 minutes. Never an official image."
 }

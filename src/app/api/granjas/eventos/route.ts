@@ -28,7 +28,7 @@ import { eventosPublicosSpotmi } from "@/lib/granjas/spotmi-publico";
 import { listarGranjas } from "@/lib/granjas/almacen";
 import { completarImagenEvento } from "@/lib/granjas/completar-imagenes";
 import { buscarMediosPublicacion, fotogramaDeVideo, guardarImagenOriginal, leerDatosAfiche, vincularPublicacion } from "@/lib/granjas/imagen-original";
-import { estadoImagenesIA, generarReferencia, ponerReferenciaSubida } from "@/lib/granjas/imagen-ia";
+import { estadoImagenesAstra, estadoImagenesIA, generarReferencia, ponerReferenciaSubida } from "@/lib/granjas/imagen-ia";
 import { promptImagenEvento, revisarPrompt, textoParaModelo } from "@/lib/granjas/prompt-imagen";
 import { importarEventos, MAX_IMPORTAR } from "@/lib/granjas/importar";
 import { actualizarPropuestasPendientes, consultarEstadoSpotmi, enviarEventoASpotmi, spotmiPuedeProponer } from "@/lib/granjas/spotmi-propuestas";
@@ -37,6 +37,8 @@ import { guardarMedio } from "@/lib/granjas/medios";
 import { diaLocal, diaValido } from "@/lib/granjas/tiempo";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Astra (Codex) puede tardar hasta 4 minutos en crear una imagen de referencia.
+export const maxDuration = 300;
 
 const id = z.string().uuid();
 const revision = z.number().int().positive();
@@ -68,7 +70,14 @@ const accion = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("referencia_prompt"), id, prompt: z.string().trim().max(2000).optional() }),
   // Referencia hecha en la app de Gemini y subida a mano (no usa la API ni el límite diario).
   z.object({ accion: z.literal("referencia_subida"), id, medioId: id }),
-  z.object({ accion: z.literal("generar_referencia"), id, prompt: z.string().trim().max(2000).optional(), forzar: z.boolean().default(false), regenerar: z.boolean().default(false) }),
+  z.object({
+    accion: z.literal("generar_referencia"),
+    id,
+    prompt: z.string().trim().max(2000).optional(),
+    forzar: z.boolean().default(false),
+    regenerar: z.boolean().default(false),
+    proveedor: z.enum(["gemini", "astra"]).default("gemini"),
+  }),
   // «Pegar enlace»: un video o post (TikTok, Instagram…) con los datos escritos a mano. Ezra no abre ese enlace.
   z.object({ accion: z.literal("pegar_enlace"), datos: enlaceManualSchema }),
   z.object({ accion: z.literal("cuentas"), cuentas: cuentasSeguidasSchema }),
@@ -120,6 +129,7 @@ export async function GET(request: Request) {
         confianza: tablaConfianza(todos),
         lectura: estadoLecturaRedes(),
         imagenesIA: await estadoImagenesIA(),
+        imagenesAstra: estadoImagenesAstra(),
       },
       { headers: { "Cache-Control": "no-store" } },
     );
@@ -193,7 +203,7 @@ export async function POST(request: Request) {
     }
     if (a.accion === "referencia_subida") return Response.json({ evento: ponerReferenciaSubida(a.id, a.medioId) });
     if (a.accion === "generar_referencia") {
-      const r = await generarReferencia(a.id, { prompt: a.prompt, forzar: a.forzar, regenerar: a.regenerar });
+      const r = await generarReferencia(a.id, { prompt: a.prompt, forzar: a.forzar, regenerar: a.regenerar, proveedor: a.proveedor });
       if (!r.ok) throw new WorkflowError(r.motivo, "facturacion" in r && r.facturacion ? 402 : 422);
       return Response.json({ evento: leerEvento(a.id), resultado: r });
     }

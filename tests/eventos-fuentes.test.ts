@@ -2,7 +2,7 @@ import test, { before } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // Base de prueba en work/; páginas, imágenes, Meta y Gemini simulados (sin red).
@@ -634,4 +634,90 @@ test("paso «Imagen»: con páginas lentas se corta por evento y en total; lo qu
   assert.match(detalle[0].motivo, /tardó demasiado/);
   assert.match(r.detalle, /quedan para «Completar imágenes»/);
   assert.notEqual(r.bloqueado, true, "el paso termina bien: los eventos ya están en la bandeja");
+});
+
+test("Astra (Codex simulado): toma la imagen de la sesión, entiende el límite de ChatGPT y nunca apaga image_generation", async () => {
+  const { generarImagenAstra, argumentosImagenAstra, errorDeCodex, buscarImagenNueva } = await import("../src/lib/ia/astra-imagen");
+  const args = argumentosImagenAstra("/tmp/x.txt");
+  assert.ok(args.includes("read-only") && args.includes("--ephemeral"));
+  assert.ok(!args.join(" ").includes("--disable image_generation"), "la generación de imágenes queda encendida");
+  assert.ok(args.join(" ").includes("--disable shell_tool"), "sin comandos");
+  assert.match(errorDeCodex("ERROR: You’ve hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro) or try again at 12:07 PM.")!.message, /límite de uso de Codex; se libera a las 12:07 PM/);
+  assert.equal(errorDeCodex("todo bien"), null);
+  const carpeta = path.join(process.env.EZRA_DATA_DIR!, "codex-imagenes");
+  const sesion = "01a1f9ac-6cff-75d0-9c52-6d0447b51974";
+  const png = Buffer.from("89504e470d0a1a0a0000000d4948445200000001000000010806000000", "hex");
+  const ejecutar = async (_b: string, a: string[], entrada: string) => {
+    if (a[0] === "login") return "Logged in using ChatGPT";
+    assert.match(entrada, /exactamente UNA imagen vertical/);
+    await mkdir(path.join(carpeta, sesion), { recursive: true });
+    await writeFile(path.join(carpeta, sesion, "exec-1.png"), png);
+    return `OpenAI Codex\nsession id: ${sesion}\nLISTO`;
+  };
+  const r = await generarImagenAstra("plaza de noche", { binario: "/bin/codex", ejecutar, carpetaImagenes: carpeta });
+  assert.deepEqual([r.sesion, r.mime, r.bytes.length], [sesion, "image/png", png.length]);
+  // Imagen vieja (antes de pedir) no cuenta.
+  assert.equal(await buscarImagenNueva(carpeta, sesion, Date.now() + 60_000), null);
+  // Sin sesión de ChatGPT o con el límite del plan: errores claros.
+  await assert.rejects(generarImagenAstra("x", { binario: "/bin/codex", ejecutar: async () => "Not logged in", carpetaImagenes: carpeta }), /Inicia sesión en Codex/);
+  const conLimite = async (_b: string, a: string[]) => {
+    if (a[0] === "login") return "Logged in using ChatGPT";
+    throw Object.assign(new Error("falló"), { salida: "ERROR: You’ve hit your usage limit. try again at 12:07 PM." });
+  };
+  await assert.rejects(generarImagenAstra("x", { binario: "/bin/codex", ejecutar: conLimite, carpetaImagenes: carpeta }), /se libera a las 12:07 PM/);
+});
+
+test("referencia IA con Astra: sin Gemini, un intento del límite mensual, cuenta en el límite diario y nunca es oficial", { skip: !hayFfmpeg }, async () => {
+  const ia = await import("../src/lib/granjas/imagen-ia");
+  const consumo = await import("../src/lib/granjas/consumo");
+  const pasos = await import("../src/lib/granjas/pasos");
+  const antes = { ia: process.env.EZRA_PRODUCCION_IA, clave: process.env.GEMINI_API_KEY };
+  delete process.env.EZRA_PRODUCCION_IA;
+  delete process.env.GEMINI_API_KEY;
+  try {
+    const salida = path.join(process.env.EZRA_DATA_DIR!, "astra.png");
+    execFileSync(ffmpeg, ["-v", "error", "-y", "-f", "lavfi", "-i", "color=c=teal:s=1024x1536", "-frames:v", "1", salida]);
+    const bytes = await readFile(salida);
+    consumo.guardarLimiteImagenes(50);
+    const hoy = consumo.imagenesIaHoy();
+    const usos = pasos.usosGranjasDelMes();
+    const e = nuevo({ titulo: "Festival de Invierno de Perquín", categoria: "cultura", fecha: tiempo.sumarDias(tiempo.diaLocal(), 9), fuenteUrl: "https://elsalvador.travel/esp/event/perquin/" });
+    assert.equal(ia.estadoImagenesAstra().activa, true, "Astra no depende de Gemini");
+    let pedido = "";
+    const r = await ia.generarReferencia(e.id, {
+      proveedor: "astra",
+      usosLegado: async () => 0,
+      astra: async (p) => {
+        pedido = p;
+        return { bytes, mime: "image/png" };
+      },
+    });
+    assert.ok(r.ok, r.ok ? "" : r.motivo);
+    assert.match(pedido, /Avoid: no text, no letters/, "mismo prompt seguro que Gemini");
+    const ev = eventos.leerEvento(e.id);
+    assert.equal(ev.imagenTipo, "ia");
+    assert.equal(ev.imagenPermiso, ia.LICENCIA_IA_ASTRA);
+    assert.equal(ev.imagenConfirmada, false);
+    assert.match(ev.imagenes.at(-1)?.nota ?? "", /Sin control automático/);
+    assert.equal(consumo.imagenesIaHoy(), hoy + 1);
+    assert.equal(pasos.usosGranjasDelMes(), usos + 1);
+    assert.throws(() => eventos.confirmarImagen(e.id, ev.revision), /no se confirma como oficial/);
+    // Con los 30 intentos usados, no se llama a Codex.
+    let llamado = false;
+    const sinCupo = await ia.generarReferencia(e.id, {
+      proveedor: "astra",
+      regenerar: true,
+      usosLegado: async () => 30,
+      astra: async () => {
+        llamado = true;
+        return { bytes, mime: "image/png" };
+      },
+    });
+    assert.equal(sinCupo.ok, false);
+    assert.match(sinCupo.motivo, /límite de 30 intentos/);
+    assert.equal(llamado, false);
+  } finally {
+    if (antes.ia !== undefined) process.env.EZRA_PRODUCCION_IA = antes.ia;
+    if (antes.clave !== undefined) process.env.GEMINI_API_KEY = antes.clave;
+  }
 });

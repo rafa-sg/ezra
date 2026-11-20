@@ -82,13 +82,15 @@ export function ejecutarProceso(
     proceso.on("close", (codigo) => {
       clearTimeout(reloj);
       if (fallo) reject(fallo);
-      else if (codigo !== 0)
-        reject(
-          new WorkflowError(
-            "La herramienta de IA no completó el encargo. Revisa su sesión en la terminal.",
-            502,
-          ),
+      else if (codigo !== 0) {
+        const error = new WorkflowError(
+          "La herramienta de IA no completó el encargo. Revisa su sesión en la terminal.",
+          502,
         );
+        // Solo para reconocer avisos conocidos (p. ej. límite de uso); nunca se muestra ni se guarda.
+        if (incluirErrores) Object.defineProperty(error, "salida", { value: salida, enumerable: false });
+        reject(error);
+      }
       else resolve(salida);
     });
     proceso.stdin.on("error", () => {
