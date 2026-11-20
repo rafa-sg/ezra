@@ -90,6 +90,12 @@
 - [ ] Propietario: en Consumo › Tarifas, agregar `gemini-3.1-flash-lite-image` (salida US$ 30 por millón de tokens de imagen ≈ US$ 0,034 por imagen) para ver el costo estimado.
 - [ ] Propietario: decidir si los 12 afiches en baja resolución se confirman tal cual.
 
+### 20 nov · La búsqueda diaria ya no falla por red ni por el paso «Imagen»
+- [x] Causa del 19 nov: el paso «Imagen» revisaba 9 eventos sin tope y releía carteleras y portadas por cada evento; superó los 8 min del trabajador y la ejecución quedó «fallida» aunque los 9 eventos ya estaban en la bandeja. Ahora: máximo 75 s por evento y 5 min en total, lecturas compartidas en el lote; lo que no alcanza queda «para Completar imágenes» y el paso termina bien.
+- [x] Causa del 20 nov: «fetch failed» en 94 ms (la Mac despertó a las 7:47 sin red todavía). Errores de red, Gemini saturado o tardanza ya no fallan el paso: vuelve a la cola y reintenta en 1, 3 y 10 min (código `red` en `src/lib/ia/errores.ts`, `ESPERAS_REINTENTO` en `pasos.ts`). Tras el cuarto intento sí falla.
+- [x] Pruebas nuevas en `tests/gemini-errores.test.ts` y `tests/eventos-fuentes.test.ts`. Check 141/141.
+- [ ] La ejecución de las 04:30 sigue dependiendo de que `npm run dev` esté abierto y la Mac despierta (LaunchAgent y `pmset`, abajo).
+
 ### Te toca (propietario)
 - [ ] Supabase: correr `work/supabase-probar-sin-aplicar.sql` en el SQL Editor (debe terminar en «PRUEBAS TERMINADAS»), luego `work/supabase-aplicar.sql`, luego `pnpm exec supabase login` y `pnpm exec supabase migration repair --status applied 20261103 20261117 --linked` en spotmi-web.
 - [ ] Crear la cuenta editorial (Authentication → Users), habilitarla con `work/supabase-habilitar-editorial.sql` y poner `SPOTMI_EDITORIAL_EMAIL` y `SPOTMI_EDITORIAL_PASSWORD` en `.env.local`. Reiniciar `npm run dev` y pulsar Conexiones → Spotmi web → Conectar.

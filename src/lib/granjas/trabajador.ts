@@ -60,6 +60,7 @@ export async function procesarUno(
       const deps = opciones.dependencias ?? (await dependenciasReales());
       const resultado = await conLimite(ejecutarPaso(trabajo.carga.pasoId, deps), LIMITES.paso);
       if (resultado === "devuelto") devolver(trabajo.id, id, new Date(Date.now() + 5000).toISOString());
+      else if (typeof resultado === "object") devolver(trabajo.id, id, new Date(Date.now() + resultado.esperaMs).toISOString());
       else terminar(trabajo.id, id, "hecho");
     } else if (trabajo.tipo === "publicar") {
       await conLimite(ejecutarPublicacion(trabajo.carga.reciboId), LIMITES.publicar);

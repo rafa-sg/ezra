@@ -611,3 +611,27 @@ test("referencia IA subida a mano (app de Gemini): queda «IA · referencia», n
   assert.throws(() => eventos.confirmarImagen(e.id, ev.revision), /no se confirma como oficial/);
   assert.equal(consumo.imagenesIaHoy(), antes, "no cuenta para el límite diario de la API");
 });
+
+test("paso «Imagen»: con páginas lentas se corta por evento y en total; lo que falta queda para «Completar imágenes»", async () => {
+  const { imagenPaso } = await import("../src/lib/granjas/pasos-eventos");
+  const ids = Array.from({ length: 5 }, (_, i) => nuevo({ titulo: `Concierto lento ${i}`, fuenteUrl: `https://lento.example/evento-${i}` }).id);
+  // Cada página tarda 2 s: sin tope, el paso duraría 10 s o más.
+  const lenta = async (u: URL): Promise<Respuesta> => {
+    await new Promise((r) => setTimeout(r, 2000));
+    return { estado: 404, tipo: "text/html", cuerpo: Buffer.from("no"), url: u.toString() };
+  };
+  const entradas = [{ tipo: "investigacion", contenido: JSON.stringify({ nuevos: ids.map((id) => ({ id })) }) }] as never;
+  const inicio = Date.now();
+  const r = await imagenPaso({ id: "e", granjaId: "g" } as never, entradas, {
+    descargar: lenta,
+    referenciaIA: async () => ({ ok: false, motivo: "apagada" }),
+    tiempoImagen: { porEventoMs: 100, totalMs: 250 },
+  });
+  assert.ok(Date.now() - inicio < 1500, "el paso respeta su tope de tiempo");
+  const { imagenes, detalle } = JSON.parse(r.artefactos[0].contenido) as { imagenes: { revisados: number; pendientes: number }; detalle: { motivo: string }[] };
+  assert.ok(imagenes.pendientes >= 1, "algunos eventos quedan pendientes");
+  assert.equal(imagenes.revisados + imagenes.pendientes, 5);
+  assert.match(detalle[0].motivo, /tardó demasiado/);
+  assert.match(r.detalle, /quedan para «Completar imágenes»/);
+  assert.notEqual(r.bloqueado, true, "el paso termina bien: los eventos ya están en la bandeja");
+});

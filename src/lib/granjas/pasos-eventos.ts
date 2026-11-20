@@ -22,7 +22,14 @@ export type DepsEspecialistas = DepsVerificador & {
   redes?: typeof candidatosDeRedes;
   /** Imagen de referencia IA (las pruebas la simulan); por defecto Gemini con su límite diario. */
   referenciaIA?: GenerarReferencia;
+  /** Tiempo del paso «Imagen» (las pruebas lo acortan). */
+  tiempoImagen?: { porEventoMs: number; totalMs: number };
 };
+/**
+ * El trabajador corta un paso a los 8 minutos y daría la ejecución por fallida aunque los eventos
+ * ya estén en la bandeja. El paso «Imagen» se detiene antes: lo que falte queda para «Completar imágenes».
+ */
+export const TIEMPO_IMAGEN = { porEventoMs: 75_000, totalMs: 5 * 60_000 };
 /** Ventana por defecto de la búsqueda diaria de eventos (de hoy a 60 días). */
 export const DIAS_ADELANTE = 60;
 export const esGranjaEventos = (e: Ejecucion) => e.instantanea.ajustes?.purpose === "eventos_el_salvador";
@@ -164,15 +171,35 @@ export async function imagenPaso(ejecucion: Ejecucion, entradas: Artefacto[], de
       return r.ok ? { ok: true, motivo: r.motivo } : { ok: false, motivo: r.motivo };
     });
   const resultados: ResultadoCompletar[] = [];
+  const tiempo = deps.tiempoImagen ?? TIEMPO_IMAGEN;
+  const limite = Date.now() + tiempo.totalMs;
+  // Una sola lectura de cada cartelera y de cada portada para todo el lote (antes se repetían por evento).
+  const compartido = { portadas: new Map(), listados: new Map() };
+  let pendientes = 0;
   for (const id of ids) {
+    const queda = limite - Date.now();
+    if (queda <= 0) {
+      pendientes++;
+      continue;
+    }
+    let reloj: NodeJS.Timeout | undefined;
     try {
-      resultados.push(await completarImagenEvento(id, { descargar: deps.descargar, referenciaIA: iaDisponible ? generar : null }));
+      resultados.push(
+        await Promise.race([
+          completarImagenEvento(id, { descargar: deps.descargar, referenciaIA: iaDisponible ? generar : null, ...compartido }),
+          new Promise<never>((_, reject) => {
+            reloj = setTimeout(() => reject(new Error("tardó demasiado; queda para «Completar imágenes»")), Math.min(tiempo.porEventoMs, queda));
+          }),
+        ]),
+      );
     } catch (error) {
       resultados.push({ id, titulo: id, estado: "sin_imagen", motivo: error instanceof Error ? error.message.slice(0, 160) : "error" });
+    } finally {
+      clearTimeout(reloj);
     }
   }
   const cuenta = (...e: ResultadoCompletar["estado"][]) => resultados.filter((r) => e.includes(r.estado)).length;
-  const imagenes = { revisados: ids.length, afiche: cuenta("afiche", "ticketera"), red: cuenta("red"), prensa: cuenta("prensa"), ia: cuenta("ia"), sinImagen: cuenta("sin_imagen"), yaTenian: cuenta("ya_tenia") };
+  const imagenes = { revisados: ids.length - pendientes, pendientes, afiche: cuenta("afiche", "ticketera"), red: cuenta("red"), prensa: cuenta("prensa"), ia: cuenta("ia"), sinImagen: cuenta("sin_imagen"), yaTenian: cuenta("ya_tenia") };
   const partes = [
     `${ids.length} evento(s) nuevo(s) revisado(s)`,
     imagenes.afiche ? `${imagenes.afiche} afiche(s)` : "",
@@ -180,6 +207,7 @@ export async function imagenPaso(ejecucion: Ejecucion, entradas: Artefacto[], de
     imagenes.prensa ? `${imagenes.prensa} foto(s) de prensa` : "",
     imagenes.ia ? `${imagenes.ia} referencia(s) IA` : "",
     imagenes.sinImagen ? `${imagenes.sinImagen} sin imagen` : "",
+    pendientes ? `${pendientes} quedan para «Completar imágenes» (se acabó el tiempo del paso)` : "",
     !estado.activa ? `IA: ${estado.motivo}` : !iaDisponible ? "IA detenida en esta ejecución (sin facturación o sin cupo)" : "",
   ].filter(Boolean);
   return { artefactos: [{ tipo: "investigacion", contenido: JSON.stringify({ imagenes, detalle: resultados }, null, 2) }], detalle: `${partes.join(" · ")}.` };

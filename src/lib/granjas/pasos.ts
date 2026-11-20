@@ -3,7 +3,7 @@ import { canales as todosLosCanales, instruccionAgente, type Encargo } from "../
 import type { EntregaIA } from "../produccion/proveedores";
 import type { ContextoGemini } from "../ia/gemini";
 import { esCazadorEventos, imagenPaso, promptEspecial, verificarPaso, type DepsEspecialistas, type ResultadoLocal } from "./pasos-eventos";
-import { ErrorGemini } from "../ia/errores";
+import { ERRORES_PASAJEROS, ErrorGemini } from "../ia/errores";
 import { leerMaterialFuentes, type MaterialFuente } from "./fuentes";
 import { disenarPaso, esGranjaInstagram, redactarPaso } from "./pasos-instagram";
 import { ahoraIso, auditar, base, transaccion } from "./db";
@@ -119,6 +119,11 @@ function sigueVigente(pasoId: string, estado: "recolectando" | "generando") {
   const ejecucion = leerEjecucion(paso.ejecucionId);
   return paso.estado === estado && ejecucion.estado !== "cancelada";
 }
+/** El paso sigue trabajando (no se canceló ni se cerró desde la interfaz mientras tanto). */
+function sigueEnCurso(pasoId: string) {
+  const paso = leerPaso(pasoId);
+  return ["recolectando", "generando"].includes(paso.estado) && leerEjecucion(paso.ejecucionId).estado !== "cancelada";
+}
 function cerrar(pasoId: string, cambios: Parameters<typeof actualizarPaso>[1]) {
   transaccion(() => {
     const paso = leerPaso(pasoId);
@@ -127,7 +132,10 @@ function cerrar(pasoId: string, cambios: Parameters<typeof actualizarPaso>[1]) {
   });
 }
 
-export type ResultadoPaso = "hecho" | "devuelto";
+/** «reintentar»: falla pasajera (sin internet, Gemini saturado); el trabajo vuelve a la cola tras `esperaMs`. */
+export type ResultadoPaso = "hecho" | "devuelto" | { reintentar: true; esperaMs: number };
+/** Esperas antes de reintentar un paso tras una falla pasajera: 1, 3 y 10 minutos; después falla. */
+export const ESPERAS_REINTENTO = [60_000, 3 * 60_000, 10 * 60_000];
 /** Ejecuta un paso tomado de la cola. Solo «recolectando» y «generando» representan trabajo real. */
 export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<ResultadoPaso> {
   const inicial = leerPaso(pasoId);
@@ -337,6 +345,17 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
     return "hecho";
   } catch (error) {
     const mensaje = error instanceof Error ? error.message : "Error inesperado.";
+    // Falla pasajera (la Mac recién despierta sin red, Gemini saturado): vuelve a la cola en vez de fallar.
+    const intento = inicial.intentos + 1;
+    if (error instanceof ErrorGemini && ERRORES_PASAJEROS.includes(error.codigo) && intento <= ESPERAS_REINTENTO.length && sigueEnCurso(pasoId)) {
+      const esperaMs = ESPERAS_REINTENTO[intento - 1];
+      actualizarPaso(pasoId, {
+        estado: "en_cola",
+        error: mensaje.slice(0, 500),
+        detalle: `${mensaje} Reintento ${intento} de ${ESPERAS_REINTENTO.length} en ${Math.round(esperaMs / 60_000)} min.`,
+      });
+      return { reintentar: true, esperaMs };
+    }
     const configuracion = error instanceof WorkflowError && [503, 429].includes(error.status);
     cerrar(pasoId, { estado: configuracion ? "bloqueado" : "fallido", error: mensaje.slice(0, 500), detalle: configuracion ? mensaje : "El paso falló. Puedes reintentarlo." });
     return "hecho";

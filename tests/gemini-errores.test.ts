@@ -47,6 +47,7 @@ test("clasificación: 429 con y sin búsqueda, clave, modelo, saturado y tiempo;
     [errorSdk(503, "UNAVAILABLE"), true, "saturado", /saturado/],
     [errorSdk(504), false, "tiempo", /tardó demasiado/],
     [Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" }), false, "tiempo", /tardó demasiado/],
+    [Object.assign(new TypeError("fetch failed"), { cause: { code: "ENOTFOUND", message: "getaddrinfo ENOTFOUND generativelanguage.googleapis.com" } }), true, "red", /No hubo conexión con Gemini/],
     [new Error("respuesta rara"), false, "invalido", /no devolvió un resultado válido/],
   ];
   for (const [error, busqueda, codigo, mensaje] of casos) {
@@ -185,5 +186,48 @@ test("cazador: 429 sin búsqueda es cuota; 429 con búsqueda y sin Fuentes no re
   const vacio = granjaCon((n) => ({ ...n, fuentes: [], busqueda: false }));
   const c3 = vacio.grafo.nodos.find((n) => n.agente === "cazador")!;
   assert.match(faltantesNodo(c3, vacio.grafo, { geminiHabilitado: true }).join(" "), /Sin búsqueda de Google, agrega al menos una fuente/);
+  gemini.usarGeminiDePrueba(undefined);
+});
+
+test("cazador: sin internet (fetch failed) no falla: vuelve a la cola en 1 min, luego 3 y 10; al volver la red termina", async () => {
+  let red = false;
+  gemini.usarGeminiDePrueba(async () => {
+    if (!red) throw new TypeError("fetch failed");
+    return {
+      text: JSON.stringify([{ titulo: "Festival del Café de Apaneca", fecha: dia(), hora: null, lugar: "Apaneca", municipio: "Apaneca", departamento: "Ahuachapán", categoria: "gastronomia", precio: null, boletos_url: null, fuente_url: "https://elsalvador.travel/esp/eventos/festival-del-cafe", imagen_url: null, descripcion: "x" }]),
+      usageMetadata: { totalTokenCount: 50 },
+    } as never;
+  });
+  const granja = granjaCon((n) => ({ ...n, busqueda: false }));
+  const caza = granja.grafo.nodos.find((n) => n.agente === "cazador")!;
+  const e = ejecucion.iniciarEjecucion(granja.id, { nodoId: caza.id, confirmarIA: true, usuario: "u", encargos: new Map() });
+  const trabajo = () => db.base().prepare("select estado, disponible_desde from trabajos where ejecucion_id = ?").get(e.id) as { estado: string; disponible_desde: string };
+  const adelantar = () => db.base().prepare("update trabajos set disponible_desde = ? where ejecucion_id = ?").run(new Date(Date.now() - 1000).toISOString(), e.id);
+  const esperas: number[] = [];
+  for (let i = 0; i < 3; i++) {
+    const antes = Date.now();
+    await vaciar();
+    const paso = ejecucion.pasosDe(e.id)[0];
+    assert.equal(paso.estado, "en_cola", `intento ${i + 1}: espera en la cola, no falla`);
+    assert.match(paso.detalle, new RegExp(`No hubo conexión con Gemini.*Reintento ${i + 1} de 3`));
+    assert.equal(trabajo().estado, "pendiente");
+    esperas.push(Math.round((Date.parse(trabajo().disponible_desde) - antes) / 60_000));
+    assert.notEqual(ejecucion.leerEjecucion(e.id).estado, "fallida");
+    adelantar();
+  }
+  assert.deepEqual(esperas, [1, 3, 10]);
+  red = true;
+  await vaciar();
+  assert.equal(ejecucion.pasosDe(e.id)[0].estado, "completado", "con red, el cuarto intento termina");
+  // Sin red en los 4 intentos, el paso sí falla (no se reintenta para siempre).
+  red = false;
+  const e2 = ejecucion.iniciarEjecucion(granja.id, { nodoId: caza.id, confirmarIA: true, usuario: "u", encargos: new Map() });
+  for (let i = 0; i < 4; i++) {
+    await vaciar();
+    db.base().prepare("update trabajos set disponible_desde = ? where ejecucion_id = ?").run(new Date(Date.now() - 1000).toISOString(), e2.id);
+  }
+  const final = ejecucion.pasosDe(e2.id)[0];
+  assert.notEqual(final.estado, "en_cola");
+  assert.match(final.error, /No hubo conexión con Gemini/);
   gemini.usarGeminiDePrueba(undefined);
 });

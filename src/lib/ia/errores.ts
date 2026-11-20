@@ -5,7 +5,9 @@ import { WorkflowError } from "../workflow";
  * cuerpo de la respuesta (ese detalle técnico queda solo en Consumo, sin la clave).
  * Sin dependencias de la base: se puede importar desde cualquier módulo.
  */
-export type CodigoErrorGemini = "busqueda_no_disponible" | "cuota" | "clave" | "modelo" | "saturado" | "tiempo" | "invalido";
+export type CodigoErrorGemini = "busqueda_no_disponible" | "cuota" | "clave" | "modelo" | "saturado" | "tiempo" | "red" | "invalido";
+/** Fallas pasajeras: conviene reintentar más tarde en vez de dar el paso por fallido. */
+export const ERRORES_PASAJEROS: CodigoErrorGemini[] = ["red", "saturado", "tiempo"];
 export class ErrorGemini extends WorkflowError {
   constructor(
     mensaje: string,
@@ -36,5 +38,14 @@ export function clasificarErrorGemini(error: unknown, conBusqueda: boolean): Wor
     return new ErrorGemini("Gemini está saturado en este momento. Intenta de nuevo en unos minutos.", "saturado", 503);
   if (status === 504 || /timeout|timed out|aborted|deadline/i.test(texto))
     return new ErrorGemini("Gemini tardó demasiado en responder. Intenta de nuevo.", "tiempo", 504);
+  // Sin internet (la Mac recién despierta, wifi caído) o DNS: el fetch ni siquiera llega a Google.
+  if (/fetch failed|ENOTFOUND|EAI_AGAIN|ECONNRESET|ECONNREFUSED|ENETUNREACH|ENETDOWN|EHOSTUNREACH|ETIMEDOUT|socket hang up|network/i.test(`${texto} ${causa(error)}`))
+    return new ErrorGemini("No hubo conexión con Gemini (sin internet o la red no respondió). Se reintentará en unos minutos.", "red", 503);
   return new ErrorGemini("Gemini no devolvió un resultado válido. El intento quedó registrado en Consumo.", "invalido", 502);
+}
+
+/** Código o mensaje de la causa (undici guarda «ENOTFOUND» y similares en `cause`). */
+function causa(error: unknown) {
+  const c = (error as { cause?: { code?: unknown; message?: unknown } })?.cause;
+  return c ? `${c.code ?? ""} ${c.message ?? ""}` : "";
 }
