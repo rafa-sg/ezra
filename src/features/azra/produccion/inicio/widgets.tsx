@@ -1,11 +1,11 @@
 "use client";
 import { useId, useState } from "react";
-import { ArrowUpRight, Camera } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, CircleDot } from "lucide-react";
 import type { ResumenInicio } from "@/lib/produccion/inicio";
 import type { Preferencias, WidgetPulso } from "@/lib/produccion/preferencias-modelo";
 import { Pixel } from "../../granjas/pixel";
 
-export type DestinoInicio = { seccion: "encargos" | "granjas" | "eventos" | "conexiones" | "consumo" | "calendario"; id?: string };
+export type DestinoInicio = { seccion: "encargos" | "granjas" | "eventos" | "conexiones" | "consumo" | "calendario" | "instagram"; id?: string; filtro?: string };
 export type Tr = (clave: string) => string;
 type Props = { datos: ResumenInicio; tr: Tr; fecha: (iso: string) => string; onIr: (d: DestinoInicio) => void; onNuevo: () => void; prefs: Preferencias };
 
@@ -23,100 +23,7 @@ export const equipo: { agente: string; indice: number; destino: DestinoInicio["s
 export const nombreAgente = (a: string, prefs: Preferencias, tr: Tr) => prefs.agentes[a]?.nombre || tr(`p_${a}_titulo`);
 export const rolAgente = (a: string, prefs: Preferencias, tr: Tr) => prefs.agentes[a]?.rol || tr(`p_${a}_texto`);
 
-/* ── KPIs ── */
-export function WidgetKpis({ datos, tr, onIr }: Props) {
-  const dia = datos.consumo.dia;
-  const tarjetas = [
-    { valor: datos.eventos.nuevos, etiqueta: tr("ez_kpi_nuevos"), ir: "eventos" as const },
-    { valor: datos.eventos.aprobados, etiqueta: tr("ez_kpi_aprobados"), ir: "eventos" as const },
-    { valor: datos.eventos.postsListos, etiqueta: tr("ez_kpi_postsListos"), extra: `${datos.eventos.postsSubidos} ${tr("ez_kpi_subidos")}`, ir: "eventos" as const },
-    {
-      valor: dia.usado,
-      etiqueta: tr("ez_kpi_tokensHoy"),
-      formato: compacto,
-      extra: dia.limite ? `${dia.porcentaje ?? 0} % ${tr("ez_kpi_delTope")}` : tr("ez_kpi_sinTope"),
-      barra: dia.limite ? Math.min(100, dia.porcentaje ?? 0) : null,
-      ir: "consumo" as const,
-    },
-  ];
-  return (
-    <div className="ez-kpis">
-      {tarjetas.map((t) => (
-        <button key={t.etiqueta} className="ez-kpi" onClick={() => onIr({ seccion: t.ir })}>
-          <strong>{(t.formato ?? numero).format(t.valor)}</strong>
-          <span>{t.etiqueta}</span>
-          {t.extra && <small>{t.extra}</small>}
-          {t.barra !== undefined && t.barra !== null && (
-            <span className="ez-barra" aria-hidden="true">
-              <span style={{ width: `${t.barra}%` }} />
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/* ── Gráfica con pestañas (SVG, sin bibliotecas) ── */
-const pestanas = ["eventos", "posts", "consumo", "proximos"] as const;
-type Pestana = (typeof pestanas)[number];
-function serie(datos: ResumenInicio, p: Pestana) {
-  if (p === "proximos") return datos.series.futuro.map((d) => ({ dia: d.dia, v: d.proximas }));
-  return datos.series.pasado.map((d) => ({ dia: d.dia, v: p === "eventos" ? d.eventos : p === "posts" ? d.postsCreados + d.postsSubidos : d.tokens }));
-}
-export function Linea({ puntos, alto = 150, etiqueta }: { puntos: { dia: string; v: number }[]; alto?: number; etiqueta: string }) {
-  const id = useId();
-  const ancho = 600;
-  const max = Math.max(1, ...puntos.map((p) => p.v));
-  const x = (i: number) => (puntos.length < 2 ? 0 : (i / (puntos.length - 1)) * ancho);
-  const y = (v: number) => alto - 8 - (v / max) * (alto - 24);
-  const camino = puntos.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
-  const ultimo = puntos.at(-1);
-  return (
-    <svg className="ez-linea" viewBox={`0 0 ${ancho} ${alto}`} preserveAspectRatio="none" role="img" aria-label={etiqueta}>
-      <defs>
-        <linearGradient id={`${id}-relleno`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="var(--ez-azul)" stopOpacity="0.22" />
-          <stop offset="1" stopColor="var(--ez-azul)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {puntos.length > 1 && <path d={`${camino} L${ancho},${alto} L0,${alto} Z`} fill={`url(#${id}-relleno)`} />}
-      <path d={camino} fill="none" stroke="var(--ez-azul)" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-      {ultimo && <circle cx={x(puntos.length - 1)} cy={y(ultimo.v)} r="4" fill="var(--ep-tarjeta)" stroke="var(--ez-azul)" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />}
-    </svg>
-  );
-}
-export function WidgetGrafica({ datos, tr }: Props) {
-  const [p, setP] = useState<Pestana>("eventos");
-  const puntos = serie(datos, p);
-  const total = puntos.reduce((s, x) => s + x.v, 0);
-  // Variación: últimos 7 días contra los 7 anteriores (no aplica a lo que viene).
-  const ult = puntos.slice(-7).reduce((s, x) => s + x.v, 0);
-  const ant = puntos.slice(-14, -7).reduce((s, x) => s + x.v, 0);
-  const delta = p === "proximos" || !ant ? null : Math.round(((ult - ant) / ant) * 1000) / 10;
-  const panel = useId();
-  return (
-    <div className="ez-grafica">
-      <div className="ez-pestanas" role="tablist" aria-label={tr("ez_w_grafica")}>
-        {pestanas.map((x) => (
-          <button key={x} role="tab" aria-selected={p === x} aria-controls={panel} onClick={() => setP(x)}>
-            {tr(`ez_tab_${x}`)}
-          </button>
-        ))}
-      </div>
-      <div id={panel} role="tabpanel">
-        <div className="ez-grafica-total">
-          <strong>{(p === "consumo" ? compacto : numero).format(total)}</strong>
-          {delta !== null && <span className={`ez-chip ${delta >= 0 ? "ez-chip-vivo" : ""}`}>{`${delta >= 0 ? "+" : ""}${delta} %`}</span>}
-          <small>{tr(p === "proximos" ? "ez_grafica_14" : "ez_grafica_30")}</small>
-        </div>
-        <Linea puntos={puntos} etiqueta={`${tr(`ez_tab_${p}`)}: ${numero.format(total)}`} />
-      </div>
-    </div>
-  );
-}
-
-/* ── Atención ── */
+/* ── 1. Requiere tu atención ── */
 const chipPendiente: Record<string, { clase: string; clave: string }> = {
   encargo_revision: { clase: "ep-chip-atencion", clave: "p_chip_revision" },
   encargo_cambios: { clase: "ep-chip-atencion", clave: "p_chip_cambios" },
@@ -173,17 +80,36 @@ export function WidgetAtencion({ datos, tr, onIr, onNuevo }: Props) {
   );
 }
 
-/* ── Próximas fechas ── */
-export function WidgetProximas({ datos, tr, fecha, onIr }: Props) {
-  if (!datos.proximas.length) return <p className="ez-vacio">{tr("ez_sinProximas")}</p>;
+/* ── 2. En ejecución y bloqueados ── */
+export function WidgetEjecucion({ datos, tr, fecha, onIr }: Props) {
+  const { trabajando, bloqueados } = datos.trabajo;
+  if (!trabajando.length && !bloqueados.length) return <p className="ez-vacio">{tr("ez_w_ejecucion_vacio")}</p>;
   return (
     <ul className="ez-lista">
-      {datos.proximas.slice(0, 6).map((p) => (
-        <li key={`${p.tipo}-${p.id}`}>
-          <button onClick={() => onIr({ seccion: p.tipo === "encargo" ? "encargos" : "eventos", id: p.tipo === "encargo" ? p.id : undefined })}>
-            <time dateTime={p.fecha}>{fecha(p.fecha)}</time>
-            <span>{p.titulo}</span>
-            <span className="ez-chip">{tr(p.tipo === "encargo" ? "ez_encargo" : "ez_evento")}</span>
+      {bloqueados.map((b) => (
+        <li key={`b-${b.tipo}-${b.id}`}>
+          <button className="ez-bloqueado" onClick={() => onIr({ seccion: b.tipo === "granja" ? "granjas" : "encargos", id: b.id })}>
+            <AlertTriangle size={15} aria-hidden="true" />
+            <span>
+              {b.titulo}
+              <small>
+                {tr(b.tipo === "granja" ? "ez_w_bloqueadaGranja" : "ez_w_falloEncargo")}: {b.detalle}
+                {b.desde ? ` · ${fecha(b.desde)}` : ""}
+              </small>
+            </span>
+          </button>
+        </li>
+      ))}
+      {trabajando.map((t) => (
+        <li key={`t-${t.id}`}>
+          <button onClick={() => onIr({ seccion: "granjas", id: t.id })}>
+            <CircleDot size={15} aria-hidden="true" />
+            <span>
+              {t.titulo}
+              <small>
+                {t.detalle} · {tr("ez_w_desde")} {fecha(t.desde)}
+              </small>
+            </span>
           </button>
         </li>
       ))}
@@ -191,72 +117,187 @@ export function WidgetProximas({ datos, tr, fecha, onIr }: Props) {
   );
 }
 
-/* ── Instagram ── */
-export function WidgetInstagram({ datos, tr, onIr }: Props) {
-  const ig = datos.conexiones.find((c) => c.canal === "instagram");
-  const conectada = ig && (ig.estado === "conectada_publicacion" || ig.estado === "conectada_lectura");
+/* ── 3. Eventos por revisar ── */
+export function WidgetEventos({ datos, tr, onIr }: Props) {
+  const { porRevisar } = datos.trabajo;
+  if (!porRevisar.length) return <p className="ez-vacio">{tr("ez_w_eventos_vacio")}</p>;
   return (
-    <div className="ez-ig">
-      <div className="ez-ig-cuenta">
-        <span className="ez-ig-icono" aria-hidden="true">
-          <Camera size={18} />
-        </span>
-        <span>
-          <strong>{conectada ? ig.cuenta || "Instagram" : tr("ez_ig_sinConectar")}</strong>
-          <small>{conectada ? tr("ez_ig_conectada") : tr("ez_ig_conectarAyuda")}</small>
-        </span>
-        {conectada && <span className="ez-chip ez-chip-vivo">{tr("ez_enVivo")}</span>}
-      </div>
-      <div className="ez-ig-numeros">
-        <span>
-          <strong>{datos.eventos.postsListos}</strong>
-          <small>{tr("ez_kpi_postsListos")}</small>
-        </span>
-        <span>
-          <strong>{datos.eventos.postsSubidos}</strong>
-          <small>{tr("ez_kpi_subidos")}</small>
-        </span>
-      </div>
-      <button className="ez-boton-blanco" onClick={() => onIr({ seccion: conectada ? "eventos" : "conexiones" })}>
-        {tr(conectada ? "ez_ig_verPosts" : "ez_ig_conectar")}
-        <ArrowUpRight size={15} />
-      </button>
+    <>
+      <ul className="ez-lista">
+        {porRevisar.map((e) => (
+          <li key={e.id}>
+            <button onClick={() => onIr({ seccion: "eventos" })}>
+              <time dateTime={e.fecha ?? undefined}>{e.fecha ?? tr("ez_dc_sinFecha")}</time>
+              <span>
+                {e.titulo}
+                <small>
+                  {e.departamento ?? tr("ez_mapa_sinUbicacion")} · {tr("ez_w_confianza")} {e.confianza} %
+                </small>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {datos.eventos.nuevos > porRevisar.length && (
+        <button className="ez-boton-blanco ez-widget-mas" onClick={() => onIr({ seccion: "eventos" })}>
+          {tr("ez_w_verTodos")} ({datos.eventos.nuevos}) <ArrowUpRight size={14} aria-hidden="true" />
+        </button>
+      )}
+    </>
+  );
+}
+
+/* ── 4. Contenido listo ── */
+export function WidgetListo({ datos, tr, fecha, onIr }: Props) {
+  const { listo } = datos.trabajo;
+  if (!listo.length) return <p className="ez-vacio">{tr("ez_w_listo_vacio")}</p>;
+  return (
+    <ul className="ez-lista">
+      {listo.map((c) => (
+        <li key={`${c.tipo}-${c.id}`}>
+          <button onClick={() => onIr(c.tipo === "encargo" ? { seccion: "encargos", id: c.id } : { seccion: "instagram" })}>
+            <span>
+              {c.titulo}
+              <small>
+                {tr(`ez_dest_${c.estado}`)} · {fecha(c.fecha)}
+              </small>
+            </span>
+            <span className={`ez-est ${c.estado === "confirmada_por_usuario" ? "ez-est-hecho" : "ez-est-atencion"}`}>{tr(c.tipo === "encargo" ? "ez_w_encargo" : "ez_w_post")}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* ── 5. Conexiones y actividad reciente ── */
+const conectada = (estado: string) => estado === "conectada_publicacion" || estado === "conectada_lectura";
+export function WidgetConexiones({ datos, tr, fecha, onIr }: Props) {
+  const accion = (a: string) => {
+    const clave = `ez_act_${a.replace(/\./g, "_")}`;
+    const texto = tr(clave);
+    return texto === clave ? a : texto;
+  };
+  return (
+    <div className="ez-conex">
+      <ul className="ez-conex-lista">
+        {datos.conexiones.map((c) => (
+          <li key={c.canal}>
+            <button onClick={() => onIr({ seccion: "conexiones" })}>
+              <i className={conectada(c.estado) ? "ez-ok" : c.error ? "ez-mal" : "ez-gris"} aria-hidden="true" />
+              <span>
+                {c.canal === "spotmi" ? "Spotmi web" : c.canal.charAt(0).toUpperCase() + c.canal.slice(1)}
+                <small>{conectada(c.estado) ? c.cuenta || tr("ez_ig_conectada") : tr(`ez_conex_${c.estado}`)}</small>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <h4>{tr("ez_w_actividad")}</h4>
+      {datos.trabajo.actividad.length ? (
+        <ul className="ez-actividad">
+          {datos.trabajo.actividad.map((a, i) => (
+            <li key={`${a.fecha}-${i}`}>
+              <span>{accion(a.accion)}</span>
+              <time dateTime={a.fecha}>{fecha(a.fecha)}</time>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="ez-vacio">{tr("ez_w_sinActividad")}</p>
+      )}
     </div>
   );
 }
 
-/* ── Granjas: última ejecución ── */
-export function WidgetGranjas({ datos, tr, fecha, onIr, prefs }: Props) {
-  if (!datos.granjas.length) return <p className="ez-vacio">{tr("g_sinGranjas")}</p>;
+/* ── Consumo de Gemini: hoy y mes, cada uno con su tope (mismo cálculo que la pantalla Consumo) ── */
+export function WidgetConsumo({ datos, tr, onIr }: Props) {
+  const filas = [
+    { clave: "hoy", p: datos.consumo.dia, tope: "ez_w_topeDiario" },
+    { clave: "mes", p: datos.consumo.mes, tope: "ez_w_topeMensual" },
+  ];
   return (
-    <ul className="ez-lista">
-      {datos.granjas.map((g) => (
-        <li key={g.granjaId}>
-          <button onClick={() => onIr({ seccion: "granjas", id: g.granjaId })}>
-            <i className="ez-punto" style={{ background: prefs.coloresGranja[g.granjaId] ?? "var(--ez-azul)" }} aria-hidden="true" />
-            <span>
-              {g.nombre}
-              <small>{g.ultima ? `${tr(`ez_ej_${g.ultima.estado}`)} · ${fecha(g.ultima.creado)}` : tr("ez_sinEjecuciones")}</small>
+    <div className="ez-consumo">
+      {filas.map(({ clave, p, tope }) => (
+        <button key={clave} className="ez-consumo-fila" onClick={() => onIr({ seccion: "consumo" })}>
+          <span>
+            <strong>{tr(`ez_w_gemini_${clave}`)}</strong>
+            <small>
+              {compacto.format(p.usado)} {tr("ez_w_tokens")}
+              {p.limite ? ` ${tr("ez_w_de")} ${compacto.format(p.limite)} (${tr(tope)})` : ` · ${tr("ez_kpi_sinTope")}`}
+            </small>
+          </span>
+          <strong className="ez-consumo-pct">{p.porcentaje === null ? "—" : `${p.porcentaje} %`}</strong>
+          {p.limite !== null && (
+            <span className="ez-barra" aria-hidden="true">
+              <span style={{ width: `${Math.min(100, p.porcentaje ?? 0)}%` }} />
             </span>
-            {g.fallidos > 0 && <span className="ep-chip ep-chip-error">{g.fallidos}</span>}
-            {g.enRevision > 0 && <span className="ep-chip ep-chip-atencion">{g.enRevision}</span>}
-          </button>
-        </li>
+          )}
+        </button>
       ))}
-    </ul>
+      <p className="ep-nota">
+        {tr("ez_w_imagenesIA")}: {datos.consumo.imagenesIA.hoy}/{datos.consumo.imagenesIA.limite}
+      </p>
+    </div>
   );
 }
 
-/* ── Agentes ── */
-export function WidgetAgentes({ datos, tr, onIr, prefs }: Props) {
-  const total = (campo: "eventos" | "postsCreados") => datos.series.pasado.reduce((s, d) => s + d[campo], 0);
-  const trabajo: Record<string, string> = {
-    cazador: `${total("eventos")} ${tr("ez_ag_eventos30")}`,
-    verificador: `${datos.eventos.aprobados} ${tr("ez_kpi_aprobados").toLowerCase()}`,
-    imagen_evento: `${datos.consumo.imagenesIA.hoy}/${datos.consumo.imagenesIA.limite} ${tr("ez_ag_imagenesHoy")}`,
-    redactor_ig: `${total("postsCreados")} ${tr("ez_ag_posts30")}`,
-    disenador_post: `${datos.eventos.postsListos} ${tr("ez_kpi_postsListos").toLowerCase()}`,
-  };
+/* ── Gráfica de los últimos 30 días (SVG) ── */
+const pestanas = ["eventos", "posts", "consumo", "proximos"] as const;
+type Pestana = (typeof pestanas)[number];
+function serie(datos: ResumenInicio, p: Pestana) {
+  if (p === "proximos") return datos.series.futuro.map((d) => ({ dia: d.dia, v: d.proximas }));
+  return datos.series.pasado.map((d) => ({ dia: d.dia, v: p === "eventos" ? d.eventos : p === "posts" ? d.postsCreados + d.postsSubidos : d.tokens }));
+}
+export function Linea({ puntos, alto = 150, etiqueta }: { puntos: { dia: string; v: number }[]; alto?: number; etiqueta: string }) {
+  const id = useId();
+  const ancho = 600;
+  const max = Math.max(1, ...puntos.map((p) => p.v));
+  const x = (i: number) => (puntos.length < 2 ? 0 : (i / (puntos.length - 1)) * ancho);
+  const y = (v: number) => alto - 8 - (v / max) * (alto - 24);
+  const camino = puntos.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+  const ultimo = puntos.at(-1);
+  return (
+    <svg className="ez-linea" viewBox={`0 0 ${ancho} ${alto}`} preserveAspectRatio="none" role="img" aria-label={etiqueta}>
+      <defs>
+        <linearGradient id={`${id}-relleno`} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="var(--ez-azul)" stopOpacity="0.16" />
+          <stop offset="1" stopColor="var(--ez-azul)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {puntos.length > 1 && <path d={`${camino} L${ancho},${alto} L0,${alto} Z`} fill={`url(#${id}-relleno)`} />}
+      <path d={camino} fill="none" stroke="var(--ez-azul)" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      {ultimo && <circle cx={x(puntos.length - 1)} cy={y(ultimo.v)} r="4" fill="var(--ep-tarjeta)" stroke="var(--ez-azul)" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />}
+    </svg>
+  );
+}
+export function WidgetGrafica({ datos, tr }: Props) {
+  const [p, setP] = useState<Pestana>("eventos");
+  const puntos = serie(datos, p);
+  const total = puntos.reduce((s, x) => s + x.v, 0);
+  const panel = useId();
+  return (
+    <div className="ez-grafica">
+      <div className="ez-pestanas" role="tablist" aria-label={tr("ez_w_grafica")}>
+        {pestanas.map((x) => (
+          <button key={x} role="tab" aria-selected={p === x} aria-controls={panel} onClick={() => setP(x)}>
+            {tr(`ez_tab_${x}`)}
+          </button>
+        ))}
+      </div>
+      <div id={panel} role="tabpanel">
+        <div className="ez-grafica-total">
+          <strong>{(p === "consumo" ? compacto : numero).format(total)}</strong>
+          <small>{tr(p === "proximos" ? "ez_grafica_14" : "ez_grafica_30")}</small>
+        </div>
+        <Linea puntos={puntos} etiqueta={`${tr(`ez_tab_${p}`)}: ${numero.format(total)}`} />
+      </div>
+    </div>
+  );
+}
+
+/* ── Agentes (opcional, oculto por defecto) ── */
+export function WidgetAgentes({ tr, onIr, prefs }: Props) {
   return (
     <ul className="ez-equipo">
       {equipo.map(({ agente, indice, destino }) => (
@@ -265,7 +306,6 @@ export function WidgetAgentes({ datos, tr, onIr, prefs }: Props) {
             <Pixel indice={indice} />
             <strong>{nombreAgente(agente, prefs, tr)}</strong>
             <small>{rolAgente(agente, prefs, tr)}</small>
-            <span className="ez-chip">{trabajo[agente]}</span>
           </button>
         </li>
       ))}
@@ -274,11 +314,12 @@ export function WidgetAgentes({ datos, tr, onIr, prefs }: Props) {
 }
 
 export const componentes: Record<WidgetPulso, (p: Props) => React.ReactNode> = {
-  kpis: WidgetKpis,
-  grafica: WidgetGrafica,
   atencion: WidgetAtencion,
-  proximas: WidgetProximas,
-  instagram: WidgetInstagram,
-  granjas: WidgetGranjas,
+  ejecucion: WidgetEjecucion,
+  eventos: WidgetEventos,
+  listo: WidgetListo,
+  conexiones: WidgetConexiones,
+  consumo: WidgetConsumo,
+  grafica: WidgetGrafica,
   agentes: WidgetAgentes,
 };

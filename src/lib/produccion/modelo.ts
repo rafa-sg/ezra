@@ -66,7 +66,8 @@ export const contenidoEncargoSchema = z.object({
  * Historial de un encargo: cada versión que se reemplaza, cada cambio de estado, cada entrega de IA,
  * cada pedido de cambios y cada fecha asignada. La versión aprobada y la reemplazada guardan su texto.
  */
-export const accionesHistorial = ["creado", "editado", "generado", "pendiente", "preparando", "revision", "cambios", "aprobado", "rechazado", "fecha"] as const;
+/** «fallo»: la IA no entregó (el intento ya se había reservado); el resultado anterior se conserva. */
+export const accionesHistorial = ["creado", "editado", "generado", "fallo", "pendiente", "preparando", "revision", "cambios", "aprobado", "rechazado", "fecha"] as const;
 export const entradaHistorialSchema = z.object({
   version: z.number().int().positive(),
   accion: z.enum(accionesHistorial),

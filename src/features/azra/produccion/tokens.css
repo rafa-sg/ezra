@@ -274,251 +274,277 @@
   color: var(--ez-negro);
 }
 
-/* ── Barra superior: logo · Menú (centro) · acción + cuenta (derecha) ── */
-.azra .ep-session-bar {
+/* ── Estructura común: barra lateral (240 px expandida · 72 px contraída) y cabecera discreta ── */
+.azra.ez-app {
+  --ez-sb-ancho: 240px;
+  display: grid;
+  grid-template-columns: var(--ez-sb-ancho) minmax(0, 1fr);
+  min-height: 100vh;
+}
+.azra.ez-app[data-sidebar="contraida"] {
+  --ez-sb-ancho: 72px;
+}
+.azra .ez-sidebar {
   position: sticky;
   top: 0;
-  z-index: 40;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100vh;
+  padding: 16px 12px;
+  overflow: hidden auto;
+  border-right: 1px solid var(--ep-borde);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+}
+.azra .ez-sidebar-cabeza {
+  display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 64px;
-  padding: 10px 24px;
-  border-bottom: 1px solid var(--ep-borde-suave);
-  background: rgba(247, 247, 248, 0.82);
-  backdrop-filter: saturate(1.4) blur(14px);
-  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
 }
-.azra .ep-session-bar > :last-child {
-  justify-self: end;
+.azra .ez-sidebar-marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--ep-texto);
+  text-decoration: none;
 }
-.azra .ep-session-bar .ep-session-brand {
-  justify-self: start;
-  font-size: 17px;
-  letter-spacing: -0.02em;
+.azra .ez-sidebar-marca:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 3px;
+  border-radius: 10px;
 }
 .azra .ez-logo {
   display: grid;
+  flex: none;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   background: var(--ez-negro);
   color: #fff;
 }
-.azra .ep-session-brand .ez-logo svg {
-  color: #fff;
-}
-/* El espacio central usa todo el ancho libre: así la barra sabe si caben los nombres y nunca tapa el logo. */
-.azra .ez-barra-centro {
-  justify-self: stretch;
-}
-.azra .ez-barra-accion {
+.azra .ez-sidebar-texto {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  line-height: 1.1;
 }
-/* Marca · secciones (centradas en el espacio libre) · acción · cuenta. */
-.azra .ep-session-bar {
-  grid-template-areas: "marca centro accion cuenta";
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: 16px;
+.azra .ez-sidebar-texto strong {
+  font-size: 17px;
+  letter-spacing: -0.02em;
 }
-.azra .ez-barra-centro {
-  display: flex;
-  justify-content: center;
-  min-width: 0;
+.azra .ez-sidebar-texto small {
+  color: var(--ep-suave);
+  font-size: 12px;
 }
-
-/* ── Secciones en la barra (escritorio) ── */
-.azra .ez-nav-barra {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  max-width: 100%;
-  padding: 4px;
-  border: 1px solid var(--ep-borde);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: var(--ez-sombra-s), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-/* Píldora negra que se desliza hasta la sección activa. */
-.azra .ez-nav-indicador {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  width: var(--ez-ind-w, 0);
-  border-radius: 12px;
-  background: var(--ez-negro);
-  box-shadow: 0 6px 16px -8px rgba(11, 11, 15, 0.7);
-  opacity: 0;
-  transform: translateX(var(--ez-ind-x, 0));
-  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1), width 380ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease;
-}
-.azra .ez-nav-con-activo .ez-nav-indicador {
-  opacity: 1;
-}
-.azra .ez-nav-barra > button {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 36px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 12px;
+.azra .ez-sidebar-plegar,
+.azra .ez-sidebar-cerrar,
+.azra .ez-hamburguesa {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   background: none;
   color: var(--ep-suave);
-  font: inherit;
-  font-size: 13.5px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
   cursor: pointer;
-  transition: color 200ms ease, background 200ms ease;
 }
-.azra .ez-nav-barra > button:hover:not([aria-current]):not(:disabled) {
+.azra .ez-sidebar-plegar:hover,
+.azra .ez-sidebar-cerrar:hover,
+.azra .ez-hamburguesa:hover {
+  border-color: var(--ep-borde);
+  background: var(--ep-tarjeta);
   color: var(--ep-texto);
-  background: rgba(15, 15, 20, 0.05);
 }
-.azra .ez-nav-barra > button[aria-current] {
-  color: #fff;
-  font-weight: 600;
-}
-.azra .ez-nav-barra > button:focus-visible {
+.azra .ez-sidebar-plegar:focus-visible,
+.azra .ez-sidebar-cerrar:focus-visible,
+.azra .ez-hamburguesa:focus-visible {
   outline: 2px solid var(--ez-violeta);
-  outline-offset: 1px;
 }
-.azra .ez-nav-barra > button:disabled {
-  opacity: 0.55;
-  cursor: default;
+.azra .ez-sidebar-cerrar,
+.azra .ez-hamburguesa {
+  display: none;
 }
-.azra .ez-nav-contador {
-  min-width: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--ez-negro);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 18px;
-  text-align: center;
+.azra .ez-sidebar-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
 }
-.azra .ez-nav-barra > button[aria-current] .ez-nav-contador {
-  background: #fff;
-  color: var(--ez-negro);
-}
-.azra .ez-anillo {
-  display: inline-flex;
+.azra .ez-sb-nuevo {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 4px;
-  padding: 0 10px 0 10px;
-  border-left: 1px solid var(--ep-borde);
-  color: var(--ep-texto-2);
-  font-size: 12.5px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.azra .ez-anillo svg circle:last-of-type {
-  transition: stroke-dashoffset 600ms ease;
-}
-/* El menú desplegable queda solo para pantallas angostas. */
-@media (min-width: 1024px) {
-  .azra .ez-barra-centro .ez-menu {
-    display: none;
-  }
-}
-@media (max-width: 1023px) {
-  .azra .ez-nav-barra {
-    display: none;
-  }
-}
-/* Si no caben todos los nombres (lo mide la barra): íconos, y el nombre solo en la sección activa
-   (los demás lo muestran al pasar el cursor y lo anuncian al lector de pantalla). */
-.azra .ez-nav-compacta > button:not([aria-current]) .ez-nav-etiqueta {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-}
-.azra .ez-nav-compacta > button {
-  padding: 0 10px;
-}
-/* Espacio para que quepan los 8 nombres: la cuenta queda en avatar y el espacio de trabajo se oculta. */
-@media (min-width: 1024px) and (max-width: 1679px) {
-  .azra .ep-cuenta-nombre {
-    display: none;
-  }
-}
-@media (min-width: 1024px) and (max-width: 1599px) {
-  .azra .ep-session-bar .ep-session-espacio {
-    display: none;
-  }
-  .azra .ez-nav-barra > button {
-    padding: 0 10px;
-    font-size: 13px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .azra .ez-nav-indicador,
-  .azra .ez-nav-barra > button,
-  .azra .ez-anillo svg circle:last-of-type {
-    transition: none;
-  }
-}
-.azra .ez-cta {
-  min-height: 38px;
-  padding: 0 14px;
-  border-radius: 11px;
-  font-size: 13px;
-}
-.azra .ez-menu {
-  position: relative;
-}
-.azra .ez-menu-pildora {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 8px;
   min-height: 42px;
-  padding: 0 6px 0 16px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 13px;
+  border-radius: 12px;
   background: var(--ez-negro);
   color: #fff;
   font: inherit;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 10px 24px -12px rgba(11, 11, 15, 0.7);
-  transition: transform var(--ez-transicion);
+  box-shadow: 0 8px 18px -10px rgba(11, 11, 15, 0.7);
 }
-.azra .ez-menu-pildora:hover:not(:disabled) {
-  transform: translateY(-1px);
+.azra .ez-sb-nuevo:hover:not(:disabled) {
+  background: #24242c;
 }
-.azra .ez-menu-pildora:focus-visible {
-  outline: 3px solid var(--ez-violeta);
-  outline-offset: 2px;
-}
-.azra .ez-menu-pildora:disabled {
-  opacity: 0.6;
+.azra .ez-sb-nuevo:disabled {
+  opacity: 0.5;
   cursor: default;
 }
-.azra .ez-menu-dia {
-  padding: 6px 10px;
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.14);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
+.azra .ez-sb-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.azra .ez-oculto {
+.azra .ez-sb-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 11px;
+  background: none;
+  color: var(--ep-texto-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.azra .ez-sb-item svg {
+  flex: none;
+  color: var(--ep-suave);
+}
+.azra .ez-sb-item:hover:not(:disabled) {
+  background: rgba(15, 15, 20, 0.05);
+  color: var(--ep-texto);
+}
+/* Selección activa: fondo claro, texto negro y una barra de acento a la izquierda. */
+.azra .ez-sb-item[aria-current] {
+  background: var(--ep-tarjeta);
+  color: var(--ep-texto);
+  font-weight: 600;
+  box-shadow: var(--ez-sombra-s);
+}
+.azra .ez-sb-item[aria-current] svg {
+  color: var(--ez-negro);
+}
+.azra .ez-sb-item[aria-current]::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: -12px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, var(--ez-violeta), var(--ez-azul));
+}
+.azra .ez-sb-item:focus-visible,
+.azra .ez-sb-nuevo:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 1px;
+}
+.azra .ez-sb-etiqueta {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .ez-sb-contador {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--ep-seleccion);
+  color: var(--ep-texto);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.azra .ez-sidebar-pie {
+  padding-top: 10px;
+  border-top: 1px solid var(--ep-borde-suave);
+}
+.azra .ez-sidebar-pie .ep-cuenta {
+  position: relative;
+}
+.azra .ez-sidebar-pie .ep-cuenta-boton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--ep-texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.azra .ez-sidebar-pie .ep-cuenta-boton:hover {
+  background: rgba(15, 15, 20, 0.05);
+}
+.azra .ez-sidebar-pie .ep-cuenta-boton:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+}
+.azra .ez-sidebar-pie .ep-avatar {
+  flex: none;
+}
+.azra .ez-sidebar-pie .ep-cuenta-nombre {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.azra .ez-sidebar-pie .ep-cuenta-nombre strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .ez-sidebar-pie .ep-cuenta-nombre small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+/* El menú de la cuenta se abre hacia arriba desde el pie de la barra. */
+.azra .ez-sidebar-pie .ep-cuenta-panel {
+  top: auto;
+  right: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 240px;
+}
+
+/* Contraída: solo íconos, centrados, con tooltip. */
+.azra.ez-app[data-sidebar="contraida"] .ez-sidebar {
+  padding: 16px 10px;
+  overflow: visible;
+}
+.azra.ez-app[data-sidebar="contraida"] .ez-sidebar-cabeza {
+  flex-direction: column;
+}
+.azra.ez-app[data-sidebar="contraida"] .ez-sidebar-texto,
+.azra.ez-app[data-sidebar="contraida"] .ez-sb-etiqueta,
+.azra.ez-app[data-sidebar="contraida"] .ep-cuenta-nombre,
+.azra.ez-app[data-sidebar="contraida"] .ep-cuenta-flecha {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -526,79 +552,105 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
-.azra .ez-menu-panel {
+.azra.ez-app[data-sidebar="contraida"] .ez-sb-nuevo,
+.azra.ez-app[data-sidebar="contraida"] .ez-sb-item,
+.azra.ez-app[data-sidebar="contraida"] .ep-cuenta-boton {
+  justify-content: center;
+  padding: 0;
+}
+.azra.ez-app[data-sidebar="contraida"] .ez-sb-item[aria-current]::before {
+  left: -10px;
+}
+.azra.ez-app[data-sidebar="contraida"] .ez-sb-contador {
   position: absolute;
-  top: calc(100% + 10px);
-  left: 50%;
-  z-index: 50;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  width: min(440px, calc(100vw - 32px));
-  padding: 10px;
-  transform: translateX(-50%);
-  border: 1px solid var(--ep-borde);
-  border-radius: var(--ez-radio-l);
-  background: var(--ep-tarjeta);
-  box-shadow: var(--ez-sombra-l);
-  animation: ez-menu-abre 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  padding: 0 4px;
+  font-size: 10.5px;
+  line-height: 16px;
 }
-@keyframes ez-menu-abre {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -6px) scale(0.98);
-  }
-}
-.azra .ez-menu-panel > button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 46px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 12px;
-  background: none;
-  color: var(--ep-texto-2);
-  font: inherit;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-}
-.azra .ez-menu-panel > button span:first-of-type {
-  flex: 1;
-}
-.azra .ez-menu-panel > button:hover {
-  background: var(--ep-superficie-2);
-  color: var(--ep-texto);
-}
-.azra .ez-menu-panel > button[aria-current] {
+.azra.ez-app[data-sidebar="contraida"] [data-tooltip]:hover::after,
+.azra.ez-app[data-sidebar="contraida"] [data-tooltip]:focus-visible::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 12px);
+  z-index: 60;
+  padding: 6px 10px;
+  border-radius: 8px;
   background: var(--ez-negro);
   color: #fff;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
-.azra .ez-menu-panel > button:focus-visible {
-  outline: 2px solid var(--ez-violeta);
+.azra.ez-app[data-sidebar="contraida"] .ez-sb-nuevo,
+.azra.ez-app[data-sidebar="contraida"] .ez-sidebar-plegar,
+.azra.ez-app[data-sidebar="contraida"] .ep-cuenta-boton {
+  position: relative;
 }
-.azra .ez-menu-nota {
-  grid-column: 1 / -1;
-  display: grid;
-  gap: 6px;
-  margin: 6px 4px 2px;
-  color: var(--ep-suave);
-  font-size: 12px;
+.azra.ez-app[data-sidebar="contraida"] .ez-sidebar-pie .ep-cuenta-panel {
+  left: calc(100% + 8px);
+  bottom: 0;
 }
-.azra .ez-barra-respaldo {
+
+/* Cabecera superior discreta: título de la página y acciones de la sección. */
+.azra .ez-principal {
   display: flex;
-  justify-content: center;
-  padding: 12px 16px 0;
+  flex-direction: column;
+  min-width: 0;
 }
-/* Sin barra lateral: el cuerpo ocupa todo el ancho; el Inicio va de borde a borde. */
+.azra .ez-cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 10px 32px;
+  border-bottom: 1px solid var(--ep-borde-suave);
+  background: rgba(247, 247, 248, 0.78);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+}
+.azra .ez-cabecera-titulo {
+  flex: 1;
+  min-width: 0;
+}
+.azra .ez-cabecera-titulo h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.azra .ez-cabecera-titulo p {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--ep-suave);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .ez-cabecera-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.azra .ez-cabecera-acciones .ez-boton-blanco {
+  min-height: 38px;
+  font-size: 13px;
+}
 .azra .ep-estudio .ep-marco {
   display: block;
 }
 .azra .ep-marco > .ep-cuerpo {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 28px 32px 40px;
+  padding: 24px 32px 40px;
 }
 .azra .ep-marco > .ep-cuerpo.ep-cuerpo-ancho {
   max-width: none;
@@ -608,44 +660,83 @@
 .azra .ep-cuerpo-ancho > .ep-aviso {
   margin: 16px 24px 0;
 }
-@media (max-width: 767px) {
-  .azra .ep-session-bar {
-    grid-template-areas: "marca accion cuenta" "centro centro centro";
-    grid-template-columns: 1fr auto auto;
+
+/* Móvil: la barra lateral es un cajón que se abre con el botón de la cabecera. */
+@media (max-width: 899px) {
+  .azra.ez-app,
+  .azra.ez-app[data-sidebar="contraida"] {
+    --ez-sb-ancho: 0px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .azra .ez-sidebar,
+  .azra.ez-app[data-sidebar="contraida"] .ez-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 70;
+    width: min(300px, 86vw);
+    padding: 16px 12px;
+    overflow: hidden auto;
+    background: var(--ep-tarjeta);
+    box-shadow: var(--ez-sombra-l);
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 260ms;
+  }
+  .azra .ez-sidebar.ez-sidebar-abierta {
+    transform: none;
+    visibility: visible;
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* En el cajón siempre se ven los nombres, aunque en escritorio la barra esté contraída. */
+  .azra.ez-app[data-sidebar="contraida"] .ez-sidebar-texto,
+  .azra.ez-app[data-sidebar="contraida"] .ez-sb-etiqueta,
+  .azra.ez-app[data-sidebar="contraida"] .ep-cuenta-nombre {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+  .azra.ez-app[data-sidebar="contraida"] .ez-sidebar-cabeza {
+    flex-direction: row;
+  }
+  .azra.ez-app[data-sidebar="contraida"] .ez-sb-item,
+  .azra.ez-app[data-sidebar="contraida"] .ep-cuenta-boton {
+    justify-content: flex-start;
+    padding: 0 12px;
+  }
+  .azra.ez-app[data-sidebar="contraida"] [data-tooltip]::after {
+    display: none;
+  }
+  .azra .ez-sidebar-plegar {
+    display: none;
+  }
+  .azra .ez-sidebar-cerrar,
+  .azra .ez-hamburguesa {
+    display: grid;
+  }
+  .azra .ez-sidebar-velo {
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    background: rgba(11, 11, 15, 0.35);
+  }
+  .azra .ez-cabecera {
     padding: 8px 16px;
   }
-  .azra .ep-session-bar .ep-session-brand {
-    grid-area: marca;
-  }
-  .azra .ez-barra-centro {
-    grid-area: centro;
-    justify-self: stretch;
-  }
-  .azra .ez-barra-accion {
-    grid-area: accion;
-  }
-  .azra .ep-session-bar > :last-child {
-    grid-area: cuenta;
-  }
-  .azra .ez-menu-pildora {
-    width: 100%;
-    justify-content: space-between;
-  }
-  .azra .ez-menu-panel {
-    grid-template-columns: 1fr;
-  }
-  .azra .ep-session-espacio {
+  .azra .ez-cabecera-titulo p {
     display: none;
   }
   .azra .ep-marco > .ep-cuerpo {
-    padding: 20px 16px 32px;
+    padding: 18px 16px 32px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .azra .ez-menu-panel {
-    animation: none;
-  }
-  .azra .ez-menu-pildora {
+  .azra .ez-sidebar,
+  .azra .ez-sidebar.ez-sidebar-abierta,
+  .azra .ez-sb-item {
     transition: none;
   }
 }
@@ -879,4 +970,14 @@
     transition: none;
     transform: none !important;
   }
+}
+
+/* Texto solo para lectores de pantalla. */
+.azra .ez-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

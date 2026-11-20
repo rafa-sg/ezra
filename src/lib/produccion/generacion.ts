@@ -75,3 +75,22 @@ export async function guardarEntrega(encargo: Encargo, entrega: EntregaIA) {
   }
   throw new WorkflowError("No se pudo guardar la entrega. Vuelve a cargar el estudio.", 409);
 }
+
+/**
+ * Fallo de una ejecución ya reservada: queda en el historial con el motivo (sin claves ni respuestas
+ * crudas). No cambia el estado, la versión ni el resultado anterior: reintentar sigue sobre el mismo
+ * encargo, sin duplicarlo.
+ */
+export async function registrarFallo(id: string, motivo: string, proveedor: string) {
+  for (let intento = 0; intento < 4; intento++) {
+    const actual = await leerProduccion();
+    try {
+      return await guardarProduccion(actual.revision, (estado) => ({
+        ...estado,
+        encargos: estado.encargos.map((e) => (e.id === id ? anotar(e, "fallo", { nota: `${proveedor}: ${motivo}`.slice(0, 2000) }) : e)),
+      }));
+    } catch (error) {
+      if (!(error instanceof WorkflowError && error.status === 409) || intento === 3) throw error;
+    }
+  }
+}

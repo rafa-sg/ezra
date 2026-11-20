@@ -4,7 +4,6 @@ import {
   ArrowUpRight,
   ArrowRight,
   Plus,
-  Search,
   CalendarDays,
   Workflow,
   Ticket,
@@ -54,7 +53,9 @@ import { SeccionConsumo } from "../granjas/consumo";
 import { SeccionEventos } from "../granjas/eventos";
 import { PaginaInstagram } from "../granjas/instagram-pagina";
 import { Inicio, type DestinoInicio } from "./inicio";
-import { MenuEstudio } from "./menu";
+import { CabeceraPagina, NavegacionLateral } from "./navegacion";
+import { DetalleEncargo, VistaEncargos, type AccionEncargo } from "./encargos";
+import { NuevoEncargo } from "./nuevo-encargo";
 import { FondoLava } from "./fondo-lava";
 import { AgendaCalendario } from "./agenda";
 import { CalendarioVistas } from "./calendario";
@@ -69,6 +70,15 @@ type Seccion = (typeof secciones)[number];
 /** Secciones retiradas del menú (equipo, fuentes, cola): sus enlaces abren Granjas. */
 const seccionDe = (valor: string | null): Seccion | null =>
   valor === null ? null : (secciones as readonly string[]).includes(valor) ? (valor as Seccion) : "granjas";
+/** Una línea de ayuda por sección para la cabecera (las descripciones que antes iban dentro de cada página). */
+const ayudaSeccion: Partial<Record<Seccion, string>> = {
+  encargos: "p_encargosAyuda",
+  granjas: "p_colaAyuda",
+  eventos: "p_eventosAyuda",
+  calendario: "p_calendarioAyuda",
+  conexiones: "p_conexionesAyuda",
+  consumo: "p_consumoAyuda",
+};
 type Conexiones = {
   spotmi: string;
   geminiConfigurado: boolean;
@@ -105,7 +115,13 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   const g = (clave: string) => t(`g_${clave}` as MessageKey);
   const [seccion, setSeccion] = useState<Seccion>("inicio");
   // % del día para la píldora del menú (se recalcula con cada cambio que refresca el Inicio).
-  const [progresoDia, setProgresoDia] = useState<number | null>(null);
+  // Contadores de la barra lateral (solo cuando aportan): eventos nuevos por revisar.
+  const [eventosNuevos, setEventosNuevos] = useState(0);
+  // Detalle de un encargo (lectura y acciones); el editor se abre aparte para cambiar el pedido.
+  const [detalle, setDetalle] = useState<string | null>(null);
+  const [ejecutandoId, setEjecutandoId] = useState<string | null>(null);
+  // Asistente «Nuevo encargo» (con fecha si viene del calendario).
+  const [nuevo, setNuevo] = useState<{ fecha: string } | null>(null);
   const [guia, setGuia] = useState<EstadoOnboarding | null>(null);
   const [guiaAbierta, setGuiaAbierta] = useState(false);
   // Cada guardado sube este número y el Inicio vuelve a leer sus datos.
@@ -123,7 +139,6 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   const [consulta, setConsulta] = useState(false);
   const [fichas, setFichas] = useState<FichaSpotmi[] | null>(null);
   const [consultado, setConsultado] = useState("");
-  const [busqueda, setBusqueda] = useState("");
   const [editor, setEditor] = useState<ContenidoEncargo | null>(null);
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [comprobaciones, setComprobaciones] = useState(comprobacionesVacias());
@@ -140,8 +155,8 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     let vivo = true;
     fetch("/api/produccion/inicio", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { progreso?: { porcentaje: number } } | null) => vivo && setProgresoDia(d?.progreso?.porcentaje ?? null))
-      .catch(() => vivo && setProgresoDia(null));
+      .then((d: { eventos?: { nuevos: number } } | null) => vivo && setEventosNuevos(d?.eventos?.nuevos ?? 0))
+      .catch(() => vivo && setEventosNuevos(0));
     return () => {
       vivo = false;
     };
@@ -213,19 +228,30 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     const pedida = seccionDe(parametros.get("seccion"));
     if (!pedida) return;
     const resultado = parametros.get("conexion");
-    window.history.replaceState(null, "", window.location.pathname);
+    // Se conserva la sección en la dirección; el resultado del OAuth se quita (solo se muestra una vez).
+    if (resultado) window.history.replaceState({ seccion: pedida }, "", `${window.location.pathname}?seccion=${pedida}`);
     queueMicrotask(() => {
       setSeccion(pedida);
       if (resultado && /^(instagram|facebook|tiktok):(ok|error)$/.test(resultado)) setAvisoOAuth(resultado);
     });
   }, [soloLectura]);
+  useEffect(() => {
+    const atras = () => setSeccion(seccionDe(new URLSearchParams(window.location.search).get("seccion")) ?? "inicio");
+    window.addEventListener("popstate", atras);
+    return () => window.removeEventListener("popstate", atras);
+  }, []);
   function navegar(nueva: Seccion) {
+    // La sección queda en la dirección: el botón Atrás vuelve y una recarga no la pierde.
+    const url = nueva === "inicio" ? window.location.pathname : `${window.location.pathname}?seccion=${nueva}`;
+    if (`${window.location.pathname}${window.location.search}` !== url) window.history.pushState({ seccion: nueva }, "", url);
     setSeccion(nueva);
-    setBusqueda("");
     setAviso("");
   }
-  function crear(agente: Agente = "cazador", ficha?: FichaSpotmi) {
+  function crear(agente?: Agente, ficha?: FichaSpotmi) {
     if (soloLectura) return;
+    // Sin especialista ni ficha: el asistente simplificado. Con ficha de Spotmi: el editor prellenado.
+    if (!agente && !ficha) return setNuevo({ fecha: "" });
+    agente = agente ?? "cazador";
     setSeleccionado(null);
     setComprobaciones(comprobacionesVacias());
     setConfirmarIA(false);
@@ -347,12 +373,29 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     const datos = await mutar({ accion: "fecha", id, fechaPrevista });
     if (datos) setFechasCalendario((f) => ({ ...f, [id]: "" }));
   }
+  /** Acciones del detalle, por id (no dependen del editor abierto). */
+  async function accionEncargo(a: AccionEncargo) {
+    if (a.tipo === "ejecutar") {
+      setEjecutandoId(a.id);
+      try {
+        const datos = await mutar({ id: a.id, confirmar: true }, "/api/produccion/generar");
+        if (datos?.encargoId && datos.encargoId !== a.id) setDetalle(datos.encargoId);
+        // Si falló, se recarga para ver el fallo que quedó en el historial (el resultado anterior se conserva).
+        if (!datos) setProduccion((await datosRespuesta(await fetch("/api/produccion"))).produccion);
+      } finally {
+        setEjecutandoId(null);
+      }
+      return;
+    }
+    if (a.tipo === "estado") await mutar({ accion: "estado", id: a.id, estado: a.estado, comprobaciones: a.comprobaciones });
+    if (a.tipo === "cambios") await mutar({ accion: "cambios", id: a.id, nota: a.nota });
+    if (a.tipo === "rechazar") await mutar({ accion: "rechazar", id: a.id, motivo: a.motivo });
+    if (a.tipo === "fecha") await mutar({ accion: "fecha", id: a.id, fechaPrevista: a.fechaPrevista });
+  }
+  const encargoDetalle = detalle ? encargos.find((x) => x.id === detalle) : undefined;
   function ir(d: DestinoInicio) {
     navegar(d.seccion);
-    if (d.seccion === "encargos" && d.id) {
-      const e = produccion?.encargos.find((x) => x.id === d.id);
-      if (e) abrir(e);
-    }
+    if (d.seccion === "encargos" && d.id && produccion?.encargos.some((x) => x.id === d.id)) setDetalle(d.id);
   }
   async function derivar() {
     const datos = await mutar({ accion: "derivar", id: seleccionado, agente: siguienteAgente });
@@ -392,12 +435,9 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
       setConsulta(false);
     }
   }
-  const filtrar = (texto: string) =>
-    texto.toLocaleLowerCase(locale).includes(busqueda.toLocaleLowerCase(locale));
-  const filtrados = encargos.filter((e) => filtrar(`${e.titulo} ${e.encargo} ${e.resultado}`));
   function tarjetaEncargo(encargo: Encargo) {
     return (
-      <button className="ep-tarea" key={encargo.id} onClick={() => abrir(encargo)}>
+      <button className="ep-tarea" key={encargo.id} onClick={() => setDetalle(encargo.id)}>
         <span className="ep-tarea-meta">
           <span>{tr(`p_${encargo.agente}_titulo`)}</span>
           <ArrowUpRight size={16} />
@@ -460,20 +500,39 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
       )}
       <div className="ep-marco">
       {/* Navegación en la barra superior: píldora «Menú · % del día» y «Nuevo encargo». */}
-      <MenuEstudio
+      <NavegacionLateral
         items={navegacion.map(({ id, icono, etiqueta }) => ({
           id,
           icono,
           etiqueta: tr(etiqueta),
-          contador: id === "encargos" ? encargos.filter((e) => e.estado === "revision").length : undefined,
+          ...(id === "encargos" ? { contador: encargos.filter((e) => e.estado === "revision").length, contadorAyuda: tr("ez_porRevisar") } : {}),
+          ...(id === "eventos" ? { contador: eventosNuevos, contadorAyuda: tr("ez_sb_nuevos") } : {}),
         }))}
         actual={soloLectura ? "" : seccion}
-        porcentaje={progresoDia}
         tr={tr}
         onIr={(id) => navegar(id as Seccion)}
         onNuevo={() => crear()}
         deshabilitado={soloLectura || !produccion}
       />
+      {!soloLectura && (
+        <CabeceraPagina
+          titulo={tr(navegacion.find((n) => n.id === seccion)?.etiqueta ?? "p_inicio")}
+          ayuda={ayudaSeccion[seccion] ? tr(ayudaSeccion[seccion]!) : undefined}
+          acciones={
+            seccion === "calendario" ? (
+              <a className="ez-boton-blanco" href="/api/produccion/calendario" download>
+                <Download size={15} aria-hidden="true" />
+                {tr("p_exportarIcs")}
+              </a>
+            ) : seccion === "conexiones" ? (
+              <a className="ez-boton-blanco" href="/api/produccion/exportar">
+                <Download size={15} aria-hidden="true" />
+                {tr("p_respaldo")}
+              </a>
+            ) : undefined
+          }
+        />
+      )}
       <div className={`ep-cuerpo ${seccion === "inicio" && !soloLectura ? "ep-cuerpo-ancho" : ""}`}>
         {soloLectura ? (
           <div className="ep-acceso-nuevo">
@@ -644,131 +703,64 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
           <Inicio tr={tr} fecha={fecha} onIr={ir} onNuevo={() => crear()} onGuia={() => setGuiaAbierta(true)} guia={guia} version={versionInicio} />
         )}
         {!soloLectura && seccion === "encargos" && (
-          <>
-            <div className="ep-seccion-cabecera">
-              <div>
-                <p className="ep-eyebrow">{tr("p_encargos")}</p>
-                <h1>{tr("p_encargos")}</h1>
-                <p>{tr("p_encargosAyuda")}</p>
-              </div>
-              <button className="ep-boton ep-primario" disabled={!produccion} onClick={() => crear()}>
-                <Plus size={17} />
-                {tr("p_nuevo")}
-              </button>
-            </div>
-            <label className="ep-busqueda">
-              <Search size={18} />
-              <input
-                aria-label={tr("p_buscar")}
-                placeholder={tr("p_buscar")}
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-              />
-            </label>
-            <div className="ep-kanban">
-              {estados.filter((x) => x !== "rechazado").map((estado) => (
-                <section key={estado} className="ep-columna">
-                  <h2>
-                    <span className={`ep-estado ep-${estado}`} />
-                    {tr(`p_${estado}`)}
-                    <span>{filtrados.filter((e) => e.estado === estado).length}</span>
-                  </h2>
-                  {filtrados.filter((e) => e.estado === estado).map(tarjetaEncargo)}
-                  {estado === "pendiente" && (
-                    <button
-                      className="ep-agregar"
-                      disabled={!produccion || soloLectura}
-                      onClick={() => crear()}
-                    >
-                      <Plus size={17} />
-                      {tr("p_nuevo")}
-                    </button>
-                  )}
-                </section>
-              ))}
-            </div>
-            {filtrados.some((e) => e.estado === "rechazado") && (
-              <details className="ep-rechazados">
-                <summary>
-                  {tr("p_rechazados")} ({filtrados.filter((e) => e.estado === "rechazado").length})
-                </summary>
-                <div className="ep-rechazados-lista">{filtrados.filter((e) => e.estado === "rechazado").map(tarjetaEncargo)}</div>
-              </details>
-            )}
-            {busqueda && !filtrados.length && <p>{tr("p_sinResultados")}</p>}
-            {!encargos.length && produccion && (
-              <div className="ep-vacio">
-                <Workflow size={29} />
-                <h3>{tr("p_sinEncargos")}</h3>
-                <p>{tr("p_vacioAyuda")}</p>
-              </div>
-            )}
-          </>
+          <VistaEncargos
+            encargos={encargos}
+            tr={tr}
+            locale={locale}
+            ejecutandoId={ejecutandoId}
+            onAbrir={(id) => setDetalle(id)}
+            tablero={
+              <>
+                <div className="ep-kanban">
+                  {estados
+                    .filter((x) => x !== "rechazado")
+                    .map((estado) => (
+                      <section key={estado} className="ep-columna">
+                        <h2>
+                          <span className={`ep-estado ep-${estado}`} />
+                          {tr(`p_${estado}`)}
+                          <span>{encargos.filter((e) => e.estado === estado).length}</span>
+                        </h2>
+                        {encargos.filter((e) => e.estado === estado).map(tarjetaEncargo)}
+                      </section>
+                    ))}
+                </div>
+                {encargos.some((e) => e.estado === "rechazado") && (
+                  <details className="ep-rechazados">
+                    <summary>
+                      {tr("p_rechazados")} ({encargos.filter((e) => e.estado === "rechazado").length})
+                    </summary>
+                    <div className="ep-rechazados-lista">{encargos.filter((e) => e.estado === "rechazado").map(tarjetaEncargo)}</div>
+                  </details>
+                )}
+              </>
+            }
+          />
         )}
         {!soloLectura && seccion === "granjas" && (
           <>
-            <div className="ep-seccion-cabecera">
-              <div>
-                <p className="ep-eyebrow">{tr("p_cola")}</p>
-                <h1>{tr("p_cola")}</h1>
-                <p>{tr("p_colaAyuda")}</p>
-              </div>
-            </div>
             <SeccionGranjas g={g} tr={tr} fecha={fecha} />
           </>
         )}
         {!soloLectura && seccion === "eventos" && (
           <>
-            <div className="ep-seccion-cabecera">
-              <div>
-                <p className="ep-eyebrow">02 / {tr("p_eventos")}</p>
-                <h1>{tr("p_eventos")}</h1>
-                <p>{tr("p_eventosAyuda")}</p>
-              </div>
-              <Ticket size={35} />
-            </div>
             <SeccionEventos g={g} fecha={fecha} locale={locale} />
           </>
         )}
         {!soloLectura && seccion === "instagram" && <PaginaInstagram g={g} tr={tr} fecha={fecha} />}
         {!soloLectura && seccion === "consumo" && (
           <>
-            <div className="ep-seccion-cabecera">
-              <div>
-                <p className="ep-eyebrow">03 / {tr("p_consumo")}</p>
-                <h1>{tr("p_consumo")}</h1>
-                <p>{tr("p_consumoAyuda")}</p>
-              </div>
-              <Gauge size={35} />
-            </div>
             <SeccionConsumo g={g} fecha={fecha} locale={locale} />
           </>
         )}
         {!soloLectura && seccion === "calendario" && (
           <>
-            <div className="ep-seccion-cabecera">
-              <div>
-                <p className="ep-eyebrow">04 / {tr("p_calendario")}</p>
-                <h1>{tr("p_calendario")}</h1>
-                <p>{tr("p_calendarioAyuda")}</p>
-              </div>
-              <a className="ep-boton ep-primario" href="/api/produccion/calendario" download>
-                <Download size={16} />
-                {tr("p_exportarIcs")}
-              </a>
-            </div>
             <CalendarioVistas
               tr={tr}
               locale={locale}
               version={versionInicio}
-              onAbrirEncargo={(id) => {
-                const e = encargos.find((x) => x.id === id);
-                if (e) abrir(e);
-              }}
-              onNuevoEnDia={(dia) => {
-                crear();
-                setEditor((x) => (x ? { ...x, fechaPrevista: `${dia}T09:00` } : x));
-              }}
+              onAbrirEncargo={(id) => setDetalle(id)}
+              onNuevoEnDia={(dia) => setNuevo({ fecha: `${dia}T09:00` })}
               onMoverEncargo={async (id, dia) => {
                 const e = encargos.find((x) => x.id === id);
                 // Se conserva la hora; solo cambia el día.
@@ -828,17 +820,6 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
         )}
         {!soloLectura && seccion === "conexiones" && (
           <>
-            <div className="ep-seccion-cabecera">
-              <div>
-                <p className="ep-eyebrow">05 / {tr("p_conexiones")}</p>
-                <h1>{tr("p_conexionesTitulo")}</h1>
-                <p>{tr("p_conexionesAyuda")}</p>
-              </div>
-              <a className="ep-boton" href="/api/produccion/exportar">
-                <Download size={17} />
-                {tr("p_respaldo")}
-              </a>
-            </div>
             <div className="ep-conexiones">
               {proveedores.map((proveedor, i) => (
                 <article className="ep-conexion" key={proveedor}>
@@ -936,6 +917,42 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
         </span>
         <span>{tr("p_control")}</span>
       </footer>
+      <Modal open={Boolean(nuevo)} onClose={() => setNuevo(null)} label={tr("p_nuevo")} className="ep-modal ez-det-modal" hideClose>
+        {nuevo && (
+          <NuevoEncargo
+            tr={tr}
+            fechaInicial={nuevo.fecha}
+            ocupado={ocupado}
+            proveedorPorDefecto={conexiones?.geminiHabilitado ? "gemini" : conexiones?.astraLocal ? "astra" : conexiones?.claudeLocal ? "claude" : "astra"}
+            disponibles={{ gemini: Boolean(conexiones?.geminiHabilitado), astra: Boolean(conexiones?.astraLocal), claude: Boolean(conexiones?.claudeLocal) }}
+            onCerrar={() => setNuevo(null)}
+            onCrear={async (contenido) => {
+              const datos = await mutar({ accion: "crear", contenido });
+              if (datos) {
+                setNuevo(null);
+                setDetalle(datos.produccion.encargos[0]?.id ?? null);
+              }
+            }}
+          />
+        )}
+      </Modal>
+      <Modal open={Boolean(encargoDetalle) && !editor} onClose={() => setDetalle(null)} label={encargoDetalle?.titulo ?? tr("p_encargos")} className="ep-modal ez-det-modal" dismissOnBackdrop hideClose>
+        {encargoDetalle && (
+          <DetalleEncargo
+            key={`${encargoDetalle.id}-${encargoDetalle.version}-${encargoDetalle.estado}`}
+            e={encargoDetalle}
+            tr={tr}
+            locale={locale}
+            fecha={fecha}
+            ocupado={ocupado}
+            ejecutando={ejecutandoId === encargoDetalle.id}
+            usosRestantes={null}
+            onAccion={(a) => void accionEncargo(a)}
+            onEditar={(x) => abrir(x)}
+            onCerrar={() => setDetalle(null)}
+          />
+        )}
+      </Modal>
       <Modal
         open={Boolean(editor)}
         onClose={cerrar}

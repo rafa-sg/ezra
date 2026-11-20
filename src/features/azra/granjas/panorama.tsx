@@ -4,6 +4,7 @@ import { ArrowUpRight, Camera, Clock } from "lucide-react";
 import type { Panorama } from "@/lib/granjas/panorama";
 import { Pixel } from "./pixel";
 import { pedir } from "./cliente";
+import { DatosYConexiones } from "./trazabilidad";
 import "./panorama.css";
 
 type Tr = (clave: string) => string;
@@ -342,15 +343,11 @@ export function PanoramaGranjas({ g, tr, fecha, onAbrir }: { g: Tr; tr: Tr; fech
           </button>
         ))}
       </div>
-      <section className="ez-conexiones" data-tema="oscuro" aria-labelledby="ez-conexiones-titulo">
-        <div className="ez-conexiones-cabecera">
-          <span className="ez-pill">{tr("p_conexiones")}</span>
-          <h2 id="ez-conexiones-titulo" className="ez-titulo-seccion">
-            {tr("ez_mapa_l1")} <em>{tr("ez_mapa_l2")}</em>
-          </h2>
-        </div>
-        <MapaConexiones datos={datos.mapa} tr={tr} />
-        <h3 className="ez-flujo-titulo">{tr("ez_flujo_titulo")}</h3>
+      <DatosYConexiones tr={tr} fecha={fecha} />
+      <section className="ez-flujo-tarjeta" aria-labelledby="ez-flujo-titulo">
+        <h3 id="ez-flujo-titulo" className="ez-flujo-titulo">
+          {tr("ez_flujo_titulo")}
+        </h3>
         <FlujoAgentes flujo={datos.flujo} instagram={datos.mapa.destinos.instagram.cuenta} tr={tr} g={g} />
       </section>
     </div>

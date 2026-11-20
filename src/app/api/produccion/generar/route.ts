@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { apiError } from "@/lib/http";
 import { WorkflowError } from "@/lib/workflow";
 import { leerProduccion } from "@/lib/produccion/almacen";
-import { reservarGeneracion, guardarEntrega } from "@/lib/produccion/generacion";
+import { reservarGeneracion, guardarEntrega, registrarFallo } from "@/lib/produccion/generacion";
 import { buscarHerramienta, generarGemini, generarLocal } from "@/lib/produccion/proveedores";
 import { geminiProduccionHabilitado } from "@/lib/ia/gemini";
 export const runtime = "nodejs";
@@ -42,10 +42,14 @@ export async function POST(request: Request) {
         503,
       );
     const reservado = await reservarGeneracion(encargo.id, leido.data.revision);
-    const entrega =
-      reservado.proveedor === "gemini"
-        ? await generarGemini(reservado)
-        : await generarLocal(reservado);
+    let entrega;
+    try {
+      entrega = reservado.proveedor === "gemini" ? await generarGemini(reservado) : await generarLocal(reservado);
+    } catch (error) {
+      // El intento ya contó: queda en el historial qué falló; el resultado anterior se conserva.
+      await registrarFallo(reservado.id, error instanceof Error ? error.message : "La IA no entregó un resultado.", reservado.proveedor).catch(() => undefined);
+      throw error;
+    }
     return Response.json(await guardarEntrega(reservado, entrega));
   } catch (error) {
     return apiError(

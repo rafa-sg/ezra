@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useClerk } from "@clerk/nextjs";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronDown, LogOut, Sparkles } from "lucide-react";
-import { LanguageProvider, useLanguage } from "./i18n";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Check, ChevronUp, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Sparkles, X } from "lucide-react";
+import { LanguageProvider, useLanguage, type MessageKey } from "./i18n";
 import { href } from "./routes";
 import { setAccountScope } from "./account/service";
 import "./produccion/estudio.css";
@@ -31,34 +31,114 @@ function Shell({ children, user }: ShellProps) {
       setSaliendo(false);
     }
   }
+  const tt = (clave: string) => t(clave as MessageKey);
+  const contraida = useSidebarContraida();
+  const [movilAbierta, setMovilAbierta] = useState(false);
+  const lateral = useRef<HTMLElement>(null);
+  const hamburguesa = useRef<HTMLButtonElement>(null);
+  // Cajón móvil: Escape cierra y devuelve el foco; elegir una sección (evento del estudio) también lo cierra.
+  useEffect(() => {
+    if (!movilAbierta) return;
+    lateral.current?.querySelector<HTMLElement>("a, button")?.focus();
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMovilAbierta(false);
+        hamburguesa.current?.focus();
+      }
+    };
+    const cerrar = () => setMovilAbierta(false);
+    document.addEventListener("keydown", tecla);
+    window.addEventListener("ezra:navego", cerrar);
+    return () => {
+      document.removeEventListener("keydown", tecla);
+      window.removeEventListener("ezra:navego", cerrar);
+    };
+  }, [movilAbierta]);
   return (
-    <div className="azra ep-shell">
+    <div className="azra ep-shell ez-app" data-sidebar={contraida ? "contraida" : "expandida"}>
       <a href="#az-content" className="ep-saltar">
         {t("skip")}
       </a>
-      <header className="ep-session-bar">
-        <Link href={href("produccion")} className="ep-session-brand">
-          <span className="ez-logo" aria-hidden="true">
-            <Sparkles size={15} />
-          </span>
-          <strong>ezrá</strong>
-          <span className="ep-session-espacio">Spotmi</span>
-        </Link>
-        {/* Espacios que llena el estudio: menú (centro) y acción principal (derecha). */}
-        <div id="ez-barra-centro" className="ez-barra-centro" />
-        <div id="ez-barra-accion" className="ez-barra-accion" />
-        <MenuCuenta user={user} locale={locale} setLocale={setLocale} salir={salir} saliendo={saliendo} t={t} />
-      </header>
-      {error && (
-        <p className="ep-session-error" role="alert">
-          {t("signOutFailed")}
-        </p>
-      )}
-      <main id="az-content" tabIndex={-1}>
-        {children}
-      </main>
+      <aside ref={lateral} id="ez-sidebar" className={`ez-sidebar ${movilAbierta ? "ez-sidebar-abierta" : ""}`} aria-label={tt("ez_sb_navegacion")}>
+        <div className="ez-sidebar-cabeza">
+          <Link href={href("produccion")} className="ez-sidebar-marca" aria-label="ezrá · Spotmi">
+            <span className="ez-logo" aria-hidden="true">
+              <Sparkles size={16} />
+            </span>
+            <span className="ez-sidebar-texto">
+              <strong>ezrá</strong>
+              <small>Spotmi</small>
+            </span>
+          </Link>
+          <button
+            className="ez-sidebar-plegar"
+            onClick={() => guardarSidebarContraida(!contraida)}
+            aria-pressed={contraida}
+            aria-label={tt(contraida ? "ez_sb_expandir" : "ez_sb_contraer")}
+            data-tooltip={tt(contraida ? "ez_sb_expandir" : "ez_sb_contraer")}
+          >
+            {contraida ? <PanelLeftOpen size={17} aria-hidden="true" /> : <PanelLeftClose size={17} aria-hidden="true" />}
+          </button>
+          <button className="ez-sidebar-cerrar" onClick={() => (setMovilAbierta(false), hamburguesa.current?.focus())} aria-label={tt("ez_sb_cerrarMenu")}>
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+        {/* El estudio llena este espacio: «Nuevo encargo» y las secciones. */}
+        <div id="ez-sidebar-nav" className="ez-sidebar-nav" />
+        <div className="ez-sidebar-pie">
+          <MenuCuenta user={user} locale={locale} setLocale={setLocale} salir={salir} saliendo={saliendo} t={t} />
+        </div>
+      </aside>
+      {movilAbierta && <div className="ez-sidebar-velo" aria-hidden="true" onClick={() => setMovilAbierta(false)} />}
+      <div className="ez-principal">
+        <header className="ez-cabecera">
+          <button ref={hamburguesa} className="ez-hamburguesa" aria-controls="ez-sidebar" aria-expanded={movilAbierta} aria-label={tt("ez_sb_abrirMenu")} onClick={() => setMovilAbierta(true)}>
+            <Menu size={20} aria-hidden="true" />
+          </button>
+          {/* Título de la página y acciones contextuales (las pone cada sección). */}
+          <div id="ez-cabecera-titulo" className="ez-cabecera-titulo" />
+          <div id="ez-cabecera-acciones" className="ez-cabecera-acciones" />
+        </header>
+        {error && (
+          <p className="ep-session-error" role="alert">
+            {t("signOutFailed")}
+          </p>
+        )}
+        <main id="az-content" tabIndex={-1}>
+          {children}
+        </main>
+      </div>
     </div>
   );
+}
+
+/* Preferencia de la barra lateral (por navegador): contraída o expandida. */
+const CLAVE_SIDEBAR = "ezra:sidebar-contraida";
+function leerSidebar() {
+  try {
+    return window.localStorage.getItem(CLAVE_SIDEBAR) === "1";
+  } catch {
+    return false;
+  }
+}
+function suscribirSidebar(cb: () => void) {
+  window.addEventListener("storage", cb);
+  window.addEventListener("ezra:sidebar", cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener("ezra:sidebar", cb);
+  };
+}
+function useSidebarContraida() {
+  return useSyncExternalStore(suscribirSidebar, leerSidebar, () => false);
+}
+function guardarSidebarContraida(valor: boolean) {
+  try {
+    window.localStorage.setItem(CLAVE_SIDEBAR, valor ? "1" : "0");
+  } catch {
+    /* Sin almacenamiento (modo privado): la preferencia dura solo esta visita. */
+  }
+  window.dispatchEvent(new Event("ezra:sidebar"));
 }
 /** Cuenta, idioma y cierre de sesión en un solo menú (botón con «aria-expanded»; Escape o clic fuera cierran). */
 function MenuCuenta({
@@ -106,13 +186,18 @@ function MenuCuenta({
     .join("");
   return (
     <div className="ep-cuenta">
-      <button ref={boton} className="ep-cuenta-boton" aria-expanded={abierto} aria-controls="ep-cuenta-panel" onClick={() => setAbierto(!abierto)}>
+      <button ref={boton} className="ep-cuenta-boton" aria-expanded={abierto} aria-controls="ep-cuenta-panel" onClick={() => setAbierto(!abierto)} data-tooltip={t("ez_sb_perfil" as MessageKey)}>
         <span className="ep-avatar" aria-hidden="true">
           {iniciales}
         </span>
-        <span className="ep-cuenta-nombre">{nombre}</span>
-        <ChevronDown size={16} aria-hidden="true" />
-        <span className="ep-oculto-visual">{t("account")}</span>
+        <span className="ep-cuenta-nombre">
+          <strong>{nombre}</strong>
+          <small>
+            <Settings size={12} aria-hidden="true" /> {t("ez_sb_perfil" as MessageKey)}
+          </small>
+        </span>
+        <ChevronUp size={16} aria-hidden="true" className="ep-cuenta-flecha" />
+        <span className="ep-oculto-visual">{t("ez_sb_perfil" as MessageKey)}</span>
       </button>
       {abierto && (
         <div ref={panel} id="ep-cuenta-panel" className="ep-cuenta-panel">

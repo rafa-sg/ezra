@@ -1,5 +1,6 @@
 import { leerProduccion } from "./almacen";
 import { estados, siguienteAccion } from "./modelo";
+import { estadoEjecucion } from "./resumen-encargo";
 import { base } from "../granjas/db";
 import { listarGranjas } from "../granjas/almacen";
 import { listarConexiones } from "../granjas/conexiones";
@@ -142,7 +143,45 @@ export async function resumenInicio(ahora = new Date()) {
     .map((e) => ({ id: e.id, titulo: e.titulo, version: e.version, fechaPrevista: e.fechaPrevista, actualizado: e.actualizado }));
 
   const aprobadosHoy = encargos.filter((e) => e.estado === "aprobado" && diaLocal(new Date(e.actualizado)) === hoy).length;
+
+  // Pantalla de trabajo: en ejecución y bloqueados, eventos por revisar, contenido listo y actividad reciente.
+  const trabajando = granjas
+    .map((g) => {
+      const u = ejecuciones.find((x) => x.granjaId === g.id)?.ultima;
+      if (!u || u.estado !== "en_curso") return null;
+      const activos = Number((base().prepare("select count(*) as n from pasos where ejecucion_id = ? and estado in ('recolectando', 'generando', 'en_cola')").get(u.id) as { n: number }).n);
+      return { tipo: "granja" as const, id: g.id, titulo: g.nombre, detalle: `${activos} paso(s) trabajando`, desde: u.creado };
+    })
+    .filter((x): x is NonNullable<typeof x> => Boolean(x));
+  const bloqueados = [
+    ...ejecuciones.filter((g) => g.fallidos > 0).map((g) => ({ tipo: "granja" as const, id: g.granjaId, titulo: g.nombre, detalle: `${g.fallidos} paso(s) fallaron o quedaron bloqueados`, desde: g.ultima?.creado ?? null })),
+    ...encargos
+      .filter((e) => (e.estado === "pendiente" || e.estado === "preparando") && estadoEjecucion(e).estado === "fallida")
+      .map((e) => {
+        const ej = estadoEjecucion(e);
+        return { tipo: "encargo" as const, id: e.id, titulo: e.titulo, detalle: ej.motivo.slice(0, 160), desde: ej.fecha };
+      }),
+  ];
+  const porRevisar = nuevos
+    .slice()
+    .sort((a, b) => (a.fecha ?? "9999").localeCompare(b.fecha ?? "9999"))
+    .slice(0, 6)
+    .map((e) => ({ id: e.id, titulo: e.titulo, fecha: e.fecha, departamento: e.departamento || null, confianza: e.confianza.puntos }));
+  const postsFila = base()
+    .prepare("select p.id, p.estado, p.subido, p.ig_url, p.actualizado, e.titulo from posts_ig p join eventos e on e.id = p.evento_id where p.estado in ('listo', 'subido') order by p.actualizado desc limit 6")
+    .all() as { id: string; estado: string; subido: string | null; ig_url: string | null; actualizado: string; titulo: string }[];
+  const listo = [
+    ...encargos
+      .filter((e) => e.estado === "aprobado")
+      .slice(0, 6)
+      .map((e) => ({ tipo: "encargo" as const, id: e.id, titulo: e.titulo, estado: "lista_para_descargar", fecha: e.actualizado, enlace: null as string | null })),
+    ...postsFila.map((p) => ({ tipo: "post" as const, id: p.id, titulo: `Post · ${p.titulo}`, estado: p.estado === "subido" ? "confirmada_por_usuario" : "pendiente_subida_manual", fecha: p.subido ?? p.actualizado, enlace: p.ig_url })),
+  ]
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))
+    .slice(0, 8);
+  const actividad = (base().prepare("select fecha, accion, objeto from auditoria order by fecha desc limit 10").all() as { fecha: string; accion: string; objeto: string }[]).map((a) => ({ ...a, objeto: a.objeto.slice(0, 80) }));
   return {
+    trabajo: { trabajando, bloqueados, porRevisar, listo, actividad },
     series: seriesPulso(ahora, proximas),
     progreso: progresoDia(ahora, pendientes.length, aprobadosHoy),
     granjasActivas: granjas.length,

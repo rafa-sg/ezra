@@ -73,7 +73,8 @@ export function PaginaInstagram({ g, tr, fecha }: { g: Tr; tr: Tr; fecha: (iso: 
                 <strong>{datos.cuenta.usuario}</strong>
                 <span>{datos.cuenta.nombre}</span>
                 <small>
-                  <span className="ez-chip ez-chip-vivo">{tr("ez_enVivo")}</span> {tr("ez_igp_leido")} {fecha(datos.leido)}
+                  {tr("ez_igp_leido")} {fecha(datos.leido)}
+                  {datos.desdeCache ? ` · ${tr("ez_igp_cache")}` : ""}
                 </small>
               </div>
               <dl className="ez-ig-perfil-numeros">

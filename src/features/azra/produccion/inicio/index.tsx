@@ -7,8 +7,8 @@ import { temas, type Preferencias, type WidgetPulso } from "@/lib/produccion/pre
 import { Modal } from "../../ui";
 import { Aparece } from "./aparece";
 import { FondoLiquido } from "./fondo-liquido";
-import { Hero } from "./hero";
 import { componentes, equipo, nombreAgente, rolAgente, type DestinoInicio } from "./widgets";
+import { haceCuanto } from "../encargos";
 import "./inicio.css";
 
 export type { DestinoInicio };
@@ -21,8 +21,9 @@ async function pedirJson<T>(url: string, cuerpo?: unknown): Promise<T> {
 }
 
 /**
- * Inicio · «Pulso de mis granjas»: bienvenida con los agentes y un tablero personalizable.
- * Todos los números salen de lo guardado; lo editable es la presentación (orden, tamaño, títulos, tema).
+ * Inicio · pantalla de trabajo: lo que necesita tu atención, lo que está en ejecución o bloqueado,
+ * los eventos por revisar, el contenido listo y las conexiones, sin desplazarse. Todos los números
+ * salen de lo guardado; lo editable es la presentación (orden, tamaño, títulos, tema).
  */
 export function Inicio({
   tr,
@@ -46,6 +47,7 @@ export function Inicio({
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [recarga, setRecarga] = useState(0);
+  const [leido, setLeido] = useState<string | null>(null);
   const [editando, setEditando] = useState(false);
   const [propiedades, setPropiedades] = useState<WidgetPulso | "agentes_equipo" | null>(null);
   const [arrastrando, setArrastrando] = useState<WidgetPulso | null>(null);
@@ -57,6 +59,7 @@ export function Inicio({
         if (!vivo) return;
         setDatos(d);
         setPrefs(p.preferencias);
+        setLeido(new Date().toISOString());
         setError("");
       })
       .catch((e) => vivo && setError((e as Error).message));
@@ -126,15 +129,19 @@ export function Inicio({
   return (
     <div className="ez-inicio" data-tema={tema}>
       {tema === "liquido" && <FondoLiquido className="ez-inicio-liquido" />}
-      <Hero datos={datos} tr={tr} prefs={prefs} liquido={false} onIr={onIr} onNuevo={onNuevo} onPendientes={() => tablero.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
-
       <section className="ez-tablero" ref={tablero} aria-labelledby="ez-tablero-titulo" tabIndex={-1}>
-        <div className="ez-tablero-cabecera">
+        <div className="ez-trabajo-cabecera">
           <div>
-            <span className="ez-pill">{tr("ez_pill_pulso")}</span>
             <h2 id="ez-tablero-titulo" className="ez-titulo-seccion">
-              {tr("ez_pulso_l1")} <em>{tr("ez_pulso_l2")}</em>
+              {tr("ez_trabajo_l1")} <em>{tr("ez_trabajo_l2")}</em>
             </h2>
+            <p className="ez-trabajo-resumen">
+              {leido ? `${tr("ez_enc_actualizado")} ${haceCuanto(leido, tr)} · ` : ""}
+              {tr("ez_trabajo_avance")
+                .replace("{p}", String(datos.progreso.porcentaje))
+                .replace("{r}", String(datos.progreso.resueltas))
+                .replace("{t}", String(datos.progreso.resueltas + datos.progreso.pendientes))}
+            </p>
           </div>
           <div className="ez-tablero-controles">
             <div className="ez-segmentado" role="radiogroup" aria-label={tr("ez_tema")}>
@@ -144,7 +151,7 @@ export function Inicio({
                 </button>
               ))}
             </div>
-            <button className="ez-boton-blanco" onClick={() => setRecarga((x) => x + 1)} aria-label={tr("p_actualizar")}>
+            <button className="ez-boton-blanco" onClick={() => setRecarga((x) => x + 1)} aria-label={tr("p_actualizar")} title={tr("p_actualizar")}>
               <RefreshCw size={15} aria-hidden="true" />
             </button>
             <button className={editando ? "ez-boton-negro" : "ez-boton-blanco"} aria-pressed={editando} onClick={() => setEditando(!editando)}>
@@ -153,6 +160,23 @@ export function Inicio({
             </button>
           </div>
         </div>
+        {/* Indicadores: cada uno abre los registros que lo componen. */}
+        <ul className="ez-indicadores" aria-label={tr("ez_trabajo_indicadores")}>
+          {[
+            { k: "atencion", n: datos.pendientes.length, ir: () => document.getElementById("ez-w-atencion")?.scrollIntoView({ behavior: "smooth", block: "center" }) },
+            { k: "ejecucion", n: datos.trabajo.trabajando.length, ir: () => onIr({ seccion: "granjas" }) },
+            { k: "bloqueados", n: datos.trabajo.bloqueados.length, ir: () => document.getElementById("ez-w-ejecucion")?.scrollIntoView({ behavior: "smooth", block: "center" }), alerta: true },
+            { k: "eventos", n: datos.eventos.nuevos, ir: () => onIr({ seccion: "eventos" }) },
+            { k: "listo", n: datos.trabajo.listo.length, ir: () => document.getElementById("ez-w-listo")?.scrollIntoView({ behavior: "smooth", block: "center" }) },
+          ].map((x) => (
+            <li key={x.k}>
+              <button className={`ez-indicador ${x.alerta && x.n ? "ez-indicador-alerta" : ""}`} onClick={x.ir}>
+                <strong>{x.n}</strong>
+                <span>{tr(`ez_ind_${x.k}`)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
         {aviso && (
           <p className="ez-aviso" role="status" onAnimationEnd={() => setAviso("")}>
             {aviso}
@@ -251,7 +275,7 @@ export function Inicio({
         )}
       </section>
 
-      <Modal open={Boolean(propiedades)} onClose={() => setPropiedades(null)} label={tr("ez_propiedades")} className="ep-modal ez-panel" dismissOnBackdrop>
+      <Modal open={Boolean(propiedades)} onClose={() => setPropiedades(null)} label={tr("ez_propiedades")} className="ep-modal ez-panel" dismissOnBackdrop hideClose>
         {propiedades && propiedades !== "agentes_equipo" && (
           <PanelWidget
             key={propiedades}

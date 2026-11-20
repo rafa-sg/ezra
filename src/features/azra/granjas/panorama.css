@@ -313,3 +313,20 @@
     animation: none;
   }
 }
+
+/* Flujo de agentes en tarjeta clara (sin el panel oscuro). */
+.azra .ez-flujo-tarjeta {
+  padding: 20px;
+  border: 1px solid var(--ep-borde);
+  border-radius: var(--ez-radio-xl);
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra-s);
+}
+.azra .ez-flujo-tarjeta .ez-flujo-titulo {
+  margin-top: 0;
+  text-align: left;
+}
+.azra .ez-flujo-tarjeta .ez-flujo-avatar {
+  border-color: var(--ep-borde);
+  background: var(--ep-superficie-2);
+}

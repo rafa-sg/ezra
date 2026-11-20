@@ -1,0 +1,636 @@
+/* Datos y conexiones: Geografía y Trazabilidad (fondo claro, acentos suaves). Depende de tokens.css. */
+.azra .ez-dc {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--ep-borde);
+  border-radius: var(--ez-radio-xl);
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra-s);
+  font-family: var(--ez-fuente);
+}
+.azra .ez-dc-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.azra .ez-dc-sub {
+  margin: 4px 0 0;
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .ez-dc-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--ep-superficie-2);
+}
+.azra .ez-dc-filtros label {
+  display: grid;
+  gap: 4px;
+  color: var(--ep-suave);
+  font-size: 12px;
+  font-weight: 500;
+}
+.azra .ez-dc-filtros select,
+.azra .ez-dc-filtros input {
+  min-height: 36px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+}
+.azra .ez-dc-filtros .ez-boton-blanco {
+  min-height: 36px;
+  font-size: 13px;
+}
+.azra .ez-dc-totales {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.azra .ez-dc-totales div {
+  display: flex;
+  flex-direction: column-reverse;
+  padding: 12px 14px;
+  border: 1px solid var(--ep-borde-suave);
+  border-radius: 14px;
+}
+.azra .ez-dc-totales dd {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.azra .ez-dc-totales dt {
+  color: var(--ep-suave);
+  font-size: 12.5px;
+}
+.azra .ez-dc-explica {
+  margin: 0;
+}
+.azra .ez-dc-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 14px;
+  align-items: start;
+}
+.azra .ez-dc-vista {
+  min-width: 0;
+}
+.azra .ez-dc-panel {
+  position: sticky;
+  top: 80px;
+  display: grid;
+  gap: 8px;
+  max-height: calc(100vh - 110px);
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid var(--ep-borde);
+  border-radius: 16px;
+  background: var(--ep-tarjeta);
+}
+.azra .ez-dc-panel header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.azra .ez-dc-panel h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.azra .ez-dc-panel h4 {
+  margin: 10px 0 2px;
+  color: var(--ep-texto-2);
+  font-size: 13px;
+}
+.azra .ez-dc-panel-vacio {
+  color: var(--ep-suave);
+  font-size: 13.5px;
+}
+.azra .ez-dc-lista {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .ez-dc-fila,
+.azra .ez-dc-enlace {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.azra .ez-dc-enlace {
+  padding: 0;
+  font-weight: 600;
+}
+.azra .ez-dc-fila:hover {
+  background: var(--ep-superficie-2);
+}
+.azra .ez-dc-fila small {
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+.azra .ez-dc-fila:focus-visible,
+.azra .ez-dc-enlace:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+}
+
+/* Geografía */
+.azra .ez-geo {
+  display: grid;
+  gap: 10px;
+}
+.azra .ez-geo-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.azra .ez-geo-mapa {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.azra .ez-geo-pais {
+  fill: #eef0f6;
+  stroke: #c9ccd8;
+  stroke-width: 1.2;
+}
+.azra .ez-geo-depto {
+  fill: #e6e8f0;
+  stroke: #ffffff;
+  stroke-width: 1.4;
+  cursor: pointer;
+  transition: fill 150ms ease;
+}
+.azra .ez-geo-depto.ez-geo-con {
+  fill: #7c8cff;
+}
+.azra .ez-geo-depto:hover {
+  stroke: var(--ez-negro);
+}
+.azra .ez-geo-depto.ez-geo-elegido {
+  stroke: var(--ez-negro);
+  stroke-width: 2.4;
+}
+.azra .ez-geo-marcador {
+  cursor: pointer;
+}
+.azra .ez-geo-marcador circle {
+  fill: rgba(11, 11, 15, 0.82);
+  stroke: #fff;
+  stroke-width: 2;
+}
+.azra .ez-geo-marcador text {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--ez-fuente);
+  pointer-events: none;
+}
+.azra .ez-geo-marcador.ez-geo-elegido circle {
+  fill: var(--ez-azul);
+}
+.azra .ez-geo-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .ez-geo-lista button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 999px;
+  background: var(--ep-tarjeta);
+  color: var(--ep-texto-2);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.azra .ez-geo-lista button span {
+  color: var(--ep-suave);
+  font-weight: 600;
+}
+.azra .ez-geo-lista button[aria-pressed="true"] {
+  border-color: var(--ez-negro);
+  background: var(--ez-negro);
+  color: #fff;
+}
+.azra .ez-geo-lista button[aria-pressed="true"] span {
+  color: rgba(255, 255, 255, 0.8);
+}
+.azra .ez-geo-lista .ez-geo-sin {
+  border-style: dashed;
+}
+.azra .ez-geo-lista button:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 2px;
+}
+.azra .ez-geo-leyenda {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ep-texto-2);
+  font-size: 12.5px;
+}
+.azra .ez-geo-leyenda-circulos {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+.azra .ez-geo-leyenda-circulos i {
+  display: block;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: rgba(11, 11, 15, 0.82);
+  box-shadow: 0 0 0 1px var(--ep-borde);
+}
+.azra .ez-geo-atribucion {
+  margin: 0;
+  color: var(--ep-suave);
+  font-size: 11.5px;
+}
+
+/* Trazabilidad */
+.azra .ez-traza {
+  display: grid;
+  gap: 10px;
+}
+.azra .ez-traza-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.azra .ez-traza-controles .ez-boton-blanco {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.azra .ez-traza-leyenda {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-left: auto;
+  color: var(--ep-texto-2);
+  font-size: 12px;
+}
+.azra .ez-traza-leyenda i {
+  display: inline-block;
+  width: 22px;
+  height: 0;
+  border-top: 2px dashed #9aa3c7;
+}
+.azra .ez-traza-leyenda .ez-l-real {
+  border-top: 3px solid var(--ez-negro);
+}
+.azra .ez-traza-leyenda .ez-l-error {
+  border-top: 3px solid var(--ep-error, #b42318);
+}
+.azra .ez-traza-lienzo {
+  overflow: hidden;
+  border: 1px solid var(--ep-borde-suave);
+  border-radius: 16px;
+  background: #fbfbfd;
+  cursor: grab;
+  touch-action: none;
+}
+.azra .ez-traza-lienzo:active {
+  cursor: grabbing;
+}
+.azra .ez-traza-lienzo svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.azra .ez-traza-col {
+  fill: var(--ep-suave);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--ez-fuente);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.azra .ez-arista path {
+  fill: none;
+}
+.azra .ez-arista.ez-dato path:first-child {
+  stroke: #aab2d6;
+  stroke-dasharray: 6 5;
+}
+.azra .ez-arista.ez-real path:first-child {
+  stroke: var(--ez-negro);
+}
+.azra .ez-arista.ez-error path:first-child {
+  stroke: var(--ep-error, #b42318);
+}
+.azra .ez-arista .ez-arista-toque {
+  stroke: transparent;
+  stroke-width: 16;
+  cursor: pointer;
+}
+.azra .ez-arista text {
+  fill: var(--ep-texto-2);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-arista.ez-elegida path:first-child {
+  stroke: var(--ez-azul);
+}
+.azra .ez-atenuado {
+  opacity: 0.18;
+}
+.azra .ez-nodo-t {
+  cursor: pointer;
+}
+.azra .ez-nodo-t rect {
+  fill: #fff;
+  stroke: var(--ep-borde-control);
+}
+.azra .ez-nodo-t:hover rect {
+  stroke: var(--ez-negro);
+}
+.azra .ez-nodo-error rect {
+  stroke: var(--ep-error, #b42318);
+  stroke-width: 2;
+}
+.azra .ez-nodo-pendiente rect {
+  stroke: var(--ep-atencion, #b54708);
+  stroke-dasharray: 4 3;
+}
+.azra .ez-nodo-t-titulo {
+  fill: var(--ep-texto);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-nodo-t-valor {
+  fill: var(--ep-suave);
+  font-size: 12px;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-traza-botones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--ep-suave);
+  font-size: 12.5px;
+}
+.azra .ez-traza-botones button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 999px;
+  background: var(--ep-tarjeta);
+  color: var(--ep-texto-2);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.azra .ez-traza-botones button[aria-pressed="true"] {
+  border-color: var(--ez-negro);
+  background: var(--ez-negro);
+  color: #fff;
+}
+.azra .ez-traza-botones button:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+}
+@media (max-width: 1100px) {
+  .azra .ez-dc-cuerpo {
+    grid-template-columns: 1fr;
+  }
+  .azra .ez-dc-panel {
+    position: static;
+    max-height: none;
+  }
+}
+@media (max-width: 640px) {
+  .azra .ez-dc {
+    padding: 14px;
+  }
+  .azra .ez-dc-totales {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .azra .ez-dc-filtros label {
+    flex: 1 1 45%;
+  }
+}
+
+/* ── Geografía en panel oscuro (diseño de puntos, ahora funcional) ── */
+.azra .ez-geo-zoom {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.azra .ez-geo-zoom .ez-boton-blanco {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.azra .ez-geo-oscuro {
+  overflow: hidden;
+  border-radius: 22px;
+  background: radial-gradient(900px 420px at 50% -10%, rgba(59, 108, 255, 0.22), transparent 65%), #050507;
+  box-shadow: var(--ez-sombra);
+  cursor: grab;
+  touch-action: none;
+}
+.azra .ez-geo-oscuro:active {
+  cursor: grabbing;
+}
+.azra .ez-geo-oscuro svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.azra .ez-geo-puntos circle {
+  cursor: pointer;
+}
+.azra .ez-p-vacio {
+  fill: rgba(255, 255, 255, 0.12);
+}
+.azra .ez-p-datos {
+  fill: rgba(170, 190, 255, 0.38);
+}
+.azra .ez-p-activo {
+  fill: #9fb7ff;
+}
+.azra .ez-o-arco path:first-child {
+  fill: none;
+}
+.azra .ez-o-punteado path:first-child {
+  stroke-dasharray: 5 6;
+  opacity: 0.6;
+}
+.azra .ez-o-error path:first-child {
+  stroke-dasharray: 5 4;
+}
+.azra .ez-toque {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  cursor: pointer;
+}
+.azra .ez-o-arco-fino {
+  fill: none;
+  stroke: rgba(143, 168, 255, 0.26);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+.azra .ez-o-pulsos circle {
+  fill: #dbe5ff;
+  filter: drop-shadow(0 0 4px #7c9bff);
+}
+.azra .ez-o-halo {
+  fill: rgba(59, 108, 255, 0.5);
+}
+.azra .ez-o-centro {
+  fill: #8fb0ff;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+.azra .ez-o-nodo,
+.azra .ez-o-lado,
+.azra .ez-o-pastilla,
+.azra .ez-o-sin {
+  cursor: pointer;
+}
+.azra .ez-o-nodo:hover .ez-o-centro,
+.azra .ez-o-lado:hover .ez-o-centro,
+.azra .ez-o-elegido .ez-o-centro {
+  fill: #fff;
+  stroke: #8fb0ff;
+  stroke-width: 3;
+}
+.azra .ez-o-etiqueta text {
+  fill: #d6d9e6;
+  font-size: 12.5px;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-o-guia {
+  fill: none;
+  stroke: rgba(214, 217, 230, 0.45);
+  stroke-width: 1;
+}
+.azra .ez-o-titulo {
+  fill: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-o-texto {
+  fill: #a9adbf;
+  font-size: 12px;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-o-apagado {
+  opacity: 0.5;
+}
+.azra .ez-o-hub rect {
+  fill: #fff;
+}
+.azra .ez-o-hub text {
+  fill: #0b0b0f;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--ez-fuente);
+  letter-spacing: -0.02em;
+}
+.azra .ez-o-pastilla rect {
+  fill: rgba(20, 22, 32, 0.92);
+  stroke: rgba(255, 255, 255, 0.14);
+}
+.azra .ez-o-pastilla circle {
+  fill: #6f8fff;
+}
+.azra .ez-o-pastilla text {
+  fill: #e6e8f2;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-o-sin rect {
+  fill: rgba(20, 22, 32, 0.9);
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-dasharray: 4 4;
+}
+.azra .ez-o-sin text {
+  fill: #e6e8f2;
+  font-size: 12.5px;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-o-sin.ez-o-elegido rect {
+  stroke: #8fb0ff;
+  stroke-dasharray: none;
+}
+.azra .ez-geo-oscuro .ez-atenuado {
+  opacity: 0.2;
+}
+.azra .ez-geo-leyenda {
+  flex-wrap: wrap;
+}
+@media (max-width: 767px) {
+  .azra .ez-o-pastilla,
+  .azra .ez-o-etiqueta {
+    display: none;
+  }
+  .azra .ez-o-titulo {
+    font-size: 22px;
+  }
+  .azra .ez-geo-zoom {
+    margin-left: 0;
+  }
+}
+
+/* Que nada del bloque fuerce un ancho mayor que la pantalla (las cuadrículas tomaban el ancho mínimo del contenido). */
+.azra .ez-panorama > *,
+.azra .ez-dc,
+.azra .ez-dc-vista,
+.azra .ez-geo,
+.azra .ez-traza,
+.azra .ez-dc-filtros label {
+  min-width: 0;
+}
+.azra .ez-dc-cuerpo {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+.azra .ez-dc-filtros select,
+.azra .ez-dc-filtros input {
+  max-width: 100%;
+  min-width: 0;
+}
+@media (max-width: 1100px) {
+  .azra .ez-dc-cuerpo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

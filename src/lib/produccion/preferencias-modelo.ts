@@ -4,7 +4,8 @@ import { z } from "zod";
  * Modelo de la personalización del estudio, sin dependencias del servidor: lo usan la API y la
  * interfaz (el navegador no puede importar la base de datos).
  */
-export const widgetsPulso = ["kpis", "grafica", "atencion", "proximas", "instagram", "granjas", "agentes"] as const;
+/** Pantalla de trabajo: lo urgente primero (los widgets de la versión anterior se descartan al leer). */
+export const widgetsPulso = ["atencion", "ejecucion", "eventos", "listo", "conexiones", "consumo", "grafica", "agentes"] as const;
 export type WidgetPulso = (typeof widgetsPulso)[number];
 export const temas = ["claro", "oscuro", "liquido"] as const;
 export const seccionesTema = ["inicio", "encargos", "granjas", "eventos", "instagram", "calendario", "conexiones", "consumo"] as const;
@@ -26,13 +27,14 @@ export type Preferencias = z.infer<typeof preferenciasSchema>;
 
 /** Tablero por defecto: lo urgente arriba, luego el pulso y el resto. */
 export const widgetsPorDefecto: Preferencias["widgets"] = [
-  { id: "kpis", visible: true, tamano: "l", titulo: "" },
   { id: "atencion", visible: true, tamano: "m", titulo: "" },
-  { id: "grafica", visible: true, tamano: "m", titulo: "" },
-  { id: "proximas", visible: true, tamano: "s", titulo: "" },
-  { id: "instagram", visible: true, tamano: "s", titulo: "" },
-  { id: "granjas", visible: true, tamano: "s", titulo: "" },
-  { id: "agentes", visible: true, tamano: "l", titulo: "" },
+  { id: "ejecucion", visible: true, tamano: "m", titulo: "" },
+  { id: "eventos", visible: true, tamano: "m", titulo: "" },
+  { id: "listo", visible: true, tamano: "m", titulo: "" },
+  { id: "conexiones", visible: true, tamano: "m", titulo: "" },
+  { id: "consumo", visible: true, tamano: "m", titulo: "" },
+  { id: "grafica", visible: true, tamano: "l", titulo: "" },
+  { id: "agentes", visible: false, tamano: "l", titulo: "" },
 ];
 
 /**
