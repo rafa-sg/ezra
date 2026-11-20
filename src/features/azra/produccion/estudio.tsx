@@ -26,6 +26,7 @@ import {
   MessageSquareWarning,
   Ban,
   CircleArrowRight,
+  Camera,
 } from "lucide-react";
 import { useLanguage, type MessageKey } from "../i18n";
 import { useClerk } from "@clerk/nextjs";
@@ -51,16 +52,19 @@ import { ConexionesGranjas } from "../granjas/conexiones";
 import { ColocarEnGranja } from "../granjas/colocar";
 import { SeccionConsumo } from "../granjas/consumo";
 import { SeccionEventos } from "../granjas/eventos";
+import { PaginaInstagram } from "../granjas/instagram-pagina";
 import { Inicio, type DestinoInicio } from "./inicio";
 import { MenuEstudio } from "./menu";
+import { FondoLava } from "./fondo-lava";
 import { AgendaCalendario } from "./agenda";
+import { CalendarioVistas } from "./calendario";
 import { Bienvenida, leerGuia } from "./bienvenida";
 import type { EstadoOnboarding } from "@/lib/produccion/onboarding";
 import "./estudio.css";
 import "./tokens.css";
 
 // Barra lateral estilo Buffer: Inicio y Encargos arriba; las secciones anteriores siguen igual.
-const secciones = ["inicio", "encargos", "granjas", "eventos", "calendario", "conexiones", "consumo"] as const;
+const secciones = ["inicio", "encargos", "granjas", "eventos", "instagram", "calendario", "conexiones", "consumo"] as const;
 type Seccion = (typeof secciones)[number];
 /** Secciones retiradas del menú (equipo, fuentes, cola): sus enlaces abren Granjas. */
 const seccionDe = (valor: string | null): Seccion | null =>
@@ -420,6 +424,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     { id: "encargos", icono: ListTodo, etiqueta: "p_encargos" },
     { id: "granjas", icono: Workflow, etiqueta: "p_cola" },
     { id: "eventos", icono: Ticket, etiqueta: "p_eventos" },
+    { id: "instagram", icono: Camera, etiqueta: "p_instagram" },
     { id: "calendario", icono: CalendarDays, etiqueta: "p_calendario" },
     { id: "conexiones", icono: Cable, etiqueta: "p_conexiones" },
     { id: "consumo", icono: Gauge, etiqueta: "p_consumo" },
@@ -427,6 +432,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   const visiblesEn = (actual?: Agente) => agentes.filter((a) => especialistas.includes(a) || a === actual);
   return (
     <div className="ep-estudio">
+      <FondoLava />
       {soloLectura && (
       <header className="ep-cabecera">
         <a
@@ -724,6 +730,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
             <SeccionEventos g={g} fecha={fecha} locale={locale} />
           </>
         )}
+        {!soloLectura && seccion === "instagram" && <PaginaInstagram g={g} tr={tr} fecha={fecha} />}
         {!soloLectura && seccion === "consumo" && (
           <>
             <div className="ep-seccion-cabecera">
@@ -750,16 +757,37 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
                 {tr("p_exportarIcs")}
               </a>
             </div>
-            <AgendaCalendario
+            <CalendarioVistas
               tr={tr}
-              fecha={fecha}
               locale={locale}
               version={versionInicio}
               onAbrirEncargo={(id) => {
                 const e = encargos.find((x) => x.id === id);
                 if (e) abrir(e);
               }}
+              onNuevoEnDia={(dia) => {
+                crear();
+                setEditor((x) => (x ? { ...x, fechaPrevista: `${dia}T09:00` } : x));
+              }}
+              onMoverEncargo={async (id, dia) => {
+                const e = encargos.find((x) => x.id === id);
+                // Se conserva la hora; solo cambia el día.
+                if (e) await ponerFecha(id, `${dia}${(e.fechaPrevista || "T09:00").slice(10) || "T09:00"}`);
+              }}
             />
+            <details className="ez-cal-lista">
+              <summary>{tr("ez_cal_verLista")}</summary>
+              <AgendaCalendario
+                tr={tr}
+                fecha={fecha}
+                locale={locale}
+                version={versionInicio}
+                onAbrirEncargo={(id) => {
+                  const e = encargos.find((x) => x.id === id);
+                  if (e) abrir(e);
+                }}
+              />
+            </details>
             {encargos.some((e) => !e.fechaPrevista && e.estado !== "rechazado") && (
               <section className="ep-sin-fecha">
                 <h2 className="eg-subtitulo">{tr("p_sinFechaTitulo")}</h2>
@@ -904,7 +932,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
       />
       <footer className="ep-pie">
         <span>
-          spotmi<span>·</span> creative studio
+          ezrá<span>·</span> Estudio Spotmi
         </span>
         <span>{tr("p_control")}</span>
       </footer>

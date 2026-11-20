@@ -1,0 +1,207 @@
+/* Página Instagram (Fase 3). Depende de tokens.css, inicio.css (kpis, barras) y panorama.css (cabecera). */
+.azra .ez-ig-pagina {
+  display: grid;
+  gap: 28px;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-ig-h3 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.azra .ez-ig-avisos {
+  margin: 0;
+  padding: 12px 16px 12px 32px;
+  border-radius: 14px;
+  background: var(--ep-atencion-fondo, #fffaeb);
+  color: var(--ep-atencion, #b54708);
+  font-size: 13px;
+}
+.azra .ez-ig-perfil {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+}
+.azra .ez-ig-perfil img,
+.azra .ez-ig-foto-vacia {
+  display: block;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: linear-gradient(135deg, #feda75, #d62976 50%, #4f5bd5);
+  box-shadow: 0 0 0 3px var(--ep-tarjeta), 0 0 0 5px #d62976;
+}
+.azra .ez-ig-perfil-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.azra .ez-ig-perfil-texto strong {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+.azra .ez-ig-perfil-texto span:not(.ez-chip) {
+  color: var(--ep-texto-2);
+}
+.azra .ez-ig-perfil-texto small {
+  margin-top: 4px;
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+.azra .ez-ig-perfil-numeros {
+  display: flex;
+  gap: 28px;
+  margin: 0;
+}
+.azra .ez-ig-perfil-numeros div {
+  display: flex;
+  flex-direction: column-reverse;
+  text-align: center;
+}
+.azra .ez-ig-perfil-numeros dd {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.azra .ez-ig-perfil-numeros dt {
+  color: var(--ep-suave);
+  font-size: 12.5px;
+}
+.azra .ez-ig-metricas {
+  display: grid;
+  gap: 16px;
+}
+.azra .ez-ig-metricas .ez-tablero-cabecera {
+  margin: 0;
+  align-items: center;
+}
+.azra .ez-ig-metricas .ez-ig-h3 {
+  margin: 0;
+}
+.azra .ez-ig-metricas .ez-kpi {
+  cursor: default;
+}
+.azra .ez-ig-barras {
+  padding: 20px;
+}
+.azra .ez-ig-barras h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+.azra .ez-ig-barras ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .ez-ig-barras li {
+  display: grid;
+  grid-template-columns: 120px 1fr 56px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+.azra .ez-ig-barras li strong {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.azra .ez-ig-barras .ez-barra {
+  height: 8px;
+}
+.azra .ez-ig-insight {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--ep-hecho-fondo, #ecfdf3);
+  color: var(--ep-texto-2);
+  font-size: 13.5px;
+}
+.azra .ez-ig-feed {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .ez-ig-feed a {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 16px;
+  aspect-ratio: 4 / 5;
+  background: var(--ep-superficie-2);
+  box-shadow: var(--ez-sombra-s);
+}
+.azra .ez-ig-feed img,
+.azra .ez-ig-feed .ez-ig-foto-vacia {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  object-fit: cover;
+  transition: transform 400ms ease;
+}
+.azra .ez-ig-feed a:hover img {
+  transform: scale(1.04);
+}
+.azra .ez-ig-feed a:focus-visible {
+  outline: 3px solid var(--ez-violeta);
+  outline-offset: 2px;
+}
+.azra .ez-ig-feed-pie {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 12px 10px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.65));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.azra .ez-ig-feed-pie span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.azra .ez-ig-feed-pie svg:last-child {
+  margin-left: auto;
+}
+@media (max-width: 900px) {
+  .azra .ez-ig-perfil {
+    grid-template-columns: auto 1fr;
+  }
+  .azra .ez-ig-perfil-numeros {
+    grid-column: 1 / -1;
+    justify-content: space-around;
+  }
+  .azra .ez-ig-perfil .ez-boton-blanco {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 767px) {
+  .azra .ez-ig-barras li {
+    grid-template-columns: 90px 1fr 44px;
+  }
+  .azra .ez-ig-feed {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-ig-feed img,
+  .azra .ez-ig-feed a:hover img {
+    transition: none;
+    transform: none;
+  }
+}

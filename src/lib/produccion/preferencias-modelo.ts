@@ -7,7 +7,7 @@ import { z } from "zod";
 export const widgetsPulso = ["kpis", "grafica", "atencion", "proximas", "instagram", "granjas", "agentes"] as const;
 export type WidgetPulso = (typeof widgetsPulso)[number];
 export const temas = ["claro", "oscuro", "liquido"] as const;
-export const seccionesTema = ["inicio", "encargos", "granjas", "eventos", "calendario", "conexiones", "consumo"] as const;
+export const seccionesTema = ["inicio", "encargos", "granjas", "eventos", "instagram", "calendario", "conexiones", "consumo"] as const;
 export const tamanos = ["s", "m", "l"] as const;
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);

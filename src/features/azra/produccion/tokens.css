@@ -310,8 +310,9 @@
 .azra .ep-session-brand .ez-logo svg {
   color: #fff;
 }
+/* El espacio central usa todo el ancho libre: así la barra sabe si caben los nombres y nunca tapa el logo. */
 .azra .ez-barra-centro {
-  justify-self: center;
+  justify-self: stretch;
 }
 .azra .ez-barra-accion {
   display: flex;
@@ -439,20 +440,31 @@
     display: none;
   }
 }
-/* Ancho medio: íconos; el nombre solo en la sección activa (los demás lo muestran al pasar el cursor). */
-@media (min-width: 1024px) and (max-width: 1279px) {
-  .azra .ez-nav-barra > button:not([aria-current]) .ez-nav-etiqueta {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
+/* Si no caben todos los nombres (lo mide la barra): íconos, y el nombre solo en la sección activa
+   (los demás lo muestran al pasar el cursor y lo anuncian al lector de pantalla). */
+.azra .ez-nav-compacta > button:not([aria-current]) .ez-nav-etiqueta {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.azra .ez-nav-compacta > button {
+  padding: 0 10px;
+}
+/* Espacio para que quepan los 8 nombres: la cuenta queda en avatar y el espacio de trabajo se oculta. */
+@media (min-width: 1024px) and (max-width: 1679px) {
+  .azra .ep-cuenta-nombre {
+    display: none;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1599px) {
+  .azra .ep-session-bar .ep-session-espacio {
+    display: none;
   }
   .azra .ez-nav-barra > button {
     padding: 0 10px;
-  }
-  .azra .ep-cuenta-nombre {
-    display: none;
+    font-size: 13px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -635,5 +647,236 @@
   }
   .azra .ez-menu-pildora {
     transition: none;
+  }
+}
+
+/* ── Lámpara de lava (fondo de todo el estudio) ── */
+.azra .ep-estudio {
+  position: relative;
+  background: transparent;
+}
+.azra .ez-lava {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.azra .ez-lava canvas,
+.azra .ez-lava-respaldo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.azra .ez-lava canvas {
+  display: block;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+.azra .ez-lava canvas.ez-lava-activa {
+  opacity: 1;
+}
+/* Sin WebGL: manchas fijas con el mismo color. */
+.azra .ez-lava-respaldo {
+  background:
+    radial-gradient(38vmax 30vmax at 12% 18%, rgba(199, 194, 255, 0.55), transparent 70%),
+    radial-gradient(34vmax 28vmax at 88% 30%, rgba(169, 204, 255, 0.5), transparent 70%),
+    radial-gradient(30vmax 26vmax at 30% 88%, rgba(255, 204, 230, 0.45), transparent 70%),
+    radial-gradient(28vmax 24vmax at 78% 82%, rgba(191, 240, 225, 0.45), transparent 70%),
+    #f7f7f8;
+}
+.azra .ep-estudio > .ep-marco,
+.azra .ep-estudio > .ep-pie,
+.azra .ep-estudio > .ep-cabecera {
+  position: relative;
+  z-index: 1;
+}
+/* El pie, discreto y con la tipografía nueva. */
+.azra .ep-estudio > .ep-pie {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 22px 32px 30px;
+  border-top: 1px solid var(--ep-borde-suave);
+  background: transparent;
+  color: var(--ep-suave);
+  font-size: 12.5px;
+}
+@media (max-width: 767px) {
+  .azra .ep-estudio > .ep-pie {
+    flex-direction: column;
+    padding: 18px 16px 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-lava canvas {
+    transition: none;
+  }
+}
+
+/* ── Capa común: las pantallas anteriores (Encargos, Eventos, Conexiones, Consumo, Granjas) con el lenguaje nuevo ── */
+.azra .ep-estudio .ep-seccion-cabecera {
+  align-items: flex-end;
+  margin-bottom: 26px;
+}
+.azra .ep-estudio .ep-seccion-cabecera h1 {
+  margin: 10px 0 0;
+  font-size: clamp(30px, 3.4vw, 44px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+.azra .ep-estudio .ep-seccion-cabecera p:not(.ep-eyebrow) {
+  max-width: 640px;
+  margin-top: 8px;
+  color: var(--ep-suave);
+  font-size: 15px;
+}
+.azra .ep-estudio .ep-seccion-cabecera .ep-eyebrow {
+  display: inline-flex;
+  width: auto;
+  margin: 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--ez-negro);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* El ícono grande decorativo del encabezado sobra con la tipografía nueva. */
+.azra .ep-estudio .ep-seccion-cabecera > svg {
+  display: none;
+}
+.azra .ep-estudio .ep-boton,
+.azra .ep-modal .ep-boton {
+  min-height: 38px;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: transform var(--ez-transicion), box-shadow var(--ez-transicion), background var(--ez-transicion);
+}
+.azra .ep-estudio .ep-boton:not(.ep-primario):not(.ep-texto),
+.azra .ep-modal .ep-boton:not(.ep-primario):not(.ep-texto) {
+  border-color: var(--ep-borde);
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra-s);
+}
+.azra .ep-estudio .ep-boton:hover:not(:disabled):not(.ep-texto),
+.azra .ep-modal .ep-boton:hover:not(:disabled):not(.ep-texto) {
+  transform: translateY(-1px);
+  box-shadow: var(--ez-sombra);
+}
+.azra .ep-estudio .ep-boton.ep-primario,
+.azra .ep-modal .ep-boton.ep-primario {
+  box-shadow: 0 8px 20px -10px rgba(11, 11, 15, 0.6);
+}
+.azra .ep-estudio input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.azra .ep-estudio select,
+.azra .ep-estudio textarea,
+.azra .ep-modal input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.azra .ep-modal select,
+.azra .ep-modal textarea {
+  border-radius: 12px;
+  border-color: var(--ep-borde-control);
+  background-color: var(--ep-tarjeta);
+}
+.azra .ep-estudio input:focus-visible,
+.azra .ep-estudio select:focus-visible,
+.azra .ep-estudio textarea:focus-visible,
+.azra .ep-modal input:focus-visible,
+.azra .ep-modal select:focus-visible,
+.azra .ep-modal textarea:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ez-violeta) 35%, transparent);
+  outline-offset: 0;
+  border-color: var(--ez-violeta);
+}
+.azra .ep-estudio .ep-busqueda {
+  border-radius: 14px;
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra-s);
+}
+.azra .ep-estudio .ep-alerta,
+.azra .ep-estudio .ep-aviso,
+.azra .ep-modal .ep-alerta {
+  border-radius: 14px;
+}
+.azra .ep-estudio .eg-subtitulo {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Encargos: carriles translúcidos sobre la lava y tarjetas blancas elevadas. */
+.azra .ep-estudio .ep-kanban {
+  gap: 16px;
+}
+.azra .ep-estudio .ep-columna {
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.azra .ep-estudio .ep-columna > h2 {
+  padding: 4px 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.azra .ep-estudio .ep-tarea {
+  border: 1px solid var(--ep-borde);
+  border-radius: 16px;
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra-s);
+  transition: transform var(--ez-transicion), box-shadow var(--ez-transicion);
+}
+.azra .ep-estudio .ep-tarea:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ez-sombra);
+}
+
+/* Paneles, recetas, tarjetas y tablas de las otras secciones: blancas, radio 18 y sombra suave. */
+.azra .ep-estudio .eg-bloque,
+.azra .ep-estudio .eg-receta,
+.azra .ep-estudio .eg-tarjeta-granja,
+.azra .ep-estudio .eg-especialistas,
+.azra .ep-estudio .eg-otras-recetas,
+.azra .ep-estudio .eg-tabla-desplazable,
+.azra .ep-estudio .eg-post,
+.azra .ep-estudio .ep-sin-fecha,
+.azra .ep-estudio .ez-cal-lista {
+  border: 1px solid var(--ep-borde);
+  border-radius: 18px;
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra-s);
+}
+.azra .ep-estudio .eg-receta,
+.azra .ep-estudio .eg-tarjeta-granja {
+  transition: transform var(--ez-transicion), box-shadow var(--ez-transicion);
+}
+.azra .ep-estudio .eg-receta:hover:not(:disabled),
+.azra .ep-estudio .eg-tarjeta-granja:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ez-sombra);
+}
+.azra .ep-estudio .eg-especialistas,
+.azra .ep-estudio .eg-otras-recetas,
+.azra .ep-estudio .ez-cal-lista {
+  padding: 14px 18px;
+}
+.azra .ep-estudio .ez-cal-lista > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ep-estudio .ep-boton,
+  .azra .ep-estudio .ep-tarea,
+  .azra .ep-estudio .eg-receta,
+  .azra .ep-estudio .eg-tarjeta-granja {
+    transition: none;
+    transform: none !important;
   }
 }

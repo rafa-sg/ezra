@@ -1,0 +1,351 @@
+/* Calendario por mes, semana y día (Fase 3). Depende de tokens.css. */
+.azra .ez-cal {
+  --ez-cal-prevista: #6b6b78;
+  --ez-cal-autorizada: #f79009;
+  --ez-cal-publicada: #12b76a;
+  --ez-cal-subida_manual: #d62976;
+  --ez-cal-evento: #3b6cff;
+  display: grid;
+  gap: 14px;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-cal-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.azra .ez-cal-navegar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.azra .ez-cal-navegar .ez-boton-blanco {
+  min-height: 38px;
+  padding: 0 12px;
+}
+.azra .ez-cal-titulo {
+  margin: 0 0 0 8px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.azra .ez-cal-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font-size: 13px;
+}
+/* Filtros como pastillas: la casilla real queda accesible pero invisible. */
+.azra .ez-cal-filtro {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 999px;
+  background: var(--ep-tarjeta);
+  color: var(--ep-suave);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.azra .ez-cal-filtro input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.azra .ez-cal-filtro:has(input:checked) {
+  border-color: color-mix(in srgb, var(--ez-cal-color) 45%, var(--ep-borde));
+  background: color-mix(in srgb, var(--ez-cal-color) 12%, var(--ep-tarjeta));
+  color: var(--ep-texto);
+}
+.azra .ez-cal-filtro:not(:has(input:checked)) i {
+  opacity: 0.35;
+}
+.azra .ez-cal-filtro:has(input:focus-visible) {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 2px;
+}
+.azra .ez-cal-filtro i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--ez-cal-color);
+}
+.azra .ez-cal-ayuda {
+  margin-left: auto;
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+.azra .ez-cal-prevista {
+  --ez-cal-color: var(--ez-cal-prevista);
+}
+.azra .ez-cal-autorizada {
+  --ez-cal-color: var(--ez-cal-autorizada);
+}
+.azra .ez-cal-publicada {
+  --ez-cal-color: var(--ez-cal-publicada);
+}
+.azra .ez-cal-subida_manual {
+  --ez-cal-color: var(--ez-cal-subida_manual);
+}
+.azra .ez-cal-evento {
+  --ez-cal-color: var(--ez-cal-evento);
+}
+
+/* Mes */
+.azra .ez-cal-mes {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--ep-borde);
+  border-radius: var(--ez-radio-l);
+  background: var(--ep-borde);
+  gap: 1px;
+  box-shadow: var(--ez-sombra);
+}
+.azra .ez-cal-dia-semana {
+  padding: 10px 12px;
+  background: var(--ep-superficie-2);
+  color: var(--ep-suave);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.azra .ez-cal-celda {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 116px;
+  padding: 8px;
+  background: var(--ep-tarjeta);
+  transition: background 150ms ease;
+}
+.azra .ez-cal-fuera {
+  background: var(--ep-superficie-2);
+}
+.azra .ez-cal-fuera .ez-cal-numero {
+  color: var(--ep-suave);
+}
+.azra .ez-cal-sobre {
+  background: var(--ep-seleccion);
+  outline: 2px dashed var(--ez-violeta);
+  outline-offset: -3px;
+}
+.azra .ez-cal-celda-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.azra .ez-cal-numero {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ep-texto);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.azra .ez-cal-hoy .ez-cal-numero {
+  background: var(--ez-negro);
+  color: #fff;
+}
+.azra .ez-cal-mas {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ep-suave);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 150ms ease, background 150ms ease;
+}
+.azra .ez-cal-celda:hover .ez-cal-mas,
+.azra .ez-cal-mas:focus-visible {
+  opacity: 1;
+}
+.azra .ez-cal-mas:hover {
+  background: var(--ep-superficie-2);
+  color: var(--ep-texto);
+}
+.azra .ez-cal-numero:focus-visible,
+.azra .ez-cal-mas:focus-visible,
+.azra .ez-cal-chip:focus-visible,
+.azra .ez-cal-masn:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 1px;
+}
+.azra .ez-cal-entradas {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.azra .ez-cal-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 8px 3px 6px;
+  border: 0;
+  border-left: 3px solid var(--ez-cal-color);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ez-cal-color) 10%, var(--ep-tarjeta));
+  color: var(--ep-texto);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.azra span.ez-cal-chip {
+  cursor: default;
+}
+.azra .ez-cal-chip[draggable="true"] {
+  cursor: grab;
+}
+.azra .ez-cal-arrastrando {
+  opacity: 0.45;
+}
+.azra .ez-cal-chip time {
+  flex: none;
+  color: var(--ep-suave);
+  font-variant-numeric: tabular-nums;
+}
+.azra .ez-cal-chip-titulo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .ez-cal-masn {
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  color: var(--ep-suave);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.azra .ez-cal-pasado .ez-cal-chip {
+  opacity: 0.6;
+}
+
+/* Semana y día: entradas completas */
+.azra .ez-cal-semana {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+.azra .ez-cal-columna {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--ep-borde);
+  border-radius: 14px;
+  background: var(--ep-tarjeta);
+}
+.azra .ez-cal-columna .ez-cal-celda {
+  flex: 1;
+  min-height: 260px;
+}
+/* En la semana el número ya está en la cabecera de la columna. */
+.azra .ez-cal-columna .ez-cal-numero {
+  display: none;
+}
+.azra .ez-cal-columna .ez-cal-celda-cabecera {
+  justify-content: flex-end;
+}
+.azra .ez-cal-columna .ez-cal-hoy {
+  background: color-mix(in srgb, var(--ez-azul) 5%, var(--ep-tarjeta));
+}
+.azra .ez-cal-semana .ez-cal-chip,
+.azra .ez-cal-dia .ez-cal-chip {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+.azra .ez-cal-semana .ez-cal-chip-titulo,
+.azra .ez-cal-dia .ez-cal-chip-titulo {
+  white-space: normal;
+}
+.azra .ez-cal-chip small {
+  flex-basis: 100%;
+  color: var(--ep-suave);
+  font-size: 11.5px;
+}
+.azra .ez-cal-dia .ez-cal-celda {
+  min-height: 160px;
+  padding: 16px;
+  border: 1px solid var(--ep-borde);
+  border-radius: var(--ez-radio-l);
+  box-shadow: var(--ez-sombra);
+}
+.azra .ez-cal-dia .ez-cal-chip {
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+@media (max-width: 1023px) {
+  .azra .ez-cal-semana {
+    grid-template-columns: 1fr;
+  }
+  .azra .ez-cal-columna .ez-cal-celda {
+    min-height: 0;
+  }
+  .azra .ez-cal-ayuda {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 767px) {
+  .azra .ez-cal-celda {
+    min-height: 64px;
+    padding: 4px;
+  }
+  .azra .ez-cal-dia-semana {
+    padding: 6px 4px;
+    font-size: 11px;
+    text-align: center;
+  }
+  /* En el móvil el mes muestra puntos de color; el detalle está en la vista de día. */
+  .azra .ez-cal-mes .ez-cal-chip {
+    padding: 0;
+    height: 6px;
+    border: 0;
+    background: var(--ez-cal-color);
+    font-size: 0;
+  }
+  .azra .ez-cal-mes .ez-cal-chip time,
+  .azra .ez-cal-mes .ez-cal-masn {
+    display: none;
+  }
+  .azra .ez-cal-mas {
+    display: none;
+  }
+  .azra .ez-cal-titulo {
+    flex-basis: 100%;
+    margin: 4px 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-cal-celda,
+  .azra .ez-cal-mas {
+    transition: none;
+  }
+}

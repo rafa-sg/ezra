@@ -126,7 +126,7 @@ export function Inicio({
   return (
     <div className="ez-inicio" data-tema={tema}>
       {tema === "liquido" && <FondoLiquido className="ez-inicio-liquido" />}
-      <Hero datos={datos} tr={tr} prefs={prefs} liquido={tema !== "oscuro"} onIr={onIr} onNuevo={onNuevo} onPendientes={() => tablero.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
+      <Hero datos={datos} tr={tr} prefs={prefs} liquido={false} onIr={onIr} onNuevo={onNuevo} onPendientes={() => tablero.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
 
       <section className="ez-tablero" ref={tablero} aria-labelledby="ez-tablero-titulo" tabIndex={-1}>
         <div className="ez-tablero-cabecera">

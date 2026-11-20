@@ -46,10 +46,15 @@ function AnilloDia({ porcentaje, tr }: { porcentaje: number; tr: (c: string) => 
  */
 function BarraNav({ items, actual, porcentaje, tr, onIr, deshabilitado }: { items: ItemMenu[]; actual: string; porcentaje: number | null; tr: (c: string) => string; onIr: (id: string) => void; deshabilitado?: boolean }) {
   const nav = useRef<HTMLElement>(null);
+  // Ancho que necesita la barra con todos los nombres: si no cabe, pasa a íconos (el activo conserva su nombre).
+  const natural = useRef(0);
   useLayoutEffect(() => {
     const el = nav.current;
     if (!el) return;
     const colocar = () => {
+      if (!el.classList.contains("ez-nav-compacta")) natural.current = el.scrollWidth;
+      const disponible = el.parentElement?.clientWidth ?? Number.POSITIVE_INFINITY;
+      el.classList.toggle("ez-nav-compacta", natural.current > disponible);
       const activo = el.querySelector<HTMLElement>("button[aria-current]");
       el.style.setProperty("--ez-ind-x", `${activo ? activo.offsetLeft : 0}px`);
       el.style.setProperty("--ez-ind-w", `${activo ? activo.offsetWidth : 0}px`);
@@ -58,6 +63,7 @@ function BarraNav({ items, actual, porcentaje, tr, onIr, deshabilitado }: { item
     colocar();
     const obs = new ResizeObserver(colocar);
     obs.observe(el);
+    if (el.parentElement) obs.observe(el.parentElement);
     el.querySelectorAll("button").forEach((b) => obs.observe(b));
     return () => obs.disconnect();
   }, [actual, items]);

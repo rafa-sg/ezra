@@ -29,7 +29,8 @@ export function FondoLiquido({ className = "" }: { className?: string }) {
     const canvas = lienzo.current;
     if (!canvas) return;
     const gl = canvas.getContext("webgl", { antialias: false, alpha: false, powerPreference: "low-power" });
-    if (!gl) return;
+    // Contexto perdido (p. ej. al volver a montar): el lienzo queda oculto y se ve el degradado.
+    if (!gl || gl.isContextLost()) return;
     const compilar = (tipo: number, fuente: string) => {
       const s = gl.createShader(tipo)!;
       gl.shaderSource(s, fuente);
@@ -97,7 +98,8 @@ export function FondoLiquido({ className = "" }: { className?: string }) {
       tam.disconnect();
       obs.disconnect();
       document.removeEventListener("visibilitychange", reanudar);
-      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      // No se libera el contexto: React (en desarrollo) vuelve a montar el mismo lienzo y lo reutiliza.
+      canvas.classList.remove("ez-liquido-activo");
     };
   }, []);
   return <canvas ref={lienzo} className={`ez-liquido ${className}`} aria-hidden="true" />;

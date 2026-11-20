@@ -9,6 +9,10 @@
   font-family: var(--ez-fuente);
   overflow: hidden;
 }
+/* En el tema claro se ve la lámpara de lava del estudio (fondo-lava.tsx) detrás del Inicio. */
+.azra .ez-inicio[data-tema="claro"] {
+  background: transparent;
+}
 .azra .ez-inicio-liquido {
   position: fixed;
   inset: 0;
