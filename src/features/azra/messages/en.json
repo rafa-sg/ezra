@@ -1996,5 +1996,20 @@
   "ez_ia_probarAyuda": "“Verify” checks the program, version, restrictions and session without calling the model. “Test response” asks it for an “OK” and uses one attempt from your plan.",
   "g_guia_youtube": "Create a Google Cloud project, enable “YouTube Data API v3” and create an OAuth client ID of type “Web application” with the redirect address below (Google accepts http://127.0.0.1). While the consent screen is in “Testing”, add your email as a test user. Put the ID and secret in .env.local as YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET and restart Ezra. Ezra only reads your channel and uploads videos as private: you publish them in YouTube Studio.",
   "g_youtubeBorradorAyuda": "Uploaded as private with the piece title and, as description, the Instagram text (or the Facebook one). You review and publish it in YouTube Studio.",
-  "g_youtubePolitica": "YouTube: Ezra never publishes; it uploads as private and you decide in YouTube Studio. If the Google project is not audited, YouTube also keeps videos private."
+  "g_youtubePolitica": "YouTube: Ezra never publishes; it uploads as private and you decide in YouTube Studio. If the Google project is not audited, YouTube also keeps videos private.",
+  "g_ev_filtros": "Inbox filters",
+  "g_ev_buscar": "Search",
+  "g_ev_buscarAyuda": "Event name or place",
+  "g_ev_masFiltros": "More filters",
+  "g_ev_acciones": "Inbox actions",
+  "g_ev_importarMenu": "Import",
+  "g_ev_spotmiCompacto_ok": "Spotmi connected",
+  "g_ev_spotmiCompacto_no": "Spotmi not connected",
+  "g_ev_deTotal": "of",
+  "g_ev_revisar": "Review",
+  "g_ev_masAcciones": "More actions",
+  "g_ev_menu_buscarImagen": "Find original image",
+  "g_ev_menu_subirCaptura": "Upload capture",
+  "g_ev_menu_referenciaGemini": "Gemini reference",
+  "g_ev_configFuentes": "Sources and domain trust"
 }

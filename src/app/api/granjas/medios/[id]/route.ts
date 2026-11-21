@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { administrador, errorApi } from "@/lib/granjas/api";
 import { leerMedio, rutaMedio } from "@/lib/granjas/medios";
 import { byteRange } from "@/lib/media";
+import { WorkflowError } from "@/lib/workflow";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     await administrador();
     const medio = leerMedio((await params).id);
-    const bytes = await readFile(rutaMedio(medio));
+    // Si el archivo ya no está en disco (por ejemplo, una copia sin la carpeta de medios), 404 claro, no 500.
+    const bytes = await readFile(rutaMedio(medio)).catch((e: NodeJS.ErrnoException) => {
+      if (e.code === "ENOENT") throw new WorkflowError("El archivo de este medio ya no está en esta computadora.", 404);
+      throw e;
+    });
     const rango = request.headers.get("range");
     const parte = rango ? byteRange(rango, bytes.length) : null;
     // ?descargar=nombre: el navegador lo guarda como archivo (por ejemplo, el PNG de un post).

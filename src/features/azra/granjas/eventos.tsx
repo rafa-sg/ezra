@@ -1,14 +1,11 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ArrowRight,
-  CalendarDays,
   Check,
   Copy,
   Download,
   ExternalLink,
   Image as Imagen,
-  MapPin,
   Pencil,
   RefreshCw,
   Search,
@@ -24,8 +21,9 @@ import { ListaPosts } from "./posts";
 import { ConfianzaDominios, CuentasSeguir, PegarEnlace, type FilaConfianza } from "./eventos-redes";
 import type { CuentasSeguidas, EstadoLectura } from "@/lib/granjas/redes";
 
-import { EventCatalog, EventCover } from "./event-catalog";
+import { EventCatalog } from "./event-catalog";
 import { ImagenOriginal } from "./imagen-original";
+import { FilaEvento } from "./eventos-lista";
 
 type EventoVista = Evento & { ficha: string };
 type Respuesta = {
@@ -42,7 +40,14 @@ type Respuesta = {
   imagenesIA: EstadoIA;
   imagenesAstra: EstadoIA;
 };
-type EstadoIA = { activa: boolean; motivo: string; aviso: string; hoy: number; limite: number; modelo: string };
+type EstadoIA = {
+  activa: boolean;
+  motivo: string;
+  aviso: string;
+  hoy: number;
+  limite: number;
+  modelo: string;
+};
 type ResultadoImagen = {
   id: string;
   titulo: string;
@@ -150,17 +155,32 @@ export function SeccionEventos({
   } | null>(null);
   const archivoIA = useRef<HTMLInputElement>(null);
   // «Buscar imagen original» / «Subir o pegar captura» (panel aparte).
-  const [original, setOriginal] = useState<{ evento: EventoVista; modo: "buscar" | "captura" } | null>(null);
-  const [geminiReference, setGeminiReference] = useState<{ event: EventoVista; text: string; copied: boolean } | null>(null);
+  const [original, setOriginal] = useState<{
+    evento: EventoVista;
+    modo: "buscar" | "captura";
+  } | null>(null);
+  const [geminiReference, setGeminiReference] = useState<{
+    event: EventoVista;
+    text: string;
+    copied: boolean;
+  } | null>(null);
   async function prepareGeminiReference(event: EventoVista) {
     setOcupado(true);
     setError("");
     try {
-      const result = await pedir<{ paraModelo: string }>("/api/granjas/eventos", { accion: "referencia_prompt", id: event.id });
-      const text = result.paraModelo.replace("vertical 4:5", "horizontal 3:2") + " This is an AI-generated conceptual reference, not documentation of the actual event. Do not recreate a specific venue or imply confirmed performers, attendance or attractions. Generate an inviting editorial image with a clear focal subject and restrained, natural lighting.";
+      const result = await pedir<{ paraModelo: string }>("/api/granjas/eventos", {
+        accion: "referencia_prompt",
+        id: event.id,
+      });
+      const text =
+        result.paraModelo.replace("vertical 4:5", "horizontal 3:2") +
+        " This is an AI-generated conceptual reference, not documentation of the actual event. Do not recreate a specific venue or imply confirmed performers, attendance or attractions. Generate an inviting editorial image with a clear focal subject and restrained, natural lighting.";
       setGeminiReference({ event, text, copied: false });
-    } catch (error) { setError((error as Error).message); }
-    finally { setOcupado(false); }
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setOcupado(false);
+    }
   }
   /** Copia el prompt armado (con «Avoid: …») para pegarlo en la app de Gemini. */
   async function copiarPrompt(e: EventoVista) {
@@ -221,6 +241,7 @@ export function SeccionEventos({
   // Filtro y orden por confianza (en el navegador: la lista ya viene filtrada por estado y fechas).
   const [cuidado, setCuidado] = useState(false);
   const [orden, setOrden] = useState<"fecha" | "confianza_baja" | "confianza_alta">("fecha");
+  const [busqueda, setBusqueda] = useState("");
   const detener = useRef(false);
   /** Recorre de a uno los eventos sin imagen: cada paso es una petición, así se ve el progreso y se puede detener. */
   async function completarImagenes(ids: string[]) {
@@ -429,8 +450,22 @@ export function SeccionEventos({
       </div>
     );
   const enPanel = abierto ? (datos.eventos.find((x) => x.id === abierto) ?? null) : null;
+  // Búsqueda local por nombre y lugar (sin acentos ni mayúsculas), sobre los eventos ya cargados.
+  const normal = (t: string) =>
+    t
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const textoBuscado = normal(busqueda.trim());
   const visibles = datos.eventos
     .filter((e) => !cuidado || e.confianza.puntos < 50)
+    .filter(
+      (e) =>
+        !textoBuscado ||
+        normal([e.titulo, e.lugar, e.municipio, e.departamento].filter(Boolean).join(" ")).includes(
+          textoBuscado,
+        ),
+    )
     .sort((a, b) =>
       orden === "confianza_baja"
         ? a.confianza.puntos - b.confianza.puntos
@@ -451,28 +486,17 @@ export function SeccionEventos({
           {aviso}
         </p>
       )}
-      <p className={datos.spotmi ? "ep-nota" : "eg-presupuesto-aviso"}>
-        {g(datos.spotmi ? "ev_spotmiConectado" : "ev_spotmiNoConectado")}
-      </p>
-      {(datos.imagenesIA.aviso || !datos.imagenesIA.activa) && (
-        <p className="eg-presupuesto-aviso" role="status">
-          {g("ev_ia_titulo")}: {datos.imagenesIA.aviso || datos.imagenesIA.motivo}
-        </p>
-      )}
-      <CuentasSeguir
-        key={JSON.stringify(datos.cuentas)}
-        g={g}
-        cuentas={datos.cuentas}
-        lectura={datos.lectura}
-        alGuardar={cargar}
-      />
-      <ConfianzaDominios
-        key={JSON.stringify(datos.confianza)}
-        g={g}
-        filas={datos.confianza}
-        alGuardar={cargar}
-      />
-      <div className="eg-filtros" role="group" aria-label={g("ev_estado")}>
+      {/* Barra de la bandeja: búsqueda, estado y orden a la vista; lo demás, plegado. */}
+      <div className="ev-barra" role="group" aria-label={g("ev_filtros")}>
+        <label className="eg-campo ev-buscar">
+          {g("ev_buscar")}
+          <input
+            type="search"
+            value={busqueda}
+            placeholder={g("ev_buscarAyuda")}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+        </label>
         <label className="eg-campo">
           {g("ev_estado")}
           <select
@@ -490,22 +514,6 @@ export function SeccionEventos({
           </select>
         </label>
         <label className="eg-campo">
-          {g("ev_desde")}
-          <input
-            type="date"
-            value={filtro.desde}
-            onChange={(e) => setFiltro({ ...filtro, desde: e.target.value })}
-          />
-        </label>
-        <label className="eg-campo">
-          {g("ev_hasta")}
-          <input
-            type="date"
-            value={filtro.hasta}
-            onChange={(e) => setFiltro({ ...filtro, hasta: e.target.value })}
-          />
-        </label>
-        <label className="eg-campo">
           {g("ev_conf_orden")}
           <select value={orden} onChange={(e) => setOrden(e.target.value as typeof orden)}>
             <option value="fecha">{g("ev_conf_ordenFecha")}</option>
@@ -513,44 +521,88 @@ export function SeccionEventos({
             <option value="confianza_alta">{g("ev_conf_ordenAlta")}</option>
           </select>
         </label>
-        <label className="eg-check">
-          <input type="checkbox" checked={cuidado} onChange={(e) => setCuidado(e.target.checked)} />
-          {g("ev_conf_cuidado")} ({datos.eventos.filter((e) => e.confianza.puntos < 50).length})
-        </label>
+        <details
+          className="ev-plegable"
+          open={Boolean(filtro.desde || filtro.hasta || cuidado) || undefined}
+        >
+          <summary>
+            {g("ev_masFiltros")}
+            {[filtro.desde, filtro.hasta, cuidado].filter(Boolean).length
+              ? ` · ${[filtro.desde, filtro.hasta, cuidado].filter(Boolean).length}`
+              : ""}
+          </summary>
+          <div className="ev-plegable-cuerpo">
+            <label className="eg-campo">
+              {g("ev_desde")}
+              <input
+                type="date"
+                value={filtro.desde}
+                onChange={(e) => setFiltro({ ...filtro, desde: e.target.value })}
+              />
+            </label>
+            <label className="eg-campo">
+              {g("ev_hasta")}
+              <input
+                type="date"
+                value={filtro.hasta}
+                onChange={(e) => setFiltro({ ...filtro, hasta: e.target.value })}
+              />
+            </label>
+            <label className="eg-check">
+              <input
+                type="checkbox"
+                checked={cuidado}
+                onChange={(e) => setCuidado(e.target.checked)}
+              />
+              {g("ev_conf_cuidado")} ({datos.eventos.filter((e) => e.confianza.puntos < 50).length})
+            </label>
+          </div>
+        </details>
         <button
           className="ep-boton ep-texto"
-          disabled={!filtro.estado && !filtro.desde && !filtro.hasta && !cuidado}
-          onClick={() => (setFiltro({ estado: "", desde: "", hasta: "" }), setCuidado(false))}
+          disabled={!filtro.estado && !filtro.desde && !filtro.hasta && !cuidado && !busqueda}
+          onClick={() => (
+            setFiltro({ estado: "", desde: "", hasta: "" }),
+            setCuidado(false),
+            setBusqueda("")
+          )}
         >
           {g("ev_limpiar")}
         </button>
-        <PegarEnlace
-          g={g}
-          categorias={datos.categorias}
-          departamentos={datos.departamentos}
-          alTerminar={async (m) => {
-            setAviso(m);
-            await cargar();
-          }}
-        />
-        <input
-          ref={archivo}
-          type="file"
-          accept="application/json,.json"
-          className="eg-oculto"
-          tabIndex={-1}
-          aria-hidden="true"
-          onChange={(e) => e.target.files?.[0] && void importar(e.target.files[0])}
-        />
-        <button
-          className="ep-boton"
-          disabled={ocupado}
-          onClick={() => archivo.current?.click()}
-          title={g("ev_importarAyuda")}
-        >
-          <Upload size={15} />
-          {g("ev_importar")}
-        </button>
+      </div>
+      <div className="ev-barra" role="group" aria-label={g("ev_acciones")}>
+        <details className="ev-plegable">
+          <summary>{g("ev_importarMenu")}</summary>
+          <div className="ev-plegable-cuerpo">
+            <PegarEnlace
+              g={g}
+              categorias={datos.categorias}
+              departamentos={datos.departamentos}
+              alTerminar={async (m) => {
+                setAviso(m);
+                await cargar();
+              }}
+            />
+            <input
+              ref={archivo}
+              type="file"
+              accept="application/json,.json"
+              className="eg-oculto"
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={(e) => e.target.files?.[0] && void importar(e.target.files[0])}
+            />
+            <button
+              className="ep-boton"
+              disabled={ocupado}
+              onClick={() => archivo.current?.click()}
+              title={g("ev_importarAyuda")}
+            >
+              <Upload size={15} />
+              {g("ev_importar")}
+            </button>
+          </div>
+        </details>
         {lote?.activo ? (
           <button className="ep-boton" onClick={() => (detener.current = true)}>
             <X size={15} />
@@ -579,6 +631,12 @@ export function SeccionEventos({
               />
               {g("ev_ia_lote")} ({datos.imagenesIA.hoy}/{datos.imagenesIA.limite})
             </label>
+            {/* El motivo de Gemini va junto a su acción, no como aviso permanente arriba. */}
+            {(datos.imagenesIA.aviso || !datos.imagenesIA.activa) && (
+              <p className="ev-ia-nota">
+                {g("ev_ia_titulo")}: {datos.imagenesIA.aviso || datos.imagenesIA.motivo}
+              </p>
+            )}
           </>
         )}
         {datos.spotmi && (datos.conteo.propuesto ?? 0) > 0 && (
@@ -591,7 +649,17 @@ export function SeccionEventos({
             {g("ev_actualizarSpotmi")}
           </button>
         )}
+        <span
+          className={`ev-estado-spotmi ${datos.spotmi ? "ev-ok" : ""}`}
+          title={g(datos.spotmi ? "ev_spotmiConectado" : "ev_spotmiNoConectado")}
+        >
+          <i aria-hidden="true" />
+          {g(datos.spotmi ? "ev_spotmiCompacto_ok" : "ev_spotmiCompacto_no")}
+        </span>
       </div>
+      <p className="ev-resumen" role="status">
+        {visibles.length} {g("ev_deTotal")} {datos.eventos.length}
+      </p>
       {lote && (
         <div className="eg-bloque eg-lote" role="status" aria-live="polite">
           {lote.activo ? (
@@ -683,112 +751,115 @@ export function SeccionEventos({
       ) : !visibles.length ? (
         <p className="ep-nota">{g("ev_vacioFiltro")}</p>
       ) : (
-        <ul className="eg-cuadricula-eventos eg-editorial-grid">
-          {visibles.map((e) => (
-            <li key={e.id} className={`eg-tarjeta-evento eg-evento-${e.estadoVisible}`}>
-              <div className="eg-tarjeta-imagen">
-                <EventCover
-                  src={e.imagenMedioId ? `/api/granjas/medios/${e.imagenMedioId}` : null}
-                  title={e.titulo}
-                  category={g(`ev_cat_${e.categoria}`)}
-                  fallback={locale === "es" ? "Portada por confirmar" : "Cover pending"}
-                />
-                <div className="eg-cover-review">
-                  <span>{origenVisible(e)}</span>
-                  <AnilloConfianza g={g} confianza={e.confianza} compacto />
-                </div>
-                {etiquetaImagen(e) && <div className="eg-cover-note">{etiquetaImagen(e)}</div>}
-                {(!e.imagenMedioId || e.imagenTipo === "ia") && (
-                  <div className="eg-cover-note eg-cover-acciones">
-                    <button className="ep-boton ep-primario" disabled={ocupado} onClick={() => setOriginal({ evento: e, modo: "buscar" })}>
-                      <Search size={15} aria-hidden="true" /> {locale === "es" ? "Buscar imagen original" : "Find original image"}
-                    </button>
-                    <span>
-                      <button className="ep-enlace-eg" disabled={ocupado} onClick={() => setOriginal({ evento: e, modo: "captura" })}>
-                        {locale === "es" ? "Subir captura" : "Upload capture"}
-                      </button>
-                      {" · "}
-                      <button className="ep-enlace-eg" disabled={ocupado} onClick={() => void prepareGeminiReference(e)}>
-                        {locale === "es" ? "Referencia con Gemini" : "Gemini reference"}
-                      </button>
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="eg-tarjeta-cuerpo">
-                <div className="eg-tarjeta-estado">
-                  <span className="ep-pill">{g(`ev_estado_${e.estadoVisible}`)}</span>
-                  {e.cambios.length > 0 && (
-                    <span className="ep-pill eg-pill-actualizado">{g("ev_actualizado")}</span>
-                  )}
-                </div>
-                <h3>{e.titulo}</h3>
-                <p className="eg-tarjeta-linea">
-                  <CalendarDays size={15} aria-hidden="true" />
-                  <span>
-                    {e.fecha ? fechaLarga(e.fecha) : g("ev_fechaPorConfirmar")}
-                    {e.fechaFin ? ` ${g("ev_al")} ${fechaLarga(e.fechaFin)}` : ""}
-                    {e.hora ? ` · ${horaCorta(e.hora)}` : ""}
-                  </span>
-                </p>
-                <p className="eg-tarjeta-linea">
-                  <MapPin size={15} aria-hidden="true" />
-                  <span>
-                    {[e.lugar, e.municipio].filter(Boolean).join(" · ") ||
-                      e.departamento ||
-                      g("ev_lugarPorConfirmar")}
-                  </span>
-                </p>
-              </div>
-              <div className="eg-tarjeta-pie">
-                <span className={`eg-precio ${e.precioDesde ? "" : "eg-precio-pendiente"}`}>
-                  {!e.precioDesde
+        <ul className="ev-lista" aria-label={g("ev_tab_bandeja")}>
+          {visibles.map((e) => {
+            const sinImagen = !e.imagenMedioId || e.imagenTipo === "ia";
+            const porConfirmar = (t: string) => <span className="ev-por-confirmar">{t}</span>;
+            return (
+              <FilaEvento
+                key={e.id}
+                g={g}
+                evento={e}
+                categoria={g(`ev_cat_${e.categoria}`)}
+                fecha={
+                  e.fecha ? (
+                    <>
+                      {fechaLarga(e.fecha)}
+                      {e.fechaFin ? ` ${g("ev_al")} ${fechaLarga(e.fechaFin)}` : ""}
+                      {e.hora ? ` · ${horaCorta(e.hora)}` : ""}
+                    </>
+                  ) : (
+                    porConfirmar(g("ev_fechaPorConfirmar"))
+                  )
+                }
+                lugar={
+                  [e.lugar, e.municipio].filter(Boolean).join(" · ") ||
+                  e.departamento ||
+                  porConfirmar(g("ev_lugarPorConfirmar"))
+                }
+                origen={origenVisible(e)}
+                notaImagen={etiquetaImagen(e) || null}
+                precio={
+                  !e.precioDesde
                     ? g("ev_precioPorConfirmar")
                     : e.precioDesde.tipo === "gratis"
                       ? g("ev_gratis")
-                      : `${g("ev_desde")} $${Number.isInteger(e.precioDesde.valor) ? e.precioDesde.valor : e.precioDesde.valor.toFixed(2)}`}
-                </span>
-                <button
-                  className="eg-ver-mas"
-                  onClick={() => setAbierto(e.id)}
-                  aria-label={`${g("ev_verMas")}: ${e.titulo}`}
-                >
-                  {g("ev_verMas")} <ArrowRight size={15} aria-hidden="true" />
-                </button>
-              </div>
-              {e.estado !== "descartado" && (e.estado === "nuevo" || !e.spotmiPropuestaId) && (
-                <div className="eg-tarjeta-rapidas">
-                  {e.estado === "nuevo" && (
-                    <button
-                      className="ep-boton ep-primario"
-                      disabled={ocupado}
-                      onClick={() =>
-                        void accion(
-                          { accion: "aprobar", id: e.id, revision: e.revision },
-                          g("ev_estado_aprobado"),
-                        )
-                      }
-                    >
-                      <Check size={15} />
-                      {g("ev_aprobar")}
-                    </button>
-                  )}
-                  {!e.spotmiPropuestaId && (
-                    <button
-                      className="ep-boton eg-peligro"
-                      disabled={ocupado}
-                      onClick={() => setDescartando({ evento: e, motivo: "" })}
-                    >
-                      <X size={15} />
-                      {g("ev_descartar")}
-                    </button>
-                  )}
-                </div>
-              )}
-            </li>
-          ))}
+                      : `${g("ev_desde")} $${Number.isInteger(e.precioDesde.valor) ? e.precioDesde.valor : e.precioDesde.valor.toFixed(2)}`
+                }
+                onRevisar={() => setAbierto(e.id)}
+                acciones={[
+                  ...(e.estado === "nuevo"
+                    ? [
+                        {
+                          clave: "aprobar",
+                          etiqueta: g("ev_aprobar"),
+                          deshabilitada: ocupado,
+                          onClick: () =>
+                            void accion(
+                              { accion: "aprobar", id: e.id, revision: e.revision },
+                              g("ev_estado_aprobado"),
+                            ),
+                        },
+                      ]
+                    : []),
+                  ...(sinImagen
+                    ? [
+                        {
+                          clave: "buscar",
+                          etiqueta: g("ev_menu_buscarImagen"),
+                          deshabilitada: ocupado,
+                          onClick: () => setOriginal({ evento: e, modo: "buscar" }),
+                        },
+                        {
+                          clave: "captura",
+                          etiqueta: g("ev_menu_subirCaptura"),
+                          deshabilitada: ocupado,
+                          onClick: () => setOriginal({ evento: e, modo: "captura" }),
+                        },
+                        {
+                          clave: "gemini",
+                          etiqueta: g("ev_menu_referenciaGemini"),
+                          deshabilitada: ocupado,
+                          onClick: () => void prepareGeminiReference(e),
+                        },
+                      ]
+                    : []),
+                  ...(e.estado !== "descartado" && !e.spotmiPropuestaId
+                    ? [
+                        {
+                          clave: "descartar",
+                          etiqueta: g("ev_descartar"),
+                          peligro: true,
+                          deshabilitada: ocupado,
+                          onClick: () => setDescartando({ evento: e, motivo: "" }),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            );
+          })}
         </ul>
       )}
+      {/* Configuración de fuentes (cuentas a seguir y confianza por dominio), plegada. */}
+      <details className="ev-plegable ev-configuracion">
+        <summary>{g("ev_configFuentes")}</summary>
+        <div className="ev-plegable-cuerpo ev-configuracion-cuerpo">
+          <CuentasSeguir
+            key={JSON.stringify(datos.cuentas)}
+            g={g}
+            cuentas={datos.cuentas}
+            lectura={datos.lectura}
+            alGuardar={cargar}
+          />
+          <ConfianzaDominios
+            key={JSON.stringify(datos.confianza)}
+            g={g}
+            filas={datos.confianza}
+            alGuardar={cargar}
+          />
+        </div>
+      </details>
       <section className="eg-bloque">
         <h2 className="eg-subtitulo">{g("ev_exportar")}</h2>
         <p className="ep-nota">{g("ev_exportarAyuda")}</p>
@@ -832,31 +903,79 @@ export function SeccionEventos({
           }}
         />
       )}
-      <Modal open={Boolean(geminiReference)} onClose={() => !ocupado && setGeminiReference(null)} label={locale === "es" ? "Referencia con Gemini" : "Gemini reference"} className="ep-modal" dismissOnBackdrop>
-        {geminiReference && <div className="eg-guia">
-          <h2>{locale === "es" ? "Referencia con Gemini" : "Gemini reference"}</h2>
-          <strong>{geminiReference.event.titulo}</strong>
-          <p>{locale === "es" ? "Si ya revisaste las fuentes y no encontraste una imagen, copiá este prompt en Gemini, generá la referencia y subila aquí. No encontrar una imagen en Ezra no significa que no exista en otra fuente." : "If you checked the sources and found no image, paste this prompt into Gemini, generate a reference and upload it here. A missing image in Ezra does not prove none exists elsewhere."}</p>
-          <label className="eg-campo">Prompt<textarea rows={8} readOnly value={geminiReference.text} /></label>
-          <div className="ep-acciones">
-            <button className="ep-boton ep-primario" onClick={async () => {
-              try { await navigator.clipboard.writeText(geminiReference.text); setGeminiReference({ ...geminiReference, copied: true }); }
-              catch { setError(g("ev_copiaFallo")); }
-            }}><Copy size={15} />{geminiReference.copied ? (locale === "es" ? "Copiado" : "Copied") : (locale === "es" ? "1. Copiar prompt" : "1. Copy prompt")}</button>
-            <a className="ep-boton" href="https://gemini.google.com/app" target="_blank" rel="noopener noreferrer">{locale === "es" ? "2. Abrir Gemini ↗" : "2. Open Gemini ↗"}</a>
+      <Modal
+        open={Boolean(geminiReference)}
+        onClose={() => !ocupado && setGeminiReference(null)}
+        label={locale === "es" ? "Referencia con Gemini" : "Gemini reference"}
+        className="ep-modal"
+        dismissOnBackdrop
+      >
+        {geminiReference && (
+          <div className="eg-guia">
+            <h2>{locale === "es" ? "Referencia con Gemini" : "Gemini reference"}</h2>
+            <strong>{geminiReference.event.titulo}</strong>
+            <p>
+              {locale === "es"
+                ? "Si ya revisaste las fuentes y no encontraste una imagen, copiá este prompt en Gemini, generá la referencia y subila aquí. No encontrar una imagen en Ezra no significa que no exista en otra fuente."
+                : "If you checked the sources and found no image, paste this prompt into Gemini, generate a reference and upload it here. A missing image in Ezra does not prove none exists elsewhere."}
+            </p>
+            <label className="eg-campo">
+              Prompt
+              <textarea rows={8} readOnly value={geminiReference.text} />
+            </label>
+            <div className="ep-acciones">
+              <button
+                className="ep-boton ep-primario"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(geminiReference.text);
+                    setGeminiReference({ ...geminiReference, copied: true });
+                  } catch {
+                    setError(g("ev_copiaFallo"));
+                  }
+                }}
+              >
+                <Copy size={15} />
+                {geminiReference.copied
+                  ? locale === "es"
+                    ? "Copiado"
+                    : "Copied"
+                  : locale === "es"
+                    ? "1. Copiar prompt"
+                    : "1. Copy prompt"}
+              </button>
+              <a
+                className="ep-boton"
+                href="https://gemini.google.com/app"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {locale === "es" ? "2. Abrir Gemini ↗" : "2. Open Gemini ↗"}
+              </a>
+            </div>
+            <label className="eg-campo">
+              {locale === "es" ? "3. Subir la imagen generada" : "3. Upload generated image"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={ocupado}
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (file) await subirReferencia(geminiReference.event, file);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+            {ocupado && <p role="status">{g("cargando")}</p>}
+            {error && <p role="alert">{error}</p>}
+            {aviso && <p role="status">{aviso}</p>}
+            <p className="ep-nota">
+              {locale === "es"
+                ? "Se guarda como IA · referencia en la bandeja, nunca como foto oficial. No se envía a Spotmi ni a Instagram. Este flujo no llama a la API de Gemini."
+                : "Saved as AI reference in the inbox, never as an official photo. Not sent to Spotmi or Instagram. This workflow does not call the Gemini API."}
+            </p>
           </div>
-          <label className="eg-campo">{locale === "es" ? "3. Subir la imagen generada" : "3. Upload generated image"}
-            <input type="file" accept="image/jpeg,image/png,image/webp" disabled={ocupado} onChange={async event => {
-              const file = event.target.files?.[0];
-              if (file) await subirReferencia(geminiReference.event, file);
-              event.target.value = "";
-            }} />
-          </label>
-          {ocupado && <p role="status">{g("cargando")}</p>}
-          {error && <p role="alert">{error}</p>}
-          {aviso && <p role="status">{aviso}</p>}
-          <p className="ep-nota">{locale === "es" ? "Se guarda como IA · referencia en la bandeja, nunca como foto oficial. No se envía a Spotmi ni a Instagram. Este flujo no llama a la API de Gemini." : "Saved as AI reference in the inbox, never as an official photo. Not sent to Spotmi or Instagram. This workflow does not call the Gemini API."}</p>
-        </div>}
+        )}
       </Modal>
       <Modal
         open={Boolean(enPanel)}
@@ -992,11 +1111,22 @@ export function SeccionEventos({
                       {e.imagenPublicacion && (
                         <small className="ep-nota">
                           {g("ev_or_publicacion")}:{" "}
-                          <a href={e.imagenPublicacion.url} target="_blank" rel="noreferrer noopener">
+                          <a
+                            href={e.imagenPublicacion.url}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                          >
                             {e.imagenPublicacion.plataforma} · {e.imagenPublicacion.cuenta}
                           </a>{" "}
-                          · {g(e.imagenPublicacion.verificada ? "ev_or_verificada" : "ev_or_sinVerificar")}
-                          {e.imagenPublicacion.recuperada ? ` · ${g("ev_or_recuperada")} ${fecha(e.imagenPublicacion.recuperada)}` : ""}
+                          ·{" "}
+                          {g(
+                            e.imagenPublicacion.verificada
+                              ? "ev_or_verificada"
+                              : "ev_or_sinVerificar",
+                          )}
+                          {e.imagenPublicacion.recuperada
+                            ? ` · ${g("ev_or_recuperada")} ${fecha(e.imagenPublicacion.recuperada)}`
+                            : ""}
                           {e.imagenOrigen ? ` · ${g(`ev_or_origen_${e.imagenOrigen}`)}` : ""}
                         </small>
                       )}
@@ -1145,7 +1275,11 @@ export function SeccionEventos({
                   </button>
                 )}
                 {!e.imagenConfirmada && (
-                  <button className="ep-boton" disabled={ocupado} onClick={() => (setAbierto(null), setOriginal({ evento: e, modo: "buscar" }))}>
+                  <button
+                    className="ep-boton"
+                    disabled={ocupado}
+                    onClick={() => (setAbierto(null), setOriginal({ evento: e, modo: "buscar" }))}
+                  >
                     <Search size={15} />
                     {locale === "es" ? "Buscar imagen original" : "Find original image"}
                   </button>
@@ -1188,7 +1322,11 @@ export function SeccionEventos({
                     <button
                       className="ep-boton"
                       disabled={ocupado || !datos.imagenesAstra.activa}
-                      title={datos.imagenesAstra.activa ? g("ev_ia_astraAyuda") : datos.imagenesAstra.motivo}
+                      title={
+                        datos.imagenesAstra.activa
+                          ? g("ev_ia_astraAyuda")
+                          : datos.imagenesAstra.motivo
+                      }
                       onClick={() =>
                         void accion(
                           {

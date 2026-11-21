@@ -1996,5 +1996,20 @@
   "ez_ia_probarAyuda": "«Verificar» revisa programa, versión, restricciones y sesión sin llamar al modelo. «Probar respuesta» le pide un «OK» y usa un intento de tu plan.",
   "g_guia_youtube": "Crea un proyecto en Google Cloud, activa «YouTube Data API v3» y crea un ID de cliente OAuth de tipo «Aplicación web» con la dirección de regreso de abajo (Google acepta http://127.0.0.1). Mientras la pantalla de consentimiento esté en «Prueba», agrega tu correo como usuario de prueba. Copia el ID y el secreto en .env.local como YOUTUBE_CLIENT_ID y YOUTUBE_CLIENT_SECRET y reinicia Ezra. Ezra solo lee tu canal y sube videos en privado: tú los publicas en YouTube Studio.",
   "g_youtubeBorradorAyuda": "Se sube en privado con el título de la pieza y, como descripción, el texto de Instagram (o el de Facebook). Lo revisas y publicas tú en YouTube Studio.",
-  "g_youtubePolitica": "YouTube: Ezra nunca publica; sube en privado y tú decides en YouTube Studio. Si el proyecto de Google no está auditado, YouTube también deja los videos en privado."
+  "g_youtubePolitica": "YouTube: Ezra nunca publica; sube en privado y tú decides en YouTube Studio. Si el proyecto de Google no está auditado, YouTube también deja los videos en privado.",
+  "g_ev_filtros": "Filtros de la bandeja",
+  "g_ev_buscar": "Buscar",
+  "g_ev_buscarAyuda": "Nombre o lugar del evento",
+  "g_ev_masFiltros": "Más filtros",
+  "g_ev_acciones": "Acciones de la bandeja",
+  "g_ev_importarMenu": "Importar",
+  "g_ev_spotmiCompacto_ok": "Spotmi conectado",
+  "g_ev_spotmiCompacto_no": "Spotmi sin conectar",
+  "g_ev_deTotal": "de",
+  "g_ev_revisar": "Revisar",
+  "g_ev_masAcciones": "Más acciones",
+  "g_ev_menu_buscarImagen": "Buscar imagen original",
+  "g_ev_menu_subirCaptura": "Subir captura",
+  "g_ev_menu_referenciaGemini": "Referencia con Gemini",
+  "g_ev_configFuentes": "Fuentes y confianza por dominio"
 }
