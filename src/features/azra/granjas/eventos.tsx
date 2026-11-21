@@ -23,7 +23,7 @@ import type { CuentasSeguidas, EstadoLectura } from "@/lib/granjas/redes";
 
 import { EventCatalog } from "./event-catalog";
 import { ImagenOriginal } from "./imagen-original";
-import { FilaEvento } from "./eventos-lista";
+import { FilaEvento, IndicadorConfianza } from "./eventos-lista";
 
 type EventoVista = Evento & { ficha: string };
 type Respuesta = {
@@ -1173,7 +1173,24 @@ export function SeccionEventos({
                   </ul>
                 </details>
               )}
-              <AnilloConfianza g={g} confianza={e.confianza} />
+              <div className="ev-confianza-detalle">
+                <IndicadorConfianza g={g} confianza={e.confianza} />
+                <details>
+                  <summary>{g("ev_conf_desglose")}</summary>
+                  <ul>
+                    {e.confianza.desglose.map((l, i) => (
+                      <li key={i}>
+                        <span>{l.concepto}</span>
+                        <b>
+                          {l.puntos > 0 ? "+" : ""}
+                          {l.puntos}
+                        </b>
+                      </li>
+                    ))}
+                  </ul>
+                  <small>{g("ev_conf_limite")}</small>
+                </details>
+              </div>
               {e.descripcion && <p className="eg-evento-descripcion">{e.descripcion}</p>}
               {e.spotmiPropuestaId && (
                 <p className="ep-nota">
@@ -1762,66 +1779,6 @@ export function SeccionEventos({
 }
 
 /** Círculo de confianza (verde ≥ 80, amarillo 50–79, rojo < 50); el desglose aparece al pasar el cursor o con el teclado. */
-function AnilloConfianza({
-  g,
-  confianza,
-  compacto = false,
-}: {
-  g: (clave: string) => string;
-  confianza: Evento["confianza"];
-  compacto?: boolean;
-}) {
-  const p = confianza.puntos;
-  const nivel = p >= 80 ? "alta" : p >= 50 ? "media" : "baja";
-  const radio = 16;
-  const largo = 2 * Math.PI * radio;
-  const desglose = confianza.desglose
-    .map((l) => `${l.concepto}: ${l.puntos > 0 ? "+" : ""}${l.puntos}`)
-    .join("\n");
-  return (
-    <div className={`eg-confianza eg-confianza-${nivel}`}>
-      <button
-        type="button"
-        className="eg-confianza-anillo"
-        aria-label={`${g("ev_conf_nombre")}: ${p} %. ${desglose.replace(/\n/g, ". ")}`}
-      >
-        <svg viewBox="0 0 40 40" width="44" height="44" aria-hidden="true">
-          <circle cx="20" cy="20" r={radio} className="eg-confianza-fondo" />
-          <circle
-            cx="20"
-            cy="20"
-            r={radio}
-            className="eg-confianza-valor"
-            strokeDasharray={`${(p / 100) * largo} ${largo}`}
-            transform="rotate(-90 20 20)"
-          />
-        </svg>
-        <span>{p}%</span>
-      </button>
-      {!compacto && (
-        <span className="eg-confianza-texto">
-          {g("ev_conf_nombre")} · {g(`ev_conf_nivel_${nivel}`)}
-        </span>
-      )}
-      <div className="eg-confianza-desglose" role="tooltip">
-        <strong>{g("ev_conf_desglose")}</strong>
-        <ul>
-          {confianza.desglose.map((l, i) => (
-            <li key={i}>
-              <span>{l.concepto}</span>
-              <b>
-                {l.puntos > 0 ? "+" : ""}
-                {l.puntos}
-              </b>
-            </li>
-          ))}
-        </ul>
-        <small>{g("ev_conf_limite")}</small>
-      </div>
-    </div>
-  );
-}
-
 /** Sin imagen: el mismo cuadro azul marino de Spotmi con el día grande y el mes. */
 function CuadroFecha({
   fecha,

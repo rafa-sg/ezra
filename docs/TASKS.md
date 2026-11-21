@@ -397,3 +397,8 @@ Inicio mantiene el mapa a todo lo ancho con la paleta anterior y fondos neutros 
 - [x] (21 nov) Mapa con ezrá al centro, controles debajo, carga por partes con líneas fantasma; Codex y Claude Code locales con diagnóstico real. Check 165/165 (4 nuevas en `tests/ia-local.test.ts`); build e integración 7/7 en la copia limpia (Next 16.3.8). Comprobación real en esta Mac: Codex 0.162.1 y Claude Code 2.1.330 con sesión, todas las restricciones aceptadas; una prueba real de respuesta cada uno («OK»: 6,0 s y 2,3 s). Arneses `work/mapa-inicio-v2.mts` y `work/ia-local-visual.mts` (no versionados).
 - [ ] Revisar el video de carga del propietario cuando lo guarde fuera de la carpeta temporal de macOS (Escritorio o Descargas).
 - [ ] Decidir Next: volver a npm con 16.4.6 estable o seguir con el canary de pnpm.
+- [x] (21 nov, madrugada) Docker probado con Colima; Next 16.4.6 con npm; YouTube y puente de TikTok; guía `docs/CONECTAR_REDES.md`; Eventos en lista compacta con detalle legible. Check 171/171; integración 7/7 en el contenedor. Arnés `work/eventos-mirar.mts` (no versionado): búsqueda, menú con teclado, detalle, 1440 y 390 sin desborde ni errores.
+- [ ] Propietario: abrir el pull request https://github.com/rafa-sg/ezra/pull/new/feat/eventos-instagram y unirlo a main cuando quiera; invitar colaboradores (Settings → Collaborators).
+- [ ] Propietario: conectar Facebook, TikTok y YouTube siguiendo `docs/CONECTAR_REDES.md`; verificar Instagram entre el 22 y el 28 de diciembre.
+- [ ] Propietario: decidir si se reescribe el historial de GitHub para quitar el correo de las ramas antiguas.
+- [ ] Guardar el video de la animación de carga fuera de la carpeta temporal de macOS para revisarlo.

@@ -1972,11 +1972,17 @@
   font-size: 22px;
   overflow-wrap: anywhere;
 }
+/* Detalle: el afiche completo, a lo ancho del panel y sin recortar (se lee su texto). */
+.azra .eg-panel-evento .eg-evento-imagen {
+  flex-direction: column;
+}
 .azra .eg-panel-evento .eg-evento-imagen img {
-  width: 160px;
+  width: 100%;
   height: auto;
-  max-height: 220px;
+  max-height: 60vh;
   object-fit: contain;
+  border-radius: 12px;
+  background: var(--ep-superficie-2);
 }
 .azra .eg-prompt-ia {
   margin: 6px 0;
@@ -2164,4 +2170,33 @@
 }
 .azra .eg-recorte-valores input {
   width: 90px;
+}
+
+/* Confianza en el detalle: indicador discreto y desglose plegado. */
+.azra .ev-confianza-detalle {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: 13.5px;
+}
+.azra .ev-confianza-detalle summary {
+  color: var(--ep-suave);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.azra .ev-confianza-detalle ul {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.azra .ev-confianza-detalle li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.azra .ev-confianza-detalle small {
+  color: var(--ep-suave);
 }

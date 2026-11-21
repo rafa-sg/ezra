@@ -21,7 +21,9 @@ export function IndicadorConfianza({ g, confianza }: { g: G; confianza: Evento["
   return (
     <span className={`ev-confianza ev-conf-${nivel}`} title={explicacion}>
       <i aria-hidden="true" />
-      <span aria-hidden="true">{g(`ev_conf_nivel_${nivel}`)}</span>
+      <span aria-hidden="true">
+        {g("ev_conf_nombre")} {g(`ev_conf_nivel_${nivel}`)}
+      </span>
       <span className="ez-oculto">{explicacion}</span>
     </span>
   );
