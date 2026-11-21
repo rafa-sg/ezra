@@ -134,9 +134,23 @@
 - [x] YouTube conectado con `yt-analytics.readonly` (canal Spotmi @spotmisv) y YouTube Analytics API habilitada en el proyecto de Google. La tarjeta de Conexiones ya muestra «Habilita» (faltaba `g_habilita_youtube`).
 - [x] Nuevo tipo de encargo **Videos virales** (agente `virales`): tema + período (7/30/90/365 días o cualquier fecha) → `search.list` por vistas + `videos.list` → hasta 25 videos con vistas, vistas por día, interacción, me gusta, comentarios y duración. Sin IA ni intentos; ~101 unidades de las 10.000 diarias de la API. Los 20 primeros enlaces quedan como fuentes (permiten aprobar). Ranking ordenable en el detalle (`src/features/azra/produccion/virales.tsx`); la lista vive en `encargo.videos` y se vacía si se edita el pedido. Código: `src/lib/produccion/virales-{texto,youtube}.ts`, rama en `/api/produccion/generar`, origen `youtube`. En Granjas el paso `virales` se bloquea con aviso (por ahora solo desde Encargos).
 - [x] Verificación: lint, tipos y 186/186 pruebas (4 nuevas en `tests/virales.test.ts`, corridas en una copia fuera de la carpeta montada). Build e integración no se corrieron. Falta la prueba real desde la interfaz.
-- [ ] Siguiente: granja de clips a partir de un encargo aprobado. Solo con videos propios o con permiso del autor (los virales de terceros sirven como referencia de tendencias).
+- [x] Guardado tal cual en `d5bd7cf` (pedido del propietario, antes de la granja Clips).
+
+### 21 nov (noche) · Granja «Clips» (commits `07faa7e`, `39fe2fa`, `660c69a`, `830befa`)
+
+- [x] Receta destacada «Clips»: Referencias → Material → Momentos → Render de clips → Tu revisión → Destinos (YouTube, TikTok, Instagram). Código: `src/lib/granjas/clips.ts`, `clips-render.ts`, `clips-almacen.ts`, API `/api/granjas/clips`, UI `granjas/clips-revision.tsx`. Migración 12 (`medios.permiso`, tabla `clips`).
+- [x] Referencias: resumen local (sin IA ni red) del encargo «Videos virales» aprobado: duración típica, títulos/ganchos, vistas por día y 5 destacados con enlace. Nunca descarga ni recorta esos videos.
+- [x] Material: cada video declara su origen (propio o con permiso del autor + dónde consta). Sin un video así, la granja se bloquea.
+- [x] Momentos con **Gemini viendo el video** (decisión del propietario): exige presupuesto en Consumo, estima ≈110 tokens/s (resolución baja) + 12.000 y no sube nada si no cabe hoy o este mes; tokens reales en Consumo; borra el archivo remoto. Valida 3–8 clips (inicio, fin, gancho, título) y arma subtítulos. Astra/Claude se bloquean; a mano se pega el JSON.
+- [x] Render 1080×1920: video al ancho sobre fondo desenfocado, gancho (3 s) y subtítulos como PNG de next/og superpuestos con ffmpeg (el ffmpeg de Homebrew no trae libass/drawtext), dentro de zonas seguras. Cada clip es un medio con origen y permiso.
+- [x] Tu revisión clip por clip: aprobar (hechos, derechos, marca) crea su pieza y aprueba esa huella; rechazar exige motivo; pedir cambios rehace solo ese clip (trabajo `clip` en la cola) como v2. Destinos: autorización existente con PUBLICAR por cuenta; no se puede autorizar antes de cerrar la revisión.
+- [x] Verificación: check 199/199 (13 nuevas en `tests/clips.test.ts`, con YouTube/Gemini simulados y ffmpeg real), build aislado (2 advertencias conocidas), integración 7/7, `tsconfig.json` y `next-env.d.ts` restaurados. Arnés `work/clips-visual.mts` (no versionado): 390 y 1440 sin desborde, recorrido aprobar/rechazar/pedir cambios/v2/destinos; solo errores del Clerk sin red del arnés.
+- [ ] Prueba real con un video tuyo: falta facturación en la clave de Gemini (cuota gratuita en 0) y `EZRA_PRODUCCION_IA=1`. Un video de 10 min ≈ 78.000 tokens.
+- [ ] Modo oscuro del panel Clips no verificado en pantalla (el arnés emuló el sistema y la app usa su propio interruptor).
+- [ ] Rehacer «Render de clips» completo borra los clips sin pieza y deja inválidas las piezas anteriores; no hay historial visible de versiones de un clip (solo en auditoría).
 
 ### Te toca (propietario)
+- [ ] Clips: aprobar un encargo «Videos virales», crear la granja Clips, subir un video tuyo (o con permiso) y, cuando la clave de Gemini tenga facturación, ejecutarla. Revisar si el límite de 20 min por video y los 15–60 s por clip te sirven.
 - [ ] Supabase: correr `work/supabase-probar-sin-aplicar.sql` en el SQL Editor (debe terminar en «PRUEBAS TERMINADAS»), luego `work/supabase-aplicar.sql`, luego `pnpm exec supabase login` y `pnpm exec supabase migration repair --status applied 20261103 20261117 --linked` en spotmi-web.
 - [ ] Crear la cuenta editorial (Authentication → Users), habilitarla con `work/supabase-habilitar-editorial.sql` y poner `SPOTMI_EDITORIAL_EMAIL` y `SPOTMI_EDITORIAL_PASSWORD` en `.env.local`. Reiniciar `npm run dev` y pulsar Conexiones → Spotmi web → Conectar.
 - [ ] `.env.local`: `EZRA_PRODUCCION_IA=1` (y `GEMINI_MODEL` si no quieres `gemini-3.5-flash-lite`).
