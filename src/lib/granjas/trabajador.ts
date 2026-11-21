@@ -26,6 +26,10 @@ export async function dependenciasReales(): Promise<Dependencias> {
     especialistas: { catalogoSpotmi: eventosPublicosSpotmi },
     recolectar: recolectarFuentes,
     renderizar: renderizarVertical,
+    analizarVideo: async (video, prompt, contexto) => {
+      const { analizarVideoGemini } = await import("../ia/gemini");
+      return analizarVideoGemini(contexto, video, prompt);
+    },
     usosLegado: async () => {
       const mes = mesEnElSalvador(new Date().toISOString());
       return (await leerProduccion()).usos.filter((u) => mesEnElSalvador(u.fecha) === mes).length;

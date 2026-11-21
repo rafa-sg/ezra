@@ -13,7 +13,7 @@ import { recolectarFuentes, type Evidencia } from "./fuentes";
 import { leerMedio, type Medio } from "./medios";
 import { crearPiezaDesdePaso } from "./publicacion";
 import { busquedaActiva, type Nodo } from "./modelo";
-import { esGranjaClips, problemasMaterial, referenciasPaso } from "./clips";
+import { esGranjaClips, momentosPaso, problemasMaterial, referenciasPaso, type AnalizarVideo } from "./clips";
 
 export type Dependencias = {
   generar: (encargo: Encargo, prompt: string, contexto: ContextoGemini, opciones?: { maxTokens?: number; busqueda?: boolean }) => Promise<EntregaIA>;
@@ -22,6 +22,8 @@ export type Dependencias = {
   recolectar: typeof recolectarFuentes;
   renderizar: (medios: Medio[], segundos: number) => Promise<Medio>;
   usosLegado: () => Promise<number>;
+  /** Granja Clips: envía el video subido a Gemini (presupuesto antes, tokens en Consumo). Las pruebas lo simulan. */
+  analizarVideo?: AnalizarVideo;
 };
 export const LIMITE_IA_MENSUAL = 30;
 
@@ -288,6 +290,14 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
     if (nodo.proveedor === "gemini" && process.env.EZRA_PRODUCCION_IA !== "1") {
       cerrar(pasoId, { estado: "bloqueado", detalle: "Gemini está deshabilitado en el estudio (EZRA_PRODUCCION_IA). Elige Astra, Claude o trabajo manual." });
       return "hecho";
+    }
+    // Clips · Momentos: solo Gemini puede ver el video (decisión del propietario); a mano también se puede pegar.
+    if (nodo.agente === "shorts" && esGranjaClips(ejecucion) && nodo.proveedor !== "manual") {
+      if (nodo.proveedor !== "gemini") {
+        cerrar(pasoId, { estado: "bloqueado", detalle: "Momentos necesita ver el video: elige Gemini o trabajo manual (pegas los momentos en JSON)." });
+        return "hecho";
+      }
+      return await especialista(() => momentosPaso(ejecucion, nodo, pasoId, entradas, deps.analizarVideo));
     }
     // Redactor de Instagram con IA: un texto por evento aprobado, cada llamada con su registro de consumo.
     if (nodo.agente === "redactor_ig" && esGranjaInstagram(ejecucion) && nodo.proveedor !== "manual") {

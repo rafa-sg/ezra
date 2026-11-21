@@ -210,3 +210,160 @@ test("granja Clips: referencias con el encargo aprobado y material con origen de
   assert.equal(material.estado, "completado");
   assert.equal(almacen.leerArtefacto(material.salidas[0]).medioId, propio.id);
 });
+
+/* ── Fase 2 · Momentos con Gemini (simulado: sin red) ── */
+const momentosJson = (clipsCrudos: { inicio: number; fin: number; titulo?: string }[], transcripcion = [{ inicio: 0, fin: 4, texto: "Hoy probamos las pupusas de loroco más famosas de Olocuilta" }]) =>
+  JSON.stringify({ transcripcion, clips: clipsCrudos.map((c, i) => ({ titulo: `Clip ${i + 1}`, gancho: "¿Sabías esto?", motivo: "Dato curioso", ...c })) });
+const ajustesPrueba = { minimo: 3, maximo: 8, segundosMin: 15, segundosMax: 60 };
+
+test("momentos: valida tiempos, descarta lo que no cumple y arma subtítulos por clip", () => {
+  const video = { id: crypto.randomUUID(), sha256: "a".repeat(64), segundos: 120 };
+  const { momentos, problemas } = clips.validarMomentos(
+    `Aquí va: ${momentosJson([
+      { inicio: 0, fin: 20 },
+      { inicio: 25, fin: 50 },
+      { inicio: 30, fin: 52 }, // se repite con el anterior
+      { inicio: 60, fin: 63 }, // muy corto
+      { inicio: 70, fin: 100 },
+      { inicio: 118, fin: 200 }, // fuera del video
+    ])}`,
+    video,
+    ajustesPrueba,
+  );
+  assert.deepEqual(problemas, []);
+  assert.equal(momentos!.clips.length, 3);
+  assert.deepEqual(momentos!.clips.map((c) => [c.inicio, c.fin]), [[0, 20], [25, 50], [70, 100]]);
+  assert.equal(momentos!.descartados.length, 3);
+  // Subtítulos relativos al clip y en líneas cortas.
+  const subs = momentos!.clips[0].subtitulos;
+  assert.ok(subs.length >= 2);
+  assert.ok(subs.every((s) => s.texto.length <= 42 && s.inicio >= 0 && s.fin <= 4.1));
+  assert.equal(subs.map((s) => s.texto).join(" "), "Hoy probamos las pupusas de loroco más famosas de Olocuilta");
+  // Pocos clips válidos: no se inventa ninguno.
+  const pocos = clips.validarMomentos(momentosJson([{ inicio: 0, fin: 20 }]), video, ajustesPrueba);
+  assert.equal(pocos.momentos, null);
+  assert.match(pocos.problemas[0], /al menos 3/);
+  assert.match(clips.validarMomentos("sin json", video, ajustesPrueba).problemas[0], /JSON/);
+  // Un video de 40 s solo da para 2 clips de 15 s.
+  assert.deepEqual(clips.rangoClips(40, ajustesPrueba), { minimo: 2, maximo: 2 });
+});
+
+test("Gemini con video: exige presupuesto, estima tokens, sube, pide resolución baja y borra el archivo", async () => {
+  const gemini = await import("../src/lib/ia/gemini");
+  const consumo = await import("../src/lib/granjas/consumo");
+  const contexto = { origen: "granja" as const, paso: "Momentos" };
+  const ruta = path.join(process.env.EZRA_DATA_DIR!, "no-se-lee.mp4");
+  consumo.guardarPresupuesto({ tokensDia: null, tokensMes: null });
+  await assert.rejects(gemini.analizarVideoGemini(contexto, { ruta, mime: "video/mp4", segundos: 60 }, "x"), /Define el presupuesto/);
+  // 10 minutos ≈ 78.000 tokens: no caben en 50.000 por día.
+  consumo.guardarPresupuesto({ tokensDia: 50_000, tokensMes: 3_000_000 });
+  assert.equal(gemini.estimarTokensVideo(600), 600 * gemini.TOKENS_POR_SEGUNDO_VIDEO + gemini.TOKENS_EXTRA_VIDEO);
+  let subidos = 0;
+  const borrados: string[] = [];
+  gemini.usarArchivosGeminiDePrueba({
+    subir: async () => {
+      subidos++;
+      return { nombre: "files/prueba", uri: "https://generativelanguage.googleapis.com/v1beta/files/prueba", mime: "video/mp4" };
+    },
+    borrar: async (n) => {
+      borrados.push(n);
+    },
+  });
+  try {
+    await assert.rejects(gemini.analizarVideoGemini(contexto, { ruta, mime: "video/mp4", segundos: 600 }, "x"), /quedan/);
+    assert.equal(subidos, 0, "sin cupo no se sube nada");
+    let peticion: Parameters<Parameters<typeof gemini.usarGeminiDePrueba>[0] & object>[0] | null = null;
+    gemini.usarGeminiDePrueba(async (p) => {
+      peticion = p;
+      return { text: momentosJson([{ inicio: 0, fin: 20 }]), usageMetadata: { promptTokenCount: 6000, candidatesTokenCount: 300, totalTokenCount: 6300 } } as never;
+    });
+    const r = await gemini.analizarVideoGemini({ ...contexto, paso: "Momentos (prueba)" }, { ruta, mime: "video/mp4", segundos: 30 }, "Propón clips");
+    assert.match(r.texto, /transcripcion/);
+    assert.equal(r.estimado, 30 * gemini.TOKENS_POR_SEGUNDO_VIDEO + gemini.TOKENS_EXTRA_VIDEO);
+    const p = peticion! as { contents: { parts: { fileData?: { fileUri: string }; text?: string }[] }[]; config: { mediaResolution: string } };
+    assert.equal(p.contents[0].parts[0].fileData?.fileUri, "https://generativelanguage.googleapis.com/v1beta/files/prueba");
+    assert.equal(p.config.mediaResolution, "MEDIA_RESOLUTION_LOW");
+    assert.deepEqual(borrados, ["files/prueba"]);
+    // Los tokens reales quedan en Consumo.
+    const fila = db.base().prepare("select total_tokens from consumo_ia where paso = 'Momentos (prueba)'").get() as { total_tokens: number };
+    assert.equal(fila.total_tokens, 6300);
+    // Si Gemini falla, el archivo remoto también se borra.
+    gemini.usarGeminiDePrueba(async () => {
+      throw new Error("503 saturado");
+    });
+    await assert.rejects(gemini.analizarVideoGemini(contexto, { ruta, mime: "video/mp4", segundos: 30 }, "x"), /503/);
+    assert.equal(borrados.length, 2);
+  } finally {
+    gemini.usarGeminiDePrueba(undefined);
+    gemini.usarArchivosGeminiDePrueba(undefined);
+  }
+});
+
+/** Ejecución completa hasta Momentos con Gemini simulado. Devuelve la ejecución y el video. */
+async function ejecutarHastaMomentos(segundos = 40, respuesta?: (s: number) => string) {
+  const encargo = await encargoVirales();
+  const propio = await medios.guardarMedio(await videoPrueba(segundos), {
+    nombre: `propio-${segundos}.mp4`,
+    procedencia: { origen: "subida", nota: "" },
+    licencia: "",
+    generado: false,
+    permiso: { tipo: "propio", autor: "Spotmi", constancia: "" },
+  });
+  const g = prepararGranja(encargo.id, [propio.id]);
+  const datos = almacen.leerGranja(g.id);
+  // Clips de prueba más cortos para no renderizar minutos de video.
+  const ajustada = almacen.actualizarGranja(g.id, g.revision, { datos: { ...datos, ajustes: { ...datos.ajustes, clips: { minimo: 2, maximo: 3, segundosMin: 5, segundosMax: 10 } } } });
+  const prompts: string[] = [];
+  const analizarVideo: Dependencias["analizarVideo"] = async (v, prompt) => {
+    prompts.push(prompt);
+    assert.equal(v.ruta, medios.rutaMedio(propio));
+    return {
+      texto: respuesta?.(v.segundos) ?? momentosJson([{ inicio: 1, fin: 7, titulo: "Primer clip con un título bastante largo para probar el ajuste de líneas" }, { inicio: 9, fin: 16 }], [{ inicio: 1, fin: 5, texto: "Hoy probamos las pupusas de loroco" }, { inicio: 9, fin: 12, texto: "¿Cuál es tu favorita?" }]),
+      estimado: 1234,
+    };
+  };
+  const anterior = process.env.EZRA_PRODUCCION_IA;
+  process.env.EZRA_PRODUCCION_IA = "1";
+  try {
+    const e = ejecucion.iniciarEjecucion(ajustada.id, { confirmarIA: true, usuario: "prueba", encargos: new Map([[encargo.id, encargo.version]]) });
+    return { e, propio, prompts, deps: deps({ analizarVideo }), granja: ajustada };
+  } finally {
+    process.env.EZRA_PRODUCCION_IA = anterior;
+  }
+}
+
+test("granja Clips: Momentos envía el video subido a Gemini con la referencia y guarda los clips propuestos", async () => {
+  if (!hayFfmpeg) return;
+  const { e, prompts, deps: d } = await ejecutarHastaMomentos(20);
+  process.env.EZRA_PRODUCCION_IA = "1";
+  try {
+    // Sin render real todavía: el paso Render se detiene aquí (fase siguiente).
+    await vaciarCola(d);
+  } finally {
+    process.env.EZRA_PRODUCCION_IA = "0";
+  }
+  const momentos = pasoDe(e.id, "Momentos");
+  assert.equal(momentos.estado, "completado", momentos.detalle || momentos.error);
+  assert.match(momentos.detalle, /2 clips propuestos/);
+  assert.equal(prompts.length, 1);
+  assert.match(prompts[0], /pupusas/i, "la referencia viaja como datos");
+  assert.match(prompts[0], /de 2 a 2 momentos|de 2 a 3 momentos/);
+  const guardado = JSON.parse(almacen.leerArtefacto(momentos.salidas[0]).contenido) as import("../src/lib/granjas/clips").Momentos;
+  assert.equal(guardado.clips.length, 2);
+  assert.equal(guardado.clips[1].subtitulos[0].texto, "¿Cuál es tu favorita?");
+  assert.equal(almacen.leerArtefacto(momentos.salidas[0]).procedencia.origen, "gemini");
+});
+
+test("granja Clips: Momentos con Astra o Claude se bloquea (no ven el video)", async () => {
+  if (!hayFfmpeg) return;
+  const encargo = await encargoVirales();
+  const propio = await medios.guardarMedio(await videoPrueba(5), { nombre: "c.mp4", procedencia: { origen: "subida", nota: "" }, licencia: "", generado: false, permiso: { tipo: "propio", autor: "", constancia: "" } });
+  const g = prepararGranja(encargo.id, [propio.id]);
+  const grafo = { ...g.grafo, nodos: g.grafo.nodos.map((n) => (n.titulo === "Momentos" ? { ...n, proveedor: "claude" as const } : n)) };
+  const g2 = almacen.actualizarGranja(g.id, g.revision, { grafo });
+  const e = ejecucion.iniciarEjecucion(g2.id, { confirmarIA: true, usuario: "prueba", encargos: new Map([[encargo.id, encargo.version]]) });
+  await vaciarCola();
+  const momentos = pasoDe(e.id, "Momentos");
+  assert.equal(momentos.estado, "bloqueado");
+  assert.match(momentos.detalle, /elige Gemini o trabajo manual/);
+});
