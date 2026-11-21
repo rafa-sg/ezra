@@ -39,7 +39,7 @@ import {
 import "./granjas.css";
 
 /** Recetas del flujo diario de Spotmi: se muestran primero; las demás quedan en «Otras recetas». */
-const recetasDestacadas = ["eventos_el_salvador", "post_instagram_eventos"];
+const recetasDestacadas = ["eventos_el_salvador", "post_instagram_eventos", "clips"];
 
 /** Granjas: flujos de agentes conectados, ejecutados por el trabajador local y revisados por el propietario. */
 export function SeccionGranjas({
@@ -307,11 +307,16 @@ export function SeccionGranjas({
           }),
         g("versionGuardada"),
       ),
-    subir: async (archivo, licencia, generado) => {
+    subir: async (archivo, licencia, generado, permiso) => {
       const datos = new FormData();
       datos.set("archivo", archivo);
       datos.set("licencia", licencia);
       if (generado) datos.set("generado", "1");
+      if (permiso) {
+        datos.set("permiso_tipo", permiso.tipo);
+        datos.set("permiso_autor", permiso.autor);
+        datos.set("permiso_constancia", permiso.constancia);
+      }
       const r = await ejecutar(async () => {
         const respuesta = await fetch("/api/granjas/medios", { method: "POST", body: datos });
         const cuerpo = await respuesta.json();
@@ -780,6 +785,7 @@ export function SeccionGranjas({
                     ?.vigente,
                 )}
                 faltantes={detalle.faltantes[seleccionado] ?? []}
+                clips={detalle.granja.ajustes.purpose === "clips"}
                 resumen={resumen}
                 guardado={!modificado}
                 ocupado={ocupado}

@@ -6,7 +6,8 @@ export const tiposArtefacto = ["investigacion", "guion", "texto", "imagen", "vid
 export const tiposNodo = ["agente", "medios", "render", "revision", "publicacion"] as const;
 export const proveedoresNodo = ["astra", "claude", "gemini", "manual", "local"] as const;
 /** Especialistas que trabajan sin IA, con código local (verificar, redactar con plantilla, diseñar). */
-export const agentesLocales: Agente[] = ["verificador", "redactor_ig", "disenador_post", "imagen_evento"];
+// «virales» trabaja sin IA solo en la granja Clips: resume las métricas de un encargo «Videos virales» aprobado.
+export const agentesLocales: Agente[] = ["verificador", "redactor_ig", "disenador_post", "imagen_evento", "virales"];
 export const formatos = ["publicacion", "carrusel", "video"] as const;
 export type TipoArtefacto = (typeof tiposArtefacto)[number];
 export type TipoNodo = (typeof tiposNodo)[number];
@@ -94,6 +95,15 @@ export const datosGranjaSchema = z.object({
       // Granja «Post para Instagram»: cuenta de destino (solo texto) y posts por día.
       instagram: z
         .object({ cuenta: z.string().trim().min(2).max(60).default("@spotmi.sv"), postsPorDia: z.number().int().min(1).max(20).default(3) })
+        .optional(),
+      // Granja «Clips»: cuántos clips proponer y su duración (segundos).
+      clips: z
+        .object({
+          minimo: z.number().int().min(1).max(8).default(3),
+          maximo: z.number().int().min(1).max(8).default(8),
+          segundosMin: z.number().int().min(5).max(60).default(15),
+          segundosMax: z.number().int().min(10).max(90).default(60),
+        })
         .optional(),
     })
     .default({ zonaHoraria: "America/El_Salvador" }),
@@ -264,9 +274,10 @@ export function canonico(valor: unknown): string {
   return JSON.stringify(valor);
 }
 /** Lo que falta para que un paso pueda ejecutarse, en lenguaje claro. */
-export function faltantesNodo(nodo: Nodo, grafo: Grafo, contexto: { geminiHabilitado: boolean }) {
+export function faltantesNodo(nodo: Nodo, grafo: Grafo, contexto: { geminiHabilitado: boolean; purpose?: string }) {
   const faltan: string[] = [];
   const entradas = antecesores(grafo, nodo.id);
+  const clips = contexto.purpose === "clips";
   if (nodo.tipo === "agente") {
     if (nodo.proveedor === "gemini" && !contexto.geminiHabilitado)
       faltan.push("Gemini está deshabilitado en este estudio. Elige Astra, Claude o trabajo manual.");
@@ -277,10 +288,12 @@ export function faltantesNodo(nodo: Nodo, grafo: Grafo, contexto: { geminiHabili
           ? "Sin búsqueda de Google, agrega al menos una fuente (página oficial de eventos) para que el cazador trabaje."
           : "Agrega al menos una fuente para que el cazador investigue.",
       );
-    if (nodo.agente !== "cazador" && !entradas.length && !nodo.instrucciones.trim())
+    if (nodo.agente !== "cazador" && nodo.agente !== "virales" && !entradas.length && !nodo.instrucciones.trim())
       faltan.push("Conecta un paso anterior o escribe las instrucciones.");
-    if (nodo.agente === "virales")
+    if (nodo.agente === "virales" && !clips)
       faltan.push("Videos virales todavía solo se pide desde Encargos (busca en YouTube sin IA).");
+    if (nodo.agente === "virales" && clips && !nodo.encargoId)
+      faltan.push("Vincula un encargo «Videos virales» aprobado: es la referencia de lo que funciona en el tema.");
     if (nodo.proveedor === "local" && !agentesLocales.includes(nodo.agente ?? "cazador"))
       faltan.push("Este especialista no trabaja sin IA. Elige Gemini, Astra, Claude o trabajo manual.");
     if (nodo.proveedor === "local" && nodo.agente === "verificador" && !entradas.length)
@@ -289,7 +302,7 @@ export function faltantesNodo(nodo: Nodo, grafo: Grafo, contexto: { geminiHabili
       faltan.push("Conecta el verificador al paso Imagen.");
   }
   if (nodo.tipo === "medios" && !nodo.medios.length)
-    faltan.push("Sube al menos una imagen o video propio o con permiso.");
+    faltan.push(clips ? "Sube un video tuyo o con permiso del autor." : "Sube al menos una imagen o video propio o con permiso.");
   if (nodo.tipo === "render") {
     const tipos = entradas.flatMap((e) => {
       const n = grafo.nodos.find((x) => x.id === e);
@@ -305,7 +318,8 @@ export function faltantesNodo(nodo: Nodo, grafo: Grafo, contexto: { geminiHabili
       const n = grafo.nodos.find((x) => x.id === e);
       return n ? salidasNodo(n, grafo) : [];
     });
-    if (!tipos.includes("texto")) faltan.push("Conecta un texto o descripción para la publicación.");
+    // En Clips el título y el gancho de cada clip son el texto de su publicación.
+    if (!clips && !tipos.includes("texto")) faltan.push("Conecta un texto o descripción para la publicación.");
   }
   return faltan;
 }
@@ -321,7 +335,8 @@ export type Receta = {
     | "facebook_post"
     | "tourist_guide"
     | "eventos_el_salvador"
-    | "post_instagram_eventos";
+    | "post_instagram_eventos"
+    | "clips";
   datos: DatosGranja;
   pasos: Paso[];
   conexiones: [string, string][];
@@ -501,6 +516,46 @@ recetas.splice(1, 0, {
     },
   ],
   conexiones: [["redactor", "diseno"]],
+});
+/**
+ * Clips: de un encargo «Videos virales» aprobado (solo referencia: enlaces y métricas) y de un video
+ * propio o con permiso, propone momentos, los renderiza en vertical y cada clip pasa por tu revisión.
+ * Los videos de terceros nunca se descargan ni se recortan.
+ */
+recetas.push({
+  clave: "clips",
+  datos: {
+    nombre: "Clips",
+    objetivo:
+      "Cortar de 3 a 8 clips verticales de un video tuyo o con permiso del autor, usando como referencia lo que funciona en un encargo «Videos virales» aprobado.",
+    formato: "video",
+    canales: ["youtube", "tiktok", "instagram"],
+    politicaFuentes: { dominios: [], maxFuentesPorPaso: 5 },
+    ajustes: { zonaHoraria: "America/El_Salvador", purpose: "clips", clips: { minimo: 3, maximo: 8, segundosMin: 15, segundosMax: 60 } },
+  },
+  pasos: [
+    { clave: "referencias", tipo: "agente", agente: "virales", titulo: "Referencias", proveedor: "local" },
+    { clave: "material", tipo: "medios", titulo: "Material" },
+    {
+      clave: "momentos",
+      tipo: "agente",
+      agente: "shorts",
+      titulo: "Momentos",
+      proveedor: "gemini",
+      instrucciones: "Propón clips que se entiendan solos, con un gancho en los primeros 3 segundos.",
+    },
+    { clave: "render", tipo: "render", titulo: "Render de clips" },
+    { clave: "revision", tipo: "revision", titulo: "Tu revisión" },
+    { clave: "destinos", tipo: "publicacion", titulo: "Destinos", canales: ["youtube", "tiktok", "instagram"] },
+  ],
+  conexiones: [
+    ["referencias", "momentos"],
+    ["material", "momentos"],
+    ["momentos", "render"],
+    ["material", "render"],
+    ["render", "revision"],
+    ["revision", "destinos"],
+  ],
 });
 export function grafoDeReceta(receta: Receta): Grafo {
   const ids = new Map(receta.pasos.map((p) => [p.clave, crypto.randomUUID()]));

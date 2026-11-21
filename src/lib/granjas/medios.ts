@@ -14,6 +14,22 @@ export type ProcedenciaMedio = {
   fuentes?: string[];
   herramienta?: string;
 };
+/**
+ * Permiso de uso de un medio: tuyo, o de otra persona que te dio permiso (quién y dónde consta).
+ * Los videos de terceros que solo están en una lista de referencia nunca llegan aquí.
+ */
+export type PermisoMedio = { tipo: "propio" | "autorizado"; autor: string; constancia: string };
+export function validarPermiso(crudo: { tipo?: unknown; autor?: unknown; constancia?: unknown }): PermisoMedio {
+  const tipo = String(crudo.tipo ?? "");
+  const autor = String(crudo.autor ?? "").trim().slice(0, 200);
+  const constancia = String(crudo.constancia ?? "").trim().slice(0, 500);
+  if (tipo !== "propio" && tipo !== "autorizado") throw new WorkflowError("Indica si el video es tuyo o si tienes permiso del autor.", 422);
+  if (tipo === "autorizado" && (!autor || !constancia))
+    throw new WorkflowError("Con permiso del autor: escribe quién es y dónde consta el permiso (correo, mensaje, contrato).", 422);
+  return { tipo, autor, constancia };
+}
+export const textoPermiso = (p: PermisoMedio) =>
+  p.tipo === "propio" ? `Material propio${p.autor ? ` de ${p.autor}` : ""}.` : `Con permiso de ${p.autor}: ${p.constancia}`;
 export type Medio = {
   id: string;
   sha256: string;
@@ -28,9 +44,16 @@ export type Medio = {
   generado: boolean;
   nombre: string;
   creado: string;
+  /** Solo medios subidos con el origen declarado (granja Clips); null en los anteriores. */
+  permiso?: PermisoMedio | null;
 };
-type FilaMedio = Omit<Medio, "procedencia" | "generado"> & { procedencia: string; generado: number };
-const aMedio = (f: FilaMedio): Medio => ({ ...f, procedencia: json(f.procedencia, { origen: "subida", nota: "" }), generado: Boolean(f.generado) });
+type FilaMedio = Omit<Medio, "procedencia" | "generado" | "permiso"> & { procedencia: string; generado: number; permiso?: string | null };
+const aMedio = (f: FilaMedio): Medio => ({
+  ...f,
+  procedencia: json(f.procedencia, { origen: "subida", nota: "" }),
+  generado: Boolean(f.generado),
+  permiso: f.permiso ? json<PermisoMedio | null>(f.permiso, null) : null,
+});
 
 export const LIMITE_MEDIO = 200 * 1024 * 1024;
 
@@ -39,7 +62,7 @@ export const herramientasVideo = async () => ({
   ffprobe: findVideoExecutable("ffprobe"),
 });
 
-function ejecutar(binario: string, argumentos: string[], tiempo: number): Promise<string> {
+export function ejecutar(binario: string, argumentos: string[], tiempo: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const proceso = spawn(binario, argumentos, { stdio: ["ignore", "pipe", "pipe"], shell: false });
     let salida = "";
@@ -83,13 +106,21 @@ export async function sondear(archivo: string): Promise<Sonda> {
 /** Archivo con suma de comprobación, procedencia y nota de permiso. Nunca se publica por sí solo. */
 export async function guardarMedio(
   bytes: Buffer,
-  datos: { nombre: string; procedencia: ProcedenciaMedio; licencia: string; generado: boolean },
+  datos: { nombre: string; procedencia: ProcedenciaMedio; licencia: string; generado: boolean; permiso?: PermisoMedio | null },
 ): Promise<Medio> {
   if (bytes.length > LIMITE_MEDIO) throw new WorkflowError("El archivo supera 200 MB.", 413);
   const { mime, ext } = detectMedia(bytes);
   const suma = sha256(bytes);
   const existente = base().prepare("select * from medios where sha256 = ?").get(suma) as FilaMedio | undefined;
-  if (existente) return aMedio(existente);
+  if (existente) {
+    // El mismo archivo subido otra vez con su permiso declarado: se registra el permiso (nunca se reemplaza uno anterior).
+    if (datos.permiso && !existente.permiso) {
+      base().prepare("update medios set permiso = ? where id = ?").run(JSON.stringify(datos.permiso), existente.id);
+      auditar("medio.permiso", existente.id, { tipo: datos.permiso.tipo });
+      return leerMedio(existente.id);
+    }
+    return aMedio(existente);
+  }
   const archivo = `${suma}.${ext}`;
   const destino = path.join(/* turbopackIgnore: true */ carpetaMedios, archivo);
   await writeFile(destino, bytes, { mode: 0o600, flag: "w" });
@@ -99,8 +130,8 @@ export async function guardarMedio(
   const id = crypto.randomUUID();
   base()
     .prepare(
-      `insert into medios (id, sha256, mime, bytes, archivo, ancho, alto, duracion, procedencia, licencia, generado, nombre, creado)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `insert into medios (id, sha256, mime, bytes, archivo, ancho, alto, duracion, procedencia, licencia, generado, nombre, creado, permiso)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -116,8 +147,9 @@ export async function guardarMedio(
       datos.generado ? 1 : 0,
       datos.nombre.slice(0, 200),
       ahoraIso(),
+      datos.permiso ? JSON.stringify(datos.permiso) : null,
     );
-  auditar("medio.guardar", id, { sha256: suma, mime, origen: datos.procedencia.origen });
+  auditar("medio.guardar", id, { sha256: suma, mime, origen: datos.procedencia.origen, permiso: datos.permiso?.tipo ?? null });
   return leerMedio(id);
 }
 export function leerMedio(id: string): Medio {

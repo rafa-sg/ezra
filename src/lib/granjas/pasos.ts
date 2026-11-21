@@ -13,6 +13,7 @@ import { recolectarFuentes, type Evidencia } from "./fuentes";
 import { leerMedio, type Medio } from "./medios";
 import { crearPiezaDesdePaso } from "./publicacion";
 import { busquedaActiva, type Nodo } from "./modelo";
+import { esGranjaClips, problemasMaterial, referenciasPaso } from "./clips";
 
 export type Dependencias = {
   generar: (encargo: Encargo, prompt: string, contexto: ContextoGemini, opciones?: { maxTokens?: number; busqueda?: boolean }) => Promise<EntregaIA>;
@@ -167,6 +168,37 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
   actualizarPaso(pasoId, { inicio: ahoraIso(), intentos: inicial.intentos + 1, error: "" });
 
   try {
+    if (nodo.tipo === "medios" && esGranjaClips(ejecucion)) {
+      // Clips: solo videos subidos con su origen declarado; si ninguno sirve, la granja no avanza.
+      const medios = ejecucion.instantanea.entradas[nodo.id].medios.map(({ id }) => leerMedio(id));
+      const validos = medios.filter((m) => !problemasMaterial(m).length);
+      if (!validos.length) {
+        const problemas = medios.flatMap(problemasMaterial);
+        cerrar(pasoId, { estado: "bloqueado", detalle: problemas.length ? problemas.join(" ") : "Sube un video tuyo o con permiso del autor." });
+        return "hecho";
+      }
+      const salidas = validos.map(
+        (medio) =>
+          guardarArtefacto({
+            granjaId: ejecucion.granjaId,
+            ejecucionId: ejecucion.id,
+            pasoId,
+            nodo,
+            tipo: "video",
+            contenido: medio.nombre,
+            medioId: medio.id,
+            medioSha: medio.sha256,
+            procedencia: { origen: "subida", nota: medio.licencia },
+          }).id,
+      );
+      const omitidos = medios.length - validos.length;
+      cerrar(pasoId, {
+        estado: "completado",
+        salidas,
+        detalle: `${validos.length} video(s) con origen declarado.${omitidos ? ` ${omitidos} archivo(s) omitido(s): sin permiso declarado o no son video.` : ""}`,
+      });
+      return "hecho";
+    }
     if (nodo.tipo === "medios") {
       const salidas = ejecucion.instantanea.entradas[nodo.id].medios.map(({ id }) => {
         const medio = leerMedio(id);
@@ -248,6 +280,7 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
       if (nodo.agente === "redactor_ig") return await especialista(() => redactarPaso(ejecucion, null));
       if (nodo.agente === "disenador_post") return await especialista(() => disenarPaso(ejecucion, entradas));
       if (nodo.agente === "imagen_evento") return await especialista(() => imagenPaso(ejecucion, entradas, deps.especialistas ?? {}));
+      if (nodo.agente === "virales" && esGranjaClips(ejecucion)) return await especialista(() => referenciasPaso(ejecucion, nodo));
       cerrar(pasoId, { estado: "bloqueado", detalle: "Este especialista no trabaja sin IA. Elige Gemini, Astra, Claude o trabajo manual." });
       return "hecho";
     }

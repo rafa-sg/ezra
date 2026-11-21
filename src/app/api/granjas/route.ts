@@ -69,7 +69,9 @@ export async function GET() {
           bytes,
           procedencia,
           creado,
+          permiso,
         }) => ({
+          permiso,
           id,
           mime,
           nombre,

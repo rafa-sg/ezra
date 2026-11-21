@@ -17,6 +17,8 @@ export type MedioResumen = {
   generado: boolean;
   bytes: number;
   origen?: string;
+  /** Origen declarado (granja Clips): tuyo o con permiso del autor. */
+  permiso?: { tipo: "propio" | "autorizado"; autor: string; constancia: string } | null;
 };
 export type Resumen = {
   granjas: Granja[];

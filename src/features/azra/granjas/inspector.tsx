@@ -35,7 +35,12 @@ export type AccionesPaso = {
   importar: (pasoId: string) => void;
   aprobar: (pasoId: string, c: { hechos: boolean; derechos: boolean; marca: boolean }) => void;
   editarArtefacto: (id: string, contenido: string, nota: string) => void;
-  subir: (archivo: File, licencia: string, generado: boolean) => Promise<MedioResumen | null>;
+  subir: (
+    archivo: File,
+    licencia: string,
+    generado: boolean,
+    permiso?: { tipo: "propio" | "autorizado"; autor: string; constancia: string },
+  ) => Promise<MedioResumen | null>;
 };
 
 export function Inspector({
@@ -45,6 +50,7 @@ export function Inspector({
   artefactos,
   aprobado,
   faltantes,
+  clips = false,
   resumen,
   guardado,
   ocupado,
@@ -63,6 +69,8 @@ export function Inspector({
   artefactos: Map<string, Artefacto>;
   aprobado: boolean;
   faltantes: string[];
+  /** Granja «Clips»: material solo de video con origen declarado y referencia de «Videos virales». */
+  clips?: boolean;
   resumen: Resumen;
   guardado: boolean;
   ocupado: boolean;
@@ -83,7 +91,15 @@ export function Inspector({
     archivo: File | null;
     licencia: string;
     generado: boolean;
-  }>({ archivo: null, licencia: "", generado: false });
+    permiso: "" | "propio" | "autorizado";
+    autor: string;
+    constancia: string;
+  }>({ archivo: null, licencia: "", generado: false, permiso: "", autor: "", constancia: "" });
+  const subidaLista = clips
+    ? Boolean(subida.archivo) &&
+      (subida.permiso === "propio" ||
+        (subida.permiso === "autorizado" && subida.autor.trim() !== "" && subida.constancia.trim() !== ""))
+    : Boolean(subida.archivo) && subida.licencia.trim() !== "";
   const [edicion, setEdicion] = useState<{ id: string; contenido: string; nota: string } | null>(
     null,
   );
@@ -288,12 +304,16 @@ export function Inspector({
               onChange={(e) => cambiar({ encargoId: e.target.value || null })}
             >
               <option value="">{g("ninguno")}</option>
-              {resumen.encargos.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.titulo} · v{e.version}
-                </option>
-              ))}
+              {resumen.encargos
+                .filter((e) => !(clips && nodo.agente === "virales") || e.agente === "virales")
+                .map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.titulo} · v{e.version}
+                    {clips && nodo.agente === "virales" && e.estado !== "aprobado" ? ` · ${g("clips_sinAprobar")}` : ""}
+                  </option>
+                ))}
             </select>
+            {clips && nodo.agente === "virales" && <small className="ep-nota">{g("clips_referenciaAyuda")}</small>}
           </label>
         </>
       )}
@@ -301,15 +321,17 @@ export function Inspector({
       {nodo.tipo === "medios" && (
         <fieldset className="eg-campo">
           <legend>{g("mediosAutorizados")}</legend>
-          {resumen.medios.filter((m) => m.origen !== "render").length === 0 && (
-            <p className="ep-nota">{g("sinMedios")}</p>
+          {clips && <p className="ep-nota">{g("clips_materialAyuda")}</p>}
+          {resumen.medios.filter((m) => m.origen !== "render" && (!clips || m.mime.startsWith("video/"))).length === 0 && (
+            <p className="ep-nota">{clips ? g("clips_sinVideos") : g("sinMedios")}</p>
           )}
           {resumen.medios
-            .filter((m) => m.origen !== "render")
+            .filter((m) => m.origen !== "render" && (!clips || m.mime.startsWith("video/")))
             .map((m) => (
               <label className="ep-checkbox" key={m.id}>
                 <input
                   type="checkbox"
+                  disabled={clips && !m.permiso && !nodo.medios.includes(m.id)}
                   checked={nodo.medios.includes(m.id)}
                   onChange={(e) =>
                     cambiar({
@@ -325,7 +347,13 @@ export function Inspector({
                     ? `${m.duracion?.toFixed(1) ?? "?"} s`
                     : `${m.ancho ?? "?"}×${m.alto ?? "?"}`}
                   <small>
-                    {m.licencia}
+                    {clips
+                      ? m.permiso
+                        ? m.permiso.tipo === "propio"
+                          ? g("clips_propio")
+                          : `${g("clips_autorizado")} · ${m.permiso.autor}`
+                        : g("clips_sinPermiso")
+                      : m.licencia}
                     {m.generado ? ` · ${g("generada")}` : ""}
                   </small>
                 </span>
@@ -335,37 +363,85 @@ export function Inspector({
             <input
               aria-label={g("archivo")}
               type="file"
-              accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+              accept={clips ? "video/mp4,video/webm,video/quicktime" : "image/jpeg,image/png,image/webp,video/mp4,video/webm"}
               onChange={(e) => setSubida({ ...subida, archivo: e.target.files?.[0] ?? null })}
             />
-            <input
-              aria-label={g("permiso")}
-              placeholder={g("permisoEjemplo")}
-              value={subida.licencia}
-              maxLength={1000}
-              onChange={(e) => setSubida({ ...subida, licencia: e.target.value })}
-            />
-            <label className="ep-checkbox">
-              <input
-                type="checkbox"
-                checked={subida.generado}
-                onChange={(e) => setSubida({ ...subida, generado: e.target.checked })}
-              />
-              {g("esGenerada")}
-            </label>
+            {clips ? (
+              <fieldset className="eg-permiso">
+                <legend>{g("clips_deQuien")}</legend>
+                <label className="ep-checkbox">
+                  <input
+                    type="radio"
+                    name={`permiso-${nodo.id}`}
+                    checked={subida.permiso === "propio"}
+                    onChange={() => setSubida({ ...subida, permiso: "propio" })}
+                  />
+                  {g("clips_propio")}
+                </label>
+                <label className="ep-checkbox">
+                  <input
+                    type="radio"
+                    name={`permiso-${nodo.id}`}
+                    checked={subida.permiso === "autorizado"}
+                    onChange={() => setSubida({ ...subida, permiso: "autorizado" })}
+                  />
+                  {g("clips_autorizado")}
+                </label>
+                {subida.permiso === "autorizado" && (
+                  <>
+                    <input
+                      aria-label={g("clips_autor")}
+                      placeholder={g("clips_autor")}
+                      value={subida.autor}
+                      maxLength={200}
+                      onChange={(e) => setSubida({ ...subida, autor: e.target.value })}
+                    />
+                    <input
+                      aria-label={g("clips_constancia")}
+                      placeholder={g("clips_constanciaEjemplo")}
+                      value={subida.constancia}
+                      maxLength={500}
+                      onChange={(e) => setSubida({ ...subida, constancia: e.target.value })}
+                    />
+                  </>
+                )}
+                <small className="ep-nota">{g("clips_terceros")}</small>
+              </fieldset>
+            ) : (
+              <>
+                <input
+                  aria-label={g("permiso")}
+                  placeholder={g("permisoEjemplo")}
+                  value={subida.licencia}
+                  maxLength={1000}
+                  onChange={(e) => setSubida({ ...subida, licencia: e.target.value })}
+                />
+                <label className="ep-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={subida.generado}
+                    onChange={(e) => setSubida({ ...subida, generado: e.target.checked })}
+                  />
+                  {g("esGenerada")}
+                </label>
+              </>
+            )}
             <button
               type="button"
               className="ep-boton"
-              disabled={!subida.archivo || !subida.licencia.trim() || ocupado}
+              disabled={!subidaLista || ocupado}
               onClick={async () => {
                 const medio = await acciones.subir(
                   subida.archivo!,
-                  subida.licencia,
-                  subida.generado,
+                  clips ? "" : subida.licencia,
+                  clips ? false : subida.generado,
+                  clips && subida.permiso
+                    ? { tipo: subida.permiso, autor: subida.autor.trim(), constancia: subida.constancia.trim() }
+                    : undefined,
                 );
                 if (medio) {
                   cambiar({ medios: [...nodo.medios, medio.id].slice(0, 20) });
-                  setSubida({ archivo: null, licencia: "", generado: false });
+                  setSubida({ archivo: null, licencia: "", generado: false, permiso: "", autor: "", constancia: "" });
                 }
               }}
             >

@@ -422,6 +422,33 @@ const migraciones: string[] = [
   alter table posts_ig add column video_origen text;
   alter table posts_ig add column video_nota text not null default '';
   `,
+  // 12 · Granja Clips: permiso de cada medio (propio o con permiso del autor) y los clips propuestos,
+  // con su versión, su medio renderizado, su pieza (vista previa por destino) y la decisión del propietario.
+  `
+  alter table medios add column permiso text;
+  create table clips (
+    id text primary key,
+    granja_id text not null references granjas(id),
+    ejecucion_id text not null references ejecuciones(id),
+    paso_id text not null references pasos(id),
+    origen_medio_id text not null references medios(id),
+    numero integer not null,
+    version integer not null default 1,
+    inicio real not null,
+    fin real not null,
+    titulo text not null,
+    gancho text not null default '',
+    subtitulos text not null default '[]',
+    medio_id text references medios(id),
+    pieza_id text references piezas(id),
+    estado text not null check (estado in ('renderizando', 'por_revisar', 'aprobado', 'rechazado', 'cambios', 'fallido')),
+    motivo text not null default '',
+    error text not null default '',
+    creado text not null,
+    actualizado text not null
+  );
+  create index clips_ejecucion on clips (ejecucion_id, numero);
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

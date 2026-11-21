@@ -2200,3 +2200,17 @@
 .azra .ev-confianza-detalle small {
   color: var(--ep-suave);
 }
+
+/* Clips: origen declarado del video (propio o con permiso del autor). */
+.azra .eg-permiso {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.azra .eg-permiso legend {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
