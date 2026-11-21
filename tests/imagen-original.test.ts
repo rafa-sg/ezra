@@ -1,7 +1,6 @@
 import test, { before } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -10,7 +9,7 @@ process.env.EZRA_DATA_DIR = path.resolve(`work/imagen-original-test-${process.pi
 process.env.EZRA_GRANJAS_TRABAJADOR = "0";
 process.env.EZRA_TOKEN_KEY = Buffer.alloc(32, 9).toString("base64");
 import type { Respuesta } from "../src/lib/granjas/fuentes";
-import { rutaFfmpeg } from "./helpers/ffmpeg";
+import { hayFfmpeg, rutaFfmpeg } from "./helpers/ffmpeg";
 let io: typeof import("../src/lib/granjas/imagen-original");
 let eventos: typeof import("../src/lib/granjas/eventos");
 let medios: typeof import("../src/lib/granjas/medios");
@@ -18,7 +17,6 @@ let instagram: typeof import("../src/lib/granjas/instagram");
 let cripto: typeof import("../src/lib/granjas/cripto");
 let db: typeof import("../src/lib/granjas/db");
 const ffmpeg = rutaFfmpeg;
-const hayFfmpeg = existsSync(ffmpeg);
 let afiche: Buffer;
 let captura: Buffer;
 before(async () => {

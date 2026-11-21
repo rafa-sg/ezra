@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
-import { constants } from "node:fs";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
+import { findLocalExecutable } from "../local-executable";
 import { WorkflowError } from "../workflow";
 import { construirEncargo, type Encargo } from "./modelo";
 import type { ContextoGemini } from "../ia/gemini";
@@ -24,7 +24,6 @@ export function ejecutarProceso(
   return new Promise((resolve, reject) => {
     const entorno: NodeJS.ProcessEnv = { NODE_ENV: process.env.NODE_ENV || "production" };
     for (const clave of [
-      "PATH",
       "HOME",
       "USER",
       "LOGNAME",
@@ -33,8 +32,12 @@ export function ejecutarProceso(
       "TMPDIR",
       "CODEX_HOME",
       "XDG_CONFIG_HOME",
+      ...(process.platform === "win32"
+        ? ["USERPROFILE", "APPDATA", "LOCALAPPDATA", "TEMP", "TMP", "SystemRoot"]
+        : []),
     ])
       if (process.env[clave]) entorno[clave] = process.env[clave];
+    entorno.PATH = process.env.PATH ?? process.env.Path;
     const proceso = spawn(binario, argumentos, {
       cwd: carpeta,
       env: entorno,
@@ -101,26 +104,9 @@ export function ejecutarProceso(
 }
 export async function buscarHerramienta(nombre: "codex" | "claude"): Promise<string | null> {
   const configurado = process.env[nombre === "codex" ? "EZRA_CODEX_BIN" : "EZRA_CLAUDE_BIN"];
-  const candidatos = configurado
-    ? [configurado]
-    : [
-        ...(process.env.PATH || "").split(path.delimiter),
-        path.join(homedir(), ".local/bin"),
-        "/usr/local/bin",
-        "/opt/homebrew/bin",
-      ]
-        .filter(Boolean)
-        .map((carpeta) => path.join(carpeta, nombre));
-  for (const candidato of candidatos) {
-    if (!path.isAbsolute(candidato)) continue;
-    try {
-      await access(candidato, constants.X_OK);
-      return candidato;
-    } catch {
-      /* Buscar la siguiente instalación. */
-    }
-  }
-  return null;
+  const fallback = [path.join(homedir(), ".local", "bin")];
+  if (process.platform !== "win32") fallback.push("/usr/local/bin", "/opt/homebrew/bin");
+  return findLocalExecutable(nombre, configurado, fallback);
 }
 export function argumentosLocales(proveedor: "astra" | "claude", salida: string, buscar = false) {
   if (proveedor === "claude")

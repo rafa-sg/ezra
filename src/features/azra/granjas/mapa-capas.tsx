@@ -12,8 +12,8 @@ import {
   type ReactNode,
 } from "react";
 import { ArrowUpRight, Plane, Play, X } from "lucide-react";
-import { FUENTE_CEPA, FUENTE_DGME, POBLACION_2024, type Acceso } from "@/lib/granjas/datos-pais";
-import type { ResumenIngresos } from "@/lib/granjas/ingresos";
+import { FUENTE_DGME, POBLACION_2024, type Acceso } from "@/lib/granjas/datos-pais";
+import type { Barra, ResumenIngresos } from "@/lib/granjas/ingresos";
 import type { EventoMapa } from "@/lib/granjas/agenda-mapa";
 import { geo, type AccesoGeo } from "./mapa-geo";
 import "./mapa-capas.css";
@@ -24,6 +24,7 @@ export type Panel =
   | { tipo: "depto"; nombre: string }
   | { tipo: "acceso"; id: Acceso["id"] }
   | { tipo: "puesto"; acceso: Acceso["id"]; id: string }
+  | { tipo: "corte"; barra: Barra }
   | { tipo: "poblacion"; nombre: string }
   | null;
 /** Qué recorrido repetir: un acceso completo o un solo puesto (null: la secuencia completa). */
@@ -353,110 +354,53 @@ export function AgendaDepto({ eventos, tr }: { eventos: EventoMapa[]; tr: Tr }) 
   );
 }
 
-type CifraVista = {
-  valor: number;
-  periodo: string;
-  fuente: string;
-  url?: string;
-  corte?: string;
-  alcance?: string;
-} | null;
+const pct = new Intl.NumberFormat("es-SV", { maximumFractionDigits: 1 });
+const fechaCarga = (iso: string) =>
+  new Intl.DateTimeFormat("es-SV", { day: "numeric", month: "short", year: "numeric" }).format(
+    new Date(iso),
+  );
 
-function Metrica({
+/** Un dato de corte con su período, % del total, variación, fuente y fecha de carga (o «sin dato»). */
+function MetricaCorte({
   titulo,
-  cifra,
-  fuente,
+  barra,
+  ingresos,
   tr,
 }: {
   titulo: string;
-  cifra: CifraVista;
-  fuente: string;
+  barra: Barra | null;
+  ingresos: ResumenIngresos | null;
   tr: Tr;
 }) {
+  const periodo = ingresos?.periodo?.etiqueta;
   return (
     <div className="ez-mpv-metrica">
       <span>{titulo}</span>
-      {cifra ? (
+      {barra && periodo ? (
         <>
-          <strong>{numero.format(cifra.valor)}</strong>
+          <strong>{numero.format(barra.valor)}</strong>
           <small>
-            {cifra.periodo}
-            {cifra.corte ? ` · ${tr("ez_mpg_corte")} ${cifra.corte}` : ""}
-            {cifra.alcance ? ` · ${cifra.alcance}` : ""}
+            {tr("ez_mpg_corte")} {ingresos!.fuente} {periodo}
+            {barra.porcentaje !== null
+              ? ` · ${pct.format(barra.porcentaje)} % ${tr("ez_mpg_delTotal")}`
+              : ""}
+            {barra.variacion !== null
+              ? ` · ${barra.variacion >= 0 ? "▲" : "▼"} ${pct.format(Math.abs(barra.variacion))} % ${tr("ez_mpg_vsAnterior")}`
+              : ""}
           </small>
           <small>
-            {tr("ez_mpv_fuente")}:{" "}
-            {cifra.url ? (
-              <a href={cifra.url} target="_blank" rel="noreferrer noopener">
-                {cifra.fuente}
-              </a>
-            ) : (
-              cifra.fuente
-            )}
+            {tr("ez_mpv_fuente")}: {ingresos!.fuente} · {tr("ez_mpg_cargado")}{" "}
+            {fechaCarga(barra.cargado)}
           </small>
         </>
       ) : (
         <>
-          <strong className="ez-mpv-nd">{tr("ez_mpv_sinDatos")}</strong>
+          <strong className="ez-mpv-nd">{tr("ez_mpg_esperando")}</strong>
           <small>
-            {tr("ez_mpv_fuente")}: {fuente}
+            {tr("ez_mpv_fuente")}: {FUENTE_DGME}
           </small>
         </>
       )}
-    </div>
-  );
-}
-
-/** Reportes del país vecino: otra medición (salidas en origen), con su alcance y período. */
-function Origen({
-  filas,
-  tr,
-}: {
-  filas: { puesto: string; cifra: NonNullable<CifraVista> }[];
-  tr: Tr;
-}) {
-  if (!filas.length) return null;
-  return (
-    <div className="ez-mpv-origen">
-      {filas.map((f) => (
-        <Metrica
-          key={f.puesto}
-          titulo={tr("ez_mpg_salidasOrigen")}
-          cifra={f.cifra}
-          fuente=""
-          tr={tr}
-        />
-      ))}
-    </div>
-  );
-}
-
-function Diario({ hay, tr }: { hay: boolean; tr: Tr }) {
-  const [periodo, setPeriodo] = useState<"total" | "diario">("total");
-  return (
-    <div
-      className="ez-segmentado ez-mpv-periodo"
-      role="radiogroup"
-      aria-label={tr("ez_mpv_periodo")}
-    >
-      <button
-        type="button"
-        role="radio"
-        aria-checked={periodo === "total"}
-        onClick={() => setPeriodo("total")}
-      >
-        {tr("ez_mpv_periodoTotal")}
-      </button>
-      <button
-        type="button"
-        role="radio"
-        aria-checked={periodo === "diario"}
-        disabled={!hay}
-        title={hay ? undefined : tr("ez_mpv_sinDiario")}
-        onClick={() => setPeriodo("diario")}
-      >
-        {tr("ez_mpv_periodoDiario")}
-      </button>
     </div>
   );
 }
@@ -481,10 +425,7 @@ function Recorrido({
   );
 }
 
-/**
- * Detalle de un país o del aeropuerto: entradas registradas por la DGME por puesto (la medición
- * comparable), salidas registradas en origen (otra medición) y, en el aeropuerto, CEPA.
- */
+/** Detalle de un país o del aeropuerto: el corte DGME de cada puesto (el total solo si están todos). */
 export function DetalleAcceso({
   acceso,
   ingresos,
@@ -496,44 +437,44 @@ export function DetalleAcceso({
   verRecorrido: () => void;
   tr: Tr;
 }) {
-  const cifras = acceso.puestos.map((p) => ingresos?.cruces[p.id] ?? null);
-  const completo = cifras.every(Boolean);
-  // El total del acceso solo se muestra si todos sus puestos tienen dato (una suma parcial engañaría).
-  const total: CifraVista = completo
-    ? { ...cifras[0]!, valor: cifras.reduce((s, c) => s + (c?.valor ?? 0), 0) }
-    : null;
+  const barras = acceso.puestos.map((p) => ingresos?.puestos[p.id] ?? null);
+  const completo = barras.every(Boolean) && barras.length > 1;
+  const total: Barra | null = completo
+    ? {
+        ...barras[0]!,
+        valor: barras.reduce((s, b) => s + (b?.valor ?? 0), 0),
+        porcentaje: barras.some((b) => b?.porcentaje === null)
+          ? null
+          : barras.reduce((s, b) => s + (b?.porcentaje ?? 0), 0),
+        variacion: null,
+      }
+    : barras.length === 1
+      ? barras[0]
+      : null;
   return (
     <div className="ez-mpv-acceso">
-      <Diario hay={cifras.some((c) => c?.diario)} tr={tr} />
-      <Metrica titulo={tr("ez_mpv_entradas")} cifra={total} fuente={FUENTE_DGME} tr={tr} />
-      {acceso.tipo === "aereo" && (
-        <Metrica
-          titulo={tr("ez_mpv_pasajeros")}
-          cifra={ingresos?.cepa ?? null}
-          fuente={FUENTE_CEPA}
-          tr={tr}
-        />
+      <MetricaCorte titulo={tr("ez_mpv_entradas")} barra={total} ingresos={ingresos} tr={tr} />
+      {acceso.puestos.length > 1 && (
+        <ul className="ez-mpv-puestos">
+          {acceso.puestos.map((p, i) => (
+            <li key={p.id}>
+              <strong>{p.nombre}</strong>
+              <span>{p.lugar}</span>
+              <small>
+                {barras[i]
+                  ? `${numero.format(barras[i]!.valor)}${barras[i]!.porcentaje !== null ? ` · ${pct.format(barras[i]!.porcentaje!)} %` : ""}`
+                  : tr("ez_mpg_sinDatoCorte")}
+              </small>
+            </li>
+          ))}
+        </ul>
       )}
-      <Origen filas={ingresos?.origen[acceso.id] ?? []} tr={tr} />
-      <ul className="ez-mpv-puestos">
-        {acceso.puestos.map((p, i) => (
-          <li key={p.id}>
-            <strong>{p.nombre}</strong>
-            <span>{p.lugar}</span>
-            <small>
-              {cifras[i]
-                ? `${numero.format(cifras[i]!.valor)} · ${cifras[i]!.periodo}`
-                : tr("ez_mpv_sinDatos")}
-            </small>
-          </li>
-        ))}
-      </ul>
-      <Recorrido ilustrativa={!cifras.some(Boolean)} verRecorrido={verRecorrido} tr={tr} />
+      <Recorrido ilustrativa={!barras.some(Boolean)} verRecorrido={verRecorrido} tr={tr} />
     </div>
   );
 }
 
-/** Detalle de un punto de entrada: período, conteo, corte y fuente cuando estén disponibles. */
+/** Detalle de un punto de entrada del mapa. */
 export function DetallePuesto({
   acceso,
   puestoId,
@@ -549,24 +490,33 @@ export function DetallePuesto({
 }) {
   const p = acceso.puestos.find((x) => x.id === puestoId);
   if (!p) return null;
-  const cifra = ingresos?.cruces[p.id] ?? null;
+  const barra = ingresos?.puestos[p.id] ?? null;
   return (
     <div className="ez-mpv-acceso">
-      <Diario hay={Boolean(cifra?.diario)} tr={tr} />
-      <Metrica titulo={tr("ez_mpv_entradas")} cifra={cifra} fuente={FUENTE_DGME} tr={tr} />
-      {acceso.tipo === "aereo" && (
-        <Metrica
-          titulo={tr("ez_mpv_pasajeros")}
-          cifra={ingresos?.cepa ?? null}
-          fuente={FUENTE_CEPA}
-          tr={tr}
-        />
-      )}
-      <Origen
-        filas={(ingresos?.origen[acceso.id] ?? []).filter((f) => f.puesto === p.id)}
+      <MetricaCorte titulo={tr("ez_mpv_entradas")} barra={barra} ingresos={ingresos} tr={tr} />
+      <Recorrido ilustrativa={!barra} verRecorrido={verRecorrido} tr={tr} />
+    </div>
+  );
+}
+
+/** Detalle de una barra que no está en el mapa (otros puestos, aéreos y marítimos, o un país). */
+export function DetalleCorte({
+  barra,
+  ingresos,
+  tr,
+}: {
+  barra: Barra;
+  ingresos: ResumenIngresos | null;
+  tr: Tr;
+}) {
+  return (
+    <div className="ez-mpv-acceso">
+      <MetricaCorte
+        titulo={tr(ingresos?.fuente === "MITUR" ? "ez_mpg_visitantes" : "ez_mpv_entradas")}
+        barra={barra}
+        ingresos={ingresos}
         tr={tr}
       />
-      <Recorrido ilustrativa={!cifra} verRecorrido={verRecorrido} tr={tr} />
     </div>
   );
 }

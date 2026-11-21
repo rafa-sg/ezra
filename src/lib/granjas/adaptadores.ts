@@ -68,7 +68,7 @@ export type Adaptador = {
   configuracion: () => string[];
   oauth: boolean;
   capacidadPublicar: Capacidad;
-  urlAutorizacion?: (estado: string) => string;
+  urlAutorizacion?: (estado: string, metricas?: boolean) => string;
   canjear?: (codigo: string, solicitar: Solicitar) => Promise<Verificacion>;
   verificar: (secreto: Secreto, solicitar: Solicitar) => Promise<Verificacion>;
   revocar: (secreto: Secreto, solicitar: Solicitar) => Promise<void>;
@@ -1022,12 +1022,13 @@ export const spotmi: Adaptador = {
  * Google deja en privado los videos subidos por proyectos de API sin auditar. Nada se hace público.
  */
 const googleToken = "https://oauth2.googleapis.com/token";
-const youtubeApi = "https://www.googleapis.com/youtube/v3";
+export const youtubeApi = "https://www.googleapis.com/youtube/v3";
+export const permisoYoutubeAnalytics = "https://www.googleapis.com/auth/yt-analytics.readonly";
 const permisosYoutube = [
   "https://www.googleapis.com/auth/youtube.readonly",
   "https://www.googleapis.com/auth/youtube.upload",
 ];
-async function renovarYoutube(secreto: Secreto, solicitar: Solicitar): Promise<Secreto> {
+export async function renovarYoutube(secreto: Secreto, solicitar: Solicitar): Promise<Secreto> {
   if (!secreto.expiraAcceso || Date.parse(secreto.expiraAcceso) - Date.now() > 5 * 60000)
     return secreto;
   if (!secreto.refresco)
@@ -1091,12 +1092,12 @@ export const youtube: Adaptador = {
   capacidadPublicar: "subir_borrador",
   // Google acepta http://127.0.0.1 como dirección de regreso: no hace falta https para esta conexión.
   configuracion: () => conTokenKey(faltan("YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET")),
-  urlAutorizacion: (estado) =>
+  urlAutorizacion: (estado, metricas) =>
     `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
       client_id: process.env.YOUTUBE_CLIENT_ID!,
       redirect_uri: redireccion("youtube"),
       response_type: "code",
-      scope: permisosYoutube.join(" "),
+      scope: (metricas ? [...permisosYoutube, permisoYoutubeAnalytics] : permisosYoutube).join(" "),
       access_type: "offline",
       prompt: "consent",
       include_granted_scopes: "true",

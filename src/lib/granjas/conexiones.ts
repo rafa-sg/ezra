@@ -130,7 +130,7 @@ function exigirConfiguracion(canal: CanalConexion) {
 }
 
 /** El estado OAuth es de un solo uso, caduca en 10 minutos y queda ligado a la sesión que lo pidió. */
-export function iniciarOAuth(canal: CanalConexion, usuario: string) {
+export function iniciarOAuth(canal: CanalConexion, usuario: string, metricas = false) {
   const adaptador = adaptadores[canal];
   if (!adaptador.oauth || !adaptador.urlAutorizacion) throw new WorkflowError("Este canal no usa autorización externa.", 422);
   exigirConfiguracion(canal);
@@ -147,7 +147,7 @@ export function iniciarOAuth(canal: CanalConexion, usuario: string) {
     );
   });
   auditar("conexion.oauth_inicio", canal);
-  return adaptador.urlAutorizacion(estado);
+  return adaptador.urlAutorizacion(estado, canal === "youtube" && metricas);
 }
 export async function completarOAuth(
   canal: CanalConexion,

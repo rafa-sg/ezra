@@ -88,7 +88,32 @@ export const ACCESOS: Acceso[] = [
     puestos: [
       { id: "el-poy", nombre: "El Poy", lugar: "Citalá, Chalatenango", lat: 14.3712, lng: -89.2047, entradas: null },
       { id: "el-amatillo", nombre: "El Amatillo", lugar: "Pasaquina, La Unión", lat: 13.5943, lng: -87.7573, entradas: null },
+      // Perquín (Sabanetas): ubicación aproximada, ajustada al borde del mapa.
+      { id: "perquin", nombre: "Perquín", lugar: "Perquín, Morazán", lat: 14.0175, lng: -88.1655, entradas: null },
     ],
     entradas: null,
   },
+];
+
+/**
+ * Catálogo de puestos migratorios para los cortes de la DGME. Los terrestres de Guatemala y Honduras
+ * están en el mapa; «Otros puestos» y los aéreos y marítimos solo aparecen en las gráficas.
+ */
+export type GrupoPuesto = "guatemala" | "honduras" | "otros" | "aereos_maritimos";
+export const PUESTOS_CATALOGO: { id: string; nombre: string; grupo: GrupoPuesto; alias?: string[] }[] = [
+  { id: "hachadura", nombre: "La Hachadura", grupo: "guatemala", alias: ["pedro de alvarado"] },
+  { id: "chinamas", nombre: "Las Chinamas", grupo: "guatemala", alias: ["valle nuevo"] },
+  { id: "san-cristobal", nombre: "San Cristóbal", grupo: "guatemala" },
+  { id: "anguiatu", nombre: "Anguiatú", grupo: "guatemala" },
+  { id: "el-poy", nombre: "El Poy", grupo: "honduras" },
+  { id: "el-amatillo", nombre: "El Amatillo", grupo: "honduras" },
+  { id: "perquin", nombre: "Perquín", grupo: "honduras", alias: ["sabanetas"] },
+  { id: "puente-amistad", nombre: "Pte. La Amistad", grupo: "otros", alias: ["puente la amistad", "puente de la amistad"] },
+  { id: "puente-integracion", nombre: "Pte. de la Integración", grupo: "otros", alias: ["puente de la integracion", "puente la integracion"] },
+  { id: "aies", nombre: "Aeropuerto Internacional de El Salvador", grupo: "aereos_maritimos", alias: ["aeropuerto", "comalapa", "aeropuerto internacional san oscar arnulfo romero", "aies"] },
+  { id: "ilopango", nombre: "Aeropuerto de Ilopango", grupo: "aereos_maritimos", alias: ["ilopango"] },
+  { id: "acajutla", nombre: "Puerto de Acajutla", grupo: "aereos_maritimos", alias: ["acajutla"] },
+  { id: "puerto-la-union", nombre: "Puerto de La Unión", grupo: "aereos_maritimos", alias: ["la union", "puerto la union"] },
+  { id: "meanguera", nombre: "Meanguera del Golfo", grupo: "aereos_maritimos", alias: ["meanguera"] },
+  { id: "puerto-la-libertad", nombre: "Puerto de La Libertad", grupo: "aereos_maritimos", alias: ["la libertad", "puerto la libertad"] },
 ];

@@ -599,3 +599,23 @@ Pedido del propietario (video 627 y captura de Instagram), primero en maqueta y 
 - «Entradas por mes · AAAA»: los 12 meses con el total del país (DGME; «todos» si se publicó, si no la suma de puestos). Sin corte = vacío.
 - Estimación NO oficial (rayada, con rango): solo con ≥3 meses cerrados. Método «interanual» (mismo mes del año anterior × variación de los meses comparables) si hay año anterior; si no, «tendencia» (mínimos cuadrados). Rango = error medio (mín. ±5 %). Muestra el cierre del mes en curso (nunca por debajo de lo registrado), el mes siguiente y el año (meses reales + estimados).
 - No se cargaron las cifras de prensa de MITUR («visitantes internacionales»: enero ≈413 mil, agosto 357.325, acumulados) porque son otra medición distinta de las entradas DGME.
+
+## 2026-11-21 · Perfil y estadísticas de YouTube en Apps
+
+- El canal autorizado se presenta con el mismo perfil de Apps que Instagram. YouTube Data API v3 aporta avatar, totales y hasta 12 videos públicos recientes. Ezra no pide subir ni publicar contenido al ver esta pantalla.
+- YouTube Analytics API agrega métricas de 7, 28 y 90 días hasta el último día devuelto. Horas salen de los minutos de visualización y suscriptores netos de altas menos bajas. Los campos que no llegan quedan vacíos. Sin tiempo real, permisos monetarios ni dependencia nueva.
+- El acceso de solo lectura a Analytics requiere activar la API en el mismo proyecto y autorizar el nuevo alcance en Google. El perfil reutiliza el token cifrado de la conexión y comprueba la identidad antes de leer o mostrar la caché.
+
+## 2026-11-21 · Arranque en Windows y macOS
+
+- Docker Compose sigue como entorno común de desarrollo con Node.js 24.18.0, SQLite y FFmpeg, publicación del puerto solo en loopback y datos aparte en su volumen. El README también documenta el arranque nativo con la misma versión de Node.js desde PowerShell o Terminal.
+- Los comandos de prueba delegan la búsqueda de archivos a Node.js para funcionar con ambos shells. El comando de alta del propietario lee `.env.local` para usar el mismo directorio de datos que el servidor.
+- FFmpeg y FFprobe se detectan en `PATH` o mediante una ruta configurada. En Windows se buscan ejecutables `.exe`, también para Codex y Claude opcionales, manteniendo la ejecución sin shell y el entorno acotado.
+
+## 2026-11-21 (noche, 3) · «Ingresos al país» por cortes oficiales (DGME / MITUR)
+
+- Modelo por corte (`src/lib/granjas/ingresos.ts`, archivo `data/granjas/ingresos-cortes.json`): fuente (DGME | MITUR), métrica (DGME → ingresos; MITUR → visitantes; otra combinación se rechaza), período (mes | trimestre | semestre | anio) con `desde`/`hasta` completos (día 1 al último día), puesto o país (`clave` normalizada con alias, p. ej. «Pedro de Alvarado» → La Hachadura), valor y fecha de carga. Reemplaza al formato del mismo día (`ingresos-oficiales.json`, que no tenía datos reales). Se retiraron del detalle CEPA y «salidas registradas en origen» porque el nuevo modelo solo admite DGME y MITUR.
+- CSV `fuente,metrica,periodo_tipo,desde,hasta,puesto_o_pais,valor` en dos pasos (`accion: vista | guardar`): vista previa, errores por fila, repetidos dentro del archivo (bloquean) y duplicados contra lo guardado (mismo puesto/país y período; se reemplazan solo si se marca). Plantilla descargable (`ingresos-formato.ts`) y copia en `docs/datos/`.
+- Interfaz: interruptor «Ingresos DGME / Visitantes MITUR» (títulos y nota de metodologías distintas); selector de período agrupado (meses, trimestres, semestres, años) o «Sin cortes cargados». Sin ningún corte: una sola tarjeta «Esperando corte oficial de la DGME» con «Cargar CSV» y «Cómo pedir los datos» (pasos y texto de solicitud LAIP para copiar). Gráfico mensual solo con datos mensuales; si no, una barra por período («Corte DGME ene–jun 2024»). Barras por puesto con % del total (total publicado o suma de la gráfica) y variación contra el mismo período del año anterior; «Otros puestos» y «Aéreos y marítimos» plegados sin datos. Barras = botones con aria-label «Puesto, valor, período» que abren el detalle (en escritorio se sube hasta el panel). Estimación igual que antes (≥3 meses cerrados).
+- Catálogo `PUESTOS_CATALOGO` en `datos-pais.ts`; Perquín agregado al mapa (coordenada aproximada ajustada al borde).
+- El PDF DGME ene–jun 2024 no se pudo verificar (rutas de documentos de transparencia.gob.sv con 404): `docs/datos/dgme-terrestres-ene-jun-2024.csv` va con valores vacíos.

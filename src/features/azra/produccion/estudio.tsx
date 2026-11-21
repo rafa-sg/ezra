@@ -52,6 +52,7 @@ import { ColocarEnGranja } from "../granjas/colocar";
 import { SeccionConsumo } from "../granjas/consumo";
 import { SeccionEventos } from "../granjas/eventos";
 import { PaginaInstagram } from "../granjas/instagram-pagina";
+import { PaginaYoutube } from "../granjas/youtube-pagina";
 import { BotonApps, PerfilConexion, redes, useCuentasApp, type CuentaApp } from "./apps";
 import { Inicio, type DestinoInicio } from "./inicio";
 import { CabeceraPagina, NavegacionLateral } from "./navegacion";
@@ -854,7 +855,10 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
           {!soloLectura && seccion === "apps" && (
             <>
               {appActiva?.canal === "instagram" && <PaginaInstagram g={g} tr={tr} fecha={fecha} />}
-              {appActiva && appActiva.canal !== "instagram" && (
+              {appActiva?.canal === "youtube" && (
+                <PaginaYoutube key={appActiva.id} cuenta={appActiva} locale={locale} fecha={fecha} />
+              )}
+              {appActiva && appActiva.canal !== "instagram" && appActiva.canal !== "youtube" && (
                 <PerfilConexion
                   key={`${appActiva.canal}:${appActiva.id}`}
                   cuenta={appActiva}

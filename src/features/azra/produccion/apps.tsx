@@ -257,7 +257,7 @@ export function BotonApps({
 }
 
 /**
- * Perfil de una red sin lectura de métricas todavía (TikTok, Facebook, YouTube): la misma estructura
+ * Perfil de una red sin lectura de métricas todavía (TikTok, Facebook): la misma estructura
  * que Instagram (perfil, métricas, contenido reciente) con lo que de verdad hay. Lo que Ezra aún no
  * lee dice «No disponible»; nunca se muestran ceros ni números inventados.
  */

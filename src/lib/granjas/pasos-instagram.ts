@@ -147,7 +147,7 @@ export async function disenarPost(postId: string, ia: IADiseno = null) {
  */
 export async function crearVideoPost(postId: string, ia: IADiseno = null) {
   const { ffmpeg } = await herramientasVideo();
-  if (!ffmpeg) throw new WorkflowError("Falta ffmpeg en esta Mac para armar el video. Instálalo o configura EZRA_FFMPEG_BIN.", 503);
+  if (!ffmpeg) throw new WorkflowError("Falta FFmpeg en este equipo para armar el video. Instalalo o configurá EZRA_FFMPEG_BIN.", 503);
   const post = leerPost(postId);
   const { evento, datos } = await datosDePost(post);
   const escrito = await escribirGuion(evento, Boolean(datos.fondo), ia);

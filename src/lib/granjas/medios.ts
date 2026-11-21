@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { constants } from "node:fs";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { findVideoExecutable } from "../local-executable";
 import { detectMedia } from "../media";
 import { WorkflowError } from "../workflow";
 import { ahoraIso, auditar, base, carpetaMedios, json } from "./db";
@@ -34,19 +34,10 @@ const aMedio = (f: FilaMedio): Medio => ({ ...f, procedencia: json(f.procedencia
 
 export const LIMITE_MEDIO = 200 * 1024 * 1024;
 
-async function herramienta(nombre: "ffmpeg" | "ffprobe") {
-  const configurado = process.env[nombre === "ffmpeg" ? "EZRA_FFMPEG_BIN" : "EZRA_FFPROBE_BIN"];
-  for (const candidato of configurado ? [configurado] : [`/opt/homebrew/bin/${nombre}`, `/usr/local/bin/${nombre}`, `/usr/bin/${nombre}`]) {
-    try {
-      await access(candidato, constants.X_OK);
-      return candidato;
-    } catch {
-      /* siguiente */
-    }
-  }
-  return null;
-}
-export const herramientasVideo = async () => ({ ffmpeg: await herramienta("ffmpeg"), ffprobe: await herramienta("ffprobe") });
+export const herramientasVideo = async () => ({
+  ffmpeg: findVideoExecutable("ffmpeg"),
+  ffprobe: findVideoExecutable("ffprobe"),
+});
 
 function ejecutar(binario: string, argumentos: string[], tiempo: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -71,7 +62,7 @@ function ejecutar(binario: string, argumentos: string[], tiempo: number): Promis
 
 export type Sonda = { ancho: number | null; alto: number | null; duracion: number | null; video: boolean };
 export async function sondear(archivo: string): Promise<Sonda> {
-  const ffprobe = await herramienta("ffprobe");
+  const ffprobe = findVideoExecutable("ffprobe");
   if (!ffprobe) return { ancho: null, alto: null, duracion: null, video: false };
   const salida = await ejecutar(
     ffprobe,
@@ -151,7 +142,7 @@ export function listarMedios(): Medio[] {
  */
 export async function renderizarVertical(medios: Medio[], segundosPorImagen: number): Promise<Medio> {
   const { ffmpeg } = await herramientasVideo();
-  if (!ffmpeg) throw new WorkflowError("Falta ffmpeg en esta Mac. Instálalo o configura EZRA_FFMPEG_BIN para renderizar.", 503);
+  if (!ffmpeg) throw new WorkflowError("Falta FFmpeg en este equipo. Instalalo o configurá EZRA_FFMPEG_BIN para renderizar.", 503);
   if (!medios.length) throw new WorkflowError("Conecta imágenes o videos para renderizar.", 422);
   if (medios.length > 20) throw new WorkflowError("El render admite hasta 20 archivos.", 422);
   const carpeta = await mkdtemp(path.join(tmpdir(), "ezra-render-"));

@@ -1,7 +1,6 @@
 import test, { before } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -9,7 +8,7 @@ import path from "node:path";
 process.env.EZRA_DATA_DIR = path.resolve(`work/imagenes-test-${process.pid}-${Date.now()}`);
 process.env.EZRA_GRANJAS_TRABAJADOR = "0";
 import type { Respuesta } from "../src/lib/granjas/fuentes";
-import { rutaFfmpeg } from "./helpers/ffmpeg";
+import { hayFfmpeg, rutaFfmpeg } from "./helpers/ffmpeg";
 let imagenes: typeof import("../src/lib/granjas/imagenes");
 let eventos: typeof import("../src/lib/granjas/eventos");
 let verificador: typeof import("../src/lib/granjas/verificador");
@@ -19,7 +18,6 @@ let medios: typeof import("../src/lib/granjas/medios");
 let tiempo: typeof import("../src/lib/granjas/tiempo");
 let db: typeof import("../src/lib/granjas/db");
 const ffmpeg = rutaFfmpeg;
-const hayFfmpeg = existsSync(ffmpeg);
 let grande: Buffer;
 let chica: Buffer;
 let diminuta: Buffer;

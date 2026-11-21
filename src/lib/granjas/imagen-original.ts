@@ -158,7 +158,7 @@ export async function fotogramaDeVideo(videoUrl: string, segundo: number, nombre
   const u = new URL(videoUrl);
   if (u.protocol !== "https:") throw new WorkflowError("El video no usa https.", 422);
   const { ffmpeg } = await herramientasVideo();
-  if (!ffmpeg) throw new WorkflowError("Falta ffmpeg en esta Mac para extraer un fotograma.", 503);
+  if (!ffmpeg) throw new WorkflowError("Falta FFmpeg en este equipo para extraer un fotograma.", 503);
   const r = await descargarSegura(u.toString(), [u.hostname], { limite: 80 * 1024 * 1024 });
   if (r.estado >= 400) throw new WorkflowError(`El video respondió ${r.estado}.`, 502);
   const carpeta = await mkdtemp(path.join(tmpdir(), "ezra-fotograma-"));

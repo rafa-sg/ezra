@@ -1,0 +1,99 @@
+.azra .ez-youtube .ez-yt-enlace,
+.azra .ez-youtube .ez-yt-video-metricas span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.azra .ez-youtube .ez-yt-aviso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+}
+.azra .ez-youtube .ez-yt-aviso p,
+.azra .ez-youtube .ez-yt-grafica h4 {
+  margin: 0;
+}
+.azra .ez-youtube .ez-yt-grafica {
+  padding: 18px 20px;
+}
+.azra .ez-youtube .ez-segmentado button[aria-pressed="true"] {
+  background: var(--ep-tarjeta);
+  color: var(--ep-texto);
+}
+.azra .ez-yt-barras {
+  display: flex;
+  gap: clamp(1px, 0.3vw, 5px);
+  height: 112px;
+  margin: 12px 0;
+  border-bottom: 1px solid var(--ep-borde);
+}
+.azra .ez-yt-barras > span {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: flex-end;
+}
+.azra .ez-yt-barras > span > span {
+  display: block;
+  width: 100%;
+  background: var(--ep-acento, #615bff);
+  border-radius: 3px 3px 0 0;
+}
+.azra .ez-yt-barras [data-cero] {
+  min-height: 2px;
+}
+.azra .ez-yt-dias {
+  margin-bottom: 0;
+  max-height: 200px;
+  overflow: auto;
+}
+.azra .ez-yt-dias div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+}
+.azra .ez-yt-videos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr));
+  gap: 14px;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.azra .ez-yt-videos a {
+  display: block;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+}
+.azra .ez-yt-miniatura {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  background: var(--ep-fondo);
+}
+.azra .ez-yt-miniatura img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.azra .ez-yt-video-texto {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+}
+.azra .ez-yt-video-texto small,
+.azra .ez-yt-video-metricas {
+  color: var(--ep-suave);
+}
+.azra .ez-yt-video-metricas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
+}

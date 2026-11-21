@@ -1,0 +1,7 @@
+${COLUMNAS.join(",")}
+DGME,ingresos,semestre,2024-01-01,2024-06-30,La Hachadura,
+DGME,ingresos,semestre,2024-01-01,2024-06-30,total,
+DGME,ingresos,mes,2026-01-01,2026-01-31,El Amatillo,
+DGME,ingresos,mes,2026-01-01,2026-01-31,Guatemala,
+MITUR,visitantes,mes,2026-01-01,2026-01-31,total,
+MITUR,visitantes,mes,2026-01-01,2026-01-31,Estados Unidos,

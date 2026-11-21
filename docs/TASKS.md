@@ -409,3 +409,21 @@ Inicio mantiene el mapa a todo lo ancho con la paleta anterior y fondos neutros 
 - [ ] DGME: entradas migratorias por puesto (aeropuerto, La Hachadura, Las Chinamas, San Cristóbal, Anguiatú, El Poy, El Amatillo) con período; si hay registros diarios, se habilita «Por día». Cargar en `src/lib/granjas/datos-pais.ts` con fuente y URL.
 - [ ] CEPA: pasajeros en llegadas del aeropuerto (métrica distinta de las entradas migratorias).
 - [ ] Revisar con el propietario las coordenadas de Las Chinamas y San Cristóbal (se ajustan al perímetro del mapa).
+
+## Apps · YouTube
+
+- [x] Lectura de perfil, totales y videos públicos. Vista con la estructura de Instagram, actualización manual y estados para un canal sin videos, falta de permiso o API de Analytics apagada.
+- [x] Cableado de los informes de 7, 28 y 90 días con permiso de solo lectura y pruebas de respuesta simulada. Pendiente del propietario: habilitar YouTube Analytics API en su proyecto de Google Cloud y completar «Autorizar métricas» en Ezra.
+- Verificación: lint, TypeScript, build aislado y 181 pruebas unitarias correctos. El entorno bloqueó los puertos de las pruebas de integración y el acceso del navegador a Ezra. El canal local ya tiene permiso de lectura de YouTube Data API; el permiso de Analytics aún no está concedido.
+
+## Arranque en Windows y macOS
+
+- [x] Documentados Docker Compose y la instalación nativa. Scripts compatibles con PowerShell y Terminal, plantilla local con Clerk y detección de herramientas de medios por `PATH`.
+- [x] macOS con Node.js 24.18.0: lint, TypeScript, 182 pruebas unitarias, build aislado y alta de propietario con datos de ejemplo en una carpeta temporal. `docker compose config --quiet` validó la configuración.
+- [ ] Completar el arranque en un equipo Windows. La ejecución de Docker y de las pruebas de integración quedó bloqueada en este entorno por los permisos del socket de Colima y de los puertos locales.
+
+## Ingresos al país · cortes oficiales (21 nov 2026, noche)
+
+- [ ] Completar `docs/datos/dgme-terrestres-ene-jun-2024.csv` con las cifras del PDF de la DGME (transparencia.gob.sv) y cargarlo en Inicio › Cargar CSV.
+- [ ] Presentar la solicitud LAIP a la DGME con el texto de «Cómo pedir los datos» (entradas mensuales 2026 por puesto y nacionalidad).
+- [ ] Opcional: cargar los meses de MITUR con cifra exacta publicada (fuente MITUR, métrica visitantes).

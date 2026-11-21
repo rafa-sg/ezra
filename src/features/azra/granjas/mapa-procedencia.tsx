@@ -15,7 +15,7 @@ import { ChevronDown } from "lucide-react";
 import type { Trazabilidad } from "@/lib/granjas/trazabilidad";
 import { VB, X_PAIS, bordes, geo, geometriaAccesos } from "./mapa-geo";
 import { GraficasIngresos } from "./ingresos-graficas";
-import type { ResumenIngresos } from "@/lib/granjas/ingresos";
+import type { Barra, Fuente, ResumenIngresos } from "@/lib/granjas/ingresos";
 import { agendaVigente } from "@/lib/granjas/agenda-mapa";
 import { ACCESOS, POBLACION_2024 } from "@/lib/granjas/datos-pais";
 import { diaLocal } from "@/lib/granjas/tiempo";
@@ -24,6 +24,7 @@ import {
   CapaAccesos,
   ControlesCapas,
   DetalleAcceso,
+  DetalleCorte,
   DetallePoblacion,
   DetallePuesto,
   PanelMapa,
@@ -269,19 +270,34 @@ export function MapaProcedencia({
   const [corrida, setCorrida] = useState(0);
   const [solo, setSolo] = useState<Solo>(null);
   const [sobre, setSobre] = useState<string | null>(null);
-  const [mesIngresos, setMesIngresos] = useState<string | null>(null);
-  const [ingresos, setIngresos] = useState<ResumenIngresos | null>(null);
+  // Cortes oficiales: el mapa y sus paneles usan siempre la DGME; las gráficas pueden ver MITUR.
+  const [fuente, setFuente] = useState<Fuente>("DGME");
+  const [periodos, setPeriodos] = useState<Record<Fuente, string | null>>({
+    DGME: null,
+    MITUR: null,
+  });
+  const [resumenes, setResumenes] = useState<Record<Fuente, ResumenIngresos | null>>({
+    DGME: null,
+    MITUR: null,
+  });
   const [recargaIngresos, setRecargaIngresos] = useState(0);
   useEffect(() => {
     let vivo = true;
-    fetch(`/api/granjas/ingresos${mesIngresos ? `?mes=${mesIngresos}` : ""}`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => vivo && setIngresos(j as ResumenIngresos | null))
-      .catch(() => vivo && setIngresos(null));
+    for (const f of ["DGME", "MITUR"] as const) {
+      const q = new URLSearchParams({
+        fuente: f,
+        ...(periodos[f] ? { periodo: periodos[f]! } : {}),
+      });
+      fetch(`/api/granjas/ingresos?${q}`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => vivo && setResumenes((x) => ({ ...x, [f]: j as ResumenIngresos | null })))
+        .catch(() => vivo && setResumenes((x) => ({ ...x, [f]: null })));
+    }
     return () => {
       vivo = false;
     };
-  }, [mesIngresos, recargaIngresos]);
+  }, [periodos, recargaIngresos]);
+  const ingresos = resumenes.DGME;
   const hoy = diaLocal();
   // Un solo origen para el marcador y su agenda: eventos confirmados, vigentes y sin duplicados.
   const agenda = useMemo(() => (datos ? agendaVigente(datos.eventos, hoy) : null), [datos, hoy]);
@@ -334,9 +350,11 @@ export function MapaProcedencia({
       ? `a:${panel.id}`
       : panel.tipo === "puesto"
         ? `i:${panel.id}`
-        : panel.tipo === "poblacion"
-          ? `h:${panel.nombre}`
-          : `p:${panel.nombre}`;
+        : panel.tipo === "corte"
+          ? `c:${panel.barra.clave}`
+          : panel.tipo === "poblacion"
+            ? `h:${panel.nombre}`
+            : `p:${panel.nombre}`;
   /** Cierra la agenda o el detalle y devuelve el foco al marcador (o fila) que lo abrió. */
   const cerrarPanel = useCallback(() => {
     const k = clavePanel;
@@ -351,7 +369,7 @@ export function MapaProcedencia({
           )
           ?.focus({ preventScroll: true }),
       );
-  }, [clavePanel, setSeleccion, setSolo, uid]);
+  }, [clavePanel, setPanel, setSeleccion, setSolo, uid]);
   // Escape cierra el panel o quita la selección cuando el foco está dentro del mapa o su listado.
   useEffect(() => {
     if (!claveSel && !clavePanel) return;
@@ -376,6 +394,14 @@ export function MapaProcedencia({
         });
     });
   };
+  /** Abierto desde las gráficas (debajo del mapa): en escritorio se sube hasta el panel. */
+  const verPanel = () =>
+    amplio &&
+    requestAnimationFrame(() =>
+      document
+        .querySelector(`[data-mapa="${uid}"] .ez-mp-escenario`)
+        ?.scrollIntoView({ behavior: reducido ? "auto" : "smooth", block: "start" }),
+    );
   /** Encender o apagar una capa con un toque; al encender Ingresos se repite la secuencia de llegada. */
   const alternar = (c: keyof Capas) => {
     const encender = poblacion || !capas[c];
@@ -516,9 +542,11 @@ export function MapaProcedencia({
       ? (accesoAbierto?.nombre ?? "")
       : panel.tipo === "puesto"
         ? (puestoAbierto?.nombre ?? "")
-        : panel.nombre === SIN
-          ? tr("ez_mapa_sinUbicacion")
-          : panel.nombre;
+        : panel.tipo === "corte"
+          ? panel.barra.etiqueta
+          : panel.nombre === SIN
+            ? tr("ez_mapa_sinUbicacion")
+            : panel.nombre;
   const subtituloPanel = !panel
     ? undefined
     : panel.tipo === "depto"
@@ -527,9 +555,11 @@ export function MapaProcedencia({
         ? tr("ez_mpv_departamento")
         : panel.tipo === "puesto"
           ? `${accesoAbierto?.nombre} · ${puestoAbierto?.lugar ?? ""}`
-          : accesoAbierto?.tipo === "aereo"
-            ? tr("ez_mpv_entradaAerea")
-            : `${accesoAbierto?.puestos.length ?? 0} ${tr("ez_mpv_puestos")}`;
+          : panel.tipo === "corte"
+            ? `${resumenes[fuente]?.fuente ?? ""} · ${resumenes[fuente]?.periodo?.etiqueta ?? ""}`
+            : accesoAbierto?.tipo === "aereo"
+              ? tr("ez_mpv_entradaAerea")
+              : `${accesoAbierto?.puestos.length ?? 0} ${tr("ez_mpv_puestos")}`;
 
   const listado = (
     <>
@@ -855,7 +885,7 @@ export function MapaProcedencia({
                 })}
               </g>
             </svg>
-            {verIngresos && !ingresos?.mes && (
+            {verIngresos && !ingresos?.periodo && (
               <p className="ez-mpi-aviso">
                 <span>{tr("ez_mpv_sinDatos")}</span> · {tr("ez_mpv_ilustrativa")}
               </p>
@@ -903,6 +933,9 @@ export function MapaProcedencia({
               tr={tr}
             />
           )}
+          {panel?.tipo === "corte" && (
+            <DetalleCorte barra={panel.barra} ingresos={resumenes[fuente]} tr={tr} />
+          )}
           {panel?.tipo === "poblacion" && <DetallePoblacion nombre={panel.nombre} tr={tr} />}
         </PanelMapa>
       </div>
@@ -912,14 +945,30 @@ export function MapaProcedencia({
         <div className="ez-mp-progreso" aria-hidden="true" />
         {verIngresos && (
           <GraficasIngresos
-            ingresos={ingresos}
-            mes={mesIngresos}
-            setMes={setMesIngresos}
+            ingresos={resumenes[fuente]}
+            fuente={fuente}
+            setFuente={setFuente}
+            setPeriodo={(p) => setPeriodos((x) => ({ ...x, [fuente]: p }))}
             accesoElegido={
               panel?.tipo === "acceso" ? panel.id : panel?.tipo === "puesto" ? panel.acceso : null
             }
-            puestoElegido={panel?.tipo === "puesto" ? panel.id : null}
-            onPuesto={(acc, id) => elegirPuesto(acc, id)}
+            puestoElegido={
+              panel?.tipo === "puesto"
+                ? panel.id
+                : panel?.tipo === "corte"
+                  ? panel.barra.clave
+                  : null
+            }
+            onPuesto={(b: Barra) => {
+              const acc = ACCESOS.find((a) => a.puestos.some((p) => p.id === b.clave));
+              verPanel();
+              if (acc && fuente === "DGME") elegirPuesto(acc.id, b.clave);
+              else {
+                setSeleccion(null);
+                setPanel({ tipo: "corte", barra: b });
+                mostrarArriba(`c:${b.clave}`);
+              }
+            }}
             onCargado={() => setRecargaIngresos((x) => x + 1)}
             tr={tr}
           />

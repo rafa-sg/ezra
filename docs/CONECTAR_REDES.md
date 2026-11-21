@@ -97,6 +97,11 @@ Google acepta `http://127.0.0.1` como dirección de regreso: **no hace falta n8n
    (es tu propia app en prueba): **Continuar** y acepta los permisos de ver y subir videos.
 7. Pulsa **Verificar**: debe decir el nombre del canal y «Restringida: subir borradores».
 
+En **Apps → YouTube**, Ezra lee el perfil, los totales del canal y los videos públicos recientes con
+la conexión existente. Para ver los informes de 7, 28 y 90 días, habilita **YouTube Analytics API**
+en el mismo proyecto de Google Cloud y pulsa **Autorizar métricas** en Ezra. Google pedirá acceso de
+lectura a Analytics. La gráfica indica hasta qué día hay datos procesados por YouTube.
+
 Ezra sube con el **título de la pieza** y, como descripción, el texto de Instagram (o el de Facebook),
 siempre en **privado**. Mientras el proyecto de Google no pase la auditoría de YouTube, Google también
 deja privados los videos subidos por API. La cuota gratuita de Google alcanza para unas 6 subidas al día.
