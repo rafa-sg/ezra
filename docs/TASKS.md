@@ -402,3 +402,9 @@ Inicio mantiene el mapa a todo lo ancho con la paleta anterior y fondos neutros 
 - [ ] Propietario: conectar Facebook, TikTok y YouTube siguiendo `docs/CONECTAR_REDES.md`; verificar Instagram entre el 22 y el 28 de diciembre.
 - [ ] Propietario: decidir si se reescribe el historial de GitHub para quitar el correo de las ramas antiguas.
 - [ ] Guardar el video de la animación de carga fuera de la carpeta temporal de macOS para revisarlo.
+
+## Mapa de Inicio · cifras pendientes de fuente oficial (21 nov 2026)
+
+- [ ] DGME: entradas migratorias por puesto (aeropuerto, La Hachadura, Las Chinamas, San Cristóbal, Anguiatú, El Poy, El Amatillo) con período; si hay registros diarios, se habilita «Por día». Cargar en `src/lib/granjas/datos-pais.ts` con fuente y URL.
+- [ ] CEPA: pasajeros en llegadas del aeropuerto (métrica distinta de las entradas migratorias).
+- [ ] Revisar con el propietario las coordenadas de Las Chinamas y San Cristóbal (se ajustan al perímetro del mapa).

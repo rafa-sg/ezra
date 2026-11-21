@@ -1,0 +1,562 @@
+/* Capas del mapa de Inicio: selector, Ingresos, Población, panel y campo magnético. */
+
+/* Escenario: el mapa y, en escritorio, el panel a la derecha (el mapa se reacomoda sin saltos). */
+.azra .ez-mp-escenario {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 0px;
+  align-items: stretch;
+  transition: grid-template-columns 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.azra .ez-mp-amplio .ez-mp-escenario[data-panel] {
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+.azra .ez-mp-amplio .ez-mp-escenario {
+  overflow-x: clip;
+  overflow-clip-margin: 24px;
+}
+.azra .ez-mp-angosto .ez-mp-escenario {
+  display: block;
+}
+
+/* Selector compacto arriba a la derecha. */
+.azra .ez-mpv-selector {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ep-tarjeta) 88%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: var(--ez-sombra-s);
+}
+.azra .ez-mpv-selector button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ep-texto-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+.azra .ez-mpv-selector button:hover {
+  color: var(--ep-texto);
+}
+.azra .ez-mpv-selector button[aria-checked="true"] {
+  background: var(--mp-hub);
+  color: var(--mp-hub-texto);
+}
+.azra .ez-mpv-selector button:focus-visible {
+  outline: 2px solid var(--mp-ruta);
+  outline-offset: 1px;
+}
+
+/* Puntos: el campo magnético los aparta un poco y los ilumina; vuelven solos al retirar el cursor. */
+.azra .ez-mp-puntos circle {
+  transition:
+    fill 260ms ease,
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.azra .ez-mp-puntos.ez-mp-iman circle {
+  transition:
+    fill 120ms ease,
+    transform 160ms ease-out;
+}
+.azra .ez-mp-toque {
+  fill: none;
+  stroke: var(--mp-ruta);
+  stroke-width: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ez-mp-toque 650ms ease-out;
+}
+@keyframes ez-mp-toque {
+  from {
+    opacity: 0.5;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+/* Población: intensidad leve según los habitantes censados. */
+.azra .ez-mp-n1 {
+  fill: color-mix(in srgb, var(--mp-punto-activo) 5%, var(--mp-punto));
+}
+.azra .ez-mp-n2 {
+  fill: color-mix(in srgb, var(--mp-punto-activo) 13%, var(--mp-punto));
+}
+.azra .ez-mp-n3 {
+  fill: color-mix(in srgb, var(--mp-punto-activo) 23%, var(--mp-punto));
+}
+.azra .ez-mp-n4 {
+  fill: color-mix(in srgb, var(--mp-punto-activo) 35%, var(--mp-punto));
+}
+.azra .ez-mp-n5 {
+  fill: color-mix(in srgb, var(--mp-punto-activo) 50%, var(--mp-punto));
+}
+.azra .ez-mph-marcador {
+  cursor: pointer;
+  outline: none;
+}
+.azra .ez-mph-zona {
+  fill: transparent;
+}
+.azra .ez-mph-punto {
+  fill: var(--mp-fondo);
+  stroke: var(--mp-nodo);
+  transition: fill 200ms ease;
+}
+.azra .ez-mph-marcador:hover .ez-mph-punto,
+.azra .ez-mph-marcador.ez-mp-elegido .ez-mph-punto {
+  fill: var(--mp-nodo-on);
+}
+.azra .ez-mph-marcador:focus-visible .ez-mph-zona {
+  stroke: var(--mp-ruta);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Ingresos: puestos reales, etiquetas de los tres accesos y recorridos de llegada. */
+.azra .ez-mpi-acceso {
+  cursor: pointer;
+  outline: none;
+  transition: opacity 240ms ease;
+}
+.azra .ez-mpi-acceso.ez-mp-tenue {
+  opacity: 0.4;
+}
+.azra .ez-mpi-anillo {
+  fill: var(--mp-halo);
+  opacity: 0.6;
+}
+.azra .ez-mpi-puesto {
+  fill: var(--mp-nodo-on);
+  stroke: var(--mp-borde-nodo);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+.azra .ez-mpi-chip {
+  fill: var(--ep-tarjeta, #fff);
+  stroke: var(--ep-borde, #e4e4e7);
+  filter: drop-shadow(0 2px 6px rgba(15, 15, 30, 0.1));
+  transition:
+    stroke 160ms ease,
+    fill 160ms ease;
+}
+.azra .ez-mpi-acceso:hover .ez-mpi-chip,
+.azra .ez-mpi-acceso.ez-mp-elegido .ez-mpi-chip {
+  stroke: var(--mp-ruta);
+}
+.azra .ez-mpi-acceso:focus-visible .ez-mpi-chip {
+  stroke: var(--mp-ruta);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+.azra .ez-mpi-sigla-fondo {
+  fill: #0ea5e9;
+}
+.azra .ez-mpi-aeropuerto .ez-mpi-sigla-fondo {
+  fill: var(--mp-ruta);
+}
+.azra .ez-mpi-honduras .ez-mpi-sigla-fondo {
+  fill: #7c5cff;
+}
+/* Cada puesto lleva el color de su acceso (se agrupan sin líneas que crucen el país). */
+.azra .ez-mpi-guatemala .ez-mpi-puesto {
+  fill: #0ea5e9;
+}
+.azra .ez-mpi-honduras .ez-mpi-puesto {
+  fill: #7c5cff;
+}
+.azra .ez-mpi-acceso:hover .ez-mpi-anillo,
+.azra .ez-mpi-acceso.ez-mp-elegido .ez-mpi-anillo {
+  opacity: 1;
+}
+.azra .ez-mpi-sigla {
+  fill: #fff;
+  font-weight: 700;
+}
+.azra .ez-mpi-nombre {
+  fill: var(--mp-texto);
+  font-weight: 600;
+}
+
+.azra .ez-mpi-pulso path {
+  fill: none;
+  stroke: var(--mp-ruta);
+  stroke-linecap: round;
+}
+/* Estela muy fina: se dibuja con el pulso y se borra detrás de él. */
+.azra .ez-mpi-estela {
+  stroke-dasharray: 0.5 2;
+  stroke-dashoffset: 0.5;
+  opacity: 0;
+  animation: ez-mpi-estela 2s cubic-bezier(0.45, 0, 0.25, 1) var(--t) both;
+}
+@keyframes ez-mpi-estela {
+  0% {
+    stroke-dashoffset: 0.5;
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.7;
+  }
+  70% {
+    opacity: 0.55;
+  }
+  100% {
+    stroke-dashoffset: -1;
+    opacity: 0;
+  }
+}
+/* El pulso: indica la dirección (de afuera hacia adentro). */
+.azra .ez-mpi-punto {
+  stroke-dasharray: 0.001 2;
+  stroke-dashoffset: 0.001;
+  opacity: 0;
+  animation: ez-mpi-tierra 2s cubic-bezier(0.45, 0, 0.25, 1) var(--t) both;
+}
+@keyframes ez-mpi-tierra {
+  0% {
+    stroke-dashoffset: 0.001;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -0.999;
+    opacity: 0;
+  }
+}
+.azra .ez-mpi-aereo .ez-mpi-punto {
+  animation-name: ez-mpi-aire;
+}
+@keyframes ez-mpi-aire {
+  0% {
+    stroke-dashoffset: 0.001;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  88% {
+    stroke-dashoffset: -0.999;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -0.999;
+    opacity: 0;
+  }
+}
+.azra .ez-mpi-pulso .ez-mpi-brillo {
+  stroke: var(--mp-halo);
+}
+/* Halo tenue al cerrar cada recorrido. */
+.azra .ez-mpi-halo {
+  fill: none;
+  stroke: var(--mp-ruta);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ez-mpi-halo 800ms ease-out calc(var(--t) + 1.65s) both;
+}
+@keyframes ez-mpi-halo {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  20% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+/* Movimiento reducido: recorridos estáticos y tenues, sin pulsos. */
+.azra .ez-mpi-estaticos path {
+  fill: none;
+  stroke: var(--mp-ruta);
+  stroke-linecap: round;
+  opacity: 0.45;
+}
+.azra .ez-mpi-aviso {
+  position: absolute;
+  left: 0;
+  bottom: 2%;
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--ep-superficie-2, rgba(15, 15, 20, 0.05));
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+.azra .ez-mpi-aviso span {
+  color: var(--ep-texto-2);
+  font-weight: 600;
+}
+
+/* ── Panel: lateral en escritorio, inferior en móvil ── */
+.azra .ez-mpv-panel {
+  contain: size;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ep-borde);
+  border-radius: 20px;
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra);
+  font-family: var(--ez-fuente);
+  opacity: 0;
+  transform: translateX(24px);
+  visibility: hidden;
+  transition:
+    opacity 260ms ease,
+    transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 360ms;
+}
+.azra .ez-mp-amplio .ez-mpv-panel {
+  width: 344px;
+  margin-left: 16px;
+}
+.azra .ez-mpv-panel[data-abierto] {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition:
+    opacity 260ms ease 80ms,
+    transform 360ms cubic-bezier(0.22, 1, 0.36, 1) 40ms,
+    visibility 0s;
+}
+.azra .ez-mpv-panel header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid var(--ep-borde);
+}
+.azra .ez-mpv-panel h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  outline: none;
+}
+.azra .ez-mpv-panel header p {
+  margin: 2px 0 0;
+  color: var(--ep-suave);
+  font-size: 12.5px;
+}
+.azra .ez-mpv-panel-cuerpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 18px 18px;
+  overscroll-behavior: contain;
+}
+.azra .ez-mp-angosto .ez-mpv-panel {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 70;
+  contain: none;
+  max-height: 58vh;
+  border-radius: 22px 22px 0 0;
+  border-bottom: 0;
+  transform: translateY(100%);
+  box-shadow: 0 -12px 40px rgba(15, 15, 30, 0.18);
+}
+.azra .ez-mp-angosto .ez-mpv-panel[data-abierto] {
+  transform: none;
+}
+.azra .ez-mp-angosto .ez-mpv-panel header::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  border-radius: 4px;
+  background: var(--ep-borde);
+}
+
+/* Agenda */
+.azra .ez-mpv-agenda {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .ez-mpv-agenda li {
+  display: grid;
+  gap: 3px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ep-borde);
+}
+.azra .ez-mpv-agenda li:last-child {
+  border-bottom: 0;
+}
+.azra .ez-mpv-cuando {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  color: var(--mp-ruta);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.azra .ez-mpv-cuando span {
+  color: var(--ep-texto-2);
+}
+.azra .ez-mpv-agenda strong {
+  font-size: 14px;
+  line-height: 1.3;
+}
+.azra .ez-mpv-lugar {
+  color: var(--ep-texto-2);
+  font-size: 12.5px;
+}
+.azra .ez-mpv-agenda a,
+.azra .ez-mpv-fuente a,
+.azra .ez-mpv-metrica a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: fit-content;
+  color: var(--ep-suave);
+  font-size: 12px;
+  text-decoration: underline;
+  text-decoration-color: var(--ep-borde);
+  text-underline-offset: 2px;
+}
+.azra .ez-mpv-agenda a:hover {
+  color: var(--ep-texto);
+}
+.azra .ez-mpv-vacio {
+  margin: 14px 0;
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+
+/* Detalle de acceso y de población */
+.azra .ez-mpv-acceso {
+  display: grid;
+  gap: 14px;
+  padding-top: 10px;
+}
+.azra .ez-mpv-periodo {
+  width: fit-content;
+}
+.azra .ez-mpv-periodo button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.azra .ez-mpv-metrica {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--ep-superficie-2);
+}
+.azra .ez-mpv-metrica > span {
+  color: var(--ep-texto-2);
+  font-size: 12.5px;
+}
+.azra .ez-mpv-metrica strong {
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.azra .ez-mpv-metrica strong em {
+  color: var(--ep-texto-2);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 500;
+}
+.azra .ez-mpv-metrica .ez-mpv-nd {
+  color: var(--ep-suave);
+  font-size: 15px;
+  font-weight: 600;
+}
+.azra .ez-mpv-metrica small {
+  color: var(--ep-suave);
+  font-size: 11.5px;
+}
+.azra .ez-mpv-puestos {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .ez-mpv-puestos li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ep-borde);
+  font-size: 13px;
+}
+.azra .ez-mpv-puestos span {
+  grid-column: 1;
+  color: var(--ep-texto-2);
+  font-size: 12px;
+}
+.azra .ez-mpv-puestos small {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  color: var(--ep-suave);
+  font-size: 11.5px;
+  text-align: right;
+}
+.azra .ez-mpv-recorrido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.azra .ez-mpv-recorrido .ez-boton-blanco {
+  min-height: 32px;
+  font-size: 12.5px;
+}
+.azra .ez-mpv-ilustrativa {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--ep-superficie-2);
+  color: var(--ep-suave);
+  font-size: 11.5px;
+}
+.azra .ez-mpv-fuente {
+  margin: 0;
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-mp-escenario,
+  .azra .ez-mpv-panel,
+  .azra .ez-mp-puntos circle {
+    transition: none !important;
+  }
+}

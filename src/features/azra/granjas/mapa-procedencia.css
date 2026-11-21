@@ -8,8 +8,8 @@
   --mp-cifra: #ffffff;
   --mp-borde-nodo: #ffffff;
   --mp-halo: rgba(77, 104, 255, 0.28);
-  --mp-linea-hub: rgba(77, 104, 255, 0.75);
-  --mp-linea-depto: rgba(77, 104, 255, 0.22);
+  --mp-linea-hub: rgba(77, 104, 255, 0.42);
+  --mp-linea-depto: rgba(77, 104, 255, 0.12);
   --mp-fantasma: rgba(77, 104, 255, 0.45);
   --mp-ruta: #4d68ff;
   --mp-ruta-tenue: rgba(77, 104, 255, 0.18);
@@ -35,8 +35,8 @@
   --mp-cifra: #0b0b14;
   --mp-borde-nodo: #202124;
   --mp-halo: rgba(80, 112, 255, 0.45);
-  --mp-linea-hub: rgba(168, 188, 255, 0.8);
-  --mp-linea-depto: rgba(168, 188, 255, 0.2);
+  --mp-linea-hub: rgba(168, 188, 255, 0.45);
+  --mp-linea-depto: rgba(168, 188, 255, 0.12);
   --mp-fantasma: rgba(168, 188, 255, 0.5);
   --mp-ruta: #b4c4ff;
   --mp-ruta-tenue: rgba(168, 188, 255, 0.2);
@@ -182,7 +182,7 @@
 }
 @keyframes ez-mp-encender {
   to {
-    opacity: 0.7;
+    opacity: 0.45;
   }
 }
 @keyframes ez-mp-fluir {

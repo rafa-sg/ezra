@@ -160,7 +160,8 @@ export function DatosYConexiones({ tr, fecha }: { tr: Tr; fecha: (iso: string) =
         </p>
       </div>
 
-      {datos && seleccion && (
+      {/* Un departamento abre su agenda sobre el mapa; aquí solo el detalle de lo demás. */}
+      {datos && seleccion && seleccion.tipo !== "departamento" && (
         <PanelDetalle
           datos={datos}
           seleccion={seleccion}

@@ -1,6 +1,7 @@
 "use client";
 import {
   memo,
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -12,7 +13,23 @@ import {
 } from "react";
 import { ChevronDown } from "lucide-react";
 import type { Trazabilidad } from "@/lib/granjas/trazabilidad";
-import { GEOGRAFIA, type Punto } from "@/lib/granjas/geografia-sv";
+import { HUB, VB, X_PAIS, geo, geometriaAccesos } from "./mapa-geo";
+import { agendaVigente } from "@/lib/granjas/agenda-mapa";
+import { ACCESOS, POBLACION_2024 } from "@/lib/granjas/datos-pais";
+import { diaLocal } from "@/lib/granjas/tiempo";
+import {
+  AgendaDepto,
+  CapaAccesos,
+  DetalleAcceso,
+  DetallePoblacion,
+  PanelMapa,
+  PulsosIngreso,
+  SelectorVista,
+  nivelesPoblacion,
+  useImanes,
+  type Panel,
+  type Vista,
+} from "./mapa-capas";
 import "./mapa-procedencia.css";
 
 type Tr = (c: string) => string;
@@ -40,65 +57,6 @@ export const nombresCanal: Record<string, string> = {
 };
 const SIN = "sin_ubicacion";
 
-/* ── Proyección (equirrectangular corregida por latitud; a 13,7° la distorsión no se nota) ── */
-const LNG0 = -90.16;
-const LAT0 = 14.47;
-const ESC = 270;
-const COS = Math.cos((13.7 * Math.PI) / 180);
-const proyectar = (p: Punto): [number, number] => [
-  300 + (p.lng - LNG0) * ESC * COS,
-  230 + (LAT0 - p.lat) * ESC,
-];
-function dentroDe(x: number, y: number, anillo: [number, number][]) {
-  let si = false;
-  for (let i = 0, j = anillo.length - 1; i < anillo.length; j = i++) {
-    const [xi, yi] = anillo[i];
-    const [xj, yj] = anillo[j];
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) si = !si;
-  }
-  return si;
-}
-function centroide(anillos: [number, number][][]): [number, number] {
-  const pts = [...anillos].sort((a, b) => b.length - a.length)[0];
-  let [x, y, area] = [0, 0, 0];
-  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-    const f = pts[j][0] * pts[i][1] - pts[i][0] * pts[j][1];
-    area += f;
-    x += (pts[j][0] + pts[i][0]) * f;
-    y += (pts[j][1] + pts[i][1]) * f;
-  }
-  return area ? [x / (3 * area), y / (3 * area)] : pts[0];
-}
-/** Matriz de puntos (cada punto sabe a qué departamento real pertenece) y el centro de cada departamento. */
-let geoCache: {
-  puntos: { x: number; y: number; d: string }[];
-  centros: Record<string, [number, number]>;
-} | null = null;
-function geo() {
-  if (geoCache) return geoCache;
-  const deptos = Object.values(GEOGRAFIA).map((d) => ({
-    nombre: d.nombre,
-    anillos: d.anillos.map((a) => a.map(proyectar)),
-  }));
-  const todos = deptos.flatMap((d) => d.anillos.flat());
-  const [x0, x1] = [Math.min(...todos.map((p) => p[0])), Math.max(...todos.map((p) => p[0]))];
-  const [y0, y1] = [Math.min(...todos.map((p) => p[1])), Math.max(...todos.map((p) => p[1]))];
-  const puntos: { x: number; y: number; d: string }[] = [];
-  for (let y = y0; y <= y1; y += 7.5)
-    for (let x = x0; x <= x1; x += 7.5) {
-      const d = deptos.find((dep) => dep.anillos.some((a) => dentroDe(x, y, a)));
-      if (d) puntos.push({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, d: d.nombre });
-    }
-  geoCache = {
-    puntos,
-    centros: Object.fromEntries(deptos.map((d) => [d.nombre, centroide(d.anillos)])),
-  };
-  return geoCache;
-}
-/** El país con espacio arriba para ezrá. */
-const VB: [number, number, number, number] = [292, 112, 676, 490];
-const HUB: [number, number] = [630, 150];
-const X_PAIS: [number, number] = [308, 951];
 /** Con este ancho o más, el listado va abierto debajo del mapa; si no, se pliega. */
 const ANCHO_AMPLIO = 760;
 
@@ -305,11 +263,31 @@ export function MapaProcedencia({
   const fijo = focoDeSeleccion(seleccion);
   const al = datos && rel ? alcance(datos, rel, fijo, seleccion) : null;
   const claveSel = claveFoco(fijo);
+  const [vista, setVistaEstado] = useState<Vista>("eventos");
+  const [panel, setPanel] = useState<Panel>(null);
+  const [corrida, setCorrida] = useState(0);
+  const [soloAcceso, setSoloAcceso] = useState<(typeof ACCESOS)[number]["id"] | null>(null);
+  const hoy = diaLocal();
+  // Un solo origen para el marcador y su agenda: eventos confirmados, vigentes y sin duplicados.
+  const agenda = useMemo(() => (datos ? agendaVigente(datos.eventos, hoy) : null), [datos, hoy]);
+  const departamentosVista = useMemo(() => {
+    if (!datos) return [];
+    if (metrica !== "eventos" || !agenda) return datos.departamentos;
+    const base = new Map(datos.departamentos.map((d) => [d.nombre, d]));
+    return [...new Set([...base.keys(), ...agenda.keys()])].map((n) => ({
+      nombre: n,
+      eventos: agenda.get(n)?.length ?? 0,
+      contenidos: base.get(n)?.contenidos ?? 0,
+    }));
+  }, [datos, agenda, metrica]);
+  const geos = geometriaAccesos();
+  const niveles = useMemo(() => nivelesPoblacion(), []);
 
   // Tamaños pensados en píxeles de pantalla (legibles a cualquier ancho), pasados a unidades del mapa.
   const escala = Math.max(0.3, (anchoMapa || 900) / VB[2]);
   const conNumeros = escala >= 0.72;
-  const por = new Map((datos?.departamentos ?? []).map((d) => [d.nombre, d]));
+  const imanes = useImanes(escala, reducido);
+  const por = new Map(departamentosVista.map((d) => [d.nombre, d]));
   const deptos = [...por.values()]
     .filter((d) => d.nombre !== SIN && d[metrica] > 0 && centros[d.nombre])
     .sort((a, b) => b[metrica] - a[metrica]);
@@ -324,18 +302,98 @@ export function MapaProcedencia({
   const [hw, hh] = [46 / escala, 17 / escala];
   const salida: [number, number] = [HUB[0], HUB[1] + hh];
 
-  // Escape quita la selección cuando el foco está dentro del mapa o su listado.
+  const clavePanel = !panel
+    ? ""
+    : panel.tipo === "acceso"
+      ? `a:${panel.id}`
+      : panel.tipo === "poblacion"
+        ? `h:${panel.nombre}`
+        : `p:${panel.nombre}`;
+  /** Cierra la agenda o el detalle y devuelve el foco al marcador (o fila) que lo abrió. */
+  const cerrarPanel = useCallback(() => {
+    const k = clavePanel;
+    setPanel(null);
+    setSeleccion(null);
+    setSoloAcceso(null);
+    if (k)
+      requestAnimationFrame(() =>
+        document
+          .querySelector<HTMLElement>(
+            `[data-mapa="${uid}"] :is([data-foco="${k}"], [data-fila="${k}"])`,
+          )
+          ?.focus({ preventScroll: true }),
+      );
+  }, [clavePanel, setSeleccion, setSoloAcceso, uid]);
+  // Escape cierra el panel o quita la selección cuando el foco está dentro del mapa o su listado.
   useEffect(() => {
-    if (!claveSel) return;
+    if (!claveSel && !clavePanel) return;
     const tecla = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Escape" && contenedor.current?.contains(document.activeElement))
-        setSeleccion(null);
+      if (e.key === "Escape" && contenedor.current?.contains(document.activeElement)) cerrarPanel();
     };
     document.addEventListener("keydown", tecla);
     return () => document.removeEventListener("keydown", tecla);
-  }, [claveSel, setSeleccion, contenedor]);
+  }, [claveSel, clavePanel, cerrarPanel, contenedor]);
+  /** En móvil el panel sube desde abajo: se desplaza la página para que el marcador quede visible arriba. */
+  const mostrarArriba = (k: string) => {
+    if (amplio) return;
+    requestAnimationFrame(() => {
+      const el = document.querySelector(
+        `[data-mapa="${uid}"] :is([data-foco="${k}"], [data-fila="${k}"])`,
+      );
+      const r = el?.getBoundingClientRect();
+      if (r && r.bottom > window.innerHeight * 0.4)
+        window.scrollBy({
+          top: r.top - window.innerHeight * 0.18,
+          behavior: reducido ? "auto" : "smooth",
+        });
+    });
+  };
+  const setVista = (v: Vista) => {
+    setVistaEstado(v);
+    setPanel(null);
+    setSeleccion(null);
+    setSoloAcceso(null);
+    if (v === "ingresos") setCorrida((c) => c + 1);
+  };
 
-  const elegir = (f: Foco) => setSeleccion(claveFoco(f) === claveSel ? null : seleccionDe(f));
+  const elegir = (f: Foco) => {
+    // Un departamento (o «sin ubicación») abre su agenda; elegirlo otra vez la cierra.
+    if (f.tipo === "departamento") {
+      const k = claveFoco(f);
+      if (k === clavePanel) return cerrarPanel();
+      setSeleccion(seleccionDe(f));
+      setPanel({ tipo: "depto", nombre: f.nombre });
+      mostrarArriba(k);
+      return;
+    }
+    setPanel(null);
+    setSeleccion(claveFoco(f) === claveSel ? null : seleccionDe(f));
+  };
+  const elegirAcceso = (id: (typeof ACCESOS)[number]["id"]) => {
+    if (clavePanel === `a:${id}`) return cerrarPanel();
+    setPanel({ tipo: "acceso", id });
+    setSoloAcceso(id);
+    setCorrida((c) => c + 1);
+    mostrarArriba(`a:${id}`);
+  };
+  const elegirPoblacion = (nombre: string) => {
+    if (clavePanel === `h:${nombre}`) return cerrarPanel();
+    setPanel({ tipo: "poblacion", nombre });
+    mostrarArriba(`h:${nombre}`);
+  };
+  const boton = (accion: () => void, etiqueta: string, presionado: boolean) => ({
+    tabIndex: 0,
+    role: "button" as const,
+    "aria-label": etiqueta,
+    "aria-pressed": presionado,
+    onClick: accion,
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        accion();
+      }
+    },
+  });
   /** Pasar el cursor resalta sin mover nada; clic, toque o Enter fijan la selección. */
   const explorable = (f: Foco, etiqueta: string) => ({
     tabIndex: 0,
@@ -380,6 +438,26 @@ export function MapaProcedencia({
   // Hacia un destino, el recorrido va del departamento a ezrá; en lo demás, de ezrá al departamento.
   const rutas = al?.hay ? deptos.filter((d) => al.deptos.has(d.nombre)) : [];
   const haciaEzra = fijo?.tipo === "destino";
+
+  const accesoAbierto =
+    panel?.tipo === "acceso" ? (ACCESOS.find((a) => a.id === panel.id) ?? null) : null;
+  const nAgenda = panel?.tipo === "depto" ? (agenda?.get(panel.nombre)?.length ?? 0) : 0;
+  const tituloPanel = !panel
+    ? ""
+    : panel.tipo === "acceso"
+      ? (accesoAbierto?.nombre ?? "")
+      : panel.nombre === SIN
+        ? tr("ez_mapa_sinUbicacion")
+        : panel.nombre;
+  const subtituloPanel = !panel
+    ? undefined
+    : panel.tipo === "depto"
+      ? `${nAgenda} ${tr(nAgenda === 1 ? "ez_mpv_eventoVigente" : "ez_mpv_eventosVigentes")}`
+      : panel.tipo === "poblacion"
+        ? tr("ez_mpv_departamento")
+        : accesoAbierto?.tipo === "aereo"
+          ? tr("ez_mpv_entradaAerea")
+          : `${accesoAbierto?.puestos.length ?? 0} ${tr("ez_mpv_puestos")}`;
 
   const listado = (
     <>
@@ -452,201 +530,334 @@ export function MapaProcedencia({
   return (
     <div
       ref={contenedor}
+      data-mapa={uid}
       className={`ez-mp ${amplio ? "ez-mp-amplio" : "ez-mp-angosto"}`}
       data-cargando={cargando || !datos ? "" : undefined}
       aria-busy={cargando || !datos}
     >
-      <div ref={escena} className="ez-mp-escena">
-        <svg
-          viewBox={VB.join(" ")}
-          role="group"
-          aria-label={`${tr("ez_dc_mapaAlt")}. ${deptos.map((d) => `${d.nombre} ${d[metrica]}`).join(", ")}.`}
-        >
-          <defs>
-            <filter id={`${uid}-brillo`} x="-200%" y="-200%" width="500%" height="500%">
-              <feGaussianBlur stdDeviation={5 / escala} />
-            </filter>
-            <linearGradient
-              id={`${uid}-linea`}
-              gradientUnits="userSpaceOnUse"
-              x1="0"
-              y1={HUB[1]}
-              x2="0"
-              y2={VB[1] + VB[3]}
-            >
-              <stop offset="0" className="ez-mp-linea-hub" />
-              <stop offset="1" className="ez-mp-linea-depto" />
-            </linearGradient>
-          </defs>
-          {/* 1 · El país, en ola. Tocar un punto de un departamento con datos lo elige. */}
-          <g
-            className="ez-mp-puntos"
-            aria-hidden="true"
-            onClick={(e) => {
-              const d = (e.target as Element).getAttribute("data-d");
-              if (d && deptosConDatos.has(d)) elegir({ tipo: "departamento", nombre: d });
-            }}
+      <div className="ez-mp-escenario" data-panel={panel ? "" : undefined}>
+        <div ref={escena} className="ez-mp-escena" data-vista={vista}>
+          <SelectorVista vista={vista} setVista={setVista} tr={tr} />
+          <svg
+            viewBox={VB.join(" ")}
+            role="group"
+            aria-label={
+              vista === "eventos"
+                ? `${tr("ez_dc_mapaAlt")}. ${deptos.map((d) => `${d.nombre} ${d[metrica]}`).join(", ")}.`
+                : tr(vista === "ingresos" ? "ez_mpv_altIngresos" : "ez_mpv_altPoblacion")
+            }
+            {...imanes.manejadores}
           >
-            <PuntosPais activos={claveActivos} conDatos={claveDatos} />
-          </g>
-
-          {/* 2a · Cargando: líneas fantasma de ezrá a los 14 departamentos y anillos donde irán los marcadores. */}
-          {!datos && (
-            <g className="ez-mp-fantasmas" aria-hidden="true">
-              {Object.entries(centros).map(([n, c], i) => (
-                <g key={n} style={{ ["--i" as string]: i }}>
-                  <path d={curva(salida, c)} pathLength={1} strokeWidth={1.5 / escala} />
-                  <circle cx={c[0]} cy={c[1]} r={9 / escala} strokeWidth={1.5 / escala} />
-                </g>
-              ))}
+            <defs>
+              <filter id={`${uid}-brillo`} x="-200%" y="-200%" width="500%" height="500%">
+                <feGaussianBlur stdDeviation={5 / escala} />
+              </filter>
+              <linearGradient
+                id={`${uid}-linea`}
+                gradientUnits="userSpaceOnUse"
+                x1="0"
+                y1={HUB[1]}
+                x2="0"
+                y2={VB[1] + VB[3]}
+              >
+                <stop offset="0" className="ez-mp-linea-hub" />
+                <stop offset="1" className="ez-mp-linea-depto" />
+              </linearGradient>
+            </defs>
+            {/* 1 · El país, en ola. Tocar un punto de un departamento con datos lo elige. */}
+            <g
+              className="ez-mp-puntos"
+              aria-hidden="true"
+              onClick={(e) => {
+                const d = (e.target as Element).getAttribute("data-d");
+                if (!d) return;
+                if (vista === "poblacion") elegirPoblacion(d);
+                else if (vista === "eventos" && deptosConDatos.has(d))
+                  elegir({ tipo: "departamento", nombre: d });
+              }}
+            >
+              <PuntosPais
+                activos={
+                  vista === "eventos"
+                    ? claveActivos
+                    : panel?.tipo === "poblacion"
+                      ? panel.nombre
+                      : ""
+                }
+                conDatos={vista === "eventos" ? claveDatos : ""}
+                niveles={vista === "poblacion" ? niveles : ""}
+              />
             </g>
-          )}
+            {imanes.halo && (
+              <circle
+                key={imanes.halo.k}
+                cx={imanes.halo.x}
+                cy={imanes.halo.y}
+                r={40 / escala}
+                className="ez-mp-toque"
+                onAnimationEnd={imanes.terminarHalo}
+                aria-hidden="true"
+              />
+            )}
 
-          {/* 2b · Conexiones de ezrá a cada departamento con eventos (por debajo de los marcadores). */}
-          {datos && (
-            <g className="ez-mp-lineas" aria-hidden="true">
-              {deptos.map((d, i) => {
-                const camino = curva(salida, centros[d.nombre]);
-                const clase = `${al?.hay && !al.deptos.has(d.nombre) ? "ez-mp-tenue" : ""} ${claveFoco(previa) === `p:${d.nombre}` ? "ez-mp-sobre" : ""}`;
-                return (
-                  <g key={d.nombre} className={clase} style={{ ["--i" as string]: i }}>
-                    <path
-                      d={camino}
-                      pathLength={1}
-                      stroke={`url(#${uid}-linea)`}
-                      strokeWidth={(1 + Math.sqrt(d[metrica] / max) * 1.4) / escala}
-                      className="ez-mp-linea"
-                    />
-                    {/* Flujo discreto: pequeños tramos que bajan de ezrá (solo con lecturas recientes y sin selección). */}
-                    {hayActividad && !reducido && !al?.hay && (
+            {/* 2a · Cargando: líneas fantasma de ezrá a los 14 departamentos y anillos donde irán los marcadores. */}
+            {vista === "eventos" && !datos && (
+              <g className="ez-mp-fantasmas" aria-hidden="true">
+                {Object.entries(centros).map(([n, c], i) => (
+                  <g key={n} style={{ ["--i" as string]: i }}>
+                    <path d={curva(salida, c)} pathLength={1} strokeWidth={1.5 / escala} />
+                    <circle cx={c[0]} cy={c[1]} r={9 / escala} strokeWidth={1.5 / escala} />
+                  </g>
+                ))}
+              </g>
+            )}
+
+            {/* 2b · Conexiones de ezrá a cada departamento con eventos (por debajo de los marcadores). */}
+            {vista === "eventos" && datos && (
+              <g className="ez-mp-lineas" aria-hidden="true">
+                {deptos.map((d, i) => {
+                  const camino = curva(salida, centros[d.nombre]);
+                  const clase = `${al?.hay && !al.deptos.has(d.nombre) ? "ez-mp-tenue" : ""} ${claveFoco(previa) === `p:${d.nombre}` ? "ez-mp-sobre" : ""}`;
+                  return (
+                    <g key={d.nombre} className={clase} style={{ ["--i" as string]: i }}>
                       <path
                         d={camino}
                         pathLength={1}
-                        strokeWidth={1.6 / escala}
-                        className="ez-mp-flujo"
+                        stroke={`url(#${uid}-linea)`}
+                        strokeWidth={(1 + Math.sqrt(d[metrica] / max) * 1.4) / escala}
+                        className="ez-mp-linea"
                       />
-                    )}
-                  </g>
-                );
-              })}
-            </g>
-          )}
-          {/* Selección: el recorrido se dibuja una vez y queda; cambiar de selección cancela el anterior. */}
-          {datos && rutas.length > 0 && (
-            <g className="ez-mp-rutas" aria-hidden="true" key={claveSel || "sel"}>
-              {rutas.map((d, i) => {
-                const fin = centros[d.nombre];
-                const r = radio(d[metrica]) + 3 / escala;
-                const llegada: [number, number] = [fin[0], fin[1] - r];
-                const camino = haciaEzra ? curvaInversa(llegada, salida) : curva(salida, llegada);
-                return (
-                  <g key={d.nombre} className="ez-mp-ruta" style={{ ["--i" as string]: i }}>
-                    <path
-                      d={camino}
-                      pathLength={1}
-                      strokeWidth={(2 + Math.sqrt(d[metrica] / max) * 1.6) / escala}
-                    />
-                    <Cabeza
-                      d={camino}
-                      fin={haciaEzra ? salida : llegada}
-                      retraso={i * 0.05}
-                      reducido={reducido}
-                      r={3.6 / escala}
-                    />
-                  </g>
-                );
-              })}
-            </g>
-          )}
+                      {/* Flujo discreto: pequeños tramos que bajan de ezrá (solo con lecturas recientes y sin selección). */}
+                      {hayActividad && !reducido && !al?.hay && (
+                        <path
+                          d={camino}
+                          pathLength={1}
+                          strokeWidth={1.6 / escala}
+                          className="ez-mp-flujo"
+                        />
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
+            )}
+            {/* Selección: el recorrido se dibuja una vez y queda; cambiar de selección cancela el anterior. */}
+            {vista === "eventos" && datos && rutas.length > 0 && (
+              <g className="ez-mp-rutas" aria-hidden="true" key={claveSel || "sel"}>
+                {rutas.map((d, i) => {
+                  const fin = centros[d.nombre];
+                  const r = radio(d[metrica]) + 3 / escala;
+                  const llegada: [number, number] = [fin[0], fin[1] - r];
+                  const camino = haciaEzra ? curvaInversa(llegada, salida) : curva(salida, llegada);
+                  return (
+                    <g key={d.nombre} className="ez-mp-ruta" style={{ ["--i" as string]: i }}>
+                      <path
+                        d={camino}
+                        pathLength={1}
+                        strokeWidth={(2 + Math.sqrt(d[metrica] / max) * 1.6) / escala}
+                      />
+                      <Cabeza
+                        d={camino}
+                        fin={haciaEzra ? salida : llegada}
+                        retraso={i * 0.05}
+                        reducido={reducido}
+                        r={3.6 / escala}
+                      />
+                    </g>
+                  );
+                })}
+              </g>
+            )}
 
-          {/* 3 · Marcadores, del mayor al menor, con su conteo dentro. */}
-          <g className="ez-mp-marcadores">
-            {deptos.map((d, i) => {
-              const [x, y] = centros[d.nombre];
-              const r = radio(d[metrica]);
-              return (
-                <g
-                  key={d.nombre}
-                  data-depto={d.nombre}
-                  className={`ez-mp-marcador ${estado(`p:${d.nombre}`, Boolean(al?.deptos.has(d.nombre)))}`}
-                  style={{ ["--i" as string]: i, transformOrigin: `${x}px ${y}px` }}
-                  {...explorable(
-                    { tipo: "departamento", nombre: d.nombre },
-                    `${d.nombre}: ${d[metrica]} ${unidad}`,
-                  )}
-                >
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={r * 1.9}
-                    className="ez-mp-halo"
-                    filter={`url(#${uid}-brillo)`}
-                  />
-                  <circle cx={x} cy={y} r={r + 4 / escala} className="ez-mp-anillo" />
-                  <circle cx={x} cy={y} r={r} className="ez-mp-nucleo" />
-                  {conNumeros && (
-                    <text
-                      x={x}
-                      y={y}
-                      dy="0.36em"
-                      textAnchor="middle"
-                      fontSize={Math.min(12.5, r * escala * 0.95) / escala}
-                      className="ez-mp-cifra"
+            {/* 3 · Marcadores, del mayor al menor, con su conteo dentro. */}
+            {vista === "eventos" && (
+              <g className="ez-mp-marcadores">
+                {deptos.map((d, i) => {
+                  const [x, y] = centros[d.nombre];
+                  const r = radio(d[metrica]);
+                  return (
+                    <g
+                      key={d.nombre}
+                      data-depto={d.nombre}
+                      data-foco={`p:${d.nombre}`}
+                      className={`ez-mp-marcador ${estado(`p:${d.nombre}`, Boolean(al?.deptos.has(d.nombre)))}`}
+                      style={{ ["--i" as string]: i, transformOrigin: `${x}px ${y}px` }}
+                      {...explorable(
+                        { tipo: "departamento", nombre: d.nombre },
+                        `${d.nombre}: ${d[metrica]} ${unidad}`,
+                      )}
                     >
-                      <Conteo valor={d[metrica]} reducido={reducido} />
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          </g>
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={r * 1.9}
+                        className="ez-mp-halo"
+                        filter={`url(#${uid}-brillo)`}
+                      />
+                      <circle cx={x} cy={y} r={r + 4 / escala} className="ez-mp-anillo" />
+                      <circle cx={x} cy={y} r={r} className="ez-mp-nucleo" />
+                      {conNumeros && (
+                        <text
+                          x={x}
+                          y={y}
+                          dy="0.36em"
+                          textAnchor="middle"
+                          fontSize={Math.min(12.5, r * escala * 0.95) / escala}
+                          className="ez-mp-cifra"
+                        >
+                          <Conteo valor={d[metrica]} reducido={reducido} />
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
+            )}
 
-          {/* 4 · ezrá, en el centro. Late mientras cargan los datos. */}
-          <g className={`ez-mp-hub ${!datos ? "ez-mp-hub-cargando" : ""}`} aria-hidden="true">
-            <circle
-              cx={HUB[0]}
-              cy={HUB[1]}
-              r={34 / escala}
-              className="ez-mp-halo"
-              filter={`url(#${uid}-brillo)`}
+            {/* Ingresos: los tres accesos con sus puestos reales y los pulsos de llegada, por turnos. */}
+            {vista === "ingresos" && (
+              <>
+                <CapaAccesos
+                  geos={geos}
+                  escala={escala}
+                  elegido={panel?.tipo === "acceso" ? panel.id : null}
+                  explorable={(g) =>
+                    boton(
+                      () => elegirAcceso(g.acceso.id),
+                      `${g.acceso.nombre}: ${g.acceso.puestos.map((p) => p.nombre).join(", ")}`,
+                      clavePanel === `a:${g.acceso.id}`,
+                    )
+                  }
+                />
+                {!reducido ? (
+                  <PulsosIngreso key={corrida} geos={geos} solo={soloAcceso} escala={escala} />
+                ) : (
+                  <g className="ez-mpi-estaticos" aria-hidden="true">
+                    {geos
+                      .filter((g) => !soloAcceso || g.acceso.id === soloAcceso)
+                      .flatMap((g) => g.puestos)
+                      .map((p) => (
+                        <path key={p.id} d={p.camino} strokeWidth={1.2 / escala} />
+                      ))}
+                  </g>
+                )}
+              </>
+            )}
+
+            {/* Población: un punto de acceso por departamento (los puntos del país cambian de intensidad). */}
+            {vista === "poblacion" && (
+              <g className="ez-mph-marcadores">
+                {Object.entries(centros).map(([n, [x, y]]) => {
+                  const k = `h:${n}`;
+                  const v = POBLACION_2024.departamentos[n];
+                  return (
+                    <g
+                      key={n}
+                      data-foco={k}
+                      className={`ez-mph-marcador ${clavePanel === k ? "ez-mp-elegido" : ""}`}
+                      {...boton(
+                        () => elegirPoblacion(n),
+                        `${n}: ${v ? `${v.toLocaleString("es-SV")} ${tr("ez_mpv_habitantes")}` : tr("ez_mpv_sinDatos")}`,
+                        clavePanel === k,
+                      )}
+                    >
+                      <circle cx={x} cy={y} r={14 / escala} className="ez-mph-zona" />
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={4.5 / escala}
+                        className="ez-mph-punto"
+                        strokeWidth={2 / escala}
+                      />
+                    </g>
+                  );
+                })}
+              </g>
+            )}
+
+            {/* 4 · ezrá, en el centro. Late mientras cargan los datos. */}
+            <g className={`ez-mp-hub ${!datos ? "ez-mp-hub-cargando" : ""}`} aria-hidden="true">
+              <circle
+                cx={HUB[0]}
+                cy={HUB[1]}
+                r={34 / escala}
+                className="ez-mp-halo"
+                filter={`url(#${uid}-brillo)`}
+              />
+              <rect x={HUB[0] - hw} y={HUB[1] - hh} width={hw * 2} height={hh * 2} rx={hh} />
+              <text x={HUB[0]} y={HUB[1]} dy="0.36em" textAnchor="middle" fontSize={17 / escala}>
+                ezrá
+              </text>
+              <circle cx={salida[0]} cy={salida[1]} r={3 / escala} className="ez-mp-puerto" />
+            </g>
+
+            <g className="ez-mp-nombres" aria-hidden="true">
+              {(vista === "eventos"
+                ? nombres
+                : vista === "poblacion" && panel?.tipo === "poblacion"
+                  ? [panel.nombre]
+                  : []
+              ).map((n) => {
+                const [x, y] = centros[n];
+                const v = por.get(n)?.[metrica] ?? 0;
+                const r = radio(v);
+                return (
+                  <text
+                    key={n}
+                    x={x}
+                    y={y + r + 19 / escala}
+                    textAnchor="middle"
+                    fontSize={13 / escala}
+                  >
+                    {vista === "poblacion" ? n : `${n} · ${v} ${unidad}`}
+                  </text>
+                );
+              })}
+            </g>
+          </svg>
+          {vista === "ingresos" && ACCESOS.every((a) => !a.entradas) && (
+            <p className="ez-mpi-aviso">
+              <span>{tr("ez_mpv_sinDatos")}</span> · {tr("ez_mpv_ilustrativa")}
+            </p>
+          )}
+          {vista === "eventos" && datos && deptos.length === 0 && (
+            <p className="ez-mp-aviso">
+              {tr(metrica === "contenidos" ? "ez_mp_sinContenidos" : "ez_dc_sinDatos")}
+            </p>
+          )}
+        </div>
+        <PanelMapa
+          abierto={Boolean(panel)}
+          clave={clavePanel}
+          titulo={tituloPanel}
+          subtitulo={subtituloPanel}
+          onCerrar={cerrarPanel}
+          tr={tr}
+        >
+          {panel?.tipo === "depto" && (
+            <AgendaDepto eventos={agenda?.get(panel.nombre) ?? []} tr={tr} />
+          )}
+          {panel?.tipo === "acceso" && accesoAbierto && (
+            <DetalleAcceso
+              key={accesoAbierto.id}
+              acceso={accesoAbierto}
+              verRecorrido={() => {
+                setSoloAcceso(accesoAbierto.id);
+                setCorrida((c) => c + 1);
+              }}
+              tr={tr}
             />
-            <rect x={HUB[0] - hw} y={HUB[1] - hh} width={hw * 2} height={hh * 2} rx={hh} />
-            <text x={HUB[0]} y={HUB[1]} dy="0.36em" textAnchor="middle" fontSize={17 / escala}>
-              ezrá
-            </text>
-            <circle cx={salida[0]} cy={salida[1]} r={3 / escala} className="ez-mp-puerto" />
-          </g>
-
-          <g className="ez-mp-nombres" aria-hidden="true">
-            {nombres.map((n) => {
-              const [x, y] = centros[n];
-              const v = por.get(n)?.[metrica] ?? 0;
-              const r = radio(v);
-              return (
-                <text
-                  key={n}
-                  x={x}
-                  y={y + r + 19 / escala}
-                  textAnchor="middle"
-                  fontSize={13 / escala}
-                >
-                  {n} · {v} {unidad}
-                </text>
-              );
-            })}
-          </g>
-        </svg>
-        {datos && deptos.length === 0 && (
-          <p className="ez-mp-aviso">
-            {tr(metrica === "contenidos" ? "ez_mp_sinContenidos" : "ez_dc_sinDatos")}
-          </p>
-        )}
+          )}
+          {panel?.tipo === "poblacion" && <DetallePoblacion nombre={panel.nombre} tr={tr} />}
+        </PanelMapa>
       </div>
 
       {/* Debajo del mapa: el detalle de lo elegido y el listado de fuentes, destinos y sin ubicación. */}
       <div className="ez-mp-bajo">
         <div className="ez-mp-progreso" aria-hidden="true" />
-        {(fijo || !amplio) && <DetalleBreve datos={datos} rel={rel} foco={fijo} al={al} tr={tr} />}
+        {((fijo && !panel) || (!amplio && !panel)) && (
+          <DetalleBreve datos={datos} rel={rel} foco={fijo} al={al} tr={tr} />
+        )}
         {amplio ? (
           <div className="ez-mp-listado" aria-label={tr("ez_mp_recorrido")} role="group">
             {listado}
@@ -672,13 +883,21 @@ export function MapaProcedencia({
 const PuntosPais = memo(function PuntosPais({
   activos,
   conDatos,
+  niveles,
 }: {
   activos: string;
   conDatos: string;
+  niveles: string;
 }) {
   const { puntos } = geo();
   const on = new Set(activos.split("|").filter(Boolean));
   const datos = new Set(conDatos.split("|").filter(Boolean));
+  const nivel = new Map(
+    niveles
+      .split("|")
+      .filter(Boolean)
+      .map((x) => x.split(":") as [string, string]),
+  );
   return (
     <>
       {puntos.map((p, i) => (
@@ -691,7 +910,15 @@ const PuntosPais = memo(function PuntosPais({
           style={{
             animationDelay: `${Math.round(((p.x - X_PAIS[0]) / (X_PAIS[1] - X_PAIS[0])) * 520)}ms`,
           }}
-          className={on.has(p.d) ? "ez-mp-p-activo" : datos.has(p.d) ? "ez-mp-p-datos" : "ez-mp-p"}
+          className={
+            on.has(p.d)
+              ? "ez-mp-p-activo"
+              : nivel.has(p.d)
+                ? `ez-mp-p ez-mp-n${nivel.get(p.d)}`
+                : datos.has(p.d)
+                  ? "ez-mp-p-datos"
+                  : "ez-mp-p"
+          }
         />
       ))}
     </>
