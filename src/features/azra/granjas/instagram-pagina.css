@@ -205,3 +205,72 @@
     transform: none;
   }
 }
+
+/* Como la maqueta «Apps conectadas»: columna centrada, cuadrícula de 3 en 4:5, datos al pasar el cursor. */
+.azra .ez-ig-pagina {
+  max-width: 1120px;
+  margin-inline: auto;
+  gap: 32px;
+}
+.azra .ez-ig-pagina .ez-ig-h3 {
+  font-size: 20px;
+}
+.azra .ez-ig-pagina .ez-ig-barras {
+  box-shadow: none;
+}
+.azra .ez-ig-nota {
+  margin: 10px 0 0;
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .ez-ig-nota strong {
+  color: var(--ep-texto-2);
+}
+.azra .ez-ig-pagina .ez-ig-feed {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.azra .ez-ig-pagina .ez-ig-feed a {
+  border-radius: 6px;
+  box-shadow: none;
+}
+.azra .ez-ig-pagina .ez-ig-feed-pie {
+  inset: 0;
+  justify-content: center;
+  gap: 18px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 15px;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.azra .ez-ig-pagina .ez-ig-feed-pie svg:last-child {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  margin: 0;
+}
+.azra .ez-ig-pagina .ez-ig-feed a:hover .ez-ig-feed-pie,
+.azra .ez-ig-pagina .ez-ig-feed a:focus-visible .ez-ig-feed-pie {
+  opacity: 1;
+}
+.azra .ez-ig-pagina .ez-ig-feed a:hover img {
+  transform: none;
+}
+@media (hover: none) {
+  .azra .ez-ig-pagina .ez-ig-feed-pie {
+    inset: auto 0 0;
+    justify-content: flex-start;
+    padding: 20px 10px 8px;
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.6));
+    font-size: 12.5px;
+    opacity: 1;
+  }
+}
+.azra .ez-solo-consulta {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ep-superficie-2);
+  color: var(--ep-suave);
+  font-size: 12px;
+}

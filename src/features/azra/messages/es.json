@@ -1637,11 +1637,11 @@
   "ez_igp_l2": "en números.",
   "ez_igp_sub": "Los datos reales de tu cuenta conectada (solo lectura) y los posts que Ezra te deja listos para subir.",
   "ez_igp_cuenta": "Cuenta de Instagram",
-  "ez_igp_leido": "leído el",
+  "ez_igp_leido": "Actualizado el",
   "ez_igp_seguidores": "Seguidores",
   "ez_igp_siguiendo": "Siguiendo",
   "ez_igp_publicaciones": "Publicaciones",
-  "ez_igp_metricas": "Cómo le va a tu cuenta",
+  "ez_igp_metricas": "Métricas de la cuenta",
   "ez_igp_periodo": "Periodo",
   "ez_igp_dias": "días",
   "ez_igp_interacciones": "Interacciones",
@@ -1896,7 +1896,7 @@
   "ez_dest_descartado": "Descartado por Spotmi",
   "ez_dest_duplicado": "Duplicado en Spotmi",
   "ez_dest_lista_para_descargar": "Listo para descargar",
-  "ez_igp_cache": "lectura guardada (se actualiza cada 30 min)",
+  "ez_igp_cache": "se lee cada 30 min",
   "ez_trabajo_l1": "Tu trabajo,",
   "ez_trabajo_l2": "hoy.",
   "ez_trabajo_avance": "Avance de hoy (tareas): {p} % · {r} resueltas de {t}",
@@ -2037,5 +2037,8 @@
   "ez_app_youtube_metrica1": "Suscriptores",
   "ez_app_youtube_metrica2": "Visualizaciones",
   "ez_app_youtube_metrica3": "Videos",
-  "ez_app_youtube_tituloContenido": "Videos recientes"
+  "ez_app_youtube_tituloContenido": "Videos recientes",
+  "ez_apps_activa": "Activa",
+  "ez_apps_cuentas": "cuentas",
+  "ez_soloConsulta": "Solo consulta"
 }

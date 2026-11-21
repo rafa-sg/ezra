@@ -1637,11 +1637,11 @@
   "ez_igp_l2": "in numbers.",
   "ez_igp_sub": "Real data from your connected account (read only) and the posts Ezra prepares for you to upload.",
   "ez_igp_cuenta": "Instagram account",
-  "ez_igp_leido": "read on",
+  "ez_igp_leido": "Updated on",
   "ez_igp_seguidores": "Followers",
   "ez_igp_siguiendo": "Following",
   "ez_igp_publicaciones": "Posts",
-  "ez_igp_metricas": "How your account is doing",
+  "ez_igp_metricas": "Account metrics",
   "ez_igp_periodo": "Period",
   "ez_igp_dias": "days",
   "ez_igp_interacciones": "Interactions",
@@ -1896,7 +1896,7 @@
   "ez_dest_descartado": "Discarded by Spotmi",
   "ez_dest_duplicado": "Duplicate in Spotmi",
   "ez_dest_lista_para_descargar": "Ready to download",
-  "ez_igp_cache": "saved reading (refreshes every 30 min)",
+  "ez_igp_cache": "read every 30 min",
   "ez_trabajo_l1": "Your work,",
   "ez_trabajo_l2": "today.",
   "ez_trabajo_avance": "Today's progress (tasks): {p}% · {r} resolved of {t}",
@@ -2037,5 +2037,8 @@
   "ez_app_youtube_metrica1": "Subscribers",
   "ez_app_youtube_metrica2": "Views",
   "ez_app_youtube_metrica3": "Videos",
-  "ez_app_youtube_tituloContenido": "Recent videos"
+  "ez_app_youtube_tituloContenido": "Recent videos",
+  "ez_apps_activa": "Active",
+  "ez_apps_cuentas": "accounts",
+  "ez_soloConsulta": "Read only"
 }

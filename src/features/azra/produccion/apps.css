@@ -269,3 +269,32 @@
   color: var(--ep-suave);
   font-size: 18px;
 }
+
+/* Como la maqueta: «Activa» en texto y cabecera del grupo cuando una red tiene varias cuentas. */
+.azra .ez-apps-check {
+  font-size: 13px;
+  font-weight: 600;
+}
+.azra .ez-apps-cabeza {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 4px 6px 6px;
+  color: var(--ep-suave);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.azra .ez-apps-icono-chico {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+/* Con el menú abierto no se muestra la etiqueta flotante del botón (quedaría detrás de la columna). */
+.azra.ez-app[data-sidebar="contraida"] .ez-apps-boton[aria-expanded="true"]::after {
+  display: none;
+}

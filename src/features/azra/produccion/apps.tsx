@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Check, LayoutGrid, Play, RefreshCw } from "lucide-react";
+import { LayoutGrid, Play, RefreshCw } from "lucide-react";
 import type { Conexion } from "@/lib/granjas/conexiones";
 import "./apps.css";
 
@@ -213,6 +213,14 @@ export function BotonApps({
                 role="group"
                 aria-label={redes[g.canal].nombre}
               >
+                {g.lista.length > 1 && (
+                  <p className="ez-apps-cabeza" aria-hidden="true">
+                    <span className={`ez-apps-icono ez-apps-icono-chico ${redes[g.canal].clase}`}>
+                      {redes[g.canal].sigla}
+                    </span>
+                    {redes[g.canal].nombre} · {g.lista.length} {tr("ez_apps_cuentas")}
+                  </p>
+                )}
                 {g.lista.map((c) => {
                   const esActiva = activa?.canal === c.canal && activa.id === c.id;
                   return (
@@ -235,7 +243,7 @@ export function BotonApps({
                         <strong>{c.nombre}</strong>
                         <small>{redes[c.canal].nombre}</small>
                       </span>
-                      {esActiva && <Check size={16} className="ez-apps-check" aria-hidden="true" />}
+                      {esActiva && <span className="ez-apps-check">{tr("ez_apps_activa")}</span>}
                     </button>
                   );
                 })}

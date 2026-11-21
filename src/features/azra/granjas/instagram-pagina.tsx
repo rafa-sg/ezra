@@ -159,7 +159,6 @@ export function PaginaInstagram({
                 ))}
               </div>
               <div className="ez-tarjeta ez-ig-barras">
-                <h4>{tr("ez_igp_interacciones")}</h4>
                 <ul>
                   {interacciones.map((m) => {
                     const v = periodo?.valores[m];
@@ -174,21 +173,21 @@ export function PaginaInstagram({
                     );
                   })}
                 </ul>
-                {periodo && (periodo.valores.reach ?? 0) > 0 && (
-                  <p className="ez-ig-insight">
-                    <strong>{tr("ez_igp_dato")}</strong>{" "}
-                    {tr("ez_igp_tasa")
-                      .replace(
-                        "{tasa}",
-                        (
-                          ((periodo.valores.accounts_engaged ?? 0) / (periodo.valores.reach ?? 1)) *
-                          100
-                        ).toFixed(1),
-                      )
-                      .replace("{dias}", String(dias))}
-                  </p>
-                )}
               </div>
+              {periodo && (periodo.valores.reach ?? 0) > 0 && (
+                <p className="ez-ig-nota">
+                  <strong>{tr("ez_igp_dato")}</strong>{" "}
+                  {tr("ez_igp_tasa")
+                    .replace(
+                      "{tasa}",
+                      (
+                        ((periodo.valores.accounts_engaged ?? 0) / (periodo.valores.reach ?? 1)) *
+                        100
+                      ).toFixed(1),
+                    )
+                    .replace("{dias}", String(dias))}
+                </p>
+              )}
             </section>
           )}
 

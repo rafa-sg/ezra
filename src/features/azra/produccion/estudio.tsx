@@ -608,7 +608,9 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
             }
             ayuda={ayudaSeccion[seccion] ? tr(ayudaSeccion[seccion]!) : undefined}
             acciones={
-              seccion === "calendario" ? (
+              seccion === "apps" ? (
+                <span className="ez-solo-consulta">{tr("ez_soloConsulta")}</span>
+              ) : seccion === "calendario" ? (
                 <a className="ez-boton-blanco" href="/api/produccion/calendario" download>
                   <Download size={15} aria-hidden="true" />
                   {tr("p_exportarIcs")}
