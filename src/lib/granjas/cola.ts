@@ -1,6 +1,6 @@
 import { ahoraIso, base, json, transaccion } from "./db";
 
-export type TipoTrabajo = "paso" | "publicar" | "confirmar";
+export type TipoTrabajo = "paso" | "publicar" | "confirmar" | "clip";
 export type Trabajo = {
   id: string;
   tipo: TipoTrabajo;

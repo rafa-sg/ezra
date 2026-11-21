@@ -36,6 +36,7 @@ import {
   type Nodo,
   type Resumen,
 } from "./cliente";
+import { RevisionClips } from "./clips-revision";
 import "./granjas.css";
 
 /** Recetas del flujo diario de Spotmi: se muestran primero; las demás quedan en «Otras recetas». */
@@ -122,7 +123,9 @@ export function SeccionGranjas({
       detalle?.ultima?.pasos.some(
         (p) => estadosTrabajando.includes(p.estado) || p.estado === "en_cola",
       ),
-    );
+    ) ||
+    // Clips: un clip al que pediste cambios se está volviendo a renderizar.
+    Boolean(detalle?.clips.some((c) => c.estado === "cambios" || c.estado === "renderizando"));
   useEffect(() => {
     if (!abierta) return;
     const reloj = setInterval(() => void cargarDetalle(abierta), activa ? 2000 : 10000);
@@ -826,6 +829,28 @@ export function SeccionGranjas({
               </aside>
             )}
           </div>
+          {detalle.clips.length > 0 && (
+            <RevisionClips
+              clips={detalle.clips}
+              abierta={Boolean(
+                detalle.ultima?.pasos.some(
+                  (p) =>
+                    p.estado === "en_revision" &&
+                    detalle.ultima!.instantanea.grafo.nodos.find((n) => n.id === p.nodoId)?.tipo === "revision",
+                ),
+              )}
+              ocupado={ocupado}
+              g={g}
+              acciones={{
+                aprobar: (clipId, comprobaciones) =>
+                  void ejecutar(() => pedir("/api/granjas/clips", { accion: "aprobar", clipId, comprobaciones }), g("clips_okAprobado")),
+                rechazar: (clipId, motivo) =>
+                  void ejecutar(() => pedir("/api/granjas/clips", { accion: "rechazar", clipId, motivo }), g("clips_okRechazado")),
+                cambios: (clipId, cambios) =>
+                  void ejecutar(() => pedir("/api/granjas/clips", { accion: "cambios", clipId, cambios }), g("clips_okCambios")),
+              }}
+            />
+          )}
           {detalle.piezas.map((v) => (
             <VistaPrevia
               key={v.pieza.id}

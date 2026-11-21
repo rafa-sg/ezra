@@ -14,7 +14,7 @@ import { eventosPublicosSpotmi } from "./spotmi-publico";
  * Corre dentro del servidor de Next (instrumentation) o con `npm run granjas:trabajador`.
  */
 const ARRIENDO = 90_000;
-const LIMITES: Record<Trabajo["tipo"], number> = { paso: 8 * 60_000, publicar: 6 * 60_000, confirmar: 2 * 60_000 };
+const LIMITES: Record<Trabajo["tipo"], number> = { paso: 8 * 60_000, publicar: 6 * 60_000, confirmar: 2 * 60_000, clip: 8 * 60_000 };
 
 export async function dependenciasReales(): Promise<Dependencias> {
   const { generarGemini, generarLocal } = await import("../produccion/proveedores");
@@ -66,6 +66,13 @@ export async function procesarUno(
       if (resultado === "devuelto") devolver(trabajo.id, id, new Date(Date.now() + 5000).toISOString());
       else if (typeof resultado === "object") devolver(trabajo.id, id, new Date(Date.now() + resultado.esperaMs).toISOString());
       else terminar(trabajo.id, id, "hecho");
+    } else if (trabajo.tipo === "clip") {
+      // Granja Clips: rehace un clip al que pediste cambios.
+      const deps = opciones.dependencias ?? (await dependenciasReales());
+      const { rehacerClip } = await import("./clips-almacen");
+      const { renderizarClip } = await import("./clips-render");
+      await conLimite(rehacerClip(trabajo.carga.clipId, deps.renderizarClip ?? renderizarClip), LIMITES.clip);
+      terminar(trabajo.id, id, "hecho");
     } else if (trabajo.tipo === "publicar") {
       await conLimite(ejecutarPublicacion(trabajo.carga.reciboId), LIMITES.publicar);
       terminar(trabajo.id, id, "hecho");
@@ -76,6 +83,14 @@ export async function procesarUno(
   } catch (error) {
     const mensaje = error instanceof Error ? error.message : "Error inesperado.";
     terminar(trabajo.id, id, "fallido", mensaje);
+    if (trabajo.tipo === "clip") {
+      try {
+        const { actualizarClip, leerClip } = await import("./clips-almacen");
+        if (leerClip(trabajo.carga.clipId).estado === "cambios") actualizarClip(trabajo.carga.clipId, { estado: "fallido", error: mensaje.slice(0, 500) });
+      } catch {
+        /* El clip pudo borrarse. */
+      }
+    }
     if (trabajo.tipo === "paso") {
       try {
         const paso = leerPaso(trabajo.carga.pasoId);

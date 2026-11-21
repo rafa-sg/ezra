@@ -290,6 +290,13 @@ export function autorizarPublicacion(datos: {
       throw new WorkflowError(`Escribe ${CONFIRMACION_PUBLICAR} para confirmar.`, 422);
     if (pieza.hash !== datos.hash)
       throw new WorkflowError("La vista previa cambió. Revisa y aprueba la versión actual.", 409);
+    // Granja Clips: el clip debe seguir aprobado y «Tu revisión» de todos los clips, terminada.
+    const clip = db.prepare("select estado from clips where pieza_id = ?").get(pieza.id) as { estado: string } | undefined;
+    if (clip) {
+      if (clip.estado !== "aprobado") throw new WorkflowError("Este clip ya no está aprobado.", 422);
+      const revision = pieza.pasoId ? (db.prepare("select estado from pasos where id = ?").get(pieza.pasoId) as { estado: string } | undefined) : undefined;
+      if (revision?.estado !== "aprobado") throw new WorkflowError("Termina «Tu revisión» de todos los clips antes de autorizar.", 422);
+    }
     if (!aprobacionPieza(pieza.id, pieza.hash))
       throw new WorkflowError("Aprueba esta versión antes de autorizar su publicación.", 422);
     if (!datos.destinos.length || new Set(datos.destinos).size !== datos.destinos.length)

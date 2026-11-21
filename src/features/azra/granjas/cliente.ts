@@ -5,6 +5,7 @@ import type { Conexion } from "@/lib/granjas/conexiones";
 import type { ContenidoPieza } from "@/lib/granjas/pieza";
 import type { Agente } from "@/lib/produccion/modelo";
 import type { EstadoPresupuesto } from "@/lib/granjas/consumo";
+import type { ClipVista } from "./clips-revision";
 
 export type MedioResumen = {
   id: string;
@@ -55,6 +56,8 @@ export type Detalle = {
   aprobaciones: { pasoId: string; vigente: boolean }[];
   faltantes: Record<string, string[]>;
   piezas: VistaPieza[];
+  /** Granja Clips: los clips de la última ejecución con su decisión. */
+  clips: ClipVista[];
   resumenEventos: {
     verificado: boolean;
     nuevos: number;

@@ -14,7 +14,7 @@ import { leerMedio, type Medio } from "./medios";
 import { crearPiezaDesdePaso } from "./publicacion";
 import { busquedaActiva, type Nodo } from "./modelo";
 import { esGranjaClips, momentosPaso, problemasMaterial, referenciasPaso, type AnalizarVideo } from "./clips";
-import { renderClipsPaso, type RenderizarClip } from "./clips-almacen";
+import { clipsDeEjecucion, renderClipsPaso, type RenderizarClip } from "./clips-almacen";
 import { renderizarClip } from "./clips-render";
 
 export type Dependencias = {
@@ -226,6 +226,14 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
     }
     if (nodo.tipo === "revision") {
       cerrar(pasoId, { estado: "en_revision", detalle: "Esperando tu revisión de hechos, derechos y marca." });
+      return "hecho";
+    }
+    if (nodo.tipo === "publicacion" && esGranjaClips(ejecucion)) {
+      // Clips: cada clip aprobado ya tiene su vista previa aprobada; aquí solo se espera tu autorización por destino.
+      const aprobados = clipsDeEjecucion(ejecucion.id).filter((c) => c.estado === "aprobado" && c.piezaId);
+      cerrar(pasoId, aprobados.length
+        ? { estado: "esperando_autorizacion", detalle: `${aprobados.length} clip(s) aprobados. Autoriza cada uno por destino: nada se publica sin tu autorización.` }
+        : { estado: "bloqueado", detalle: "No hay clips aprobados." });
       return "hecho";
     }
     if (nodo.tipo === "publicacion") {

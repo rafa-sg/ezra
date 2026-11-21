@@ -537,6 +537,8 @@ export function aprobarRevision(pasoId: string, comprobaciones: { hechos: boolea
     const paso = leerPaso(pasoId);
     const ejecucion = leerEjecucion(paso.ejecucionId);
     if (paso.estado !== "en_revision") throw new WorkflowError("Este paso no está esperando tu revisión.", 422);
+    if (ejecucion.instantanea.ajustes?.purpose === "clips")
+      throw new WorkflowError("En Clips se decide clip por clip: aprueba, rechaza o pide cambios a cada uno.", 422);
     if (!Object.values(comprobaciones).every(Boolean))
       throw new WorkflowError("Confirma hechos, derechos y marca antes de aprobar.", 422);
     const artefactos = paso.entradas.map(leerArtefacto);

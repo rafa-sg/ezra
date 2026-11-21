@@ -441,3 +441,108 @@ test("granja Clips: render real de cada clip en 1080×1920 con gancho quemado, c
   // La revisión queda esperando al propietario.
   assert.equal(pasoDe(e.id, "Tu revisión").estado, "en_revision");
 });
+
+/* ── Fase 4 · Tu revisión clip por clip y destinos ── */
+/** Render simulado: un video pequeño distinto por llamada (la lógica de revisión no depende del tamaño). */
+let rendersSimulados = 0;
+const renderSimulado = async () => {
+  rendersSimulados++;
+  const destino = path.join(process.env.EZRA_DATA_DIR!, `render-${crypto.randomUUID()}.mp4`);
+  execFileSync(rutaFfmpeg, ["-v", "error", "-f", "lavfi", "-i", `color=c=0x${(0x202020 + rendersSimulados * 7919).toString(16).slice(-6)}:s=108x192:d=1`, "-pix_fmt", "yuv420p", destino]);
+  return medios.guardarMedio(await readFile(destino), { nombre: "clip.mp4", procedencia: { origen: "render", nota: "simulado" }, licencia: "Material propio.", generado: false });
+};
+async function ejecutarHastaRevision() {
+  const r = await ejecutarHastaMomentos(20);
+  process.env.EZRA_PRODUCCION_IA = "1";
+  try {
+    await vaciarCola({ ...r.deps, renderizarClip: renderSimulado });
+  } finally {
+    process.env.EZRA_PRODUCCION_IA = "0";
+  }
+  const almacenClips = await import("../src/lib/granjas/clips-almacen");
+  return { ...r, almacenClips, lista: almacenClips.clipsDeEjecucion(r.e.id) };
+}
+const todas = { hechos: true, derechos: true, marca: true };
+
+test("revisión de Clips: aprobar, rechazar con motivo y pedir cambios rehace solo ese clip", async () => {
+  if (!hayFfmpeg) return;
+  const { e, almacenClips, lista, deps: d } = await ejecutarHastaRevision();
+  const publicacion = await import("../src/lib/granjas/publicacion");
+  assert.equal(lista.length, 2);
+  const revision = pasoDe(e.id, "Tu revisión");
+  assert.equal(revision.estado, "en_revision");
+  // No se aprueba todo de golpe: es clip por clip.
+  assert.throws(() => ejecucion.aprobarRevision(revision.id, todas), /clip por clip/);
+  assert.throws(() => almacenClips.aprobarClip(lista[0].id, { ...todas, derechos: false }), /hechos, derechos y marca/);
+  assert.throws(() => almacenClips.rechazarClip(lista[1].id, " "), /motivo/);
+  assert.throws(() => almacenClips.pedirCambiosClip(lista[1].id, { motivo: "Más corto", fin: 11 }), /debe durar de 5 a 10/);
+
+  // Pedir cambios: nuevos tiempos y título; se rehace y vuelve a revisión como versión 2.
+  const antes = lista[1].medioId;
+  const cambiado = almacenClips.pedirCambiosClip(lista[1].id, { motivo: "Empieza en la pregunta", inicio: 9, fin: 15, titulo: "¿Cuál es tu favorita?" });
+  assert.equal(cambiado.estado, "cambios");
+  await vaciarCola({ ...d, renderizarClip: renderSimulado });
+  const rehecho = almacenClips.leerClip(lista[1].id);
+  assert.equal(rehecho.estado, "por_revisar");
+  assert.equal(rehecho.version, 2);
+  assert.equal(rehecho.titulo, "¿Cuál es tu favorita?");
+  assert.notEqual(rehecho.medioId, antes);
+  assert.equal(rehecho.subtitulos[0].texto, "¿Cuál es tu favorita?");
+
+  // Aprobar el primero crea su vista previa aprobada, pero no se puede autorizar hasta terminar la revisión.
+  const aprobado = almacenClips.aprobarClip(lista[0].id, todas);
+  assert.equal(aprobado.estado, "aprobado");
+  const pieza = publicacion.leerPieza(aprobado.piezaId!);
+  assert.deepEqual(pieza.contenido.canales, ["youtube", "tiktok", "instagram"]);
+  assert.deepEqual(pieza.contenido.fuentes, [], "ningún enlace de terceros");
+  assert.equal(pieza.contenido.medios[0].id, aprobado.medioId);
+  assert.match(pieza.contenido.textos.instagram, /^Primer clip/);
+  assert.ok(publicacion.aprobacionPieza(pieza.id, pieza.hash), "aprobada esta versión exacta");
+  assert.equal(pasoDe(e.id, "Tu revisión").estado, "en_revision", "falta decidir el clip 2");
+  assert.throws(
+    () => publicacion.autorizarPublicacion({ piezaId: pieza.id, hash: pieza.hash, destinos: ["youtube"], confirmacion: "PUBLICAR", usuario: "prueba" }),
+    /Termina «Tu revisión»/,
+  );
+
+  // Rechazar el segundo con motivo cierra la revisión y Destinos espera tu autorización.
+  const rechazado = almacenClips.rechazarClip(lista[1].id, "No se entiende sin contexto");
+  assert.equal(rechazado.motivo, "No se entiende sin contexto");
+  await vaciarCola(d);
+  assert.equal(pasoDe(e.id, "Tu revisión").estado, "aprobado");
+  const destinos = pasoDe(e.id, "Destinos");
+  assert.equal(destinos.estado, "esperando_autorizacion");
+  assert.match(destinos.detalle, /1 clip\(s\) aprobados/);
+  assert.throws(() => almacenClips.aprobarClip(lista[1].id, todas), /no está esperando/);
+
+  // Autorizar exige escribir PUBLICAR y cuentas conectadas: aquí no hay ninguna, así que nada sale.
+  assert.throws(
+    () => publicacion.autorizarPublicacion({ piezaId: pieza.id, hash: pieza.hash, destinos: ["youtube", "tiktok", "instagram"], confirmacion: "publicar", usuario: "prueba" }),
+    /Escribe PUBLICAR/,
+  );
+  assert.throws(
+    () => publicacion.autorizarPublicacion({ piezaId: pieza.id, hash: pieza.hash, destinos: ["youtube", "tiktok", "instagram"], confirmacion: "PUBLICAR", usuario: "prueba" }),
+    /youtube: .*tiktok: .*instagram: /,
+  );
+  assert.equal((db.base().prepare("select count(*) as n from recibos").get() as { n: number }).n, 0);
+  // Editar el texto crea otra versión: la aprobación anterior ya no vale para ella.
+  const editada = publicacion.editarPieza(pieza.id, pieza.version, { ...pieza.contenido, textos: { ...pieza.contenido.textos, instagram: "Otro texto" } });
+  assert.equal(publicacion.aprobacionPieza(editada.id, editada.hash), undefined);
+  assert.throws(
+    () => publicacion.autorizarPublicacion({ piezaId: editada.id, hash: editada.hash, destinos: ["youtube"], confirmacion: "PUBLICAR", usuario: "prueba" }),
+    /Aprueba esta versión/,
+  );
+});
+
+test("revisión de Clips: rechazar todos deja la granja detenida, sin destinos", async () => {
+  if (!hayFfmpeg) return;
+  const { e, almacenClips, lista, deps: d } = await ejecutarHastaRevision();
+  for (const c of lista) almacenClips.rechazarClip(c.id, "No me convence");
+  await vaciarCola(d);
+  assert.equal(pasoDe(e.id, "Tu revisión").estado, "bloqueado");
+  assert.equal(pasoDe(e.id, "Destinos").estado, "esperando");
+  // El texto lleva el crédito cuando el video es de otra persona con permiso.
+  assert.equal(
+    almacenClips.textoClip({ titulo: "Título", gancho: "Gancho" }, { tipo: "autorizado", autor: "Canal de Ana", constancia: "correo" }),
+    "Título\n\nGancho\n\nVideo: Canal de Ana (con permiso).",
+  );
+});

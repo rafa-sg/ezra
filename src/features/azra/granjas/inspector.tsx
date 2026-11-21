@@ -180,6 +180,9 @@ export function Inspector({
 
       {nodo.tipo === "agente" && (
         <>
+          {clips && nodo.agente === "shorts" && (
+            <p className="ep-nota eg-clips-ayuda">{g("clips_momentosAyuda")}</p>
+          )}
           <div className="eg-dos">
             <label className="eg-campo">
               {g("especialidad")}
