@@ -75,4 +75,10 @@ test("errores: un fallo de insights es un aviso; token vencido conserva la últi
   assert.equal(vencido.desdeCache, true, "se muestra la última lectura correcta");
   assert.match(vencido.avisos.join(" "), /venció o fue revocado/);
   assert.doesNotMatch(JSON.stringify(vencido), /TOKEN-SECRETO-IG/);
+  // Token ilegible (por ejemplo, otra EZRA_TOKEN_KEY): tampoco esconde la última lectura correcta.
+  db.base().prepare("update conexiones set token_cifrado = ? where canal = 'instagram'").run("no-es-un-token-cifrado");
+  const ilegible = await ig.metricasInstagram({ forzar: true, solicitar: async () => respuesta({}) });
+  assert.equal(ilegible.desdeCache, true);
+  assert.equal(ilegible.cuenta?.usuario, "@spotmi.sv");
+  assert.ok(ilegible.avisos.length >= 2);
 });

@@ -16,7 +16,15 @@ const interacciones: MetricaCuenta[] = ["likes", "comments", "shares", "saves"];
  * Instagram: la cuenta conectada con sus números reales (API de Instagram, solo lectura), el feed
  * reciente y los posts que prepara Ezra para subir a mano.
  */
-export function PaginaInstagram({ g, tr, fecha }: { g: Tr; tr: Tr; fecha: (iso: string) => string }) {
+export function PaginaInstagram({
+  g,
+  tr,
+  fecha,
+}: {
+  g: Tr;
+  tr: Tr;
+  fecha: (iso: string) => string;
+}) {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -44,13 +52,7 @@ export function PaginaInstagram({ g, tr, fecha }: { g: Tr; tr: Tr; fecha: (iso: 
   const periodo = datos?.periodos.find((p) => p.dias === dias) ?? null;
   const maxInter = Math.max(1, ...interacciones.map((m) => periodo?.valores[m] ?? 0));
   return (
-    <div className="ez-ig-pagina">
-      <header className="ez-panorama-cabecera">
-        <h2 className="ez-titulo-seccion">
-          {tr("ez_igp_l1")} <em>{tr("ez_igp_l2")}</em>
-        </h2>
-        <p>{tr("ez_igp_sub")}</p>
-      </header>
+    <div className="ez-ig-pagina ez-perfil">
       {error && (
         <p className="ep-alerta" role="alert">
           {error}
@@ -67,34 +69,58 @@ export function PaginaInstagram({ g, tr, fecha }: { g: Tr; tr: Tr; fecha: (iso: 
             </ul>
           )}
           {datos.cuenta ? (
-            <section className="ez-tarjeta ez-ig-perfil ez-con-halo" aria-label={tr("ez_igp_cuenta")}>
-              {datos.cuenta.foto ? <img src={datos.cuenta.foto} alt="" width={72} height={72} referrerPolicy="no-referrer" /> : <span className="ez-ig-foto-vacia" aria-hidden="true" />}
-              <div className="ez-ig-perfil-texto">
-                <strong>{datos.cuenta.usuario}</strong>
-                <span>{datos.cuenta.nombre}</span>
-                <small>
+            <section className="ez-perfil-cabeza" aria-label={tr("ez_igp_cuenta")}>
+              <span className="ez-perfil-foto ez-perfil-aro ez-app-ig">
+                {datos.cuenta.foto ? (
+                  <img
+                    src={datos.cuenta.foto}
+                    alt=""
+                    width={112}
+                    height={112}
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span aria-hidden="true">IG</span>
+                )}
+              </span>
+              <div className="ez-perfil-datos">
+                <div className="ez-perfil-titulo">
+                  <h2>{datos.cuenta.usuario}</h2>
+                  <button
+                    className="ez-boton-blanco"
+                    disabled={cargando}
+                    onClick={() => void cargar(true)}
+                  >
+                    <RefreshCw
+                      size={15}
+                      className={cargando ? "eg-girando" : undefined}
+                      aria-hidden="true"
+                    />
+                    {tr("p_actualizar")}
+                  </button>
+                </div>
+                {datos.cuenta.nombre && <p className="ez-perfil-red">{datos.cuenta.nombre}</p>}
+                <dl className="ez-perfil-numeros">
+                  {(
+                    [
+                      ["publicaciones", datos.cuenta.publicaciones],
+                      ["seguidores", datos.cuenta.seguidores],
+                      ["siguiendo", datos.cuenta.siguiendo],
+                    ] as const
+                  )
+                    .filter(([, v]) => v !== null)
+                    .map(([k, v]) => (
+                      <div key={k}>
+                        <dt>{tr(`ez_igp_${k}`).toLowerCase()}</dt>
+                        <dd>{numero.format(v!)}</dd>
+                      </div>
+                    ))}
+                </dl>
+                <p className="ez-perfil-leido">
                   {tr("ez_igp_leido")} {fecha(datos.leido)}
                   {datos.desdeCache ? ` · ${tr("ez_igp_cache")}` : ""}
-                </small>
+                </p>
               </div>
-              <dl className="ez-ig-perfil-numeros">
-                {(
-                  [
-                    ["seguidores", datos.cuenta.seguidores],
-                    ["siguiendo", datos.cuenta.siguiendo],
-                    ["publicaciones", datos.cuenta.publicaciones],
-                  ] as const
-                ).map(([k, v]) => (
-                  <div key={k}>
-                    <dt>{tr(`ez_igp_${k}`)}</dt>
-                    <dd>{v === null ? "—" : numero.format(v)}</dd>
-                  </div>
-                ))}
-              </dl>
-              <button className="ez-boton-blanco" disabled={cargando} onClick={() => void cargar(true)}>
-                <RefreshCw size={15} className={cargando ? "eg-girando" : undefined} aria-hidden="true" />
-                {tr("p_actualizar")}
-              </button>
             </section>
           ) : (
             <section className="ez-tarjeta ez-ig-perfil">
@@ -110,7 +136,12 @@ export function PaginaInstagram({ g, tr, fecha }: { g: Tr; tr: Tr; fecha: (iso: 
                 </h3>
                 <div className="ez-segmentado" role="radiogroup" aria-label={tr("ez_igp_periodo")}>
                   {([7, 30] as const).map((d) => (
-                    <button key={d} role="radio" aria-checked={dias === d} onClick={() => setDias(d)}>
+                    <button
+                      key={d}
+                      role="radio"
+                      aria-checked={dias === d}
+                      onClick={() => setDias(d)}
+                    >
                       {d} {tr("ez_igp_dias")}
                     </button>
                   ))}
@@ -119,7 +150,9 @@ export function PaginaInstagram({ g, tr, fecha }: { g: Tr; tr: Tr; fecha: (iso: 
               <div className="ez-kpis">
                 {tarjetas.map((m) => (
                   <div key={m} className="ez-kpi">
-                    <strong>{periodo?.valores[m] == null ? "—" : numero.format(periodo.valores[m]!)}</strong>
+                    <strong>
+                      {periodo?.valores[m] == null ? "—" : numero.format(periodo.valores[m]!)}
+                    </strong>
                     <span>{tr(`ez_igm_${m}`)}</span>
                     <small>{tr(`ez_igm_${m}_ayuda`)}</small>
                   </div>
@@ -145,7 +178,13 @@ export function PaginaInstagram({ g, tr, fecha }: { g: Tr; tr: Tr; fecha: (iso: 
                   <p className="ez-ig-insight">
                     <strong>{tr("ez_igp_dato")}</strong>{" "}
                     {tr("ez_igp_tasa")
-                      .replace("{tasa}", (((periodo.valores.accounts_engaged ?? 0) / (periodo.valores.reach ?? 1)) * 100).toFixed(1))
+                      .replace(
+                        "{tasa}",
+                        (
+                          ((periodo.valores.accounts_engaged ?? 0) / (periodo.valores.reach ?? 1)) *
+                          100
+                        ).toFixed(1),
+                      )
                       .replace("{dias}", String(dias))}
                   </p>
                 )}
@@ -161,8 +200,22 @@ export function PaginaInstagram({ g, tr, fecha }: { g: Tr; tr: Tr; fecha: (iso: 
               <ul className="ez-ig-feed">
                 {datos.recientes.map((p) => (
                   <li key={p.id}>
-                    <a href={p.enlace ?? undefined} target="_blank" rel="noreferrer noopener" aria-label={`${tr("ez_igp_verPost")}${p.fecha ? ` · ${fecha(p.fecha)}` : ""}`}>
-                      {p.miniatura ? <img src={p.miniatura} alt={p.texto.slice(0, 120)} loading="lazy" referrerPolicy="no-referrer" /> : <span className="ez-ig-foto-vacia" />}
+                    <a
+                      href={p.enlace ?? undefined}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      aria-label={`${tr("ez_igp_verPost")}${p.fecha ? ` · ${fecha(p.fecha)}` : ""}`}
+                    >
+                      {p.miniatura ? (
+                        <img
+                          src={p.miniatura}
+                          alt={p.texto.slice(0, 120)}
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <span className="ez-ig-foto-vacia" />
+                      )}
                       <span className="ez-ig-feed-pie">
                         <span>
                           <Heart size={13} aria-hidden="true" /> {p.meGusta ?? "—"}

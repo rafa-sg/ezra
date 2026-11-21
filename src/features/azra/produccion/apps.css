@@ -1,0 +1,271 @@
+/* Apps conectadas: botón de la barra, columna flotante animada y perfil de cada red. */
+.azra .ez-apps {
+  position: relative;
+}
+.azra .ez-apps-boton {
+  width: 100%;
+}
+.azra .ez-apps-marca {
+  position: absolute;
+  bottom: 6px;
+  left: 24px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--ep-tarjeta);
+  border-radius: 4px;
+}
+.azra.ez-app[data-sidebar="contraida"] .ez-apps-marca {
+  left: auto;
+  right: 6px;
+}
+
+/* Colores de cada red (solo el ícono; el resto usa la paleta de Ezra). */
+.azra .ez-app-ig {
+  background: linear-gradient(135deg, #f9a825, #e1306c 55%, #7b3fe4);
+  color: #fff;
+}
+.azra .ez-app-tt {
+  background: #0b0b0f;
+  color: #fff;
+}
+.azra[data-global-theme="dark"] .ez-app-tt {
+  background: #25f4ee;
+  color: #0b0b0f;
+}
+.azra .ez-app-fb {
+  background: #1877f2;
+  color: #fff;
+}
+.azra .ez-app-yt {
+  background: #e62117;
+  color: #fff;
+}
+
+/* Columna flotante al lado de la barra (por encima de la vista; no mueve nada). */
+.azra .ez-apps-menu {
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 280px;
+  font-family: var(--ez-fuente);
+}
+.azra .ez-apps-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.azra .ez-apps-varias {
+  padding: 6px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 18px;
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra);
+}
+.azra .ez-apps-cuenta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 14px 8px 8px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 16px;
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra);
+  color: var(--ep-texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transform-origin: left center;
+  animation: ez-apps-sale 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.azra .ez-apps-varias .ez-apps-cuenta {
+  border-color: transparent;
+  box-shadow: none;
+}
+@keyframes ez-apps-sale {
+  from {
+    opacity: 0;
+    transform: translate(-22px, -6px) scale(0.55);
+  }
+}
+.azra .ez-apps-cuenta:hover,
+.azra .ez-apps-cuenta:focus-visible {
+  background: var(--ep-superficie-2);
+  outline: none;
+}
+.azra .ez-apps-cuenta:focus-visible {
+  box-shadow: 0 0 0 2px var(--ez-violeta);
+}
+.azra .ez-apps-activa,
+.azra .ez-apps-varias .ez-apps-activa {
+  border-color: #4d68ff;
+  background: var(--ep-seleccion);
+  box-shadow:
+    0 0 0 3px rgba(77, 104, 255, 0.16),
+    var(--ez-sombra);
+}
+.azra .ez-apps-icono {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.azra .ez-apps-texto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.azra .ez-apps-texto strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .ez-apps-texto small {
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+.azra .ez-apps-check {
+  flex: none;
+  color: #4d68ff;
+}
+.azra .ez-apps-vacio {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 14px;
+  background: var(--ep-tarjeta);
+  box-shadow: var(--ez-sombra);
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-apps-cuenta {
+    animation: ez-apps-aparece 120ms ease both;
+  }
+  @keyframes ez-apps-aparece {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+/* Perfil de cada red: perfil arriba, métricas, contenido reciente. */
+.azra .ez-perfil {
+  display: grid;
+  gap: 32px;
+}
+.azra .ez-perfil-cabeza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px;
+}
+.azra .ez-perfil-foto {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  overflow: hidden;
+  border-radius: 50%;
+  font-size: 28px;
+  font-weight: 700;
+}
+.azra .ez-perfil-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.azra .ez-perfil-aro {
+  padding: 4px;
+  box-sizing: border-box;
+}
+.azra .ez-perfil-aro img {
+  border: 4px solid var(--ep-tarjeta);
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: var(--ep-superficie-2);
+}
+.azra .ez-perfil-datos {
+  display: grid;
+  flex: 999 1 320px;
+  gap: 6px;
+  min-width: 0;
+}
+.azra .ez-perfil-titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.azra .ez-perfil-titulo h2 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.azra .ez-perfil-titulo .ez-boton-blanco {
+  min-height: 40px;
+  font-size: 14px;
+}
+.azra .ez-perfil-red,
+.azra .ez-perfil-desc {
+  margin: 0;
+  font-size: 15px;
+}
+.azra .ez-perfil-red {
+  font-weight: 600;
+}
+.azra .ez-perfil-desc {
+  color: var(--ep-texto-2);
+  white-space: pre-line;
+}
+.azra .ez-perfil-numeros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 28px;
+  margin: 6px 0 0;
+  font-size: 15px;
+}
+.azra .ez-perfil-numeros div {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 5px;
+}
+.azra .ez-perfil-numeros dd {
+  margin: 0;
+  font-weight: 700;
+}
+.azra .ez-perfil-numeros dt {
+  color: var(--ep-texto-2);
+}
+.azra .ez-perfil-leido {
+  margin: 4px 0 0;
+  color: var(--ep-suave);
+  font-size: 12.5px;
+}
+.azra .ez-perfil-seccion {
+  display: grid;
+  gap: 14px;
+}
+.azra .ez-perfil-seccion h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.azra .ez-kpi-nd strong {
+  color: var(--ep-suave);
+  font-size: 18px;
+}

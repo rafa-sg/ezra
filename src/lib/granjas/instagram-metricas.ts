@@ -116,7 +116,15 @@ export async function metricasInstagram(opciones: { forzar?: boolean; solicitar?
     const d = guardado.datos as MetricasInstagram;
     if (d && d.estado === "ok") return { ...d, desdeCache: true };
   }
-  const nuevas = await consultarInstagram({ solicitar: opciones.solicitar, ahora });
+  // Un token ilegible o revocado no debe esconder la última lectura correcta: se trata como lectura fallida.
+  const nuevas: MetricasInstagram = await consultarInstagram({ solicitar: opciones.solicitar, ahora }).catch((e: unknown) => ({
+    estado: "error" as const,
+    leido: ahora.toISOString(),
+    cuenta: null,
+    recientes: [],
+    periodos: [],
+    avisos: [motivo(e)],
+  }));
   if (nuevas.estado === "ok") guardarAjuste("instagram_metricas", cacheSchema.nullable(), { leido: nuevas.leido, datos: nuevas });
   // Si falla la lectura nueva pero hay una anterior, se muestra la anterior con el aviso.
   if (nuevas.estado !== "ok" && guardado && (guardado.datos as MetricasInstagram)?.estado === "ok")

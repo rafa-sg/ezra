@@ -25,7 +25,7 @@ import {
   MessageSquareWarning,
   Ban,
   CircleArrowRight,
-  Camera,
+  LayoutGrid,
 } from "lucide-react";
 import { useLanguage, type MessageKey } from "../i18n";
 import { useClerk } from "@clerk/nextjs";
@@ -52,6 +52,7 @@ import { ColocarEnGranja } from "../granjas/colocar";
 import { SeccionConsumo } from "../granjas/consumo";
 import { SeccionEventos } from "../granjas/eventos";
 import { PaginaInstagram } from "../granjas/instagram-pagina";
+import { BotonApps, PerfilConexion, redes, useCuentasApp, type CuentaApp } from "./apps";
 import { Inicio, type DestinoInicio } from "./inicio";
 import { CabeceraPagina, NavegacionLateral } from "./navegacion";
 import { DetalleEncargo, VistaEncargos, type AccionEncargo } from "./encargos";
@@ -70,7 +71,7 @@ const secciones = [
   "encargos",
   "granjas",
   "eventos",
-  "instagram",
+  "apps",
   "calendario",
   "conexiones",
   "consumo",
@@ -80,9 +81,11 @@ type Seccion = (typeof secciones)[number];
 const seccionDe = (valor: string | null): Seccion | null =>
   valor === null
     ? null
-    : (secciones as readonly string[]).includes(valor)
-      ? (valor as Seccion)
-      : "granjas";
+    : valor === "instagram"
+      ? "apps"
+      : (secciones as readonly string[]).includes(valor)
+        ? (valor as Seccion)
+        : "granjas";
 /** Una línea de ayuda por sección para la cabecera (las descripciones que antes iban dentro de cada página). */
 const ayudaSeccion: Partial<Record<Seccion, string>> = {
   encargos: "p_encargosAyuda",
@@ -264,6 +267,27 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     window.addEventListener("popstate", atras);
     return () => window.removeEventListener("popstate", atras);
   }, []);
+  const { cuentas: cuentasApp, recargar: recargarApps } = useCuentasApp();
+  const [appPedida, setAppPedida] = useState<string | null>(null);
+  useEffect(() => {
+    const leer = () => setAppPedida(new URLSearchParams(window.location.search).get("app"));
+    queueMicrotask(leer);
+    window.addEventListener("popstate", leer);
+    return () => window.removeEventListener("popstate", leer);
+  }, []);
+  const appActiva: CuentaApp | null =
+    cuentasApp?.find((c) => `${c.canal}:${c.id}` === appPedida || c.canal === appPedida) ??
+    cuentasApp?.find((c) => c.canal === "instagram") ??
+    cuentasApp?.[0] ??
+    null;
+  function elegirApp(c: CuentaApp) {
+    const url = `${window.location.pathname}?seccion=apps&app=${encodeURIComponent(`${c.canal}:${c.id}`)}`;
+    if (`${window.location.pathname}${window.location.search}` !== url)
+      window.history.pushState({ seccion: "apps" }, "", url);
+    setAppPedida(`${c.canal}:${c.id}`);
+    setSeccion("apps");
+    setAviso("");
+  }
   function navegar(nueva: Seccion) {
     // La sección queda en la dirección: el botón Atrás vuelve y una recarga no la pierde.
     const url =
@@ -430,7 +454,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   }
   const encargoDetalle = detalle ? encargos.find((x) => x.id === detalle) : undefined;
   function ir(d: DestinoInicio) {
-    navegar(d.seccion);
+    navegar(d.seccion === "instagram" ? "apps" : d.seccion);
     if (d.seccion === "encargos" && d.id && produccion?.encargos.some((x) => x.id === d.id))
       setDetalle(d.id);
   }
@@ -501,7 +525,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     { id: "encargos", icono: ListTodo, etiqueta: "p_encargos" },
     { id: "granjas", icono: Workflow, etiqueta: "p_cola" },
     { id: "eventos", icono: Ticket, etiqueta: "p_eventos" },
-    { id: "instagram", icono: Camera, etiqueta: "p_instagram" },
+    { id: "apps", icono: LayoutGrid, etiqueta: "ez_apps" },
     { id: "calendario", icono: CalendarDays, etiqueta: "p_calendario" },
     { id: "conexiones", icono: Cable, etiqueta: "p_conexiones" },
     { id: "consumo", icono: Gauge, etiqueta: "p_consumo" },
@@ -551,6 +575,23 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
             ...(id === "eventos"
               ? { contador: eventosNuevos, contadorAyuda: tr("ez_sb_nuevos") }
               : {}),
+            ...(id === "apps"
+              ? {
+                  elemento: (
+                    <BotonApps
+                      tr={tr}
+                      cuentas={cuentasApp}
+                      activa={appActiva}
+                      seccionActiva={!soloLectura && seccion === "apps"}
+                      deshabilitado={soloLectura || !produccion}
+                      onElegir={(c) => {
+                        window.dispatchEvent(new Event("ezra:navego"));
+                        elegirApp(c);
+                      }}
+                    />
+                  ),
+                }
+              : {}),
           }))}
           actual={soloLectura ? "" : seccion}
           tr={tr}
@@ -560,7 +601,11 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
         />
         {!soloLectura && (
           <CabeceraPagina
-            titulo={tr(navegacion.find((n) => n.id === seccion)?.etiqueta ?? "p_inicio")}
+            titulo={
+              seccion === "apps" && appActiva
+                ? `${redes[appActiva.canal].nombre} · ${appActiva.nombre}`
+                : tr(navegacion.find((n) => n.id === seccion)?.etiqueta ?? "p_inicio")
+            }
             ayuda={ayudaSeccion[seccion] ? tr(ayudaSeccion[seccion]!) : undefined}
             acciones={
               seccion === "calendario" ? (
@@ -804,8 +849,28 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
               <SeccionEventos g={g} fecha={fecha} locale={locale} />
             </>
           )}
-          {!soloLectura && seccion === "instagram" && (
-            <PaginaInstagram g={g} tr={tr} fecha={fecha} />
+          {!soloLectura && seccion === "apps" && (
+            <>
+              {appActiva?.canal === "instagram" && <PaginaInstagram g={g} tr={tr} fecha={fecha} />}
+              {appActiva && appActiva.canal !== "instagram" && (
+                <PerfilConexion
+                  key={`${appActiva.canal}:${appActiva.id}`}
+                  cuenta={appActiva}
+                  tr={tr}
+                  fecha={fecha}
+                  onActualizado={() => void recargarApps()}
+                />
+              )}
+              {cuentasApp && !appActiva && (
+                <div className="ep-vacio">
+                  <h3>{tr("ez_apps_ninguna")}</h3>
+                  <button className="ez-boton-negro" onClick={() => navegar("conexiones")}>
+                    {tr("p_conexiones")}
+                  </button>
+                </div>
+              )}
+              {!cuentasApp && <p role="status">{tr("p_cargando")}</p>}
+            </>
           )}
           {!soloLectura && seccion === "consumo" && (
             <>
