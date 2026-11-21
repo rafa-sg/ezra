@@ -2087,5 +2087,17 @@
   "ez_mpg_csvReemplazar": "Replace all",
   "ez_mpg_csvElegir": "Choose CSV",
   "ez_mpg_csvOk": "Saved {n} rows ({v} empty ones stayed without data).",
-  "ez_mpg_csvSubiendo": "Uploading…"
+  "ez_mpg_csvSubiendo": "Uploading…",
+  "ez_mpg_anual": "Entries by month",
+  "ez_mpg_parcial": "partial to date",
+  "ez_mpg_estimacion": "estimate",
+  "ez_mpg_estimacionNoOficial": "Unofficial estimate",
+  "ez_mpg_proximoMes": "Next month",
+  "ez_mpg_anioEstimado": "Year",
+  "ez_mpg_mesesRealesEstimados": "{r} months with official cutoff + {e} estimated",
+  "ez_mpg_metodo_interanual": "based on the change versus the same period last year",
+  "ez_mpg_metodo_tendencia": "based on the trend of closed months",
+  "ez_mpg_sinEstimacion": "The next-month and full-year estimate appears with at least 3 closed months loaded (there are {n}).",
+  "ez_mpg_cierreMes": "Estimated close of",
+  "ez_mpg_llevaRegistrado": "{n} recorded so far"
 }

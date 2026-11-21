@@ -54,9 +54,9 @@
 .azra .ez-mp-escena {
   position: relative;
   width: 100%;
-  max-width: calc((100vh - 230px) * 700 / 400);
+  max-width: calc((100vh - 150px) * 700 / 368);
   margin-inline: auto;
-  aspect-ratio: 700 / 400;
+  aspect-ratio: 700 / 368;
 }
 .azra .ez-mp-escena svg {
   display: block;

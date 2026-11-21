@@ -592,3 +592,10 @@ Pedido del propietario (video 627 y captura de Instagram), primero en maqueta y 
 - Cortes oficiales por CSV (`src/lib/granjas/ingresos.ts`, `/api/granjas/ingresos`, archivo `data/granjas/ingresos-oficiales.json`): columnas fecha (AAAA-MM o AAAA-MM-DD), nacionalidad, puesto, tipo_movimiento (entrada · salida_origen · pasajeros_llegada · personas_presentes), valor, fuente, fecha_corte, url, alcance. Todo o nada; un valor vacío queda vacío. Sin doble conteo: el total publicado gana sobre el desglose y el corte mensual sobre la suma de días. Mes en curso → «Acumulado al [corte]». Sin mes pedido → el último publicado.
 - «Salidas hacia El Salvador registradas en origen» (IGM, INM Honduras) solo en el detalle de cruces, con su alcance y período; la gráfica mensual por nacionalidad usa únicamente entradas DGME. CEPA, solo en el aeropuerto. «Personas presentes» solo si la fuente publica ese indicador.
 - El comunicado del IGM compartido por el propietario no se pudo leer automáticamente (403): no se cargó ninguna cifra suya.
+
+## 2026-11-21 (noche, 2) · Mapa más arriba y entradas por mes con estimación
+
+- Mapa: `VB` 280,226,700,368 (sin margen sobrante arriba) y, en escritorio, los controles flotan en la esquina superior derecha; la etiqueta de Honduras pasa al noreste (906,338) para no quedar debajo. A 1000×620 el país entra completo.
+- «Entradas por mes · AAAA»: los 12 meses con el total del país (DGME; «todos» si se publicó, si no la suma de puestos). Sin corte = vacío.
+- Estimación NO oficial (rayada, con rango): solo con ≥3 meses cerrados. Método «interanual» (mismo mes del año anterior × variación de los meses comparables) si hay año anterior; si no, «tendencia» (mínimos cuadrados). Rango = error medio (mín. ±5 %). Muestra el cierre del mes en curso (nunca por debajo de lo registrado), el mes siguiente y el año (meses reales + estimados).
+- No se cargaron las cifras de prensa de MITUR («visitantes internacionales»: enero ≈413 mil, agosto 357.325, acumulados) porque son otra medición distinta de las entradas DGME.

@@ -39,3 +39,37 @@ test("resumen: sin doble conteo, acumulado del mes en curso y último mes public
   assert.match(nov.cruces["el-poy"]!.periodo, /acumulado al 2026-11-15/);
   assert.equal(resumenIngresos([], "2026-11-21").mes, null);
 });
+
+test("serie anual: 12 meses, vacíos sin inventar y estimación solo con 3 meses cerrados", async () => {
+  const { serieAnual } = await import("../src/lib/granjas/ingresos");
+  const fila = (fecha: string, valor: number) =>
+    leerCsv(`fecha,nacionalidad,puesto,tipo_movimiento,valor,fuente,fecha_corte\n${fecha},total,todos,entrada,${valor},DGME,2026-11-05`).filas[0];
+  const pocos = serieAnual([fila("2026-01", 100), fila("2026-02", 110)], "2026-11-21");
+  assert.equal(pocos.serie.length, 12);
+  assert.equal(pocos.serie[2].valor, null);
+  assert.equal(pocos.proximo, null);
+  // Tendencia: 100, 110, 120 → abril ≈ 130.
+  const t = serieAnual([fila("2026-01", 100), fila("2026-02", 110), fila("2026-03", 120)], "2026-11-21");
+  assert.equal(t.proximo?.mes, "2026-04"); // el mes en curso (nov) no sigue a marzo: el próximo es abril
+  assert.equal(t.proximo?.valor, 130);
+  assert.equal(t.proximo?.metodo, "tendencia");
+  assert.ok(t.proximo!.bajo < 130 && t.proximo!.alto > 130);
+  // Interanual: el año anterior completo y +10 % en los meses comparables.
+  const previos = Array.from({ length: 12 }, (_, i) => fila(`2025-${String(i + 1).padStart(2, "0")}`, 1000));
+  const ia = serieAnual([...previos, fila("2026-01", 1100), fila("2026-02", 1100), fila("2026-03", 1100)], "2026-11-21");
+  assert.equal(ia.proximo?.metodo, "interanual");
+  assert.equal(ia.proximo?.valor, 1100);
+  assert.equal(ia.anioEstimado?.valor, 13200);
+});
+
+test("estimación: con el mes en curso parcial, cierre del mes y el siguiente", async () => {
+  const { serieAnual } = await import("../src/lib/granjas/ingresos");
+  const fila = (fecha: string, valor: number) =>
+    leerCsv(`fecha,nacionalidad,puesto,tipo_movimiento,valor,fuente,fecha_corte\n${fecha},total,todos,entrada,${valor},DGME,2026-11-18`).filas[0];
+  const filas = Array.from({ length: 10 }, (_, i) => fila(`2026-${String(i + 1).padStart(2, "0")}`, 100 + i * 10));
+  const a = serieAnual([...filas, fila("2026-11-01", 500)], "2026-11-21");
+  assert.equal(a.proximo?.mes, "2026-12");
+  assert.equal(a.cierreActual?.mes, "2026-11");
+  assert.ok(a.cierreActual!.valor >= 500); // nunca por debajo de lo registrado
+  assert.ok(a.porMes["2026-12"] && a.porMes["2026-11"]);
+});

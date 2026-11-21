@@ -90,7 +90,7 @@ export function geo() {
   return geoCache;
 }
 /** El país centrado (sin la cápsula de arriba), con margen para los recorridos que llegan desde afuera. */
-export const VB: [number, number, number, number] = [280, 200, 700, 400];
+export const VB: [number, number, number, number] = [280, 226, 700, 368];
 export const X_PAIS: [number, number] = [308, 951];
 
 type P2 = [number, number];
@@ -123,7 +123,7 @@ function sobreFrontera(p: P2): P2 {
 const ETIQUETAS: Record<Acceso["id"], P2> = {
   aeropuerto: [664, 566],
   guatemala: [352, 282],
-  honduras: [800, 270],
+  honduras: [906, 338],
 };
 export type PuestoGeo = {
   id: string;

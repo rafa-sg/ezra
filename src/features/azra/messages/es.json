@@ -2087,5 +2087,17 @@
   "ez_mpg_csvReemplazar": "Reemplazar todo",
   "ez_mpg_csvElegir": "Elegir CSV",
   "ez_mpg_csvOk": "Se guardaron {n} filas ({v} vacías quedaron sin dato).",
-  "ez_mpg_csvSubiendo": "Subiendo…"
+  "ez_mpg_csvSubiendo": "Subiendo…",
+  "ez_mpg_anual": "Entradas por mes",
+  "ez_mpg_parcial": "acumulado parcial",
+  "ez_mpg_estimacion": "estimación",
+  "ez_mpg_estimacionNoOficial": "Estimación no oficial",
+  "ez_mpg_proximoMes": "Próximo mes",
+  "ez_mpg_anioEstimado": "Año",
+  "ez_mpg_mesesRealesEstimados": "{r} meses con corte oficial + {e} estimados",
+  "ez_mpg_metodo_interanual": "según la variación frente al mismo período del año anterior",
+  "ez_mpg_metodo_tendencia": "según la tendencia de los meses cerrados",
+  "ez_mpg_sinEstimacion": "La estimación del próximo mes y del año aparece con al menos 3 meses cerrados cargados (hay {n}).",
+  "ez_mpg_cierreMes": "Cierre estimado de",
+  "ez_mpg_llevaRegistrado": "van {n} registradas"
 }

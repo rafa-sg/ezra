@@ -64,6 +64,8 @@ export function GraficasIngresos({
         </label>
       </header>
 
+      {ingresos && <AnioPorMes anual={ingresos.anual} tr={tr} />}
+
       <div className="ez-mpg-grupo">
         <h4>{tr("ez_mpg_cruces")}</h4>
         <p className="ez-mpg-nota">{tr("ez_mpg_crucesNota")}</p>
@@ -234,5 +236,107 @@ function CargaCsv({ onCargado, tr }: { onCargado: () => void; tr: Tr }) {
         </ul>
       )}
     </details>
+  );
+}
+
+const mesCorto = (m: string) =>
+  new Intl.DateTimeFormat("es-SV", { month: "short", timeZone: "UTC" })
+    .format(new Date(`${m}-15T12:00:00Z`))
+    .replace(".", "");
+const compacto = new Intl.NumberFormat("es-SV", { notation: "compact", maximumFractionDigits: 1 });
+
+/**
+ * Los 12 meses del año con las entradas registradas (DGME) y la estimación NO oficial (rayada) del
+ * cierre del mes en curso, del mes siguiente y del resto del año. Un mes sin corte ni estimación queda vacío.
+ */
+function AnioPorMes({ anual, tr }: { anual: ResumenIngresos["anual"]; tr: Tr }) {
+  const { serie, proximo, cierreActual, porMes, anioEstimado, anio, cerrados } = anual;
+  const max = Math.max(1, ...serie.map((m) => Math.max(m.valor ?? 0, porMes[m.mes]?.valor ?? 0)));
+  const metodo = (m: "interanual" | "tendencia") => tr(`ez_mpg_metodo_${m}`);
+  const nombreLargo = (m: string) =>
+    new Intl.DateTimeFormat("es-SV", { month: "long", year: "numeric", timeZone: "UTC" }).format(
+      new Date(`${m}-15T12:00:00Z`),
+    );
+  const rango = (e: { valor: number; bajo: number; alto: number }) => (
+    <>
+      <strong>≈ {numero.format(e.valor)}</strong> ({numero.format(e.bajo)} – {numero.format(e.alto)}
+      )
+    </>
+  );
+  return (
+    <div className="ez-mpg-grupo">
+      <h4>
+        {tr("ez_mpg_anual")} · {anio}
+      </h4>
+      <div className="ez-mpg-anual" role="list" aria-label={`${tr("ez_mpg_anual")} ${anio}`}>
+        {serie.map((m) => {
+          const est = porMes[m.mes] ?? null;
+          const arriba = m.valor !== null && !m.parcial ? m.valor : (est?.valor ?? m.valor);
+          const etiqueta =
+            [
+              m.valor !== null
+                ? `${numero.format(m.valor)}${m.parcial ? ` (${tr("ez_mpg_parcial")})` : ""}`
+                : "",
+              est ? `≈ ${numero.format(est.valor)} (${tr("ez_mpg_estimacion")})` : "",
+            ]
+              .filter(Boolean)
+              .join(" · ") || tr("ez_mpv_sinDatos");
+          return (
+            <div
+              key={m.mes}
+              role="listitem"
+              className="ez-mpg-mesbarra"
+              title={`${mesCorto(m.mes)}: ${etiqueta}`}
+              aria-label={`${mesCorto(m.mes)}: ${etiqueta}`}
+            >
+              <span className="ez-mpg-mesvalor">
+                {arriba !== null ? (est ? "≈" : "") + compacto.format(arriba) : "—"}
+              </span>
+              <span className="ez-mpg-columna">
+                {/* Estimación rayada detrás; lo registrado (o el acumulado parcial) delante. */}
+                {est && (
+                  <span
+                    className="ez-mpg-relleno ez-mpg-estimado"
+                    style={{ height: `${(est.valor / max) * 100}%` }}
+                  />
+                )}
+                {m.valor !== null && (
+                  <span
+                    className={`ez-mpg-relleno ${m.parcial ? "ez-mpg-parcial" : ""}`}
+                    style={{ height: `${(m.valor / max) * 100}%` }}
+                  />
+                )}
+              </span>
+              <span className="ez-mpg-mesnombre">{mesCorto(m.mes)}</span>
+            </div>
+          );
+        })}
+      </div>
+      {proximo && anioEstimado ? (
+        <div className="ez-mpg-estimaciones">
+          <p>
+            <span className="ez-mpg-sello">{tr("ez_mpg_estimacionNoOficial")}</span>{" "}
+            {metodo(proximo.metodo)}
+          </p>
+          {cierreActual && (
+            <p>
+              {tr("ez_mpg_cierreMes")} {nombreLargo(cierreActual.mes)}: {rango(cierreActual)} ·{" "}
+              {tr("ez_mpg_llevaRegistrado").replace("{n}", numero.format(cierreActual.acumulado))}
+            </p>
+          )}
+          <p>
+            {tr("ez_mpg_proximoMes")} ({nombreLargo(proximo.mes)}): {rango(proximo)}
+          </p>
+          <p>
+            {tr("ez_mpg_anioEstimado")} {anio}: {rango(anioEstimado)} ·{" "}
+            {tr("ez_mpg_mesesRealesEstimados")
+              .replace("{r}", String(anioEstimado.reales))
+              .replace("{e}", String(anioEstimado.estimados))}
+          </p>
+        </div>
+      ) : (
+        <p className="ez-mpg-nota">{tr("ez_mpg_sinEstimacion").replace("{n}", String(cerrados))}</p>
+      )}
+    </div>
   );
 }

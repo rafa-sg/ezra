@@ -219,3 +219,87 @@
     grid-template-columns: 88px minmax(0, 1fr) 60px;
   }
 }
+
+/* Ingresos por mes: 12 columnas; la estimación va rayada y el mes en curso, más claro. */
+.azra .ez-mpg-anual {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
+  align-items: end;
+  height: 170px;
+  padding: 10px 12px 6px;
+  border-radius: 14px;
+  background: var(--ep-superficie-2);
+}
+.azra .ez-mpg-mesbarra {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 4px;
+  height: 100%;
+  min-width: 0;
+  text-align: center;
+}
+.azra .ez-mpg-mesvalor {
+  overflow: hidden;
+  color: var(--ep-texto-2);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.azra .ez-mpg-columna {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 0;
+  border-bottom: 1px solid var(--ep-borde);
+}
+.azra .ez-mpg-relleno {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 6px 6px 0 0;
+  background: var(--mp-ruta, #4d68ff);
+}
+.azra .ez-mpg-parcial {
+  opacity: 0.55;
+}
+.azra .ez-mpg-estimado {
+  border: 1.5px dashed var(--mp-ruta, #4d68ff);
+  border-bottom: 0;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--mp-ruta, #4d68ff) 22%, transparent) 0 4px, transparent 4px 8px);
+}
+.azra .ez-mpg-mesnombre {
+  color: var(--ep-suave);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+.azra .ez-mpg-estimaciones {
+  display: grid;
+  gap: 4px;
+}
+.azra .ez-mpg-estimaciones p {
+  margin: 0;
+  color: var(--ep-texto-2);
+  font-size: 12.5px;
+}
+.azra .ez-mpg-sello {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ep-superficie-2);
+  color: var(--ep-suave);
+  font-size: 11px;
+  font-weight: 600;
+}
+@media (max-width: 520px) {
+  .azra .ez-mpg-anual {
+    gap: 3px;
+    padding: 8px 6px 4px;
+  }
+  .azra .ez-mpg-mesvalor {
+    font-size: 9px;
+  }
+}
+.azra .ez-mpg-columna .ez-mpg-relleno {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}

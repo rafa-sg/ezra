@@ -20,9 +20,17 @@
 
 /* Columna del mapa: controles arriba a la derecha y el país centrado debajo. */
 .azra .ez-mp-columna {
+  position: relative;
   display: grid;
   gap: 10px;
   min-width: 0;
+}
+/* En escritorio los controles flotan sobre la esquina superior derecha (vacía): el mapa sube. */
+.azra .ez-mp-amplio .ez-mpv-controles {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
 }
 .azra .ez-mpv-controles {
   display: inline-flex;
