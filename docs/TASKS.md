@@ -129,6 +129,13 @@
 - [x] Pruebas: `tests/encargos-resumen.test.ts`, `tests/trazabilidad.test.ts`. Check 161/161. Arnés `work/ezra-visual.mts` (no versionado) a 1440 y 390.
 - [ ] Integraciones ausentes: publicación automática de encargos (no existe; se descarga o copia), métricas de posts subidos a mano (no se leen por post), Facebook sin conectar, envíos a Spotmi bloqueados por la migración pendiente.
 
+### 21 nov · YouTube conectado con métricas y encargo «Videos virales» (sin commit)
+
+- [x] YouTube conectado con `yt-analytics.readonly` (canal Spotmi @spotmisv) y YouTube Analytics API habilitada en el proyecto de Google. La tarjeta de Conexiones ya muestra «Habilita» (faltaba `g_habilita_youtube`).
+- [x] Nuevo tipo de encargo **Videos virales** (agente `virales`): tema + período (7/30/90/365 días o cualquier fecha) → `search.list` por vistas + `videos.list` → hasta 25 videos con vistas, vistas por día, interacción, me gusta, comentarios y duración. Sin IA ni intentos; ~101 unidades de las 10.000 diarias de la API. Los 20 primeros enlaces quedan como fuentes (permiten aprobar). Ranking ordenable en el detalle (`src/features/azra/produccion/virales.tsx`); la lista vive en `encargo.videos` y se vacía si se edita el pedido. Código: `src/lib/produccion/virales-{texto,youtube}.ts`, rama en `/api/produccion/generar`, origen `youtube`. En Granjas el paso `virales` se bloquea con aviso (por ahora solo desde Encargos).
+- [x] Verificación: lint, tipos y 186/186 pruebas (4 nuevas en `tests/virales.test.ts`, corridas en una copia fuera de la carpeta montada). Build e integración no se corrieron. Falta la prueba real desde la interfaz.
+- [ ] Siguiente: granja de clips a partir de un encargo aprobado. Solo con videos propios o con permiso del autor (los virales de terceros sirven como referencia de tendencias).
+
 ### Te toca (propietario)
 - [ ] Supabase: correr `work/supabase-probar-sin-aplicar.sql` en el SQL Editor (debe terminar en «PRUEBAS TERMINADAS»), luego `work/supabase-aplicar.sql`, luego `pnpm exec supabase login` y `pnpm exec supabase migration repair --status applied 20261103 20261117 --linked` en spotmi-web.
 - [ ] Crear la cuenta editorial (Authentication → Users), habilitarla con `work/supabase-habilitar-editorial.sql` y poner `SPOTMI_EDITORIAL_EMAIL` y `SPOTMI_EDITORIAL_PASSWORD` en `.env.local`. Reiniciar `npm run dev` y pulsar Conexiones → Spotmi web → Conectar.

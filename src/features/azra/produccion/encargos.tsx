@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowUpRight, Copy, Download, LayoutGrid, List, Pencil, 
 import type { Encargo } from "@/lib/produccion/modelo";
 import { estadoEditorial, estadoEjecucion, estadoEntrega, etapa, tipoResultado, type EstadoEditorial } from "@/lib/produccion/resumen-encargo";
 import type { RelacionesEncargo } from "@/lib/produccion/relaciones";
+import { RankingVirales } from "./virales";
 import "./encargos.css";
 
 type Tr = (c: string) => string;
@@ -204,7 +205,8 @@ export function DetalleEncargo({
   const et = etapa(e);
   const ejecuciones = (e.historial ?? []).filter((h) => h.accion === "generado" || h.accion === "fallo").reverse();
   const versiones = (e.historial ?? []).filter((h) => ["creado", "editado", "revision", "cambios", "aprobado", "rechazado"].includes(h.accion)).reverse();
-  const costo = e.proveedor === "gemini" ? tr("ez_det_costoGemini") : `${tr("ez_det_costoIntento")}${usosRestantes !== null ? ` (${tr("ez_det_quedan").replace("{n}", String(usosRestantes))})` : ""}`;
+  const virales = e.agente === "virales";
+  const costo = virales ? tr("ez_virales_costo") : e.proveedor === "gemini" ? tr("ez_det_costoGemini") : `${tr("ez_det_costoIntento")}${usosRestantes !== null ? ` (${tr("ez_det_quedan").replace("{n}", String(usosRestantes))})` : ""}`;
   const descargar = () => {
     const blob = new Blob([`${e.titulo}\n\n${e.resultado}`], { type: "text/plain;charset=utf-8" });
     const a = document.createElement("a");
@@ -225,7 +227,7 @@ export function DetalleEncargo({
     <div className="ez-det-ejecutar">
       <label className="ep-checkbox">
         <input type="checkbox" checked={confirmar} onChange={(x) => setConfirmar(x.target.checked)} />
-        {tr("ez_det_confirmar").replace("{ia}", tr(`p_${e.proveedor}`))} {costo}.
+        {virales ? tr("ez_virales_confirmar") : tr("ez_det_confirmar").replace("{ia}", tr(`p_${e.proveedor}`))} {costo}.
       </label>
       <div className="ep-acciones">
         <button className="ez-boton-negro" disabled={!confirmar || ocupado || ejecutando} onClick={() => onAccion({ tipo: "ejecutar", id: e.id })}>
@@ -265,7 +267,7 @@ export function DetalleEncargo({
           <Seccion titulo={tr("ez_det_resultado")}>
             {e.resultado.trim() ? (
               <>
-                <pre className="ez-det-vista">{e.resultado}</pre>
+                {virales && e.videos?.length ? <RankingVirales videos={e.videos} tr={tr} /> : <pre className="ez-det-vista">{e.resultado}</pre>}
                 <div className="ep-acciones">
                   <button className="ez-boton-blanco" onClick={() => void copiar()}>
                     <Copy size={14} aria-hidden="true" /> {copiado ? tr("p_copiado") : tr("ez_det_copiar")}

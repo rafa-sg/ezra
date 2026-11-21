@@ -541,3 +541,129 @@
     grid-column: 1 / -1;
   }
 }
+
+/* Videos virales: ranking ordenable con miniatura y métricas públicas. */
+.azra .ez-virales-orden {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--ep-superficie-2);
+}
+.azra .ez-virales-orden button {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ep-texto-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.azra .ez-virales-orden button[aria-checked="true"] {
+  background: var(--ep-tarjeta);
+  color: var(--ep-texto);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+}
+.azra .ez-virales-lista {
+  display: grid;
+  gap: 10px;
+  max-height: 640px;
+  margin: 0 0 12px;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.azra .ez-virales-lista > li {
+  display: grid;
+  grid-template-columns: 24px 160px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 12px;
+  background: var(--ep-tarjeta);
+}
+.azra .ez-virales-puesto {
+  padding-top: 4px;
+  color: var(--ep-suave);
+  font-weight: 700;
+  text-align: center;
+}
+.azra .ez-virales-miniatura {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--ep-superficie-2);
+  color: var(--ep-suave);
+}
+.azra .ez-virales-miniatura img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.azra .ez-virales-miniatura small {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 75%);
+  color: #fff;
+  font-size: 11px;
+}
+.azra .ez-virales-texto {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.azra .ez-virales-texto > a {
+  color: var(--ep-texto);
+  text-decoration: none;
+}
+.azra .ez-virales-texto > a:hover strong,
+.azra .ez-virales-texto > a:focus-visible strong {
+  text-decoration: underline;
+}
+.azra .ez-virales-texto > span {
+  overflow: hidden;
+  color: var(--ep-texto-2);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .ez-virales-texto dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 4px 0 0;
+}
+.azra .ez-virales-texto dl div {
+  display: flex;
+  gap: 4px;
+  font-size: 12px;
+}
+.azra .ez-virales-texto dt {
+  color: var(--ep-suave);
+}
+.azra .ez-virales-texto dd {
+  margin: 0;
+  color: var(--ep-texto-2);
+  font-variant-numeric: tabular-nums;
+}
+.azra .ez-virales-texto .ez-virales-activo dd {
+  color: var(--ep-texto);
+  font-weight: 700;
+}
+@media (max-width: 640px) {
+  .azra .ez-virales-lista > li {
+    grid-template-columns: 20px 104px minmax(0, 1fr);
+    gap: 8px;
+  }
+}

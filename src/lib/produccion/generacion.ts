@@ -1,5 +1,5 @@
 import { guardarProduccion, leerProduccion } from "./almacen";
-import { anotar, crearEncargo, editarEncargo, type Encargo } from "./modelo";
+import { anotar, crearEncargo, editarEncargo, type Encargo, type Fuente, type VideoViral } from "./modelo";
 import { WorkflowError } from "../workflow";
 import type { EntregaIA } from "./proveedores";
 
@@ -39,7 +39,12 @@ export async function reservarGeneracion(
   return encargo!;
 }
 /** Una edición concurrente conserva el resultado separado y nunca pisa la versión nueva. */
-export async function guardarEntrega(encargo: Encargo, entrega: EntregaIA) {
+export async function guardarEntrega(
+  encargo: Encargo,
+  entrega: EntregaIA,
+  extra: { origen?: Encargo["origenResultado"]; fuentes?: Fuente[]; videos?: VideoViral[] } = {},
+) {
+  const origen = extra.origen ?? encargo.proveedor;
   for (let intento = 0; intento < 4; intento++) {
     const actual = await leerProduccion();
     let encargoId = "";
@@ -48,17 +53,19 @@ export async function guardarEntrega(encargo: Encargo, entrega: EntregaIA) {
         const vigente = estado.encargos.find((e) => e.id === encargo.id);
         const mismaVersion = vigente?.version === encargo.version;
         const siguiente = mismaVersion
-          ? editarEncargo(vigente, { ...vigente, resultado: entrega.texto })
+          ? editarEncargo(vigente, { ...vigente, resultado: entrega.texto, ...(extra.fuentes ? { fuentes: extra.fuentes } : {}) })
           : crearEncargo({
               ...encargo,
               titulo: `${encargo.titulo.slice(0, 155)} · resultado IA`,
               resultado: entrega.texto,
+              ...(extra.fuentes ? { fuentes: extra.fuentes } : {}),
             });
         siguiente.estado = "revision";
         siguiente.comprobaciones = { hechos: false, derechos: false, marca: false };
-        siguiente.origenResultado = encargo.proveedor;
+        siguiente.origenResultado = origen;
         siguiente.busquedaHtml = entrega.busquedaHtml;
-        const anotado = anotar(siguiente, "generado", { nota: `Entrega de ${encargo.proveedor}.`, resultado: entrega.texto });
+        siguiente.videos = extra.videos ?? [];
+        const anotado = anotar(siguiente, "generado", { nota: origen === "youtube" ? `Búsqueda en YouTube: ${extra.videos?.length ?? 0} videos.` : `Entrega de ${origen}.`, resultado: entrega.texto });
         Object.assign(siguiente, { historial: anotado.historial });
         encargoId = siguiente.id;
         return {

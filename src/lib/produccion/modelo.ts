@@ -17,6 +17,7 @@ export const agentes = [
   "redactor_ig",
   "disenador_post",
   "imagen_evento",
+  "virales",
 ] as const;
 export const canales = ["spotmi", "instagram", "tiktok", "facebook", "youtube"] as const;
 export const proveedores = ["astra", "claude", "gemini"] as const;
@@ -48,6 +49,22 @@ export const fuenteSchema = z.object({
   imagen: z.union([z.literal(""), enlaceSeguro]).default(""),
   nota: z.string().max(2000).default(""),
 });
+/** Un video de YouTube del encargo «Videos virales» (métricas públicas en el momento de la consulta). */
+export const videoViralSchema = z.object({
+  id: z.string().regex(/^[\w-]{11}$/),
+  titulo: z.string().max(300),
+  canal: z.string().max(200),
+  canalId: z.string().max(64),
+  publicado: z.string().datetime(),
+  miniatura: z.string().max(2000).default(""),
+  duracion: z.number().int().nonnegative().nullable(),
+  vistas: z.number().int().nonnegative(),
+  meGusta: z.number().int().nonnegative().nullable(),
+  comentarios: z.number().int().nonnegative().nullable(),
+  vistasDia: z.number().nonnegative(),
+  interaccion: z.number().nonnegative().nullable(),
+});
+export type VideoViral = z.infer<typeof videoViralSchema>;
 export const contenidoEncargoSchema = z.object({
   titulo: z.string().trim().min(3).max(180),
   agente: z.enum(agentes),
@@ -85,7 +102,9 @@ export const encargoSchema = contenidoEncargoSchema.extend({
   comprobaciones: z.object({ hechos: z.boolean(), derechos: z.boolean(), marca: z.boolean() }),
   creado: z.string().datetime(),
   actualizado: z.string().datetime(),
-  origenResultado: z.enum(["manual", "gemini", "astra", "claude"]).default("manual"),
+  origenResultado: z.enum(["manual", "gemini", "astra", "claude", "youtube"]).default("manual"),
+  /** Solo «Videos virales»: la lista ordenable; se vacía si se edita el pedido. */
+  videos: z.array(videoViralSchema).max(50).default([]),
   busquedaHtml: z.string().max(200000).default(""),
   dependencia: z
     .object({ id: z.string().uuid(), version: z.number().int().positive() })
@@ -106,6 +125,7 @@ export const produccionSchema = z.object({
 });
 export type Encargo = z.infer<typeof encargoSchema>;
 export type ContenidoEncargo = z.infer<typeof contenidoEncargoSchema>;
+export type Fuente = z.infer<typeof fuenteSchema>;
 export type Produccion = z.infer<typeof produccionSchema>;
 export type Agente = (typeof agentes)[number];
 export const produccionVacia = (): Produccion => ({
@@ -159,6 +179,7 @@ export function editarEncargo(actual: Encargo, datos: ContenidoEncargo): Encargo
           estado: "pendiente" as const,
           comprobaciones: comprobacionesVacias(),
           busquedaHtml: "",
+          videos: [],
           notaCambios: "",
         }
       : {}),
@@ -311,6 +332,8 @@ const instrucciones: Record<Agente, string> = {
     "Redacta el texto de una publicación de Instagram para un evento: máximo 2.200 caracteres, con fecha, lugar, la línea «Más info en spotmi» y entre 5 y 10 hashtags. Usa solo datos confirmados en la fuente.",
   imagen_evento:
     "Para cada evento nuevo sin imagen oficial busca, en orden, el afiche oficial, la publicación de una cuenta oficial (API), una foto de prensa y, si está encendida y hay cupo, genera una imagen de referencia con IA sin texto, logos ni personas reconocibles. La referencia IA nunca es imagen oficial.",
+  virales:
+    "Busca en YouTube los videos públicos más vistos sobre el tema pedido, dentro del período indicado, y ordénalos por vistas, vistas por día e interacción. Entrega enlaces y métricas públicas; no descargues videos ni presentes material de terceros como propio.",
   disenador_post:
     "Prepara la imagen 1080×1350 del post con la plantilla de Spotmi: día, mes, título, lugar y logo. Usa una fotografía de fondo solo si tiene permiso registrado.",
 };

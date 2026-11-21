@@ -131,6 +131,7 @@ const salidasAgente: Record<Agente, TipoArtefacto> = {
   redactor_ig: "texto",
   disenador_post: "imagen",
   imagen_evento: "investigacion",
+  virales: "investigacion",
 };
 const todos = [...tiposArtefacto];
 export function aceptaNodo(nodo: Nodo): TipoArtefacto[] {
@@ -278,6 +279,8 @@ export function faltantesNodo(nodo: Nodo, grafo: Grafo, contexto: { geminiHabili
       );
     if (nodo.agente !== "cazador" && !entradas.length && !nodo.instrucciones.trim())
       faltan.push("Conecta un paso anterior o escribe las instrucciones.");
+    if (nodo.agente === "virales")
+      faltan.push("Videos virales todavía solo se pide desde Encargos (busca en YouTube sin IA).");
     if (nodo.proveedor === "local" && !agentesLocales.includes(nodo.agente ?? "cazador"))
       faltan.push("Este especialista no trabaja sin IA. Elige Gemini, Astra, Claude o trabajo manual.");
     if (nodo.proveedor === "local" && nodo.agente === "verificador" && !entradas.length)

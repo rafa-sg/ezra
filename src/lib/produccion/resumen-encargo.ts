@@ -9,7 +9,7 @@ import { siguienteAccion, type SiguienteAccion } from "./modelo";
  *  - entrega por destino: los encargos no se publican solos: aprobado = listo para descargar o copiar.
  * «Aprobado» nunca significa «publicado».
  */
-export type TipoResultado = "eventos" | "post" | "guion" | "video" | "imagen" | "texto" | "informe";
+export type TipoResultado = "eventos" | "post" | "guion" | "video" | "imagen" | "texto" | "informe" | "videos";
 const tipos: Record<Agente, TipoResultado> = {
   cazador: "eventos",
   verificador: "eventos",
@@ -26,6 +26,7 @@ const tipos: Record<Agente, TipoResultado> = {
   redactor_ig: "post",
   disenador_post: "imagen",
   imagen_evento: "imagen",
+  virales: "videos",
 };
 export const tipoResultado = (agente: Agente): TipoResultado => tipos[agente] ?? "texto";
 

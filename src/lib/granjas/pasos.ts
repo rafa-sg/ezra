@@ -121,6 +121,7 @@ export function encargoMinimo(d: { id: string; titulo: string; agente: Encargo["
     actualizado: ahora,
     origenResultado: "manual",
     busquedaHtml: "",
+    videos: [],
     dependencia: null,
     historial: [],
     notaCambios: "",

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import type { Agente, ContenidoEncargo } from "@/lib/produccion/modelo";
+import { periodosVirales, textoPedidoViral, type PeriodoViral } from "@/lib/produccion/virales-texto";
 
 type Tr = (c: string) => string;
 type EventoElegible = { id: string; titulo: string; fecha: string | null; fuenteUrl: string; lugar: string; municipio: string; estado: string };
@@ -11,6 +12,7 @@ const nombresCanal: Record<string, string> = { spotmi: "Spotmi web", instagram: 
 /** Lo que se puede pedir hoy (cada opción es un especialista que ya existe). */
 const objetivos: { clave: string; agente: Agente }[] = [
   { clave: "eventos", agente: "cazador" },
+  { clave: "virales", agente: "virales" },
   { clave: "post", agente: "redactor_ig" },
   { clave: "guion", agente: "guion" },
   { clave: "video", agente: "edicion" },
@@ -46,7 +48,9 @@ export function NuevoEncargo({
   onCrear: (contenido: ContenidoEncargo) => void;
   onCerrar: () => void;
 }) {
-  const [objetivo, setObjetivo] = useState(objetivos[1]);
+  const [objetivo, setObjetivo] = useState(objetivos.find((o) => o.clave === "post")!);
+  const [periodo, setPeriodo] = useState<PeriodoViral>(30);
+  const virales = objetivo.agente === "virales";
   const [eventos, setEventos] = useState<EventoElegible[] | null>(null);
   const [elegidos, setElegidos] = useState<string[]>([]);
   const [fuentes, setFuentes] = useState<{ nombre: string; url: string }[]>([]);
@@ -73,6 +77,18 @@ export function NuevoEncargo({
     const unicas = todas.filter((f, i) => todas.findIndex((x) => x.url === f.url) === i).slice(0, 20);
     const datos = eventosElegidos.map((e) => `- ${e.titulo}${e.fecha ? ` · ${e.fecha}` : ""}${e.lugar || e.municipio ? ` · ${[e.lugar, e.municipio].filter(Boolean).join(", ")}` : ""}`).join("\n");
     const tituloAuto = `${tr(`ez_nuevo_obj_${objetivo.clave}`)}${eventosElegidos[0] ? `: ${eventosElegidos[0].titulo}` : ""}`;
+    // Videos virales: solo el tema y el período; sin eventos ni fuentes (las fuentes serán los videos).
+    if (objetivo.agente === "virales")
+      return {
+        titulo: (titulo.trim() || `${tr("ez_nuevo_obj_virales")}: ${instrucciones.trim().replace(/\s+/g, " ")}`).slice(0, 180),
+        agente: "virales",
+        proveedor,
+        canales: (destinos.length ? destinos : ["youtube"]) as ContenidoEncargo["canales"],
+        encargo: instrucciones.trim() ? textoPedidoViral(instrucciones.slice(0, 200), periodo) : "",
+        resultado: "",
+        fuentes: [],
+        fechaPrevista: fecha,
+      };
     return {
       titulo: (titulo.trim() || tituloAuto).slice(0, 180),
       agente: objetivo.agente,
@@ -83,9 +99,9 @@ export function NuevoEncargo({
       fuentes: unicas,
       fechaPrevista: fecha,
     };
-  }, [eventosElegidos, fuentes, instrucciones, destinos, titulo, proveedor, fecha, objetivo, tr]);
-  const faltaInfo = !contenido.encargo.trim() && !contenido.fuentes.length;
-  const costo = proveedor === "gemini" ? tr("ez_det_costoGemini") : tr("ez_det_costoIntento");
+  }, [eventosElegidos, fuentes, instrucciones, destinos, titulo, proveedor, fecha, objetivo, periodo, tr]);
+  const faltaInfo = virales ? instrucciones.trim().length < 2 : !contenido.encargo.trim() && !contenido.fuentes.length;
+  const costo = virales ? tr("ez_virales_costo") : proveedor === "gemini" ? tr("ez_det_costoGemini") : tr("ez_det_costoIntento");
   return (
     <form
       className="ez-nuevo"
@@ -107,7 +123,10 @@ export function NuevoEncargo({
         </legend>
         <div className="ez-nuevo-opciones" role="radiogroup">
           {objetivos.map((o) => (
-            <button type="button" key={o.clave} role="radio" aria-checked={objetivo.clave === o.clave} onClick={() => setObjetivo(o)}>
+            <button type="button" key={o.clave} role="radio" aria-checked={objetivo.clave === o.clave} onClick={() => {
+                setObjetivo(o);
+                if (o.agente === "virales") setDestinos(["youtube", "tiktok", "instagram"]);
+              }}>
               <strong>{tr(`ez_nuevo_obj_${o.clave}`)}</strong>
               <small>{tr(`p_${o.agente}_entrega`)}</small>
             </button>
@@ -119,6 +138,26 @@ export function NuevoEncargo({
         <legend>
           <b>2</b> {tr("ez_nuevo_conQue")}
         </legend>
+        {virales ? (
+          <>
+            <p className="ep-nota">{tr("ez_virales_ayuda")}</p>
+            <label className="eg-campo">
+              {tr("ez_virales_tema")}
+              <input value={instrucciones} maxLength={200} onChange={(e) => setInstrucciones(e.target.value)} placeholder={tr("ez_nuevo_ph_virales")} />
+            </label>
+            <label className="eg-campo">
+              {tr("ez_virales_periodo")}
+              <select value={periodo} onChange={(e) => setPeriodo(Number(e.target.value) as PeriodoViral)}>
+                {periodosVirales.map((d) => (
+                  <option key={d} value={d}>
+                    {d ? tr("ez_virales_ultimos").replace("{n}", String(d)) : tr("ez_virales_siempre")}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : (
+          <>
         <p className="ep-nota">{tr("ez_nuevo_conQueAyuda")}</p>
         <details className="ez-nuevo-eventos" open={elegidos.length > 0}>
           <summary>
@@ -162,6 +201,8 @@ export function NuevoEncargo({
           {tr("ez_nuevo_instrucciones")}
           <textarea rows={4} maxLength={6000} value={instrucciones} onChange={(e) => setInstrucciones(e.target.value)} placeholder={tr(`ez_nuevo_ph_${objetivo.clave}`)} />
         </label>
+          </>
+        )}
       </fieldset>
 
       <fieldset className="ez-nuevo-paso">
@@ -186,6 +227,7 @@ export function NuevoEncargo({
           {tr("ez_nuevo_titulo")}
           <input value={titulo} maxLength={180} placeholder={contenido.titulo} onChange={(e) => setTitulo(e.target.value)} />
         </label>
+        {!virales && (
         <label className="eg-campo">
           {tr("ez_det_ia")}
           <select value={proveedor} onChange={(e) => setProveedor(e.target.value as Proveedor)}>
@@ -197,6 +239,7 @@ export function NuevoEncargo({
             ))}
           </select>
         </label>
+        )}
         <label className="eg-campo">
           {tr("ez_det_fechaPrevista")}
           <input type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} />
@@ -213,7 +256,9 @@ export function NuevoEncargo({
           <div>
             <dt>{tr("ez_nuevo_conQue")}</dt>
             <dd>
-              {tr("ez_nuevo_resInfo")
+              {virales
+                ? `${instrucciones.trim() || "—"} · ${periodo ? tr("ez_virales_ultimos").replace("{n}", String(periodo)) : tr("ez_virales_siempre")}`
+                : tr("ez_nuevo_resInfo")
                 .replace("{e}", String(eventosElegidos.length))
                 .replace("{f}", String(contenido.fuentes.length))
                 .replace("{i}", instrucciones.trim() ? tr("ez_nuevo_si") : tr("ez_nuevo_no"))}
@@ -224,9 +269,9 @@ export function NuevoEncargo({
             <dd>{contenido.canales.map((c) => nombresCanal[c]).join(", ")}</dd>
           </div>
           <div>
-            <dt>{tr("ez_det_ia")}</dt>
+            <dt>{virales ? tr("ez_virales_como") : tr("ez_det_ia")}</dt>
             <dd>
-              {tr(`p_${proveedor}`)} · {costo}
+              {virales ? "YouTube" : tr(`p_${proveedor}`)} · {costo}
             </dd>
           </div>
         </dl>

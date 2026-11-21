@@ -7,6 +7,7 @@ import { reservarGeneracion, guardarEntrega, registrarFallo } from "@/lib/produc
 import { generarGemini, generarLocal } from "@/lib/produccion/proveedores";
 import { diagnosticoReciente } from "@/lib/produccion/ia-local";
 import { geminiProduccionHabilitado } from "@/lib/ia/gemini";
+import { buscarViralesConectado, entregaVirales, leerPedidoViral } from "@/lib/produccion/virales-youtube";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
@@ -31,6 +32,21 @@ export async function POST(request: Request) {
     adquirido = true;
     const encargo = (await leerProduccion()).encargos.find((e) => e.id === leido.data.id);
     if (!encargo) throw new WorkflowError("Encargo no encontrado.", 404);
+    // «Videos virales» no usa IA ni intentos: consulta la API de YouTube con la cuenta conectada.
+    if (encargo.agente === "virales") {
+      const pedido = leerPedidoViral(encargo.encargo);
+      let videos;
+      try {
+        videos = await buscarViralesConectado(pedido);
+      } catch (error) {
+        await registrarFallo(encargo.id, error instanceof Error ? error.message : "YouTube no respondió.", "youtube").catch(() => undefined);
+        throw error;
+      }
+      const { texto: resultado, fuentes } = entregaVirales(pedido, videos);
+      return Response.json(
+        await guardarEntrega(encargo, { texto: resultado, busquedaHtml: "" }, { origen: "youtube", fuentes, videos }),
+      );
+    }
     if (encargo.proveedor === "gemini") {
       if (!geminiProduccionHabilitado())
         throw new WorkflowError(
