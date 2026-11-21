@@ -14,6 +14,8 @@ import { leerMedio, type Medio } from "./medios";
 import { crearPiezaDesdePaso } from "./publicacion";
 import { busquedaActiva, type Nodo } from "./modelo";
 import { esGranjaClips, momentosPaso, problemasMaterial, referenciasPaso, type AnalizarVideo } from "./clips";
+import { renderClipsPaso, type RenderizarClip } from "./clips-almacen";
+import { renderizarClip } from "./clips-render";
 
 export type Dependencias = {
   generar: (encargo: Encargo, prompt: string, contexto: ContextoGemini, opciones?: { maxTokens?: number; busqueda?: boolean }) => Promise<EntregaIA>;
@@ -24,6 +26,8 @@ export type Dependencias = {
   usosLegado: () => Promise<number>;
   /** Granja Clips: envía el video subido a Gemini (presupuesto antes, tokens en Consumo). Las pruebas lo simulan. */
   analizarVideo?: AnalizarVideo;
+  /** Granja Clips: render de un clip con ffmpeg. Por defecto, el real. */
+  renderizarClip?: RenderizarClip;
 };
 export const LIMITE_IA_MENSUAL = 30;
 
@@ -227,6 +231,27 @@ export async function ejecutarPaso(pasoId: string, deps: Dependencias): Promise<
     if (nodo.tipo === "publicacion") {
       const pieza = crearPiezaDesdePaso(ejecucion, nodo, pasoId, entradas);
       cerrar(pasoId, { estado: "esperando_autorizacion", piezaId: pieza.id, detalle: "Vista previa lista. Nada se publica sin tu autorización." });
+      return "hecho";
+    }
+    if (nodo.tipo === "render" && esGranjaClips(ejecucion)) {
+      actualizarPaso(pasoId, { estado: "generando", detalle: "Renderizando los clips en vertical con ffmpeg." });
+      const r = await renderClipsPaso(ejecucion, pasoId, entradas, deps.renderizarClip ?? renderizarClip, () => sigueEnCurso(pasoId));
+      if (!sigueVigente(pasoId, "generando")) return "hecho";
+      const salidas = r.artefactos.map(
+        (a) =>
+          guardarArtefacto({
+            granjaId: ejecucion.granjaId,
+            ejecucionId: ejecucion.id,
+            pasoId,
+            nodo,
+            tipo: "video",
+            contenido: a.contenido,
+            medioId: a.medioId,
+            medioSha: a.medioSha,
+            procedencia: { origen: "render", herramienta: "ffmpeg", nota: "Clip vertical con subtítulos, del video subido por el propietario." },
+          }).id,
+      );
+      cerrar(pasoId, { estado: "completado", salidas, detalle: r.detalle });
       return "hecho";
     }
     if (nodo.tipo === "render") {

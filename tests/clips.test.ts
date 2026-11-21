@@ -43,6 +43,9 @@ const deps = (cambios: Partial<Dependencias> = {}): Dependencias => ({
   renderizar: async () => {
     throw new Error("render genérico no esperado");
   },
+  renderizarClip: async () => {
+    throw new Error("render de clip no esperado en esta prueba");
+  },
   usosLegado: async () => 0,
   ...cambios,
 });
@@ -366,4 +369,75 @@ test("granja Clips: Momentos con Astra o Claude se bloquea (no ven el video)", a
   const momentos = pasoDe(e.id, "Momentos");
   assert.equal(momentos.estado, "bloqueado");
   assert.match(momentos.detalle, /elige Gemini o trabajo manual/);
+});
+
+/* ── Fase 3 · Render vertical con subtítulos (ffmpeg real si está instalado) ── */
+test("render: gancho y subtítulos siempre dentro de las zonas seguras", async () => {
+  const render = await import("../src/lib/granjas/clips-render");
+  assert.ok(render.dentroDeZonaSegura(render.CAJA_SUBTITULOS));
+  assert.ok(render.dentroDeZonaSegura(render.CAJA_GANCHO));
+  assert.ok(!render.dentroDeZonaSegura({ x: 0, y: 1700, ancho: 1080, alto: 200 }));
+  const capas = render.capasClip({
+    inicio: 10,
+    fin: 22,
+    gancho: "¿Sabías esto?",
+    subtitulos: [
+      { inicio: 0.5, fin: 2, texto: "Hoy probamos" },
+      { inicio: 11.5, fin: 14, texto: "se sale del clip" },
+      { inicio: 13, fin: 15, texto: "no entra" },
+    ],
+  });
+  assert.deepEqual(capas.map((c) => [c.tipo, c.inicio, c.fin]), [["gancho", 0, 3], ["subtitulo", 0.5, 2], ["subtitulo", 11.5, 12]]);
+  assert.ok(capas.every((c) => render.dentroDeZonaSegura(c.caja)));
+  // Sin audio en el original: se agrega silencio; nunca se usan herramientas de descarga.
+  const args = render.argumentosClip("/x/entrada.mp4", { inicio: 10, fin: 22 }, capas.map((capa, i) => ({ capa, archivo: `/x/c${i}.png` })), false, "/x/salida.mp4");
+  assert.deepEqual(args.slice(0, 9), ["-y", "-v", "error", "-ss", "10.00", "-t", "12.00", "-i", "/x/entrada.mp4"]);
+  assert.ok(args.includes("anullsrc=channel_layout=stereo:sample_rate=44100"));
+  const filtro = args[args.indexOf("-filter_complex") + 1];
+  assert.match(filtro, /overlay=90:250:enable='between\(t,0\.00,3\.00\)'/);
+  assert.match(filtro, /crop=1080:1920/);
+  assert.equal(args[args.indexOf("-map", args.indexOf("-map") + 1) + 1], "4:a");
+  assert.ok(!args.join(" ").match(/yt-dlp|youtube-dl|https?:/));
+  // El PNG de una capa mide lo mismo que su caja.
+  const png = await render.pngCapa(capas[1], []);
+  assert.equal(png.subarray(1, 4).toString(), "PNG");
+  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [render.CAJA_SUBTITULOS.ancho, render.CAJA_SUBTITULOS.alto]);
+});
+
+/** Color de un píxel de un cuadro del video (RGB). */
+function pixel(archivo: string, segundo: number, x: number, y: number) {
+  const salida = execFileSync(rutaFfmpeg, ["-v", "error", "-ss", String(segundo), "-i", archivo, "-frames:v", "1", "-vf", `crop=2:2:${x}:${y},format=rgb24`, "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]);
+  return [...salida.subarray(0, 3)];
+}
+test("granja Clips: render real de cada clip en 1080×1920 con gancho quemado, como medio con su origen", async () => {
+  if (!hayFfmpeg) return;
+  const { e, propio, deps: d } = await ejecutarHastaMomentos(20);
+  const render = await import("../src/lib/granjas/clips-render");
+  process.env.EZRA_PRODUCCION_IA = "1";
+  try {
+    await vaciarCola({ ...d, renderizarClip: render.renderizarClip });
+  } finally {
+    process.env.EZRA_PRODUCCION_IA = "0";
+  }
+  const paso = pasoDe(e.id, "Render de clips");
+  assert.equal(paso.estado, "completado", paso.detalle || paso.error);
+  const almacenClips = await import("../src/lib/granjas/clips-almacen");
+  const lista = almacenClips.clipsDeEjecucion(e.id);
+  assert.deepEqual(lista.map((c) => [c.numero, c.estado, c.inicio, c.fin]), [[1, "por_revisar", 1, 7], [2, "por_revisar", 9, 16]]);
+  for (const c of lista) {
+    const m = medios.leerMedio(c.medioId!);
+    assert.deepEqual([m.ancho, m.alto], [1080, 1920]);
+    assert.ok(Math.abs((m.duracion ?? 0) - (c.fin - c.inicio)) < 0.6, `duración del clip ${c.numero}`);
+    assert.equal(m.procedencia.origen, "render");
+    assert.deepEqual(m.procedencia.fuentes, [propio.sha256]);
+    assert.deepEqual(m.permiso, propio.permiso);
+  }
+  // El gancho (recuadro violeta) aparece arriba en el primer segundo y ya no a los 4 s.
+  const archivo = medios.rutaMedio(medios.leerMedio(lista[0].medioId!));
+  const [r, g, b] = pixel(archivo, 0.5, 540, render.CAJA_GANCHO.y + 6);
+  assert.ok(Math.abs(r - 98) < 30 && Math.abs(g - 75) < 30 && Math.abs(b - 190) < 30, `gancho: ${r},${g},${b}`);
+  const despues = pixel(archivo, 4.5, 540, render.CAJA_GANCHO.y + 6);
+  assert.ok(Math.abs(despues[2] - 190) > 20 || Math.abs(despues[0] - 98) > 20, "el gancho desaparece tras 3 s");
+  // La revisión queda esperando al propietario.
+  assert.equal(pasoDe(e.id, "Tu revisión").estado, "en_revision");
 });
