@@ -130,37 +130,42 @@ export function ConexionesGranjas({
               </p>
               {!c.verificado && !c.identidad && (
                 <p className="ep-nota">
-                  <b>{g("falta")}:</b> {c.configFaltante.length ? `${g("faltaConfig")} ${c.configFaltante.join(", ")}` : g("faltaConectar")}
+                  <b>{g("falta")}:</b>{" "}
+                  {c.configFaltante.length
+                    ? `${g("faltaConfig")} ${c.configFaltante.join(", ")}`
+                    : g("faltaConectar")}
                 </p>
               )}
               {(c.verificado || c.identidad) && (
-              <details className="eg-detalles-tecnicos">
-                <summary>{g("detallesTecnicos")}</summary>
-              <dl className="eg-datos">
-                <dt>{g("cuenta")}</dt>
-                <dd>
-                  {c.identidad
-                    ? `${c.identidad.nombre}${c.identidad.tipo ? ` · ${c.identidad.tipo}` : ""}`
-                    : g("sinVerificar")}
-                </dd>
-                <dt>{g("capacidades")}</dt>
-                <dd>
-                  {c.capacidades.length ? c.capacidades.map((x) => g(`cap_${x}`)).join(", ") : "—"}
-                </dd>
-                <dt>{g("permisos")}</dt>
-                <dd>{c.permisos.length ? c.permisos.join(", ") : "—"}</dd>
-                <dt>{g("vence")}</dt>
-                <dd>{c.expira ? fecha(c.expira) : "—"}</dd>
-                <dt>{g("verificado")}</dt>
-                <dd>{c.verificado ? fecha(c.verificado) : g("nunca")}</dd>
-                <dt>{g("ultimoError")}</dt>
-                <dd>
-                  {c.ultimoError
-                    ? `${c.ultimoError}${c.ultimoErrorFecha ? ` (${fecha(c.ultimoErrorFecha)})` : ""}`
-                    : "—"}
-                </dd>
-              </dl>
-              </details>
+                <details className="eg-detalles-tecnicos">
+                  <summary>{g("detallesTecnicos")}</summary>
+                  <dl className="eg-datos">
+                    <dt>{g("cuenta")}</dt>
+                    <dd>
+                      {c.identidad
+                        ? `${c.identidad.nombre}${c.identidad.tipo ? ` · ${c.identidad.tipo}` : ""}`
+                        : g("sinVerificar")}
+                    </dd>
+                    <dt>{g("capacidades")}</dt>
+                    <dd>
+                      {c.capacidades.length
+                        ? c.capacidades.map((x) => g(`cap_${x}`)).join(", ")
+                        : "—"}
+                    </dd>
+                    <dt>{g("permisos")}</dt>
+                    <dd>{c.permisos.length ? c.permisos.join(", ") : "—"}</dd>
+                    <dt>{g("vence")}</dt>
+                    <dd>{c.expira ? fecha(c.expira) : "—"}</dd>
+                    <dt>{g("verificado")}</dt>
+                    <dd>{c.verificado ? fecha(c.verificado) : g("nunca")}</dd>
+                    <dt>{g("ultimoError")}</dt>
+                    <dd>
+                      {c.ultimoError
+                        ? `${c.ultimoError}${c.ultimoErrorFecha ? ` (${fecha(c.ultimoErrorFecha)})` : ""}`
+                        : "—"}
+                    </dd>
+                  </dl>
+                </details>
               )}
               {c.aviso && <p className="ep-nota">{c.aviso}</p>}
               {c.canal === "tiktok" && <p className="ep-nota">{g("tiktokPolitica")}</p>}
@@ -262,45 +267,45 @@ export function ConexionesGranjas({
           <p>{g("almacenAyuda")}</p>
           <details className="eg-detalles-tecnicos">
             <summary>{g("detallesTecnicos")}</summary>
-          <dl className="eg-datos">
-            <dt>{g("almacenBase")}</dt>
-            <dd>
-              <code>{almacen.rutas.base}</code> · {megas(almacen.bytes.base)}
-            </dd>
-            <dt>{g("almacenMedios")}</dt>
-            <dd>
-              <code>{almacen.rutas.medios}</code> · {megas(almacen.bytes.medios)} ·{" "}
-              {almacen.conteos.medios} {g("archivos")}
-            </dd>
-            <dt>{g("almacenEncargos")}</dt>
-            <dd>
-              <code>{almacen.rutas.encargos}</code>
-            </dd>
-            <dt>{g("almacenRespaldos")}</dt>
-            <dd>
-              <code>{almacen.rutas.respaldos}</code>
-            </dd>
-            <dt>{g("almacenConteos")}</dt>
-            <dd>
-              {almacen.conteos.granjas} {g("granjasMin")} · {almacen.conteos.ejecuciones}{" "}
-              {g("ejecucionesMin")} · {almacen.conteos.artefactos} {g("resultadosMin")} ·{" "}
-              {almacen.conteos.piezas} {g("piezasMin")}
-            </dd>
-            <dt>{g("almacenRemotos")}</dt>
-            <dd>
-              {almacen.remotos.length
-                ? almacen.remotos
-                    .map(
-                      (r) =>
-                        `${nombres[r.canal as keyof typeof nombres]}: ${r.n} ${g(`rec_${r.estado}`)}`,
-                    )
-                    .join(" · ")
-                : g("ningunEnvio")}
-            </dd>
-            <dt>{g("almacenTrabajador")}</dt>
-            <dd>{almacen.trabajador}</dd>
-          </dl>
-          <p className="ep-nota">{g("almacenLocal")}</p>
+            <dl className="eg-datos">
+              <dt>{g("almacenBase")}</dt>
+              <dd>
+                <code>{almacen.rutas.base}</code> · {megas(almacen.bytes.base)}
+              </dd>
+              <dt>{g("almacenMedios")}</dt>
+              <dd>
+                <code>{almacen.rutas.medios}</code> · {megas(almacen.bytes.medios)} ·{" "}
+                {almacen.conteos.medios} {g("archivos")}
+              </dd>
+              <dt>{g("almacenEncargos")}</dt>
+              <dd>
+                <code>{almacen.rutas.encargos}</code>
+              </dd>
+              <dt>{g("almacenRespaldos")}</dt>
+              <dd>
+                <code>{almacen.rutas.respaldos}</code>
+              </dd>
+              <dt>{g("almacenConteos")}</dt>
+              <dd>
+                {almacen.conteos.granjas} {g("granjasMin")} · {almacen.conteos.ejecuciones}{" "}
+                {g("ejecucionesMin")} · {almacen.conteos.artefactos} {g("resultadosMin")} ·{" "}
+                {almacen.conteos.piezas} {g("piezasMin")}
+              </dd>
+              <dt>{g("almacenRemotos")}</dt>
+              <dd>
+                {almacen.remotos.length
+                  ? almacen.remotos
+                      .map(
+                        (r) =>
+                          `${nombres[r.canal as keyof typeof nombres]}: ${r.n} ${g(`rec_${r.estado}`)}`,
+                      )
+                      .join(" · ")
+                  : g("ningunEnvio")}
+              </dd>
+              <dt>{g("almacenTrabajador")}</dt>
+              <dd>{almacen.trabajador}</dd>
+            </dl>
+            <p className="ep-nota">{g("almacenLocal")}</p>
           </details>
           <a className="ep-boton" href="/api/granjas/almacenamiento?descargar=1">
             <Download size={15} />

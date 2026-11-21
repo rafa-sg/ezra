@@ -1,12 +1,20 @@
 "use client";
-import { useEffect, useRef, useState, type ClipboardEvent, type PointerEvent as EventoPuntero } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type PointerEvent as EventoPuntero,
+} from "react";
 import { ArrowUpRight, Crop, ImagePlus, Link2, Search } from "lucide-react";
 import type { Evento } from "@/lib/granjas/eventos";
 import type { Busqueda, DatosAfiche } from "@/lib/granjas/imagen-original";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
 
-type Seleccion = { via: "api"; url: string; origen: "original" | "fotograma" } | { via: "medio"; medioId: string; origen: "captura" | "fotograma" };
+type Seleccion =
+  | { via: "api"; url: string; origen: "original" | "fotograma" }
+  | { via: "medio"; medioId: string; origen: "captura" | "fotograma" };
 type Recorte = { x: number; y: number; w: number; h: number };
 const comprobacionesVacias = { titulo: false, fecha: false, lugar: false, organizador: false };
 
@@ -41,9 +49,18 @@ export function ImagenOriginal({
   const [datosAfiche, setDatosAfiche] = useState<DatosAfiche | null>(null);
   const [estado, setEstado] = useState({ ocupado: false, error: "", aviso: "" });
   if (!evento) return null;
-  const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/El_Salvador" }).format(new Date());
+  const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/El_Salvador" }).format(
+    new Date(),
+  );
   const pasado = evento.fecha ? (evento.fechaFin ?? evento.fecha) < hoy : false;
-  const fechaLarga = (d: string) => new Intl.DateTimeFormat(es ? "es-SV" : "en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${d.slice(0, 10)}T12:00:00Z`));
+  const fechaLarga = (d: string) =>
+    new Intl.DateTimeFormat(es ? "es-SV" : "en-US", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(`${d.slice(0, 10)}T12:00:00Z`));
   async function correr<T>(trabajo: () => Promise<T>) {
     setEstado({ ocupado: true, error: "", aviso: "" });
     try {
@@ -57,24 +74,48 @@ export function ImagenOriginal({
   }
   const buscar = () =>
     correr(async () => {
-      const r = await pedir<{ busqueda: Busqueda }>("/api/granjas/eventos", { accion: "publicacion_buscar", id: evento.id, url, cuenta: cuenta || undefined });
+      const r = await pedir<{ busqueda: Busqueda }>("/api/granjas/eventos", {
+        accion: "publicacion_buscar",
+        id: evento.id,
+        url,
+        cuenta: cuenta || undefined,
+      });
       setBusqueda(r.busqueda);
       setSeleccion(null);
       if (!r.busqueda.accesible) setMostrarCaptura(true);
     });
   const vincular = () =>
     correr(async () => {
-      const r = await pedir<{ nueva: boolean }>("/api/granjas/eventos", { accion: "publicacion_vincular", id: evento.id, url });
-      setEstado({ ocupado: false, error: "", aviso: r.nueva ? t("Enlace vinculado como fuente del evento.", "Link added as an event source.") : t("Ese enlace ya era fuente del evento.", "That link was already an event source.") });
+      const r = await pedir<{ nueva: boolean }>("/api/granjas/eventos", {
+        accion: "publicacion_vincular",
+        id: evento.id,
+        url,
+      });
+      setEstado({
+        ocupado: false,
+        error: "",
+        aviso: r.nueva
+          ? t("Enlace vinculado como fuente del evento.", "Link added as an event source.")
+          : t("Ese enlace ya era fuente del evento.", "That link was already an event source."),
+      });
     });
   const fotograma = (videoUrl: string) =>
     correr(async () => {
-      const r = await pedir<{ medio: { id: string } }>("/api/granjas/eventos", { accion: "fotograma", id: evento.id, videoUrl, segundo });
+      const r = await pedir<{ medio: { id: string } }>("/api/granjas/eventos", {
+        accion: "fotograma",
+        id: evento.id,
+        videoUrl,
+        segundo,
+      });
       setSeleccion({ via: "medio", medioId: r.medio.id, origen: "fotograma" });
     });
   const leerAfiche = (medioId: string) =>
     correr(async () => {
-      const r = await pedir<{ datos: DatosAfiche }>("/api/granjas/eventos", { accion: "leer_afiche", id: evento.id, medioId });
+      const r = await pedir<{ datos: DatosAfiche }>("/api/granjas/eventos", {
+        accion: "leer_afiche",
+        id: evento.id,
+        medioId,
+      });
       setDatosAfiche(r.datos);
     });
   const guardar = () =>
@@ -87,16 +128,24 @@ export function ImagenOriginal({
           url,
           origen: seleccion!.origen,
           cuenta: busqueda?.accesible ? busqueda.cuenta : cuenta,
-          ...(seleccion!.via === "api" ? { medioUrl: seleccion!.url } : { medioId: seleccion!.medioId }),
+          ...(seleccion!.via === "api"
+            ? { medioUrl: seleccion!.url }
+            : { medioId: seleccion!.medioId }),
           comprobaciones: checks,
         },
       });
-      await onGuardado(t("Referencia guardada. Queda como referencia interna hasta que confirmes el permiso de reutilización.", "Reference saved. It stays internal until you confirm the reuse permission."));
+      await onGuardado(
+        t(
+          "Referencia guardada. Queda como referencia interna hasta que confirmes el permiso de reutilización.",
+          "Reference saved. It stays internal until you confirm the reuse permission.",
+        ),
+      );
     });
   function abrirArchivo(file: File | null | undefined) {
     if (!file || !file.type.startsWith("image/")) return;
     const lector = new FileReader();
-    lector.onload = () => setCaptura({ src: String(lector.result), nombre: file.name || "captura.png" });
+    lector.onload = () =>
+      setCaptura({ src: String(lector.result), nombre: file.name || "captura.png" });
     lector.readAsDataURL(file);
   }
   const pegar = (e: ClipboardEvent) => {
@@ -111,19 +160,35 @@ export function ImagenOriginal({
     await correr(async () => {
       const f = new FormData();
       f.set("archivo", new File([blob], "captura-recortada.png", { type: "image/png" }));
-      f.set("licencia", `Captura de ${url || "una publicación"} · referencia interna, permiso pendiente`);
+      f.set(
+        "licencia",
+        `Captura de ${url || "una publicación"} · referencia interna, permiso pendiente`,
+      );
       f.set("generado", "0");
       const r = await fetch("/api/granjas/medios", { method: "POST", body: f });
       const j = (await r.json().catch(() => ({}))) as { medio?: { id: string }; error?: string };
-      if (!r.ok || !j.medio) throw new Error(j.error ?? t("No se pudo subir la captura.", "The capture could not be uploaded."));
+      if (!r.ok || !j.medio)
+        throw new Error(
+          j.error ?? t("No se pudo subir la captura.", "The capture could not be uploaded."),
+        );
       setSeleccion({ via: "medio", medioId: j.medio.id, origen: "captura" });
       setCaptura(null);
     });
   }
-  const vista = seleccion ? (seleccion.via === "api" ? seleccion.url : `/api/granjas/medios/${seleccion.medioId}`) : null;
+  const vista = seleccion
+    ? seleccion.via === "api"
+      ? seleccion.url
+      : `/api/granjas/medios/${seleccion.medioId}`
+    : null;
   const listo = Boolean(seleccion) && Object.values(checks).every(Boolean);
   return (
-    <Modal open onClose={onCerrar} label={t("Imagen original", "Original image")} className="ep-modal eg-original" dismissOnBackdrop>
+    <Modal
+      open
+      onClose={onCerrar}
+      label={t("Imagen original", "Original image")}
+      className="ep-modal eg-original"
+      dismissOnBackdrop
+    >
       <div className="eg-original-cuerpo" onPaste={pegar}>
         <h2>{t("Imagen original", "Original image")}</h2>
         <p className="ep-nota">{evento.titulo}</p>
@@ -143,15 +208,29 @@ export function ImagenOriginal({
           <div className="eg-original-fila">
             <label className="eg-campo">
               {t("Enlace de Instagram o Facebook", "Instagram or Facebook link")}
-              <input type="url" value={url} placeholder="https://www.instagram.com/p/…" onChange={(e) => setUrl(e.target.value)} />
+              <input
+                type="url"
+                value={url}
+                placeholder="https://www.instagram.com/p/…"
+                onChange={(e) => setUrl(e.target.value)}
+              />
             </label>
             <label className="eg-campo eg-original-cuenta">
               {t("Cuenta (opcional)", "Account (optional)")}
-              <input value={cuenta} placeholder="@cuenta" maxLength={31} onChange={(e) => setCuenta(e.target.value)} />
+              <input
+                value={cuenta}
+                placeholder="@cuenta"
+                maxLength={31}
+                onChange={(e) => setCuenta(e.target.value)}
+              />
             </label>
           </div>
           <div className="ep-acciones">
-            <button className="ep-boton ep-primario" disabled={estado.ocupado || url.length < 12} onClick={() => void buscar()}>
+            <button
+              className="ep-boton ep-primario"
+              disabled={estado.ocupado || url.length < 12}
+              onClick={() => void buscar()}
+            >
               <Search size={15} />
               {t("Buscar imagen original", "Find original image")}
             </button>
@@ -160,7 +239,11 @@ export function ImagenOriginal({
                 {t("Abrir publicación", "Open post")} <ArrowUpRight size={14} aria-hidden="true" />
               </a>
             )}
-            <button className="ep-boton ep-texto" disabled={estado.ocupado || url.length < 12} onClick={() => void vincular()}>
+            <button
+              className="ep-boton ep-texto"
+              disabled={estado.ocupado || url.length < 12}
+              onClick={() => void vincular()}
+            >
               <Link2 size={15} />
               {t("Solo vincular el enlace", "Only link it")}
             </button>
@@ -169,15 +252,21 @@ export function ImagenOriginal({
 
         {busqueda && !busqueda.accesible && (
           <p className="eg-original-motivo" role="status">
-            <b>{t("No se puede leer automáticamente:", "Cannot be read automatically:")}</b> {busqueda.motivo}
+            <b>{t("No se puede leer automáticamente:", "Cannot be read automatically:")}</b>{" "}
+            {busqueda.motivo}
           </p>
         )}
         {busqueda?.accesible && (
           <section aria-label={t("Imágenes de la publicación", "Post images")}>
             <h3>2. {t("Elige la imagen", "Choose the image")}</h3>
             <p className="ep-nota">
-              {busqueda.cuenta} · {busqueda.via === "instagram_propia" ? t("tu cuenta (API de Instagram)", "your account (Instagram API)") : t("Business Discovery (API de Meta)", "Business Discovery (Meta API)")}
-              {busqueda.publicado ? ` · ${t("publicado el", "posted on")} ${fechaLarga(busqueda.publicado)}` : ""}
+              {busqueda.cuenta} ·{" "}
+              {busqueda.via === "instagram_propia"
+                ? t("tu cuenta (API de Instagram)", "your account (Instagram API)")
+                : t("Business Discovery (API de Meta)", "Business Discovery (Meta API)")}
+              {busqueda.publicado
+                ? ` · ${t("publicado el", "posted on")} ${fechaLarga(busqueda.publicado)}`
+                : ""}
             </p>
             <ul className="eg-original-medios">
               {busqueda.medios.map((m) => {
@@ -186,27 +275,58 @@ export function ImagenOriginal({
                   <li key={m.indice}>
                     {src ? (
                       <button
-                        className={seleccion?.via === "api" && seleccion.url === src ? "eg-elegida" : ""}
+                        className={
+                          seleccion?.via === "api" && seleccion.url === src ? "eg-elegida" : ""
+                        }
                         aria-pressed={seleccion?.via === "api" && seleccion.url === src}
-                        onClick={() => setSeleccion({ via: "api", url: src, origen: m.tipo === "imagen" ? "original" : "fotograma" })}
+                        onClick={() =>
+                          setSeleccion({
+                            via: "api",
+                            url: src,
+                            origen: m.tipo === "imagen" ? "original" : "fotograma",
+                          })
+                        }
                       >
-                        <img src={src} alt={`${t("Imagen", "Image")} ${m.indice + 1}${m.tipo === "video" ? ` (${t("miniatura del video", "video thumbnail")})` : ""}`} referrerPolicy="no-referrer" />
+                        <img
+                          src={src}
+                          alt={`${t("Imagen", "Image")} ${m.indice + 1}${m.tipo === "video" ? ` (${t("miniatura del video", "video thumbnail")})` : ""}`}
+                          referrerPolicy="no-referrer"
+                        />
                       </button>
                     ) : (
-                      <span className="ep-nota">{t("Video sin miniatura disponible.", "Video without thumbnail.")}</span>
+                      <span className="ep-nota">
+                        {t("Video sin miniatura disponible.", "Video without thumbnail.")}
+                      </span>
                     )}
                     {m.tipo === "video" && m.url && (
                       <span className="eg-original-fotograma">
                         <label>
                           {t("Segundo", "Second")}
-                          <input type="number" min={0} max={600} value={segundo} onChange={(e) => setSegundo(Number(e.target.value) || 0)} />
+                          <input
+                            type="number"
+                            min={0}
+                            max={600}
+                            value={segundo}
+                            onChange={(e) => setSegundo(Number(e.target.value) || 0)}
+                          />
                         </label>
-                        <button className="ep-boton" disabled={estado.ocupado} onClick={() => void fotograma(m.url!)}>
+                        <button
+                          className="ep-boton"
+                          disabled={estado.ocupado}
+                          onClick={() => void fotograma(m.url!)}
+                        >
                           {t("Usar fotograma", "Use frame")}
                         </button>
                       </span>
                     )}
-                    {m.tipo === "video" && !m.url && <small className="ep-nota">{t("Meta no entrega el archivo de este video (p. ej., audio con derechos): solo su miniatura.", "Meta does not provide this video file (e.g., licensed audio): only its thumbnail.")}</small>}
+                    {m.tipo === "video" && !m.url && (
+                      <small className="ep-nota">
+                        {t(
+                          "Meta no entrega el archivo de este video (p. ej., audio con derechos): solo su miniatura.",
+                          "Meta does not provide this video file (e.g., licensed audio): only its thumbnail.",
+                        )}
+                      </small>
+                    )}
                   </li>
                 );
               })}
@@ -222,10 +342,30 @@ export function ImagenOriginal({
             </button>
           ) : (
             <>
-              <h3>{busqueda?.accesible ? "" : "2. "}{t("Subir o pegar captura", "Upload or paste a capture")}</h3>
-              <p className="ep-nota">{t("Abre la publicación, toma una captura del afiche y súbela o pégala aquí (⌘V). Después recórtala para quitar la interfaz de la red.", "Open the post, capture the poster and upload or paste it here (⌘V). Then crop out the app interface.")}</p>
-              <input type="file" accept="image/png,image/jpeg,image/webp" aria-label={t("Elegir captura", "Choose capture")} onChange={(e) => abrirArchivo(e.target.files?.[0])} />
-              {captura && <Recortador src={captura.src} es={es} ocupado={estado.ocupado} onListo={(b) => void subirRecorte(b)} />}
+              <h3>
+                {busqueda?.accesible ? "" : "2. "}
+                {t("Subir o pegar captura", "Upload or paste a capture")}
+              </h3>
+              <p className="ep-nota">
+                {t(
+                  "Abre la publicación, toma una captura del afiche y súbela o pégala aquí (⌘V). Después recórtala para quitar la interfaz de la red.",
+                  "Open the post, capture the poster and upload or paste it here (⌘V). Then crop out the app interface.",
+                )}
+              </p>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                aria-label={t("Elegir captura", "Choose capture")}
+                onChange={(e) => abrirArchivo(e.target.files?.[0])}
+              />
+              {captura && (
+                <Recortador
+                  src={captura.src}
+                  es={es}
+                  ocupado={estado.ocupado}
+                  onListo={(b) => void subirRecorte(b)}
+                />
+              )}
             </>
           )}
         </section>
@@ -234,13 +374,19 @@ export function ImagenOriginal({
           <section aria-label={t("Vista previa", "Preview")}>
             <h3>3. {t("Vista previa completa", "Full preview")}</h3>
             <div className="eg-original-vista">
-              <img src={vista} alt={t("Imagen elegida", "Chosen image")} referrerPolicy="no-referrer" />
+              <img
+                src={vista}
+                alt={t("Imagen elegida", "Chosen image")}
+                referrerPolicy="no-referrer"
+              />
             </div>
           </section>
         )}
 
         <section aria-label={t("Datos a confirmar", "Data to confirm")}>
-          <h3>{vista ? "4" : "3"}. {t("Comprueba que es este evento", "Check it is this event")}</h3>
+          <h3>
+            {vista ? "4" : "3"}. {t("Comprueba que es este evento", "Check it is this event")}
+          </h3>
           <dl className="eg-original-datos">
             <dt>{t("Título", "Title")}</dt>
             <dd>{evento.titulo}</dd>
@@ -252,13 +398,25 @@ export function ImagenOriginal({
             {busqueda?.accesible && busqueda.publicado && (
               <>
                 <dt>{t("Fecha de la publicación", "Post date")}</dt>
-                <dd>{fechaLarga(busqueda.publicado)} · {t("no es la fecha del evento", "not the event date")}</dd>
+                <dd>
+                  {fechaLarga(busqueda.publicado)} ·{" "}
+                  {t("no es la fecha del evento", "not the event date")}
+                </dd>
               </>
             )}
             <dt>{t("Lugar", "Place")}</dt>
-            <dd>{[evento.lugar, evento.municipio, evento.departamento].filter(Boolean).join(", ") || t("por confirmar", "to be confirmed")}</dd>
+            <dd>
+              {[evento.lugar, evento.municipio, evento.departamento].filter(Boolean).join(", ") ||
+                t("por confirmar", "to be confirmed")}
+            </dd>
             <dt>{t("Organizador o cuenta", "Organizer or account")}</dt>
-            <dd>{busqueda?.accesible ? busqueda.cuenta : cuenta ? `@${cuenta.replace(/^@/, "")}` : t("sin verificar", "unverified")}</dd>
+            <dd>
+              {busqueda?.accesible
+                ? busqueda.cuenta
+                : cuenta
+                  ? `@${cuenta.replace(/^@/, "")}`
+                  : t("sin verificar", "unverified")}
+            </dd>
           </dl>
           {busqueda?.accesible && busqueda.texto && (
             <details>
@@ -267,13 +425,22 @@ export function ImagenOriginal({
             </details>
           )}
           {seleccion?.via === "medio" && (
-            <button className="ep-boton ep-texto" disabled={estado.ocupado} onClick={() => void leerAfiche(seleccion.medioId)}>
+            <button
+              className="ep-boton ep-texto"
+              disabled={estado.ocupado}
+              onClick={() => void leerAfiche(seleccion.medioId)}
+            >
               {t("Leer datos del afiche (Gemini, opcional)", "Read poster data (Gemini, optional)")}
             </button>
           )}
           {datosAfiche && (
             <div className="eg-original-sugerencias">
-              <b>{t("Sugerencias del afiche (no se aplican solas):", "Poster suggestions (not applied automatically):")}</b>
+              <b>
+                {t(
+                  "Sugerencias del afiche (no se aplican solas):",
+                  "Poster suggestions (not applied automatically):",
+                )}
+              </b>
               <ul>
                 {Object.entries(datosAfiche)
                   .filter(([, v]) => v)
@@ -286,17 +453,29 @@ export function ImagenOriginal({
             </div>
           )}
           <fieldset className="eg-original-checks">
-            <legend>{t("No basta con que coincida el título: podría ser otra edición.", "A matching title is not enough: it could be another edition.")}</legend>
+            <legend>
+              {t(
+                "No basta con que coincida el título: podría ser otra edición.",
+                "A matching title is not enough: it could be another edition.",
+              )}
+            </legend>
             {(
               [
                 ["titulo", t("El título coincide", "The title matches")],
                 ["fecha", t("La fecha y el año coinciden", "Date and year match")],
                 ["lugar", t("El lugar coincide", "The place matches")],
-                ["organizador", t("El organizador o la cuenta es el correcto", "Organizer or account is correct")],
+                [
+                  "organizador",
+                  t("El organizador o la cuenta es el correcto", "Organizer or account is correct"),
+                ],
               ] as const
             ).map(([k, etiqueta]) => (
               <label key={k} className="ep-checkbox">
-                <input type="checkbox" checked={checks[k]} onChange={(e) => setChecks({ ...checks, [k]: e.target.checked })} />
+                <input
+                  type="checkbox"
+                  checked={checks[k]}
+                  onChange={(e) => setChecks({ ...checks, [k]: e.target.checked })}
+                />
                 {etiqueta}
               </label>
             ))}
@@ -304,7 +483,11 @@ export function ImagenOriginal({
         </section>
 
         <div className="ep-acciones">
-          <button className="ep-boton ep-primario" disabled={!listo || estado.ocupado} onClick={() => void guardar()}>
+          <button
+            className="ep-boton ep-primario"
+            disabled={!listo || estado.ocupado}
+            onClick={() => void guardar()}
+          >
             {t("Guardar referencia", "Save reference")}
           </button>
           <button className="ep-boton" onClick={onCerrar}>
@@ -323,7 +506,17 @@ export function ImagenOriginal({
 }
 
 /** Recorte de la captura: arrastra sobre la imagen o ajusta los valores; se sube solo el área elegida. */
-function Recortador({ src, es, ocupado, onListo }: { src: string; es: boolean; ocupado: boolean; onListo: (blob: Blob) => void }) {
+function Recortador({
+  src,
+  es,
+  ocupado,
+  onListo,
+}: {
+  src: string;
+  es: boolean;
+  ocupado: boolean;
+  onListo: (blob: Blob) => void;
+}) {
   const lienzo = useRef<HTMLCanvasElement>(null);
   const imagen = useRef<HTMLImageElement | null>(null);
   const [tam, setTam] = useState<{ w: number; h: number } | null>(null);
@@ -357,7 +550,10 @@ function Recortador({ src, es, ocupado, onListo }: { src: string; es: boolean; o
   if (!tam) return <p role="status">{es ? "Cargando captura…" : "Loading capture…"}</p>;
   const punto = (e: EventoPuntero<HTMLCanvasElement>) => {
     const b = e.currentTarget.getBoundingClientRect();
-    return { x: Math.max(0, Math.min(tam.w, ((e.clientX - b.left) / b.width) * tam.w)), y: Math.max(0, Math.min(tam.h, ((e.clientY - b.top) / b.height) * tam.h)) };
+    return {
+      x: Math.max(0, Math.min(tam.w, ((e.clientX - b.left) / b.width) * tam.w)),
+      y: Math.max(0, Math.min(tam.h, ((e.clientY - b.top) / b.height) * tam.h)),
+    };
   };
   const ajustar = (k: keyof Recorte, v: number) => {
     const n = { ...r, [k]: Math.round(Math.max(0, v)) };
@@ -376,7 +572,11 @@ function Recortador({ src, es, ocupado, onListo }: { src: string; es: boolean; o
     <div className="eg-recorte">
       <canvas
         ref={lienzo}
-        aria-label={es ? "Captura: arrastra para elegir el área del afiche" : "Capture: drag to select the poster area"}
+        aria-label={
+          es
+            ? "Captura: arrastra para elegir el área del afiche"
+            : "Capture: drag to select the poster area"
+        }
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           inicio.current = punto(e);
@@ -385,15 +585,32 @@ function Recortador({ src, es, ocupado, onListo }: { src: string; es: boolean; o
           if (!inicio.current) return;
           const p = punto(e);
           const a = inicio.current;
-          setR({ x: Math.min(a.x, p.x), y: Math.min(a.y, p.y), w: Math.abs(p.x - a.x), h: Math.abs(p.y - a.y) });
+          setR({
+            x: Math.min(a.x, p.x),
+            y: Math.min(a.y, p.y),
+            w: Math.abs(p.x - a.x),
+            h: Math.abs(p.y - a.y),
+          });
         }}
         onPointerUp={() => (inicio.current = null)}
       />
       <div className="eg-recorte-valores">
         {(["x", "y", "w", "h"] as const).map((k) => (
           <label key={k}>
-            {{ x: es ? "Izquierda" : "Left", y: es ? "Arriba" : "Top", w: es ? "Ancho" : "Width", h: es ? "Alto" : "Height" }[k]}
-            <input type="number" min={0} value={Math.round(r[k])} onChange={(e) => ajustar(k, Number(e.target.value) || 0)} />
+            {
+              {
+                x: es ? "Izquierda" : "Left",
+                y: es ? "Arriba" : "Top",
+                w: es ? "Ancho" : "Width",
+                h: es ? "Alto" : "Height",
+              }[k]
+            }
+            <input
+              type="number"
+              min={0}
+              value={Math.round(r[k])}
+              onChange={(e) => ajustar(k, Number(e.target.value) || 0)}
+            />
           </label>
         ))}
         <span className="ep-nota">

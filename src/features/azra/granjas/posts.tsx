@@ -7,7 +7,16 @@ import { pedir } from "./cliente";
 
 type Proveedor = "local" | "claude" | "astra" | "gemini";
 const proveedores: Proveedor[] = ["local", "claude", "astra", "gemini"];
-type PostVista = PostIG & { evento: { id: string; titulo: string; fecha: string | null; hora: string | null; lugar: string; imagenAutorizada: boolean } };
+type PostVista = PostIG & {
+  evento: {
+    id: string;
+    titulo: string;
+    fecha: string | null;
+    hora: string | null;
+    lugar: string;
+    imagenAutorizada: boolean;
+  };
+};
 const nombreArchivo = (p: PostVista) =>
   `post-${p.evento.fecha ?? "sin-fecha"}-${p.evento.titulo
     .normalize("NFD")
@@ -19,10 +28,18 @@ const nombreArchivo = (p: PostVista) =>
 /** Texto del guion para la etiqueta accesible del video (titular y escenas). */
 function textoVideo(guion: unknown, titulo: string) {
   const g = guion as { titular?: string; escenas?: { texto?: string; detalle?: string }[] } | null;
-  return [g?.titular ?? titulo, ...(g?.escenas ?? []).flatMap((e) => [e.texto, e.detalle])].filter(Boolean).join(". ");
+  return [g?.titular ?? titulo, ...(g?.escenas ?? []).flatMap((e) => [e.texto, e.detalle])]
+    .filter(Boolean)
+    .join(". ");
 }
 /** Posts listos para subir a mano. Ezra no usa la API de Instagram. */
-export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: (iso: string) => string }) {
+export function ListaPosts({
+  g,
+  fecha,
+}: {
+  g: (clave: string) => string;
+  fecha: (iso: string) => string;
+}) {
   const [posts, setPosts] = useState<PostVista[] | null>(null);
   const [textos, setTextos] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
@@ -136,7 +153,13 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
                         aria-label={`${g("p_lamina")} ${i + 1}`}
                         onClick={() => setLamina({ ...lamina, [p.id]: i })}
                       >
-                        <img src={`/api/granjas/medios/${m}`} alt="" width={54} height={68} loading="lazy" />
+                        <img
+                          src={`/api/granjas/medios/${m}`}
+                          alt=""
+                          width={54}
+                          height={68}
+                          loading="lazy"
+                        />
                       </button>
                     ))}
                   </div>
@@ -146,7 +169,10 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
                 <div className="eg-evento-cabecera">
                   <span className="ep-pill">{g(`p_estado_${p.estado}`)}</span>
                   <small className="ep-nota">
-                    {p.cuenta} · {g(`p_origen_${p.textoOrigen === "ia" ? "ia" : p.textoOrigen === "manual" ? "manual" : "plantilla"}`)}
+                    {p.cuenta} ·{" "}
+                    {g(
+                      `p_origen_${p.textoOrigen === "ia" ? "ia" : p.textoOrigen === "manual" ? "manual" : "plantilla"}`,
+                    )}
                   </small>
                 </div>
                 <h3>{p.evento.titulo}</h3>
@@ -160,7 +186,13 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
                 )}
                 <label className="eg-campo">
                   <span className="eg-oculto">{g("p_copiar")}</span>
-                  <textarea rows={10} maxLength={2200} value={texto} readOnly={p.estado === "subido"} onChange={(e) => setTextos({ ...textos, [p.id]: e.target.value })} />
+                  <textarea
+                    rows={10}
+                    maxLength={2200}
+                    value={texto}
+                    readOnly={p.estado === "subido"}
+                    onChange={(e) => setTextos({ ...textos, [p.id]: e.target.value })}
+                  />
                   <small>
                     {texto.length}/2200 {g("p_caracteres")}
                   </small>
@@ -179,19 +211,36 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
                     {g("p_copiar")}
                   </button>
                   {laminas.length > 0 && (
-                    <a className="ep-boton" href={`/api/granjas/medios/${laminas[actual]}?descargar=${nombreArchivo(p)}${laminas.length > 1 ? `-${actual + 1}` : ""}`}>
+                    <a
+                      className="ep-boton"
+                      href={`/api/granjas/medios/${laminas[actual]}?descargar=${nombreArchivo(p)}${laminas.length > 1 ? `-${actual + 1}` : ""}`}
+                    >
                       <Download size={15} />
-                      {laminas.length > 1 ? `${g("p_descargar")} ${actual + 1}/${laminas.length}` : g("p_descargar")}
+                      {laminas.length > 1
+                        ? `${g("p_descargar")} ${actual + 1}/${laminas.length}`
+                        : g("p_descargar")}
                     </a>
                   )}
                   {p.estado !== "subido" && texto !== p.texto && (
-                    <button className="ep-boton" disabled={ocupado} onClick={() => void accion({ accion: "texto", id: p.id, revision: p.revision, texto }, g("p_guardado"))}>
+                    <button
+                      className="ep-boton"
+                      disabled={ocupado}
+                      onClick={() =>
+                        void accion(
+                          { accion: "texto", id: p.id, revision: p.revision, texto },
+                          g("p_guardado"),
+                        )
+                      }
+                    >
                       <Save size={15} />
                       {g("p_guardarTexto")}
                     </button>
                   )}
                   {p.video && (
-                    <a className="ep-boton" href={`/api/granjas/medios/${p.video.medioId}?descargar=${nombreArchivo(p)}-video`}>
+                    <a
+                      className="ep-boton"
+                      href={`/api/granjas/medios/${p.video.medioId}?descargar=${nombreArchivo(p)}-video`}
+                    >
                       <Download size={15} />
                       {g("p_descargarVideo")}
                     </a>
@@ -201,18 +250,34 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
                     disabled={ocupado}
                     onClick={async () => {
                       setFilmando(p.id);
-                      await accion({ accion: "video", id: p.id, proveedor: elegido }, g("p_videoListo"));
+                      await accion(
+                        { accion: "video", id: p.id, proveedor: elegido },
+                        g("p_videoListo"),
+                      );
                       setFilmando(null);
                     }}
                   >
-                    <Clapperboard size={15} className={filmando === p.id ? "eg-girando" : undefined} />
-                    {filmando === p.id ? g("p_filmando") : p.video ? g("p_rehacerVideo") : g("p_crearVideo")}
+                    <Clapperboard
+                      size={15}
+                      className={filmando === p.id ? "eg-girando" : undefined}
+                    />
+                    {filmando === p.id
+                      ? g("p_filmando")
+                      : p.video
+                        ? g("p_rehacerVideo")
+                        : g("p_crearVideo")}
                   </button>
                   {p.estado !== "subido" && (
                     <span className="eg-redisenar">
                       <label>
                         <span className="eg-oculto">{g("p_redisenarCon")}</span>
-                        <select value={elegido} disabled={ocupado} onChange={(e) => setProveedor({ ...proveedor, [p.id]: e.target.value as Proveedor })}>
+                        <select
+                          value={elegido}
+                          disabled={ocupado}
+                          onChange={(e) =>
+                            setProveedor({ ...proveedor, [p.id]: e.target.value as Proveedor })
+                          }
+                        >
                           {proveedores.map((x) => (
                             <option key={x} value={x}>
                               {g(`p_prov_${x}`)}
@@ -225,17 +290,30 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
                         disabled={ocupado}
                         onClick={async () => {
                           setDisenando(p.id);
-                          if (await accion({ accion: "redisenar", id: p.id, proveedor: elegido }, g("p_redisenado"))) setLamina({ ...lamina, [p.id]: 0 });
+                          if (
+                            await accion(
+                              { accion: "redisenar", id: p.id, proveedor: elegido },
+                              g("p_redisenado"),
+                            )
+                          )
+                            setLamina({ ...lamina, [p.id]: 0 });
                           setDisenando(null);
                         }}
                       >
-                        <RefreshCw size={15} className={disenando === p.id ? "eg-girando" : undefined} />
+                        <RefreshCw
+                          size={15}
+                          className={disenando === p.id ? "eg-girando" : undefined}
+                        />
                         {disenando === p.id ? g("p_disenando") : g("p_redisenar")}
                       </button>
                     </span>
                   )}
                   {p.estado === "listo" && (
-                    <button className="ep-boton ep-primario" disabled={ocupado} onClick={() => setSubiendo({ post: p, url: "" })}>
+                    <button
+                      className="ep-boton ep-primario"
+                      disabled={ocupado}
+                      onClick={() => setSubiendo({ post: p, url: "" })}
+                    >
                       <Check size={15} />
                       {g("p_marcarSubido")}
                     </button>
@@ -246,24 +324,48 @@ export function ListaPosts({ g, fecha }: { g: (clave: string) => string; fecha: 
           );
         })}
       </ul>
-      <Modal open={Boolean(subiendo)} onClose={() => setSubiendo(null)} label={g("p_marcarSubido")} className="ep-modal" dismissOnBackdrop>
+      <Modal
+        open={Boolean(subiendo)}
+        onClose={() => setSubiendo(null)}
+        label={g("p_marcarSubido")}
+        className="ep-modal"
+        dismissOnBackdrop
+      >
         {subiendo && (
           <form
             className="eg-guia"
             onSubmit={async (e) => {
               e.preventDefault();
-              const ok = await accion({ accion: "subido", id: subiendo.post.id, revision: subiendo.post.revision, url: subiendo.url }, g("p_estado_subido"));
+              const ok = await accion(
+                {
+                  accion: "subido",
+                  id: subiendo.post.id,
+                  revision: subiendo.post.revision,
+                  url: subiendo.url,
+                },
+                g("p_estado_subido"),
+              );
               if (ok) setSubiendo(null);
             }}
           >
             <h2>{g("p_marcarSubido")}</h2>
             <label className="eg-campo">
               {g("p_enlace")}
-              <input type="url" required maxLength={500} placeholder="https://www.instagram.com/p/…" value={subiendo.url} onChange={(e) => setSubiendo({ ...subiendo, url: e.target.value })} />
+              <input
+                type="url"
+                required
+                maxLength={500}
+                placeholder="https://www.instagram.com/p/…"
+                value={subiendo.url}
+                onChange={(e) => setSubiendo({ ...subiendo, url: e.target.value })}
+              />
             </label>
             <p className="ep-nota">{g("p_enlaceAyuda")}</p>
             <div className="ep-acciones">
-              <button className="ep-boton ep-primario" disabled={ocupado || !subiendo.url.startsWith("https://")}>
+              <button
+                className="ep-boton ep-primario"
+                disabled={ocupado || !subiendo.url.startsWith("https://")}
+              >
                 {g("p_marcarSubido")}
               </button>
               <button type="button" className="ep-boton" onClick={() => setSubiendo(null)}>

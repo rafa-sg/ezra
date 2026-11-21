@@ -1,7 +1,8 @@
 /* Mapa de Inicio: arriba solo el país con ezrá y sus conexiones; debajo, el detalle y el listado. */
 .azra .ez-mp {
-  --mp-punto: #d6d9e1;
-  --mp-punto-datos: #9aa2bb;
+  --mp-punto: #d9dce3;
+  --mp-punto-datos: #bfc4d1;
+  --mp-punto-limite: #4a4f5e;
   --mp-punto-activo: #4d68ff;
   --mp-nodo: #6f86ff;
   --mp-nodo-on: #3550f0;
@@ -29,7 +30,8 @@
 .azra[data-global-theme="dark"] .ez-mp,
 .azra [data-tema="oscuro"] .ez-mp {
   --mp-punto: rgba(255, 255, 255, 0.12);
-  --mp-punto-datos: rgba(172, 188, 255, 0.45);
+  --mp-punto-datos: rgba(172, 188, 255, 0.32);
+  --mp-punto-limite: rgba(236, 238, 246, 0.62);
   --mp-punto-activo: #a8bcff;
   --mp-nodo: #8fa8ff;
   --mp-nodo-on: #c3cfff;

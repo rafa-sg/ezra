@@ -13,7 +13,9 @@ import {
 } from "react";
 import { ChevronDown } from "lucide-react";
 import type { Trazabilidad } from "@/lib/granjas/trazabilidad";
-import { ANCLA, VB, X_PAIS, bordes, geo, geometriaAccesos } from "./mapa-geo";
+import { VB, X_PAIS, bordes, geo, geometriaAccesos } from "./mapa-geo";
+import { GraficasIngresos } from "./ingresos-graficas";
+import type { ResumenIngresos } from "@/lib/granjas/ingresos";
 import { agendaVigente } from "@/lib/granjas/agenda-mapa";
 import { ACCESOS, POBLACION_2024 } from "@/lib/granjas/datos-pais";
 import { diaLocal } from "@/lib/granjas/tiempo";
@@ -125,11 +127,6 @@ function Conteo({ valor, reducido }: { valor: number; reducido: boolean }) {
   return <>{mostrado}</>;
 }
 /** De ezrá a un departamento: sale hacia abajo y llega en curva suave. */
-const curva = ([x1, y1]: [number, number], [x2, y2]: [number, number]) => {
-  const c = (y2 - y1) * 0.55;
-  const f = (v: number) => v.toFixed(1);
-  return `M${f(x1)},${f(y1)} C${f(x1 + (x2 - x1) * 0.15)},${f(y1 + c)} ${f(x2)},${f(y2 - c)} ${f(x2)},${f(y2)}`;
-};
 
 const focoDeSeleccion = (s: Seleccion): Foco | null =>
   s?.tipo === "fuente"
@@ -272,6 +269,19 @@ export function MapaProcedencia({
   const [corrida, setCorrida] = useState(0);
   const [solo, setSolo] = useState<Solo>(null);
   const [sobre, setSobre] = useState<string | null>(null);
+  const [mesIngresos, setMesIngresos] = useState<string | null>(null);
+  const [ingresos, setIngresos] = useState<ResumenIngresos | null>(null);
+  const [recargaIngresos, setRecargaIngresos] = useState(0);
+  useEffect(() => {
+    let vivo = true;
+    fetch(`/api/granjas/ingresos${mesIngresos ? `?mes=${mesIngresos}` : ""}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => vivo && setIngresos(j as ResumenIngresos | null))
+      .catch(() => vivo && setIngresos(null));
+    return () => {
+      vivo = false;
+    };
+  }, [mesIngresos, recargaIngresos]);
   const hoy = diaLocal();
   // Un solo origen para el marcador y su agenda: eventos confirmados, vigentes y sin duplicados.
   const agenda = useMemo(() => (datos ? agendaVigente(datos.eventos, hoy) : null), [datos, hoy]);
@@ -303,7 +313,6 @@ export function MapaProcedencia({
   const deptosConDatos = new Set(deptos.map((d) => d.nombre));
   const claveDatos = [...deptosConDatos].join("|");
   const claveActivos = al?.hay ? [...al.deptos.keys()].sort().join("|") : "";
-  const salida = ANCLA;
   // Posición del marcador: si un cruce queda debajo, el marcador se aparta lo justo (nada se tapa).
   const pos = (n: string): [number, number] => {
     let [x, y] = centros[n];
@@ -493,8 +502,6 @@ export function MapaProcedencia({
     (datos?.fuentes.length ?? 0) + (rel?.destinos.length ?? 0) + (sinUbic?.[metrica] ? 1 : 0);
   // Conexiones de la selección (ezrá ↔ departamento): se dibujan una vez con dirección y quedan.
   // Hacia un destino, el recorrido va del departamento a ezrá; en lo demás, de ezrá al departamento.
-  const rutas = al?.hay ? deptos.filter((d) => al.deptos.has(d.nombre)) : [];
-  const haciaEzra = fijo?.tipo === "destino";
 
   const accesoAbierto =
     panel?.tipo === "acceso" || panel?.tipo === "puesto"
@@ -639,6 +646,7 @@ export function MapaProcedencia({
                   activos={verEventos && claveActivos ? claveActivos : deptoElegido}
                   conDatos={verEventos ? claveDatos : ""}
                   niveles={poblacion ? niveles : ""}
+                  elegido={deptoElegido}
                 />
               </g>
               {/* Límites reales de los 14 departamentos: línea fina y tenue; fijos durante el efecto magnético.
@@ -680,45 +688,35 @@ export function MapaProcedencia({
                 </g>
               )}
 
-              {/* Ancla discreta de ezrá sobre el borde norte: de aquí sale solo la conexión elegida. */}
-              <g
-                className={`ez-mp-ezra ${rutas.length ? "ez-mp-ezra-activa" : ""}`}
-                aria-hidden="true"
-              >
-                <circle cx={ANCLA[0]} cy={ANCLA[1]} r={6 / escala} className="ez-mp-ezra-aro" />
-                <circle cx={ANCLA[0]} cy={ANCLA[1]} r={2.6 / escala} className="ez-mp-ezra-punto" />
-                <text x={ANCLA[0] + 10 / escala} y={ANCLA[1]} dy="0.36em" fontSize={11 / escala}>
-                  ezrá
-                </text>
-              </g>
-
-              {/* Selección: el recorrido se dibuja una vez y queda; cambiar de selección cancela el anterior. */}
-              {verEventos && datos && rutas.length > 0 && (
-                <g className="ez-mp-rutas" aria-hidden="true" key={claveSel || "sel"}>
-                  {rutas.map((d, i) => {
-                    const fin = pos(d.nombre);
-                    const r = radio(d[metrica]) + 3 / escala;
-                    const llegada: [number, number] = [fin[0], fin[1] - r];
-                    const camino = haciaEzra
-                      ? curvaInversa(llegada, salida)
-                      : curva(salida, llegada);
-                    return (
-                      <g key={d.nombre} className="ez-mp-ruta" style={{ ["--i" as string]: i }}>
-                        <path
-                          d={camino}
-                          pathLength={1}
-                          strokeWidth={(2 + Math.sqrt(d[metrica] / max) * 1.6) / escala}
-                        />
-                        <Cabeza
-                          d={camino}
-                          fin={haciaEzra ? salida : llegada}
-                          retraso={i * 0.05}
-                          reducido={reducido}
-                          r={3.6 / escala}
-                        />
-                      </g>
-                    );
-                  })}
+              {/* Conexiones en reposo de Guatemala (celeste) y Honduras (violeta) con sus puestos, por detrás de los marcadores. */}
+              {verIngresos && (
+                <g className="ez-mpi-conexiones" aria-hidden="true">
+                  {geos.flatMap((g) =>
+                    g.puestos
+                      .filter((p) => p.conexion)
+                      .map((p) => {
+                        const elegidoAcc =
+                          panel?.tipo === "acceso"
+                            ? panel.id
+                            : panel?.tipo === "puesto"
+                              ? panel.acceso
+                              : null;
+                        const clase =
+                          (panel?.tipo === "puesto" && panel.id === p.id) ||
+                          (panel?.tipo === "acceso" && panel.id === g.acceso.id)
+                            ? "ez-mpi-conexion-elegida"
+                            : elegidoAcc
+                              ? "ez-mp-tenue"
+                              : "";
+                        return (
+                          <path
+                            key={p.id}
+                            d={p.conexion!}
+                            className={`ez-mpi-conexion ez-mpi-conexion-${g.acceso.id} ${clase}`}
+                          />
+                        );
+                      }),
+                  )}
                 </g>
               )}
 
@@ -857,7 +855,7 @@ export function MapaProcedencia({
                 })}
               </g>
             </svg>
-            {verIngresos && ACCESOS.every((a) => !a.entradas) && (
+            {verIngresos && !ingresos?.mes && (
               <p className="ez-mpi-aviso">
                 <span>{tr("ez_mpv_sinDatos")}</span> · {tr("ez_mpv_ilustrativa")}
               </p>
@@ -883,6 +881,7 @@ export function MapaProcedencia({
           {panel?.tipo === "acceso" && accesoAbierto && (
             <DetalleAcceso
               key={accesoAbierto.id}
+              ingresos={ingresos}
               acceso={accesoAbierto}
               verRecorrido={() => {
                 setSolo({ acceso: accesoAbierto.id });
@@ -894,6 +893,7 @@ export function MapaProcedencia({
           {panel?.tipo === "puesto" && accesoAbierto && (
             <DetallePuesto
               key={panel.id}
+              ingresos={ingresos}
               acceso={accesoAbierto}
               puestoId={panel.id}
               verRecorrido={() => {
@@ -910,6 +910,20 @@ export function MapaProcedencia({
       {/* Debajo del mapa: el detalle de lo elegido y el listado de fuentes, destinos y sin ubicación. */}
       <div className="ez-mp-bajo">
         <div className="ez-mp-progreso" aria-hidden="true" />
+        {verIngresos && (
+          <GraficasIngresos
+            ingresos={ingresos}
+            mes={mesIngresos}
+            setMes={setMesIngresos}
+            accesoElegido={
+              panel?.tipo === "acceso" ? panel.id : panel?.tipo === "puesto" ? panel.acceso : null
+            }
+            puestoElegido={panel?.tipo === "puesto" ? panel.id : null}
+            onPuesto={(acc, id) => elegirPuesto(acc, id)}
+            onCargado={() => setRecargaIngresos((x) => x + 1)}
+            tr={tr}
+          />
+        )}
         {((fijo && !panel) || (!amplio && !panel)) && (
           <DetalleBreve datos={datos} rel={rel} foco={fijo} al={al} tr={tr} />
         )}
@@ -939,10 +953,12 @@ const PuntosPais = memo(function PuntosPais({
   activos,
   conDatos,
   niveles,
+  elegido,
 }: {
   activos: string;
   conDatos: string;
   niveles: string;
+  elegido: string;
 }) {
   const { puntos } = geo();
   const on = new Set(activos.split("|").filter(Boolean));
@@ -965,7 +981,7 @@ const PuntosPais = memo(function PuntosPais({
           style={{
             animationDelay: `${Math.round(((p.x - X_PAIS[0]) / (X_PAIS[1] - X_PAIS[0])) * 520)}ms`,
           }}
-          className={
+          className={`${
             on.has(p.d)
               ? "ez-mp-p-activo"
               : nivel.has(p.d)
@@ -973,54 +989,12 @@ const PuntosPais = memo(function PuntosPais({
                 : datos.has(p.d)
                   ? "ez-mp-p-datos"
                   : "ez-mp-p"
-          }
+          }${p.limite ? " ez-mp-p-limite" : ""}${p.d === elegido && p.filo ? " ez-mp-p-realce" : ""}`}
         />
       ))}
     </>
   );
 });
-
-/** Del departamento hacia ezrá (para los destinos: lo que sale hacia afuera pasa por ezrá). */
-const curvaInversa = (a: [number, number], b: [number, number]) => {
-  const c = (a[1] - b[1]) * 0.55;
-  const f = (v: number) => v.toFixed(1);
-  return `M${f(a[0])},${f(a[1])} C${f(a[0])},${f(a[1] - c)} ${f(b[0] + (a[0] - b[0]) * 0.15)},${f(b[1] + c)} ${f(b[0])},${f(b[1])}`;
-};
-
-/** Punto que recorre la conexión una sola vez y se queda en la llegada. */
-function Cabeza({
-  d,
-  fin,
-  retraso,
-  reducido,
-  r,
-}: {
-  d: string;
-  fin: [number, number];
-  retraso: number;
-  reducido: boolean;
-  r: number;
-}) {
-  const anim = useRef<SVGAnimateMotionElement>(null);
-  useEffect(() => {
-    anim.current?.beginElementAt(retraso);
-  }, [retraso]);
-  if (reducido) return <circle className="ez-mp-cabeza" cx={fin[0]} cy={fin[1]} r={r} />;
-  return (
-    <circle className="ez-mp-cabeza" r={r} cx={0} cy={0}>
-      <animateMotion
-        ref={anim}
-        dur="0.75s"
-        begin="indefinite"
-        fill="freeze"
-        path={d}
-        calcMode="spline"
-        keyTimes="0;1"
-        keySplines="0.22 1 0.36 1"
-      />
-    </circle>
-  );
-}
 
 function Grupo({ titulo, n, children }: { titulo: string; n?: number; children: ReactNode }) {
   return (

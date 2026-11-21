@@ -43,9 +43,13 @@ export function Lienzo({
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const aLienzo = (clienteX: number, clienteY: number) => {
     const caja = marco.current!.getBoundingClientRect();
-    return { x: (clienteX - caja.left - vista.x) / vista.zoom, y: (clienteY - caja.top - vista.y) / vista.zoom };
+    return {
+      x: (clienteX - caja.left - vista.x) / vista.zoom,
+      y: (clienteY - caja.top - vista.y) / vista.zoom,
+    };
   };
-  const zoom = (factor: number) => setVista((v) => ({ ...v, zoom: Math.min(1.6, Math.max(0.35, v.zoom * factor)) }));
+  const zoom = (factor: number) =>
+    setVista((v) => ({ ...v, zoom: Math.min(1.6, Math.max(0.35, v.zoom * factor)) }));
   const ajustar = () => {
     if (!grafo.nodos.length || !marco.current) return setVista({ x: 20, y: 20, zoom: 0.85 });
     const xs = grafo.nodos.map((n) => n.posicion.x);
@@ -89,15 +93,32 @@ export function Lienzo({
     } else if (tarjeta) {
       const nodo = grafo.nodos.find((n) => n.id === tarjeta.dataset.nodo)!;
       const p = aLienzo(evento.clientX, evento.clientY);
-      setArrastre({ tipo: "nodo", id: nodo.id, dx: p.x - nodo.posicion.x, dy: p.y - nodo.posicion.y, movido: false });
+      setArrastre({
+        tipo: "nodo",
+        id: nodo.id,
+        dx: p.x - nodo.posicion.x,
+        dy: p.y - nodo.posicion.y,
+        movido: false,
+      });
     } else {
-      setArrastre({ tipo: "fondo", x: evento.clientX, y: evento.clientY, vx: vista.x, vy: vista.y });
+      setArrastre({
+        tipo: "fondo",
+        x: evento.clientX,
+        y: evento.clientY,
+        vx: vista.x,
+        vy: vista.y,
+      });
     }
     marco.current?.setPointerCapture(evento.pointerId);
   }
   function mover(evento: EventoPuntero<HTMLDivElement>) {
     if (!arrastre) return;
-    if (arrastre.tipo === "fondo") setVista((v) => ({ ...v, x: arrastre.vx + evento.clientX - arrastre.x, y: arrastre.vy + evento.clientY - arrastre.y }));
+    if (arrastre.tipo === "fondo")
+      setVista((v) => ({
+        ...v,
+        x: arrastre.vx + evento.clientX - arrastre.x,
+        y: arrastre.vy + evento.clientY - arrastre.y,
+      }));
     else if (arrastre.tipo === "nodo") {
       const p = aLienzo(evento.clientX, evento.clientY);
       onMover(arrastre.id, Math.round(p.x - arrastre.dx), Math.round(p.y - arrastre.dy));
@@ -106,11 +127,18 @@ export function Lienzo({
   }
   function arriba(evento: EventoPuntero<HTMLDivElement>) {
     if (arrastre?.tipo === "conexion") {
-      const debajo = document.elementFromPoint(evento.clientX, evento.clientY)?.closest<HTMLElement>("[data-nodo]");
-      if (debajo && debajo.dataset.nodo !== arrastre.desde) onConectar(arrastre.desde, debajo.dataset.nodo!);
+      const debajo = document
+        .elementFromPoint(evento.clientX, evento.clientY)
+        ?.closest<HTMLElement>("[data-nodo]");
+      if (debajo && debajo.dataset.nodo !== arrastre.desde)
+        onConectar(arrastre.desde, debajo.dataset.nodo!);
     }
     if (arrastre?.tipo === "nodo" && !arrastre.movido) onSeleccionar(arrastre.id);
-    if (arrastre?.tipo === "fondo" && Math.abs(evento.clientX - arrastre.x) + Math.abs(evento.clientY - arrastre.y) < 4) onSeleccionar(null);
+    if (
+      arrastre?.tipo === "fondo" &&
+      Math.abs(evento.clientX - arrastre.x) + Math.abs(evento.clientY - arrastre.y) < 4
+    )
+      onSeleccionar(null);
     setArrastre(null);
     setCursor(null);
   }
@@ -130,7 +158,11 @@ export function Lienzo({
         <button className="ep-boton ep-icono" onClick={() => zoom(1.15)} aria-label={g("acercar")}>
           <Plus size={16} />
         </button>
-        <button className="ep-boton ep-icono" onClick={() => zoom(1 / 1.15)} aria-label={g("alejar")}>
+        <button
+          className="ep-boton ep-icono"
+          onClick={() => zoom(1 / 1.15)}
+          aria-label={g("alejar")}
+        >
           <Minus size={16} />
         </button>
         <button className="ep-boton ep-icono" onClick={ajustar} aria-label={g("ajustar")}>
@@ -148,16 +180,26 @@ export function Lienzo({
         onPointerUp={arriba}
         onPointerCancel={() => setArrastre(null)}
       >
-        <div className="eg-lienzo-capa" style={{ transform: `translate(${vista.x}px, ${vista.y}px) scale(${vista.zoom})` }}>
+        <div
+          className="eg-lienzo-capa"
+          style={{ transform: `translate(${vista.x}px, ${vista.y}px) scale(${vista.zoom})` }}
+        >
           <svg className="eg-aristas" width="6000" height="6000" aria-hidden="true">
             {grafo.aristas.map((a) => {
-              if (!grafo.nodos.some((n) => n.id === a.desde) || !grafo.nodos.some((n) => n.id === a.hacia)) return null;
+              if (
+                !grafo.nodos.some((n) => n.id === a.desde) ||
+                !grafo.nodos.some((n) => n.id === a.hacia)
+              )
+                return null;
               const camino = curva(centro(a.desde, "salida"), centro(a.hacia, "entrada"));
               const activa = traspasos.has(a.id);
               const esperando = estadoDe(a.hacia) === "esperando";
               return (
                 <g key={a.id}>
-                  <path d={camino} className={`eg-arista ${esperando ? "eg-arista-espera" : ""} ${activa ? "eg-arista-activa" : ""}`} />
+                  <path
+                    d={camino}
+                    className={`eg-arista ${esperando ? "eg-arista-espera" : ""} ${activa ? "eg-arista-activa" : ""}`}
+                  />
                   {activa && (
                     <circle r="7" className="eg-token">
                       <animateMotion dur="1.6s" repeatCount="2" path={camino} />
@@ -166,12 +208,25 @@ export function Lienzo({
                 </g>
               );
             })}
-            {arrastre?.tipo === "conexion" && cursor && <path d={curva(centro(arrastre.desde, "salida"), cursor)} className="eg-arista eg-arista-nueva" />}
+            {arrastre?.tipo === "conexion" && cursor && (
+              <path
+                d={curva(centro(arrastre.desde, "salida"), cursor)}
+                className="eg-arista eg-arista-nueva"
+              />
+            )}
           </svg>
           {grafo.nodos.map((n) => {
             const estado = estadoDe(n.id);
             const falta = faltantes[n.id] ?? [];
-            const indice = n.agente ? agentes.indexOf(n.agente) : n.tipo === "medios" ? 3 : n.tipo === "render" ? 5 : n.tipo === "revision" ? 8 : 9;
+            const indice = n.agente
+              ? agentes.indexOf(n.agente)
+              : n.tipo === "medios"
+                ? 3
+                : n.tipo === "render"
+                  ? 5
+                  : n.tipo === "revision"
+                    ? 8
+                    : 9;
             return (
               <div
                 key={n.id}
@@ -188,7 +243,12 @@ export function Lienzo({
                   aria-label={`${n.titulo}. ${g(`nodo_${n.tipo}`)}. ${estado ? g(`estado_${estado}`) : g("sinEjecutar")}${falta.length ? `. ${falta.length} ${g("pendientes")}` : ""}`}
                   onClick={() => onSeleccionar(n.id)}
                   onKeyDown={(e) => {
-                    const pasos: Record<string, [number, number]> = { ArrowLeft: [-20, 0], ArrowRight: [20, 0], ArrowUp: [0, -20], ArrowDown: [0, 20] };
+                    const pasos: Record<string, [number, number]> = {
+                      ArrowLeft: [-20, 0],
+                      ArrowRight: [20, 0],
+                      ArrowUp: [0, -20],
+                      ArrowDown: [0, 20],
+                    };
                     if (e.altKey && pasos[e.key]) {
                       e.preventDefault();
                       onMover(n.id, n.posicion.x + pasos[e.key][0], n.posicion.y + pasos[e.key][1]);
@@ -199,7 +259,9 @@ export function Lienzo({
                     <Pixel indice={indice < 0 ? 0 : indice} estado={estado} />
                   </span>
                   <span className="eg-nodo-texto">
-                    <span className="eg-nodo-tipo">{n.agente ? g(`agente_${n.agente}`) : g(`nodo_${n.tipo}`)}</span>
+                    <span className="eg-nodo-tipo">
+                      {n.agente ? g(`agente_${n.agente}`) : g(`nodo_${n.tipo}`)}
+                    </span>
                     <strong>{n.titulo}</strong>
                     <span className={`eg-estado eg-estado-${estado ?? "inactivo"}`} role="status">
                       {estado ? g(`estado_${estado}`) : g("sinEjecutar")}
@@ -212,7 +274,14 @@ export function Lienzo({
                     </span>
                   )}
                 </button>
-                {n.tipo !== "publicacion" && <span className="eg-asa eg-asa-salida" data-asa-salida={n.id} title={g("arrastraConectar")} aria-hidden="true" />}
+                {n.tipo !== "publicacion" && (
+                  <span
+                    className="eg-asa eg-asa-salida"
+                    data-asa-salida={n.id}
+                    title={g("arrastraConectar")}
+                    aria-hidden="true"
+                  />
+                )}
               </div>
             );
           })}

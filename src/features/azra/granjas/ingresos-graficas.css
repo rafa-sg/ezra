@@ -1,0 +1,221 @@
+/* Gráficas de ingresos debajo del mapa. */
+.azra .ez-mpg {
+  display: grid;
+  gap: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 20px;
+  background: var(--ep-tarjeta);
+  font-family: var(--ez-fuente);
+}
+.azra .ez-mpg-cabeza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.azra .ez-mpg h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.azra .ez-mpg h4 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.azra .ez-mpg-mes {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ep-suave);
+  font-size: 12.5px;
+}
+.azra .ez-mpg select {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 10px;
+  background: var(--ep-tarjeta);
+  color: var(--ep-texto);
+  font: inherit;
+  font-size: 12.5px;
+}
+.azra .ez-mpg-grupo {
+  display: grid;
+  gap: 8px;
+}
+.azra .ez-mpg-pares {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.azra .ez-mp-angosto .ez-mpg-pares {
+  grid-template-columns: 1fr;
+}
+.azra .ez-mpg-grafica {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--ep-superficie-2);
+  transition:
+    border-color 200ms ease,
+    opacity 200ms ease;
+}
+.azra .ez-mpg-elegida {
+  border-color: var(--mp-ruta);
+}
+.azra .ez-mpg-tenue {
+  opacity: 0.5;
+}
+.azra .ez-mpg-grafica figcaption {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.azra .ez-mpg-grafica figcaption::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #0ea5e9;
+}
+.azra .ez-mpg-honduras figcaption::before {
+  background: #7c5cff;
+}
+.azra .ez-mpg-grafica ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .ez-mpg-grafica button,
+.azra .ez-mpg-fila {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) 72px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 32px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ep-texto);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+}
+.azra .ez-mpg-grafica button {
+  cursor: pointer;
+}
+.azra .ez-mpg-grafica button:hover,
+.azra .ez-mpg-barra-elegida {
+  background: var(--ep-tarjeta);
+}
+.azra .ez-mpg-grafica button:focus-visible {
+  outline: 2px solid var(--mp-ruta);
+}
+.azra .ez-mpg-etq {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .ez-mpg-pista {
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ep-borde) 60%, transparent);
+}
+.azra .ez-mpg-barra {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #0ea5e9;
+}
+.azra .ez-mpg-honduras .ez-mpg-barra,
+.azra .ez-mpg-barra-hn {
+  background: #7c5cff;
+}
+.azra .ez-mpg-barra-elegida .ez-mpg-barra {
+  box-shadow: 0 0 0 2px var(--mp-ruta);
+}
+.azra .ez-mpg-valor {
+  color: var(--ep-texto-2);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.azra .ez-mpg-vacio {
+  margin: 4px 0 0;
+  color: var(--ep-suave);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.azra .ez-mpg-nota,
+.azra .ez-mpg-medida {
+  margin: 0;
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+.azra .ez-mpg-medida {
+  color: var(--ep-texto-2);
+}
+.azra .ez-mpg-csv summary {
+  color: var(--ep-texto-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.azra .ez-mpg-csv[open] {
+  display: grid;
+  gap: 8px;
+}
+.azra .ez-mpg-columnas {
+  overflow-x: auto;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ep-superficie-2);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.azra .ez-mpg-csv-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.azra .ez-mpg-archivo {
+  position: relative;
+  cursor: pointer;
+}
+.azra .ez-mpg-archivo input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.azra .ez-mpg-ok {
+  margin: 0;
+  color: var(--ep-hecho, #067647);
+  font-size: 12.5px;
+}
+.azra .ez-mpg-errores {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ep-atencion, #b54708);
+  font-size: 12px;
+}
+@media (max-width: 520px) {
+  .azra .ez-mpg {
+    padding: 14px;
+  }
+  .azra .ez-mpg-grafica button,
+  .azra .ez-mpg-fila {
+    grid-template-columns: 88px minmax(0, 1fr) 60px;
+  }
+}

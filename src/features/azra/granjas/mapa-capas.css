@@ -92,55 +92,24 @@
   background: var(--ep-borde);
 }
 
-/* Límites departamentales: línea fina y tenue entre los puntos; zona de cursor y toque. */
+/* Zonas de cada departamento: sin trazo (las divisiones son hileras de puntos); cursor y toque. */
 .azra .ez-mp-limite {
   fill: transparent;
-  stroke: var(--mp-limite);
-  stroke-width: 0.8px;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-  transition:
-    stroke 200ms ease,
-    stroke-width 200ms ease;
+  stroke: none;
 }
 .azra .ez-mp-limite-activo {
   cursor: pointer;
 }
-.azra .ez-mp-limite-sobre {
-  stroke: color-mix(in srgb, var(--mp-ruta) 40%, var(--mp-limite));
+/* Divisiones internas: las mismas pelotitas, en gris carbón; el interior queda en gris suave. */
+.azra .ez-mp .ez-mp-p-limite {
+  fill: var(--mp-punto-limite);
 }
-.azra .ez-mp-limite-elegido {
-  stroke: color-mix(in srgb, var(--mp-ruta) 60%, transparent);
-  stroke-width: 1.4px;
+.azra .ez-mp .ez-mp-p-realce {
+  fill: color-mix(in srgb, var(--mp-ruta) 70%, var(--mp-punto-limite));
 }
 /* La selección realza los puntos con suavidad: el contraste fuerte queda para el marcador activo. */
 .azra .ez-mp .ez-mp-p-activo {
   fill: color-mix(in srgb, var(--mp-punto-activo) 55%, var(--mp-punto));
-}
-
-/* Ancla discreta de ezrá. */
-.azra .ez-mp-ezra {
-  pointer-events: none;
-}
-.azra .ez-mp-ezra-aro {
-  fill: none;
-  stroke: var(--mp-nodo);
-  stroke-width: 1px;
-  vector-effect: non-scaling-stroke;
-  opacity: 0.45;
-}
-.azra .ez-mp-ezra-punto {
-  fill: var(--mp-nodo);
-  opacity: 0.7;
-}
-.azra .ez-mp-ezra text {
-  fill: var(--ep-suave);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-.azra .ez-mp-ezra-activa .ez-mp-ezra-aro,
-.azra .ez-mp-ezra-activa .ez-mp-ezra-punto {
-  opacity: 1;
 }
 
 /* Puntos: el campo magnético los aparta un poco y los ilumina; vuelven solos al retirar el cursor. */
@@ -669,4 +638,29 @@
   .azra .ez-mp-puntos circle {
     transition: none !important;
   }
+}
+
+/* Conexiones en reposo: curvas finas por detrás de los marcadores (celeste Guatemala, violeta Honduras). */
+.azra .ez-mpi-conexion {
+  fill: none;
+  stroke-width: 1.1px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.7;
+  transition:
+    opacity 240ms ease,
+    stroke-width 200ms ease;
+}
+.azra .ez-mpi-conexion-guatemala {
+  stroke: #0ea5e9;
+}
+.azra .ez-mpi-conexion-honduras {
+  stroke: #7c5cff;
+}
+.azra .ez-mpi-conexion.ez-mp-tenue {
+  opacity: 0.18;
+}
+.azra .ez-mpi-conexion-elegida {
+  opacity: 1;
+  stroke-width: 2px;
 }

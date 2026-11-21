@@ -24,14 +24,27 @@ export function CuentasSeguir({
   alGuardar: () => Promise<void>;
 }) {
   const [lista, setLista] = useState(cuentas);
-  const [nuevaIg, setNuevaIg] = useState<{ usuario: string; tipo: Tipo }>({ usuario: "", tipo: "recinto" });
-  const [nuevaFb, setNuevaFb] = useState<{ pagina: string; tipo: Tipo }>({ pagina: "", tipo: "recinto" });
-  const [estado, setEstado] = useState<{ ocupado: boolean; error: string; aviso: string }>({ ocupado: false, error: "", aviso: "" });
+  const [nuevaIg, setNuevaIg] = useState<{ usuario: string; tipo: Tipo }>({
+    usuario: "",
+    tipo: "recinto",
+  });
+  const [nuevaFb, setNuevaFb] = useState<{ pagina: string; tipo: Tipo }>({
+    pagina: "",
+    tipo: "recinto",
+  });
+  const [estado, setEstado] = useState<{ ocupado: boolean; error: string; aviso: string }>({
+    ocupado: false,
+    error: "",
+    aviso: "",
+  });
   const cambiado = JSON.stringify(lista) !== JSON.stringify(cuentas);
   async function guardar() {
     setEstado({ ocupado: true, error: "", aviso: "" });
     try {
-      const r = await pedir<{ cuentas: CuentasSeguidas }>("/api/granjas/eventos", { accion: "cuentas", cuentas: lista });
+      const r = await pedir<{ cuentas: CuentasSeguidas }>("/api/granjas/eventos", {
+        accion: "cuentas",
+        cuentas: lista,
+      });
       setLista(r.cuentas);
       setEstado({ ocupado: false, error: "", aviso: g("ev_redes_guardadas") });
       await alGuardar();
@@ -43,8 +56,19 @@ export function CuentasSeguir({
     setEstado({ ocupado: true, error: "", aviso: "" });
     try {
       const r = await pedir<{
-        redes: { cuentas: number; posts: number; candidatos: number; errores: string[]; omitido: string };
-        verificacion: { nuevos: number; duplicados: number; descartados: number; conImagen: number } | null;
+        redes: {
+          cuentas: number;
+          posts: number;
+          candidatos: number;
+          errores: string[];
+          omitido: string;
+        };
+        verificacion: {
+          nuevos: number;
+          duplicados: number;
+          descartados: number;
+          conImagen: number;
+        } | null;
       }>("/api/granjas/eventos", { accion: "leer_redes" });
       const v = r.verificacion;
       setEstado({
@@ -57,7 +81,9 @@ export function CuentasSeguir({
       setEstado({ ocupado: false, error: (e as Error).message, aviso: "" });
     }
   }
-  const puedeLeer = (lectura.instagram.listo && cuentas.instagram.length > 0) || (lectura.facebook.listo && cuentas.facebook.length > 0);
+  const puedeLeer =
+    (lectura.instagram.listo && cuentas.instagram.length > 0) ||
+    (lectura.facebook.listo && cuentas.facebook.length > 0);
   const selector = (valor: Tipo, cambiar: (t: Tipo) => void, etiqueta: string) => (
     <select aria-label={etiqueta} value={valor} onChange={(e) => cambiar(e.target.value as Tipo)}>
       {tipos.map((t) => (
@@ -70,7 +96,8 @@ export function CuentasSeguir({
   return (
     <details className="eg-bloque eg-plegable">
       <summary>
-        <strong>{g("ev_redes_titulo")}</strong> · {cuentas.instagram.length} Instagram · {cuentas.facebook.length} Facebook
+        <strong>{g("ev_redes_titulo")}</strong> · {cuentas.instagram.length} Instagram ·{" "}
+        {cuentas.facebook.length} Facebook
       </summary>
       <p className="ep-nota">{g("ev_redes_ayuda")}</p>
       {estado.error && (
@@ -86,13 +113,29 @@ export function CuentasSeguir({
       <div className="eg-redes">
         <section>
           <h3>Instagram</h3>
-          <p className={lectura.instagram.listo ? "ep-nota" : "eg-presupuesto-aviso"}>{lectura.instagram.listo ? g("ev_redes_igListo") : lectura.instagram.motivo}</p>
+          <p className={lectura.instagram.listo ? "ep-nota" : "eg-presupuesto-aviso"}>
+            {lectura.instagram.listo ? g("ev_redes_igListo") : lectura.instagram.motivo}
+          </p>
           <ul className="eg-cuentas">
             {lista.instagram.map((c, i) => (
               <li key={c.usuario}>
                 <span>@{c.usuario}</span>
-                {selector(c.tipo, (t) => setLista({ ...lista, instagram: lista.instagram.map((x, j) => (j === i ? { ...x, tipo: t } : x)) }), `${g("ev_redes_tipo")} @${c.usuario}`)}
-                <button className="ep-boton ep-texto" aria-label={`${g("ev_redes_quitar")} @${c.usuario}`} onClick={() => setLista({ ...lista, instagram: lista.instagram.filter((_, j) => j !== i) })}>
+                {selector(
+                  c.tipo,
+                  (t) =>
+                    setLista({
+                      ...lista,
+                      instagram: lista.instagram.map((x, j) => (j === i ? { ...x, tipo: t } : x)),
+                    }),
+                  `${g("ev_redes_tipo")} @${c.usuario}`,
+                )}
+                <button
+                  className="ep-boton ep-texto"
+                  aria-label={`${g("ev_redes_quitar")} @${c.usuario}`}
+                  onClick={() =>
+                    setLista({ ...lista, instagram: lista.instagram.filter((_, j) => j !== i) })
+                  }
+                >
                   <Trash2 size={14} />
                 </button>
               </li>
@@ -104,13 +147,22 @@ export function CuentasSeguir({
               e.preventDefault();
               const usuario = nuevaIg.usuario.trim().replace(/^@/, "").toLowerCase();
               if (!usuario || lista.instagram.some((c) => c.usuario === usuario)) return;
-              setLista({ ...lista, instagram: [...lista.instagram, { usuario, tipo: nuevaIg.tipo, nota: "" }] });
+              setLista({
+                ...lista,
+                instagram: [...lista.instagram, { usuario, tipo: nuevaIg.tipo, nota: "" }],
+              });
               setNuevaIg({ usuario: "", tipo: nuevaIg.tipo });
             }}
           >
             <label className="eg-campo">
               {g("ev_redes_usuario")}
-              <input value={nuevaIg.usuario} maxLength={31} pattern="@?[A-Za-z0-9._]{1,30}" placeholder="@recinto" onChange={(e) => setNuevaIg({ ...nuevaIg, usuario: e.target.value })} />
+              <input
+                value={nuevaIg.usuario}
+                maxLength={31}
+                pattern="@?[A-Za-z0-9._]{1,30}"
+                placeholder="@recinto"
+                onChange={(e) => setNuevaIg({ ...nuevaIg, usuario: e.target.value })}
+              />
             </label>
             {selector(nuevaIg.tipo, (t) => setNuevaIg({ ...nuevaIg, tipo: t }), g("ev_redes_tipo"))}
             <button className="ep-boton" disabled={!nuevaIg.usuario.trim()}>
@@ -121,13 +173,29 @@ export function CuentasSeguir({
         </section>
         <section>
           <h3>Facebook</h3>
-          <p className={lectura.facebook.listo ? "ep-nota" : "eg-presupuesto-aviso"}>{lectura.facebook.listo ? g("ev_redes_fbListo") : lectura.facebook.motivo}</p>
+          <p className={lectura.facebook.listo ? "ep-nota" : "eg-presupuesto-aviso"}>
+            {lectura.facebook.listo ? g("ev_redes_fbListo") : lectura.facebook.motivo}
+          </p>
           <ul className="eg-cuentas">
             {lista.facebook.map((c, i) => (
               <li key={c.pagina}>
                 <span>{c.pagina}</span>
-                {selector(c.tipo, (t) => setLista({ ...lista, facebook: lista.facebook.map((x, j) => (j === i ? { ...x, tipo: t } : x)) }), `${g("ev_redes_tipo")} ${c.pagina}`)}
-                <button className="ep-boton ep-texto" aria-label={`${g("ev_redes_quitar")} ${c.pagina}`} onClick={() => setLista({ ...lista, facebook: lista.facebook.filter((_, j) => j !== i) })}>
+                {selector(
+                  c.tipo,
+                  (t) =>
+                    setLista({
+                      ...lista,
+                      facebook: lista.facebook.map((x, j) => (j === i ? { ...x, tipo: t } : x)),
+                    }),
+                  `${g("ev_redes_tipo")} ${c.pagina}`,
+                )}
+                <button
+                  className="ep-boton ep-texto"
+                  aria-label={`${g("ev_redes_quitar")} ${c.pagina}`}
+                  onClick={() =>
+                    setLista({ ...lista, facebook: lista.facebook.filter((_, j) => j !== i) })
+                  }
+                >
                   <Trash2 size={14} />
                 </button>
               </li>
@@ -137,15 +205,30 @@ export function CuentasSeguir({
             className="eg-formulario-linea"
             onSubmit={(e) => {
               e.preventDefault();
-              const pagina = nuevaFb.pagina.trim().replace(/^https:\/\/(www\.)?facebook\.com\//, "").replace(/\/$/, "");
-              if (!pagina || lista.facebook.some((c) => c.pagina.toLowerCase() === pagina.toLowerCase())) return;
-              setLista({ ...lista, facebook: [...lista.facebook, { pagina, tipo: nuevaFb.tipo, nota: "" }] });
+              const pagina = nuevaFb.pagina
+                .trim()
+                .replace(/^https:\/\/(www\.)?facebook\.com\//, "")
+                .replace(/\/$/, "");
+              if (
+                !pagina ||
+                lista.facebook.some((c) => c.pagina.toLowerCase() === pagina.toLowerCase())
+              )
+                return;
+              setLista({
+                ...lista,
+                facebook: [...lista.facebook, { pagina, tipo: nuevaFb.tipo, nota: "" }],
+              });
               setNuevaFb({ pagina: "", tipo: nuevaFb.tipo });
             }}
           >
             <label className="eg-campo">
               {g("ev_redes_pagina")}
-              <input value={nuevaFb.pagina} maxLength={140} placeholder="nombre.de.la.pagina" onChange={(e) => setNuevaFb({ ...nuevaFb, pagina: e.target.value })} />
+              <input
+                value={nuevaFb.pagina}
+                maxLength={140}
+                placeholder="nombre.de.la.pagina"
+                onChange={(e) => setNuevaFb({ ...nuevaFb, pagina: e.target.value })}
+              />
             </label>
             {selector(nuevaFb.tipo, (t) => setNuevaFb({ ...nuevaFb, tipo: t }), g("ev_redes_tipo"))}
             <button className="ep-boton" disabled={!nuevaFb.pagina.trim()}>
@@ -156,11 +239,20 @@ export function CuentasSeguir({
         </section>
       </div>
       <div className="ep-acciones">
-        <button className="ep-boton ep-primario" disabled={!cambiado || estado.ocupado} onClick={() => void guardar()}>
+        <button
+          className="ep-boton ep-primario"
+          disabled={!cambiado || estado.ocupado}
+          onClick={() => void guardar()}
+        >
           <Save size={15} />
           {g("guardar")}
         </button>
-        <button className="ep-boton" disabled={cambiado || !puedeLeer || estado.ocupado} onClick={() => void leerAhora()} title={g("ev_redes_leerAyuda")}>
+        <button
+          className="ep-boton"
+          disabled={cambiado || !puedeLeer || estado.ocupado}
+          onClick={() => void leerAhora()}
+          title={g("ev_redes_leerAyuda")}
+        >
           <RefreshCw size={15} />
           {g("ev_redes_leer")}
         </button>
@@ -184,7 +276,20 @@ export type FormularioManual = {
   boletosUrl: string;
   descripcion: string;
 };
-const vacio: FormularioManual = { url: "", titulo: "", fecha: "", fechaFin: "", hora: "", lugar: "", municipio: "", departamento: "", categoria: "otro", precio: "", boletosUrl: "", descripcion: "" };
+const vacio: FormularioManual = {
+  url: "",
+  titulo: "",
+  fecha: "",
+  fechaFin: "",
+  hora: "",
+  lugar: "",
+  municipio: "",
+  departamento: "",
+  categoria: "otro",
+  precio: "",
+  boletosUrl: "",
+  descripcion: "",
+};
 
 /** «Pegar enlace»: el propietario pega el enlace de un video o post y escribe los datos; Ezra no abre ese enlace. */
 export function PegarEnlace({
@@ -202,7 +307,8 @@ export function PegarEnlace({
   const [f, setF] = useState<FormularioManual>(vacio);
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
-  const campo = (k: keyof FormularioManual) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
+  const campo = (k: keyof FormularioManual) => (e: { target: { value: string } }) =>
+    setF({ ...f, [k]: e.target.value });
   async function enviar() {
     setOcupado(true);
     setError("");
@@ -233,7 +339,13 @@ export function PegarEnlace({
         <Link2 size={15} />
         {g("ev_manual_boton")}
       </button>
-      <Modal open={abierto} onClose={() => setAbierto(false)} label={g("ev_manual_boton")} className="ep-modal" dismissOnBackdrop>
+      <Modal
+        open={abierto}
+        onClose={() => setAbierto(false)}
+        label={g("ev_manual_boton")}
+        className="ep-modal"
+        dismissOnBackdrop
+      >
         <form
           className="eg-guia eg-form-evento"
           onSubmit={(e) => {
@@ -250,7 +362,14 @@ export function PegarEnlace({
           )}
           <label className="eg-campo">
             {g("ev_manual_url")}
-            <input type="url" required maxLength={1000} placeholder="https://www.tiktok.com/@cuenta/video/…" value={f.url} onChange={campo("url")} />
+            <input
+              type="url"
+              required
+              maxLength={1000}
+              placeholder="https://www.tiktok.com/@cuenta/video/…"
+              value={f.url}
+              onChange={campo("url")}
+            />
           </label>
           {(
             [
@@ -266,7 +385,17 @@ export function PegarEnlace({
           ).map(([k, etiqueta, tipo, max]) => (
             <label key={k} className="eg-campo">
               {g(etiqueta)}
-              <input type={tipo} maxLength={max} required={k === "titulo"} minLength={k === "titulo" ? 3 : undefined} value={f[k]} placeholder={["fecha", "hora", "precio"].includes(k) ? g("ev_porConfirmar") : undefined} onChange={campo(k)} />
+              <input
+                type={tipo}
+                maxLength={max}
+                required={k === "titulo"}
+                minLength={k === "titulo" ? 3 : undefined}
+                value={f[k]}
+                placeholder={
+                  ["fecha", "hora", "precio"].includes(k) ? g("ev_porConfirmar") : undefined
+                }
+                onChange={campo(k)}
+              />
             </label>
           ))}
           <div className="eg-dos">
@@ -294,10 +423,18 @@ export function PegarEnlace({
           </div>
           <label className="eg-campo">
             {g("ev_descripcion")}
-            <textarea rows={3} maxLength={300} value={f.descripcion} onChange={campo("descripcion")} />
+            <textarea
+              rows={3}
+              maxLength={300}
+              value={f.descripcion}
+              onChange={campo("descripcion")}
+            />
           </label>
           <div className="ep-acciones">
-            <button className="ep-boton ep-primario" disabled={ocupado || f.titulo.trim().length < 3 || !f.url.startsWith("https://")}>
+            <button
+              className="ep-boton ep-primario"
+              disabled={ocupado || f.titulo.trim().length < 3 || !f.url.startsWith("https://")}
+            >
               {g("guardar")}
             </button>
             <button type="button" className="ep-boton" onClick={() => setAbierto(false)}>
@@ -310,18 +447,47 @@ export function PegarEnlace({
   );
 }
 
-export type FilaConfianza = { dominio: string; tipo: string; puntos: number; propio: boolean; eventos: number };
+export type FilaConfianza = {
+  dominio: string;
+  tipo: string;
+  puntos: number;
+  propio: boolean;
+  eventos: number;
+};
 const tiposFuente = ["organizador", "ticketera", "gobierno", "prensa", "agregador"] as const;
-const puntosTipo: Record<string, number> = { organizador: 90, ticketera: 90, gobierno: 85, prensa: 65, agregador: 45 };
+const puntosTipo: Record<string, number> = {
+  organizador: 90,
+  ticketera: 90,
+  gobierno: 85,
+  prensa: 65,
+  agregador: 45,
+};
 
 /** «Confianza por dominio»: el propietario fija el tipo y los puntos de cada sitio. */
-export function ConfianzaDominios({ g, filas, alGuardar }: { g: (clave: string) => string; filas: FilaConfianza[]; alGuardar: () => Promise<void> }) {
-  const [edicion, setEdicion] = useState<Record<string, { tipo: string; puntos: number } | null>>({});
+export function ConfianzaDominios({
+  g,
+  filas,
+  alGuardar,
+}: {
+  g: (clave: string) => string;
+  filas: FilaConfianza[];
+  alGuardar: () => Promise<void>;
+}) {
+  const [edicion, setEdicion] = useState<Record<string, { tipo: string; puntos: number } | null>>(
+    {},
+  );
   const [estado, setEstado] = useState({ ocupado: false, error: "", aviso: "" });
-  const valor = (f: FilaConfianza) => (f.dominio in edicion ? edicion[f.dominio] : f.propio ? { tipo: f.tipo, puntos: f.puntos } : null);
+  const valor = (f: FilaConfianza) =>
+    f.dominio in edicion
+      ? edicion[f.dominio]
+      : f.propio
+        ? { tipo: f.tipo, puntos: f.puntos }
+        : null;
   async function guardar() {
     setEstado({ ocupado: true, error: "", aviso: "" });
-    const dominios = Object.fromEntries(filas.flatMap((f) => (valor(f) ? [[f.dominio, valor(f)!]] : [])));
+    const dominios = Object.fromEntries(
+      filas.flatMap((f) => (valor(f) ? [[f.dominio, valor(f)!]] : [])),
+    );
     try {
       await pedir("/api/granjas/eventos", { accion: "confianza_dominios", dominios });
       setEdicion({});
@@ -372,7 +538,15 @@ export function ConfianzaDominios({ g, filas, alGuardar }: { g: (clave: string) 
                     <select
                       aria-label={`${g("ev_redes_tipo")} · ${f.dominio}`}
                       value={tipo}
-                      onChange={(e) => setEdicion({ ...edicion, [f.dominio]: { tipo: e.target.value, puntos: puntosTipo[e.target.value] ?? puntos } })}
+                      onChange={(e) =>
+                        setEdicion({
+                          ...edicion,
+                          [f.dominio]: {
+                            tipo: e.target.value,
+                            puntos: puntosTipo[e.target.value] ?? puntos,
+                          },
+                        })
+                      }
                     >
                       {tiposFuente.map((t) => (
                         <option key={t} value={t}>
@@ -388,13 +562,27 @@ export function ConfianzaDominios({ g, filas, alGuardar }: { g: (clave: string) 
                       min={0}
                       max={100}
                       value={puntos}
-                      onChange={(e) => setEdicion({ ...edicion, [f.dominio]: { tipo, puntos: Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0))) } })}
+                      onChange={(e) =>
+                        setEdicion({
+                          ...edicion,
+                          [f.dominio]: {
+                            tipo,
+                            puntos: Math.max(
+                              0,
+                              Math.min(100, Math.round(Number(e.target.value) || 0)),
+                            ),
+                          },
+                        })
+                      }
                     />
                   </td>
                   <td>{f.eventos}</td>
                   <td>
                     {v && (
-                      <button className="ep-boton ep-texto" onClick={() => setEdicion({ ...edicion, [f.dominio]: null })}>
+                      <button
+                        className="ep-boton ep-texto"
+                        onClick={() => setEdicion({ ...edicion, [f.dominio]: null })}
+                      >
                         {g("ev_conf_restablecer")}
                       </button>
                     )}
@@ -406,7 +594,11 @@ export function ConfianzaDominios({ g, filas, alGuardar }: { g: (clave: string) 
         </table>
       </div>
       <div className="ep-acciones">
-        <button className="ep-boton ep-primario" disabled={!Object.keys(edicion).length || estado.ocupado} onClick={() => void guardar()}>
+        <button
+          className="ep-boton ep-primario"
+          disabled={!Object.keys(edicion).length || estado.ocupado}
+          onClick={() => void guardar()}
+        >
           <Save size={15} />
           {g("guardar")}
         </button>

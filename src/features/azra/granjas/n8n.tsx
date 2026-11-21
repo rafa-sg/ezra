@@ -57,16 +57,16 @@ export function ConexionN8n({
         <p>{g("n8nAyuda")}</p>
         <details className="eg-detalles-tecnicos">
           <summary>{g("detallesTecnicos")}</summary>
-        <dl className="eg-datos">
-          <dt>{g("n8nEstado")}</dt>
-          <dd>{datos ? g(`n8n_${datos.estado}`) : g("n8nCargando")}</dd>
-          <dt>{g("verificado")}</dt>
-          <dd>{datos?.verificado ? fecha(datos.verificado) : g("nunca")}</dd>
-          <dt>{g("n8nEntorno")}</dt>
-          <dd>{g(datos?.produccion ? "n8nProduccion" : "n8nPrueba")}</dd>
-          <dt>{g("n8nEnvios")}</dt>
-          <dd>{g(datos?.publicacionHabilitada ? "n8nHabilitado" : "n8nDeshabilitado")}</dd>
-        </dl>
+          <dl className="eg-datos">
+            <dt>{g("n8nEstado")}</dt>
+            <dd>{datos ? g(`n8n_${datos.estado}`) : g("n8nCargando")}</dd>
+            <dt>{g("verificado")}</dt>
+            <dd>{datos?.verificado ? fecha(datos.verificado) : g("nunca")}</dd>
+            <dt>{g("n8nEntorno")}</dt>
+            <dd>{g(datos?.produccion ? "n8nProduccion" : "n8nPrueba")}</dd>
+            <dt>{g("n8nEnvios")}</dt>
+            <dd>{g(datos?.publicacionHabilitada ? "n8nHabilitado" : "n8nDeshabilitado")}</dd>
+          </dl>
         </details>
         {datos?.faltantes.length ? (
           <p className="ep-nota">

@@ -31,8 +31,17 @@ function centroide(anillos: [number, number][][]): [number, number] {
   return area ? [x / (3 * area), y / (3 * area)] : pts[0];
 }
 /** Matriz de puntos (cada punto sabe a qué departamento real pertenece) y el centro de cada departamento. */
+export type PuntoMapa = {
+  x: number;
+  y: number;
+  d: string;
+  /** Hilera de la división interna con un departamento vecino (un solo lado por límite). */
+  limite: boolean;
+  /** Contorno del propio departamento (para realzarlo al elegirlo). */
+  filo: boolean;
+};
 let geoCache: {
-  puntos: { x: number; y: number; d: string }[];
+  puntos: PuntoMapa[];
   centros: Record<string, [number, number]>;
 } | null = null;
 export function geo() {
@@ -44,23 +53,44 @@ export function geo() {
   const todos = deptos.flatMap((d) => d.anillos.flat());
   const [x0, x1] = [Math.min(...todos.map((p) => p[0])), Math.max(...todos.map((p) => p[0]))];
   const [y0, y1] = [Math.min(...todos.map((p) => p[1])), Math.max(...todos.map((p) => p[1]))];
-  const puntos: { x: number; y: number; d: string }[] = [];
-  for (let y = y0; y <= y1; y += 7.5)
-    for (let x = x0; x <= x1; x += 7.5) {
+  // Misma cuadrícula de siempre (7,5 unidades); cada punto sabe su departamento real.
+  const celda = new Map<string, string>();
+  const crudos: { x: number; y: number; d: string; i: number; j: number }[] = [];
+  for (let j = 0, y = y0; y <= y1; y += 7.5, j++)
+    for (let i = 0, x = x0; x <= x1; x += 7.5, i++) {
       const d = deptos.find((dep) => dep.anillos.some((a) => dentroDe(x, y, a)));
-      if (d) puntos.push({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, d: d.nombre });
+      if (!d) continue;
+      celda.set(`${i},${j}`, d.nombre);
+      crudos.push({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, d: d.nombre, i, j });
     }
+  const otro = (p: { d: string }, i: number, j: number) => {
+    const v = celda.get(`${i},${j}`);
+    return v !== undefined && v !== p.d;
+  };
+  const puntos: PuntoMapa[] = crudos.map((p) => ({
+    x: p.x,
+    y: p.y,
+    d: p.d,
+    // Una sola hilera por límite compartido: de los dos lados, el departamento de nombre menor
+    // (regla estable para que la hilera no se duplique ni salte de lado).
+    limite: [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ].some(([a, b]) => otro(p, p.i + a, p.j + b) && celda.get(`${p.i + a},${p.j + b}`)! > p.d),
+    filo: [-1, 0, 1].some((a) =>
+      [-1, 0, 1].some((b) => (a || b) && celda.get(`${p.i + a},${p.j + b}`) !== p.d),
+    ),
+  }));
   geoCache = {
     puntos,
     centros: Object.fromEntries(deptos.map((d) => [d.nombre, centroide(d.anillos)])),
   };
   return geoCache;
 }
-/** El país con espacio arriba para ezrá. */
 /** El país centrado (sin la cápsula de arriba), con margen para los recorridos que llegan desde afuera. */
 export const VB: [number, number, number, number] = [280, 200, 700, 400];
-/** Punto de anclaje discreto de ezrá, integrado sobre el borde norte: origen de la conexión elegida. */
-export const ANCLA: [number, number] = [640, 222];
 export const X_PAIS: [number, number] = [308, 951];
 
 type P2 = [number, number];
@@ -93,9 +123,17 @@ function sobreFrontera(p: P2): P2 {
 const ETIQUETAS: Record<Acceso["id"], P2> = {
   aeropuerto: [664, 566],
   guatemala: [352, 282],
-  honduras: [748, 262],
+  honduras: [800, 270],
 };
-export type PuestoGeo = { id: string; acceso: Acceso["id"]; punto: P2; camino: string; fin: P2 };
+export type PuestoGeo = {
+  id: string;
+  acceso: Acceso["id"];
+  punto: P2;
+  camino: string;
+  fin: P2;
+  /** Curva fina de la etiqueta del país al puesto (solo por tierra), arqueada hacia afuera. */
+  conexion: string | null;
+};
 export type AccesoGeo = { acceso: Acceso; etiqueta: P2; puestos: PuestoGeo[] };
 let accesosCache: AccesoGeo[] | null = null;
 /**
@@ -122,6 +160,7 @@ export function geometriaAccesos(): AccesoGeo[] {
           acceso: acceso.id,
           punto: crudo,
           fin: crudo,
+          conexion: null,
           camino: `M${f1(s[0])},${f1(s[1])} Q${f1(c[0])},${f1(c[1])} ${f1(crudo[0])},${f1(crudo[1])}`,
         };
       }
@@ -132,11 +171,17 @@ export function geometriaAccesos(): AccesoGeo[] {
       const c: P2 = [b[0] + o[0] * 26 + perp[0] * 16, b[1] + o[1] * 26 + perp[1] * 16];
       const t = norm([b[0] - c[0], b[1] - c[1]]);
       const e: P2 = [b[0] + t[0] * 16, b[1] + t[1] * 16];
+      const et = ETIQUETAS[acceso.id];
+      const medio: P2 = [(et[0] + b[0]) / 2, (et[1] + b[1]) / 2];
+      const fuera = norm([medio[0] - centro[0], medio[1] - centro[1]]);
+      const k = Math.min(30, Math.hypot(et[0] - b[0], et[1] - b[1]) * 0.15);
+      const ctrl: P2 = [medio[0] + fuera[0] * k, medio[1] + fuera[1] * k];
       return {
         id: p.id,
         acceso: acceso.id,
         punto: b,
         fin: e,
+        conexion: `M${f1(et[0])},${f1(et[1])} Q${f1(ctrl[0])},${f1(ctrl[1])} ${f1(b[0])},${f1(b[1])}`,
         camino: `M${f1(s[0])},${f1(s[1])} Q${f1(c[0])},${f1(c[1])} ${f1(b[0])},${f1(b[1])} L${f1(e[0])},${f1(e[1])}`,
       };
     }),

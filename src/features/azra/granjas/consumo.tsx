@@ -6,13 +6,29 @@ import { pedir } from "./cliente";
 
 type Formatos = { g: (clave: string) => string; fecha: (iso: string) => string; locale: string };
 const numeroCompacto = (n: number, locale: string) =>
-  new Intl.NumberFormat(locale === "es" ? "es-SV" : "en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
-const numero = (n: number, locale: string) => new Intl.NumberFormat(locale === "es" ? "es-SV" : "en-US").format(n);
+  new Intl.NumberFormat(locale === "es" ? "es-SV" : "en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(n);
+const numero = (n: number, locale: string) =>
+  new Intl.NumberFormat(locale === "es" ? "es-SV" : "en-US").format(n);
 const usd = (n: number, locale: string) =>
-  new Intl.NumberFormat(locale === "es" ? "es-SV" : "en-US", { style: "currency", currency: "USD", maximumFractionDigits: n < 1 ? 4 : 2 }).format(n);
+  new Intl.NumberFormat(locale === "es" ? "es-SV" : "en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: n < 1 ? 4 : 2,
+  }).format(n);
 
 /** Aviso de presupuesto reutilizable (Consumo y Granjas). Siempre con ícono y texto, nunca solo color. */
-export function AvisoPresupuesto({ estado, g, fecha }: { estado: ResumenConsumo["presupuesto"]["estado"]; g: Formatos["g"]; fecha: Formatos["fecha"] }) {
+export function AvisoPresupuesto({
+  estado,
+  g,
+  fecha,
+}: {
+  estado: ResumenConsumo["presupuesto"]["estado"];
+  g: Formatos["g"];
+  fecha: Formatos["fecha"];
+}) {
   if (estado.agotado)
     return (
       <p className="ep-alerta eg-presupuesto-alerta" role="alert">
@@ -30,7 +46,17 @@ export function AvisoPresupuesto({ estado, g, fecha }: { estado: ResumenConsumo[
   return null;
 }
 
-function GraficaDias({ serie, limite, g, locale }: { serie: ResumenConsumo["serie"]; limite: number | null; g: Formatos["g"]; locale: string }) {
+function GraficaDias({
+  serie,
+  limite,
+  g,
+  locale,
+}: {
+  serie: ResumenConsumo["serie"];
+  limite: number | null;
+  g: Formatos["g"];
+  locale: string;
+}) {
   const [activo, setActivo] = useState<number | null>(null);
   const ancho = 720;
   const alto = 220;
@@ -45,11 +71,26 @@ function GraficaDias({ serie, limite, g, locale }: { serie: ResumenConsumo["seri
     <figure className="eg-grafica">
       <figcaption>{g("c_serie")}</figcaption>
       <div className="eg-grafica-lienzo" onMouseLeave={() => setActivo(null)}>
-        <svg viewBox={`0 0 ${ancho} ${alto}`} role="img" aria-label={`${g("c_serie")}: ${serie.map((x) => `${etiquetaDia(x.dia)} ${x.tokens}`).join(", ")}`}>
+        <svg
+          viewBox={`0 0 ${ancho} ${alto}`}
+          role="img"
+          aria-label={`${g("c_serie")}: ${serie.map((x) => `${etiquetaDia(x.dia)} ${x.tokens}`).join(", ")}`}
+        >
           {[0, 0.5, 1].map((t) => (
             <g key={t}>
-              <line x1={margen.izq} x2={ancho - margen.der} y1={y(maximo * t / 1.08)} y2={y(maximo * t / 1.08)} className="eg-grafica-rejilla" />
-              <text x={margen.izq - 6} y={y(maximo * t / 1.08) + 4} textAnchor="end" className="eg-grafica-eje">
+              <line
+                x1={margen.izq}
+                x2={ancho - margen.der}
+                y1={y((maximo * t) / 1.08)}
+                y2={y((maximo * t) / 1.08)}
+                className="eg-grafica-rejilla"
+              />
+              <text
+                x={margen.izq - 6}
+                y={y((maximo * t) / 1.08) + 4}
+                textAnchor="end"
+                className="eg-grafica-eje"
+              >
                 {numeroCompacto((maximo * t) / 1.08, locale)}
               </text>
             </g>
@@ -69,25 +110,52 @@ function GraficaDias({ serie, limite, g, locale }: { serie: ResumenConsumo["seri
                   />
                 )}
                 {i % 5 === 0 && (
-                  <text x={cx + barra / 2} y={alto - 8} textAnchor="middle" className="eg-grafica-eje">
+                  <text
+                    x={cx + barra / 2}
+                    y={alto - 8}
+                    textAnchor="middle"
+                    className="eg-grafica-eje"
+                  >
                     {etiquetaDia(x.dia)}
                   </text>
                 )}
-                <rect x={margen.izq + i * paso} y={margen.arr} width={paso} height={alto - margen.arr - margen.aba} fill="transparent" onMouseEnter={() => setActivo(i)} />
+                <rect
+                  x={margen.izq + i * paso}
+                  y={margen.arr}
+                  width={paso}
+                  height={alto - margen.arr - margen.aba}
+                  fill="transparent"
+                  onMouseEnter={() => setActivo(i)}
+                />
               </g>
             );
           })}
           {limite !== null && (
             <g>
-              <line x1={margen.izq} x2={ancho - margen.der} y1={y(limite)} y2={y(limite)} className="eg-grafica-limite" />
-              <text x={margen.izq + 6} y={y(limite) - 6} textAnchor="start" className="eg-grafica-eje">
+              <line
+                x1={margen.izq}
+                x2={ancho - margen.der}
+                y1={y(limite)}
+                y2={y(limite)}
+                className="eg-grafica-limite"
+              />
+              <text
+                x={margen.izq + 6}
+                y={y(limite) - 6}
+                textAnchor="start"
+                className="eg-grafica-eje"
+              >
                 {g("c_limiteDiario")} · {numeroCompacto(limite, locale)}
               </text>
             </g>
           )}
         </svg>
         {d && (
-          <div className="eg-grafica-tooltip" style={{ left: `${((margen.izq + activo! * paso + paso / 2) / ancho) * 100}%` }} role="status">
+          <div
+            className="eg-grafica-tooltip"
+            style={{ left: `${((margen.izq + activo! * paso + paso / 2) / ancho) * 100}%` }}
+            role="status"
+          >
             <strong>{etiquetaDia(d.dia)}</strong>
             <span>
               {numero(d.tokens, locale)} {g("c_tokens")} · {d.llamadas} {g("c_llamadas")}
@@ -147,7 +215,10 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
   const [tarifas, setTarifas] = useState<FilaTarifa[]>([]);
   const aplicar = useCallback((r: ResumenConsumo) => {
     setDatos(r);
-    setLimites({ dia: r.presupuesto.tokensDia ? String(r.presupuesto.tokensDia) : "", mes: r.presupuesto.tokensMes ? String(r.presupuesto.tokensMes) : "" });
+    setLimites({
+      dia: r.presupuesto.tokensDia ? String(r.presupuesto.tokensDia) : "",
+      mes: r.presupuesto.tokensMes ? String(r.presupuesto.tokensMes) : "",
+    });
     setImagenesDia(String(r.imagenesIA.porDia));
     setTarifas(aFilas(r.tarifas, r.modelos));
   }, []);
@@ -181,14 +252,21 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
       setOcupado(false);
     }
   }
-  const nombrePaso = (origen: string, paso: string) => (origen === "granja" ? paso : `${g(`c_origen_${origen}`)} · ${paso}`);
+  const nombrePaso = (origen: string, paso: string) =>
+    origen === "granja" ? paso : `${g(`c_origen_${origen}`)} · ${paso}`;
   const costoTexto = (a: { costo: number; sinTarifa: number; llamadas: number }) =>
-    a.sinTarifa === a.llamadas && a.llamadas > 0 ? g("c_sinTarifa") : `${usd(a.costo, locale)}${a.sinTarifa ? ` (${g("c_parcial")})` : ""}`;
+    a.sinTarifa === a.llamadas && a.llamadas > 0
+      ? g("c_sinTarifa")
+      : `${usd(a.costo, locale)}${a.sinTarifa ? ` (${g("c_parcial")})` : ""}`;
   const tarifasValidas = useMemo(
     () =>
       tarifas.every((f) => {
         const vacia = !f.entrada && !f.salida && !f.busqueda;
-        return vacia || ([f.entrada, f.salida, f.busqueda].every((v) => v !== "" && Number(v) >= 0) && /^[A-Za-z0-9._:-]+$/.test(f.modelo));
+        return (
+          vacia ||
+          ([f.entrada, f.salida, f.busqueda].every((v) => v !== "" && Number(v) >= 0) &&
+            /^[A-Za-z0-9._:-]+$/.test(f.modelo))
+        );
       }),
     [tarifas],
   );
@@ -199,12 +277,25 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
       <div className="eg-medidor-texto">
         <strong>{etiqueta}</strong>
         <span>
-          {numero(p.usado, locale)} {g("c_usado")} · {p.limite ? `${numero(p.limite, locale)} (${p.porcentaje} %)` : g("c_sinLimite")}
+          {numero(p.usado, locale)} {g("c_usado")} ·{" "}
+          {p.limite ? `${numero(p.limite, locale)} (${p.porcentaje} %)` : g("c_sinLimite")}
         </span>
       </div>
       {p.limite && (
-        <div className="eg-medidor-barra" role="meter" aria-valuemin={0} aria-valuemax={p.limite} aria-valuenow={Math.min(p.usado, p.limite)} aria-label={etiqueta}>
-          <span style={{ width: `${Math.min(100, p.porcentaje ?? 0)}%` }} className={(p.porcentaje ?? 0) >= 100 ? "eg-lleno" : (p.porcentaje ?? 0) >= 80 ? "eg-alto" : ""} />
+        <div
+          className="eg-medidor-barra"
+          role="meter"
+          aria-valuemin={0}
+          aria-valuemax={p.limite}
+          aria-valuenow={Math.min(p.usado, p.limite)}
+          aria-label={etiqueta}
+        >
+          <span
+            style={{ width: `${Math.min(100, p.porcentaje ?? 0)}%` }}
+            className={
+              (p.porcentaje ?? 0) >= 100 ? "eg-lleno" : (p.porcentaje ?? 0) >= 80 ? "eg-alto" : ""
+            }
+          />
         </div>
       )}
       {p.limite && p.usado >= p.limite && (
@@ -255,17 +346,36 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
             e.preventDefault();
             void guardar({
               accion: "presupuesto",
-              presupuesto: { tokensDia: limites.dia ? Number(limites.dia) : null, tokensMes: limites.mes ? Number(limites.mes) : null },
+              presupuesto: {
+                tokensDia: limites.dia ? Number(limites.dia) : null,
+                tokensMes: limites.mes ? Number(limites.mes) : null,
+              },
             });
           }}
         >
           <label className="eg-campo">
             {g("c_dia")} ({g("c_tokens")})
-            <input type="number" min={1000} step={1000} inputMode="numeric" value={limites.dia} placeholder={g("c_sinLimite")} onChange={(e) => setLimites({ ...limites, dia: e.target.value })} />
+            <input
+              type="number"
+              min={1000}
+              step={1000}
+              inputMode="numeric"
+              value={limites.dia}
+              placeholder={g("c_sinLimite")}
+              onChange={(e) => setLimites({ ...limites, dia: e.target.value })}
+            />
           </label>
           <label className="eg-campo">
             {g("c_mesLimite")} ({g("c_tokens")})
-            <input type="number" min={1000} step={1000} inputMode="numeric" value={limites.mes} placeholder={g("c_sinLimite")} onChange={(e) => setLimites({ ...limites, mes: e.target.value })} />
+            <input
+              type="number"
+              min={1000}
+              step={1000}
+              inputMode="numeric"
+              value={limites.mes}
+              placeholder={g("c_sinLimite")}
+              onChange={(e) => setLimites({ ...limites, mes: e.target.value })}
+            />
           </label>
           <button className="ep-boton ep-primario" disabled={ocupado}>
             <Save size={15} />
@@ -276,12 +386,23 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
           className="eg-formulario-linea"
           onSubmit={(e) => {
             e.preventDefault();
-            void guardar({ accion: "imagenes_ia", porDia: Math.max(0, Math.min(200, Math.round(Number(imagenesDia) || 0))) });
+            void guardar({
+              accion: "imagenes_ia",
+              porDia: Math.max(0, Math.min(200, Math.round(Number(imagenesDia) || 0))),
+            });
           }}
         >
           <label className="eg-campo">
             {g("c_imagenesDia")} ({datos.imagenesIA.hoy} {g("c_imagenesHoy")})
-            <input type="number" min={0} max={200} step={1} inputMode="numeric" value={imagenesDia} onChange={(e) => setImagenesDia(e.target.value)} />
+            <input
+              type="number"
+              min={0}
+              max={200}
+              step={1}
+              inputMode="numeric"
+              value={imagenesDia}
+              onChange={(e) => setImagenesDia(e.target.value)}
+            />
           </label>
           <button className="ep-boton ep-primario" disabled={ocupado}>
             <Save size={15} />
@@ -300,7 +421,12 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
         </div>
         {/* Sin llamadas en 30 días, una gráfica vacía no aporta: basta una línea. */}
         {datos.serie.some((x) => x.tokens > 0) ? (
-          <GraficaDias serie={datos.serie} limite={datos.presupuesto.tokensDia} g={g} locale={locale} />
+          <GraficaDias
+            serie={datos.serie}
+            limite={datos.presupuesto.tokensDia}
+            g={g}
+            locale={locale}
+          />
         ) : (
           <p className="ep-vacio-breve">{g("c_vacio")}</p>
         )}
@@ -325,7 +451,9 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
                   <tbody>
                     {datos.porGranja.map((f) => (
                       <tr key={f.clave}>
-                        <td>{f.clave.startsWith("origen:") ? g(`c_origen_${f.nombre}`) : f.nombre}</td>
+                        <td>
+                          {f.clave.startsWith("origen:") ? g(`c_origen_${f.nombre}`) : f.nombre}
+                        </td>
                         <td>{numero(f.tokens, locale)}</td>
                         <td>{f.llamadas}</td>
                         <td>{costoTexto(f)}</td>
@@ -415,7 +543,14 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
             const limpias = Object.fromEntries(
               tarifas
                 .filter((f) => f.modelo.trim() && (f.entrada || f.salida || f.busqueda))
-                .map((f) => [f.modelo.trim(), { entrada: Number(f.entrada), salida: Number(f.salida), busqueda: Number(f.busqueda) }]),
+                .map((f) => [
+                  f.modelo.trim(),
+                  {
+                    entrada: Number(f.entrada),
+                    salida: Number(f.salida),
+                    busqueda: Number(f.busqueda),
+                  },
+                ]),
             );
             void guardar({ accion: "tarifas", tarifas: limpias });
           }}
@@ -435,11 +570,17 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
               </thead>
               <tbody>
                 {tarifas.map((f, i) => {
-                  const cambiar = (campo: keyof FilaTarifa, valor: string) => setTarifas(tarifas.map((x, j) => (j === i ? { ...x, [campo]: valor } : x)));
+                  const cambiar = (campo: keyof FilaTarifa, valor: string) =>
+                    setTarifas(tarifas.map((x, j) => (j === i ? { ...x, [campo]: valor } : x)));
                   return (
                     <tr key={i}>
                       <td>
-                        <input aria-label={g("c_nombreModelo")} value={f.modelo} maxLength={80} onChange={(e) => cambiar("modelo", e.target.value)} />
+                        <input
+                          aria-label={g("c_nombreModelo")}
+                          value={f.modelo}
+                          maxLength={80}
+                          onChange={(e) => cambiar("modelo", e.target.value)}
+                        />
                       </td>
                       {(["entrada", "salida", "busqueda"] as const).map((campo) => (
                         <td key={campo}>
@@ -455,7 +596,12 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
                         </td>
                       ))}
                       <td>
-                        <button type="button" className="ep-boton ep-texto" aria-label={`${g("c_quitar")} ${f.modelo}`} onClick={() => setTarifas(tarifas.filter((_, j) => j !== i))}>
+                        <button
+                          type="button"
+                          className="ep-boton ep-texto"
+                          aria-label={`${g("c_quitar")} ${f.modelo}`}
+                          onClick={() => setTarifas(tarifas.filter((_, j) => j !== i))}
+                        >
                           <Trash2 size={15} />
                         </button>
                       </td>
@@ -466,7 +612,13 @@ export function SeccionConsumo({ g, fecha, locale }: Formatos) {
             </table>
           </div>
           <div className="ep-acciones">
-            <button type="button" className="ep-boton" onClick={() => setTarifas([...tarifas, { modelo: "", entrada: "", salida: "", busqueda: "" }])}>
+            <button
+              type="button"
+              className="ep-boton"
+              onClick={() =>
+                setTarifas([...tarifas, { modelo: "", entrada: "", salida: "", busqueda: "" }])
+              }
+            >
               <Plus size={15} />
               {g("c_agregarModelo")}
             </button>

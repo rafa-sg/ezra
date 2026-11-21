@@ -9,7 +9,11 @@ const diasSemana = [1, 2, 3, 4, 5, 6, 0];
 export type HorariosRespuesta = { horarios: Record<string, VistaHorario>; ahora: string };
 
 /** Resumen corto para la tarjeta de una granja en la lista. */
-export function resumenHorario(h: VistaHorario | undefined, g: (c: string) => string, fecha: (iso: string) => string) {
+export function resumenHorario(
+  h: VistaHorario | undefined,
+  g: (c: string) => string,
+  fecha: (iso: string) => string,
+) {
   if (!h?.activa) return g("h_inactivo");
   if (h.pausaMotivo) return `${g("h_pausada")} ${h.pausaMotivo}`;
   return `${g("h_programada")} · ${h.despuesDe ? g("h_proximaEncadenada") : `${h.hora} · ${g("h_proxima")}: ${h.proxima ? fecha(h.proxima) : "—"}`}`;
@@ -32,13 +36,28 @@ export function PanelHorario({
   onGuardado: () => void;
 }) {
   const [vista, setVista] = useState<VistaHorario | null>(null);
-  const [form, setForm] = useState<{ activa: boolean; hora: string; dias: number[]; despuesDe: string; maximo: string; cuenta: string; acepto: boolean } | null>(null);
+  const [form, setForm] = useState<{
+    activa: boolean;
+    hora: string;
+    dias: number[];
+    despuesDe: string;
+    maximo: string;
+    cuenta: string;
+    acepto: boolean;
+  } | null>(null);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [guardando, setGuardando] = useState(false);
   const proposito = granja.ajustes.purpose;
-  const maximoActual = proposito === "eventos_el_salvador" ? (granja.ajustes.eventos?.maxPorDia ?? 10) : proposito === "post_instagram_eventos" ? (granja.ajustes.instagram?.postsPorDia ?? 3) : null;
-  const usaIA = granja.grafo.nodos.some((n) => n.tipo === "agente" && n.proveedor !== "manual" && n.proveedor !== "local");
+  const maximoActual =
+    proposito === "eventos_el_salvador"
+      ? (granja.ajustes.eventos?.maxPorDia ?? 10)
+      : proposito === "post_instagram_eventos"
+        ? (granja.ajustes.instagram?.postsPorDia ?? 3)
+        : null;
+  const usaIA = granja.grafo.nodos.some(
+    (n) => n.tipo === "agente" && n.proveedor !== "manual" && n.proveedor !== "local",
+  );
   useEffect(() => {
     let vivo = true;
     pedir<HorariosRespuesta>("/api/granjas/horarios")
@@ -62,7 +81,12 @@ export function PanelHorario({
       vivo = false;
     };
   }, [granja.id, granja.ajustes.instagram?.cuenta, maximoActual]);
-  if (!form || !vista) return <section className="eg-bloque eg-horario">{error ? <p className="ep-alerta">{error}</p> : <p role="status">{g("cargando")}</p>}</section>;
+  if (!form || !vista)
+    return (
+      <section className="eg-bloque eg-horario">
+        {error ? <p className="ep-alerta">{error}</p> : <p role="status">{g("cargando")}</p>}
+      </section>
+    );
   const necesitaConsentimiento = form.activa && usaIA && !(vista.activa && vista.consentimiento);
   async function guardar() {
     if (!form) return;
@@ -72,7 +96,12 @@ export function PanelHorario({
     try {
       const r = await pedir<{ horario: VistaHorario }>("/api/granjas/horarios", {
         granjaId: granja.id,
-        horario: { activa: form.activa, hora: form.hora, dias: form.dias, despuesDe: form.despuesDe || null },
+        horario: {
+          activa: form.activa,
+          hora: form.hora,
+          dias: form.dias,
+          despuesDe: form.despuesDe || null,
+        },
         aceptoIA: form.acepto,
         ...(maximoActual !== null && form.maximo ? { maximo: Number(form.maximo) } : {}),
         ...(proposito === "post_instagram_eventos" ? { cuenta: form.cuenta } : {}),
@@ -107,13 +136,20 @@ export function PanelHorario({
         </p>
       )}
       <label className="ep-checkbox">
-        <input type="checkbox" checked={form.activa} onChange={(e) => setForm({ ...form, activa: e.target.checked })} />
+        <input
+          type="checkbox"
+          checked={form.activa}
+          onChange={(e) => setForm({ ...form, activa: e.target.checked })}
+        />
         {g("h_activa")}
       </label>
       <div className="eg-formulario-linea">
         <label className="eg-campo">
           {g("h_cuando")}
-          <select value={form.despuesDe} onChange={(e) => setForm({ ...form, despuesDe: e.target.value })}>
+          <select
+            value={form.despuesDe}
+            onChange={(e) => setForm({ ...form, despuesDe: e.target.value })}
+          >
             <option value="">{g("h_propiaHora")}</option>
             {otras.map((x) => (
               <option key={x.id} value={x.id}>
@@ -125,19 +161,34 @@ export function PanelHorario({
         {!form.despuesDe && (
           <label className="eg-campo">
             {g("h_hora")}
-            <input type="time" required value={form.hora} onChange={(e) => setForm({ ...form, hora: e.target.value })} />
+            <input
+              type="time"
+              required
+              value={form.hora}
+              onChange={(e) => setForm({ ...form, hora: e.target.value })}
+            />
           </label>
         )}
         {maximoActual !== null && (
           <label className="eg-campo">
             {g(proposito === "eventos_el_salvador" ? "h_maxEventos" : "h_maxPosts")}
-            <input type="number" min={1} max={proposito === "eventos_el_salvador" ? 30 : 20} value={form.maximo} onChange={(e) => setForm({ ...form, maximo: e.target.value })} />
+            <input
+              type="number"
+              min={1}
+              max={proposito === "eventos_el_salvador" ? 30 : 20}
+              value={form.maximo}
+              onChange={(e) => setForm({ ...form, maximo: e.target.value })}
+            />
           </label>
         )}
         {proposito === "post_instagram_eventos" && (
           <label className="eg-campo">
             {g("h_cuenta")}
-            <input maxLength={60} value={form.cuenta} onChange={(e) => setForm({ ...form, cuenta: e.target.value })} />
+            <input
+              maxLength={60}
+              value={form.cuenta}
+              onChange={(e) => setForm({ ...form, cuenta: e.target.value })}
+            />
           </label>
         )}
       </div>
@@ -148,7 +199,12 @@ export function PanelHorario({
             <input
               type="checkbox"
               checked={form.dias.includes(d)}
-              onChange={(e) => setForm({ ...form, dias: e.target.checked ? [...form.dias, d] : form.dias.filter((x) => x !== d) })}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  dias: e.target.checked ? [...form.dias, d] : form.dias.filter((x) => x !== d),
+                })
+              }
             />
             {g(`h_dia_${d}`)}
           </label>
@@ -156,18 +212,34 @@ export function PanelHorario({
       </fieldset>
       {necesitaConsentimiento && (
         <label className="ep-checkbox">
-          <input type="checkbox" checked={form.acepto} onChange={(e) => setForm({ ...form, acepto: e.target.checked })} />
+          <input
+            type="checkbox"
+            checked={form.acepto}
+            onChange={(e) => setForm({ ...form, acepto: e.target.checked })}
+          />
           {g("h_consentimiento")}
         </label>
       )}
       <dl className="eg-horario-estado">
         <div>
           <dt>{g("h_proxima")}</dt>
-          <dd>{vista.activa ? (vista.despuesDe ? g("h_proximaEncadenada") : vista.proxima ? fecha(vista.proxima) : "—") : "—"}</dd>
+          <dd>
+            {vista.activa
+              ? vista.despuesDe
+                ? g("h_proximaEncadenada")
+                : vista.proxima
+                  ? fecha(vista.proxima)
+                  : "—"
+              : "—"}
+          </dd>
         </div>
         <div>
           <dt>{g("h_ultima")}</dt>
-          <dd>{vista.ultima ? `${fecha(vista.ultima.creado)} · ${g(`ejec_${vista.ultima.estado}`)}` : g("h_nunca")}</dd>
+          <dd>
+            {vista.ultima
+              ? `${fecha(vista.ultima.creado)} · ${g(`ejec_${vista.ultima.estado}`)}`
+              : g("h_nunca")}
+          </dd>
         </div>
         {vista.pausaMotivo && (
           <div>
@@ -189,7 +261,9 @@ export function PanelHorario({
       <div className="ep-acciones">
         <button
           className="ep-boton ep-primario"
-          disabled={ocupado || guardando || !form.dias.length || (necesitaConsentimiento && !form.acepto)}
+          disabled={
+            ocupado || guardando || !form.dias.length || (necesitaConsentimiento && !form.acepto)
+          }
           onClick={() => void guardar()}
         >
           <Save size={15} />

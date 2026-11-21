@@ -12,13 +12,8 @@ import {
   type ReactNode,
 } from "react";
 import { ArrowUpRight, Plane, Play, X } from "lucide-react";
-import {
-  FUENTE_CEPA,
-  FUENTE_DGME,
-  POBLACION_2024,
-  type Acceso,
-  type Cifra,
-} from "@/lib/granjas/datos-pais";
+import { FUENTE_CEPA, FUENTE_DGME, POBLACION_2024, type Acceso } from "@/lib/granjas/datos-pais";
+import type { ResumenIngresos } from "@/lib/granjas/ingresos";
 import type { EventoMapa } from "@/lib/granjas/agenda-mapa";
 import { geo, type AccesoGeo } from "./mapa-geo";
 import "./mapa-capas.css";
@@ -119,50 +114,53 @@ export function CapaAccesos({
             key={g.acceso.id}
             className={`ez-mpi-grupo ez-mpi-${g.acceso.id} ${grupoElegido ? "ez-mp-elegido" : ""} ${elegido && !grupoElegido ? "ez-mp-tenue" : ""}`}
           >
-            <g
-              className={`ez-mpi-acceso ${elegido === `a:${g.acceso.id}` ? "ez-mp-elegido" : ""}`}
-              data-foco={`a:${g.acceso.id}`}
-              {...accesoProps(g)}
-            >
-              <rect
-                x={x - ancho / 2}
-                y={y - alto / 2}
-                width={ancho}
-                height={alto}
-                rx={alto / 2}
-                className="ez-mpi-chip"
-                strokeWidth={1 / escala}
-              />
-              <circle
-                cx={x - ancho / 2 + 11 / escala}
-                cy={y}
-                r={9 / escala}
-                className="ez-mpi-sigla-fondo"
-              />
-              <text
-                x={x - ancho / 2 + 11 / escala}
-                y={y}
-                dy="0.36em"
-                textAnchor="middle"
-                fontSize={(g.acceso.id === "aeropuerto" ? 10.5 : 8) / escala}
-                className="ez-mpi-sigla"
-                aria-hidden="true"
+            {/* En pantallas angostas el avión del aeropuerto ya lo identifica: sin etiqueta repetida. */}
+            {!(compacto && g.acceso.tipo === "aereo") && (
+              <g
+                className={`ez-mpi-acceso ${elegido === `a:${g.acceso.id}` ? "ez-mp-elegido" : ""}`}
+                data-foco={`a:${g.acceso.id}`}
+                {...accesoProps(g)}
               >
-                {siglas[g.acceso.id]}
-              </text>
-              {!compacto && (
+                <rect
+                  x={x - ancho / 2}
+                  y={y - alto / 2}
+                  width={ancho}
+                  height={alto}
+                  rx={alto / 2}
+                  className="ez-mpi-chip"
+                  strokeWidth={1 / escala}
+                />
+                <circle
+                  cx={x - ancho / 2 + 11 / escala}
+                  cy={y}
+                  r={9 / escala}
+                  className="ez-mpi-sigla-fondo"
+                />
                 <text
-                  x={x - ancho / 2 + 28 / escala}
+                  x={x - ancho / 2 + 11 / escala}
                   y={y}
                   dy="0.36em"
-                  fontSize={12.5 / escala}
-                  className="ez-mpi-nombre"
+                  textAnchor="middle"
+                  fontSize={(g.acceso.id === "aeropuerto" ? 10.5 : 8) / escala}
+                  className="ez-mpi-sigla"
                   aria-hidden="true"
                 >
-                  {g.acceso.nombre}
+                  {siglas[g.acceso.id]}
                 </text>
-              )}
-            </g>
+                {!compacto && (
+                  <text
+                    x={x - ancho / 2 + 28 / escala}
+                    y={y}
+                    dy="0.36em"
+                    fontSize={12.5 / escala}
+                    className="ez-mpi-nombre"
+                    aria-hidden="true"
+                  >
+                    {g.acceso.nombre}
+                  </text>
+                )}
+              </g>
+            )}
             {g.puestos.map((p) => {
               const aereo = g.acceso.tipo === "aereo";
               return (
@@ -355,6 +353,15 @@ export function AgendaDepto({ eventos, tr }: { eventos: EventoMapa[]; tr: Tr }) 
   );
 }
 
+type CifraVista = {
+  valor: number;
+  periodo: string;
+  fuente: string;
+  url?: string;
+  corte?: string;
+  alcance?: string;
+} | null;
+
 function Metrica({
   titulo,
   cifra,
@@ -362,7 +369,7 @@ function Metrica({
   tr,
 }: {
   titulo: string;
-  cifra: Cifra;
+  cifra: CifraVista;
   fuente: string;
   tr: Tr;
 }) {
@@ -373,10 +380,19 @@ function Metrica({
         <>
           <strong>{numero.format(cifra.valor)}</strong>
           <small>
-            {cifra.periodo} ·{" "}
-            <a href={cifra.url} target="_blank" rel="noreferrer noopener">
-              {cifra.fuente}
-            </a>
+            {cifra.periodo}
+            {cifra.corte ? ` · ${tr("ez_mpg_corte")} ${cifra.corte}` : ""}
+            {cifra.alcance ? ` · ${cifra.alcance}` : ""}
+          </small>
+          <small>
+            {tr("ez_mpv_fuente")}:{" "}
+            {cifra.url ? (
+              <a href={cifra.url} target="_blank" rel="noreferrer noopener">
+                {cifra.fuente}
+              </a>
+            ) : (
+              cifra.fuente
+            )}
           </small>
         </>
       ) : (
@@ -391,118 +407,166 @@ function Metrica({
   );
 }
 
-/** Detalle de un acceso: entradas migratorias (DGME) para comparar; en el aeropuerto, además, CEPA. */
+/** Reportes del país vecino: otra medición (salidas en origen), con su alcance y período. */
+function Origen({
+  filas,
+  tr,
+}: {
+  filas: { puesto: string; cifra: NonNullable<CifraVista> }[];
+  tr: Tr;
+}) {
+  if (!filas.length) return null;
+  return (
+    <div className="ez-mpv-origen">
+      {filas.map((f) => (
+        <Metrica
+          key={f.puesto}
+          titulo={tr("ez_mpg_salidasOrigen")}
+          cifra={f.cifra}
+          fuente=""
+          tr={tr}
+        />
+      ))}
+    </div>
+  );
+}
+
+function Diario({ hay, tr }: { hay: boolean; tr: Tr }) {
+  const [periodo, setPeriodo] = useState<"total" | "diario">("total");
+  return (
+    <div
+      className="ez-segmentado ez-mpv-periodo"
+      role="radiogroup"
+      aria-label={tr("ez_mpv_periodo")}
+    >
+      <button
+        type="button"
+        role="radio"
+        aria-checked={periodo === "total"}
+        onClick={() => setPeriodo("total")}
+      >
+        {tr("ez_mpv_periodoTotal")}
+      </button>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={periodo === "diario"}
+        disabled={!hay}
+        title={hay ? undefined : tr("ez_mpv_sinDiario")}
+        onClick={() => setPeriodo("diario")}
+      >
+        {tr("ez_mpv_periodoDiario")}
+      </button>
+    </div>
+  );
+}
+
+function Recorrido({
+  ilustrativa,
+  verRecorrido,
+  tr,
+}: {
+  ilustrativa: boolean;
+  verRecorrido: () => void;
+  tr: Tr;
+}) {
+  return (
+    <div className="ez-mpv-recorrido">
+      <button type="button" className="ez-boton-blanco" onClick={verRecorrido}>
+        <Play size={14} aria-hidden="true" />
+        {tr("ez_mpv_verRecorrido")}
+      </button>
+      {ilustrativa && <span className="ez-mpv-ilustrativa">{tr("ez_mpv_ilustrativa")}</span>}
+    </div>
+  );
+}
+
+/**
+ * Detalle de un país o del aeropuerto: entradas registradas por la DGME por puesto (la medición
+ * comparable), salidas registradas en origen (otra medición) y, en el aeropuerto, CEPA.
+ */
 export function DetalleAcceso({
   acceso,
+  ingresos,
   verRecorrido,
   tr,
 }: {
   acceso: Acceso;
+  ingresos: ResumenIngresos | null;
   verRecorrido: () => void;
   tr: Tr;
 }) {
-  const [periodo, setPeriodo] = useState<"total" | "diario">("total");
-  const hayDiario = Boolean(acceso.entradas?.porDia?.length);
-  const sinDatos = !acceso.entradas && acceso.puestos.every((p) => !p.entradas);
+  const cifras = acceso.puestos.map((p) => ingresos?.cruces[p.id] ?? null);
+  const completo = cifras.every(Boolean);
+  // El total del acceso solo se muestra si todos sus puestos tienen dato (una suma parcial engañaría).
+  const total: CifraVista = completo
+    ? { ...cifras[0]!, valor: cifras.reduce((s, c) => s + (c?.valor ?? 0), 0) }
+    : null;
   return (
     <div className="ez-mpv-acceso">
-      <div
-        className="ez-segmentado ez-mpv-periodo"
-        role="radiogroup"
-        aria-label={tr("ez_mpv_periodo")}
-      >
-        <button
-          type="button"
-          role="radio"
-          aria-checked={periodo === "total"}
-          onClick={() => setPeriodo("total")}
-        >
-          {tr("ez_mpv_periodoTotal")}
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={periodo === "diario"}
-          disabled={!hayDiario}
-          title={hayDiario ? undefined : tr("ez_mpv_sinDiario")}
-          onClick={() => setPeriodo("diario")}
-        >
-          {tr("ez_mpv_periodoDiario")}
-        </button>
-      </div>
-      <Metrica
-        titulo={tr("ez_mpv_entradas")}
-        cifra={acceso.entradas}
-        fuente={FUENTE_DGME}
-        tr={tr}
-      />
+      <Diario hay={cifras.some((c) => c?.diario)} tr={tr} />
+      <Metrica titulo={tr("ez_mpv_entradas")} cifra={total} fuente={FUENTE_DGME} tr={tr} />
       {acceso.tipo === "aereo" && (
         <Metrica
           titulo={tr("ez_mpv_pasajeros")}
-          cifra={acceso.pasajerosLlegada ?? null}
+          cifra={ingresos?.cepa ?? null}
           fuente={FUENTE_CEPA}
           tr={tr}
         />
       )}
+      <Origen filas={ingresos?.origen[acceso.id] ?? []} tr={tr} />
       <ul className="ez-mpv-puestos">
-        {acceso.puestos.map((p) => (
+        {acceso.puestos.map((p, i) => (
           <li key={p.id}>
             <strong>{p.nombre}</strong>
             <span>{p.lugar}</span>
             <small>
-              {p.entradas
-                ? `${numero.format(p.entradas.valor)} · ${p.entradas.periodo}`
+              {cifras[i]
+                ? `${numero.format(cifras[i]!.valor)} · ${cifras[i]!.periodo}`
                 : tr("ez_mpv_sinDatos")}
             </small>
           </li>
         ))}
       </ul>
-      <div className="ez-mpv-recorrido">
-        <button type="button" className="ez-boton-blanco" onClick={verRecorrido}>
-          <Play size={14} aria-hidden="true" />
-          {tr("ez_mpv_verRecorrido")}
-        </button>
-        {sinDatos && <span className="ez-mpv-ilustrativa">{tr("ez_mpv_ilustrativa")}</span>}
-      </div>
+      <Recorrido ilustrativa={!cifras.some(Boolean)} verRecorrido={verRecorrido} tr={tr} />
     </div>
   );
 }
 
-/** Detalle de un punto de entrada: período, conteo y fuente cuando estén disponibles. */
+/** Detalle de un punto de entrada: período, conteo, corte y fuente cuando estén disponibles. */
 export function DetallePuesto({
   acceso,
   puestoId,
+  ingresos,
   verRecorrido,
   tr,
 }: {
   acceso: Acceso;
   puestoId: string;
+  ingresos: ResumenIngresos | null;
   verRecorrido: () => void;
   tr: Tr;
 }) {
   const p = acceso.puestos.find((x) => x.id === puestoId);
   if (!p) return null;
+  const cifra = ingresos?.cruces[p.id] ?? null;
   return (
     <div className="ez-mpv-acceso">
-      <Metrica titulo={tr("ez_mpv_entradas")} cifra={p.entradas} fuente={FUENTE_DGME} tr={tr} />
+      <Diario hay={Boolean(cifra?.diario)} tr={tr} />
+      <Metrica titulo={tr("ez_mpv_entradas")} cifra={cifra} fuente={FUENTE_DGME} tr={tr} />
       {acceso.tipo === "aereo" && (
         <Metrica
           titulo={tr("ez_mpv_pasajeros")}
-          cifra={acceso.pasajerosLlegada ?? null}
+          cifra={ingresos?.cepa ?? null}
           fuente={FUENTE_CEPA}
           tr={tr}
         />
       )}
-      <p className="ez-mpv-fuente">
-        {tr("ez_mpv_periodo")}: {p.entradas?.periodo ?? tr("ez_mpv_sinDatos")}
-      </p>
-      <div className="ez-mpv-recorrido">
-        <button type="button" className="ez-boton-blanco" onClick={verRecorrido}>
-          <Play size={14} aria-hidden="true" />
-          {tr("ez_mpv_verRecorrido")}
-        </button>
-        {!p.entradas && <span className="ez-mpv-ilustrativa">{tr("ez_mpv_ilustrativa")}</span>}
-      </div>
+      <Origen
+        filas={(ingresos?.origen[acceso.id] ?? []).filter((f) => f.puesto === p.id)}
+        tr={tr}
+      />
+      <Recorrido ilustrativa={!cifra} verRecorrido={verRecorrido} tr={tr} />
     </div>
   );
 }
@@ -574,6 +638,8 @@ export function useImanes(escala: number, reducido: boolean) {
     const nuevos = new Set<number>();
     if (p)
       for (let i = 0; i < puntos.length; i++) {
+        // Las hileras que dibujan las divisiones quedan fijas.
+        if (puntos[i].limite) continue;
         const dx = puntos[i].x - p.x;
         const dy = puntos[i].y - p.y;
         if (Math.abs(dx) > R || Math.abs(dy) > R) continue;
