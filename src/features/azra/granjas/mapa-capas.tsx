@@ -8,11 +8,10 @@ import {
   useEffect,
   useRef,
   useState,
-  type KeyboardEvent,
   type PointerEvent as EventoPuntero,
   type ReactNode,
 } from "react";
-import { ArrowUpRight, Play, X } from "lucide-react";
+import { ArrowUpRight, Plane, Play, X } from "lucide-react";
 import {
   FUENTE_CEPA,
   FUENTE_DGME,
@@ -25,56 +24,60 @@ import { geo, type AccesoGeo } from "./mapa-geo";
 import "./mapa-capas.css";
 
 type Tr = (c: string) => string;
-export type Vista = "eventos" | "ingresos" | "poblacion";
-export const VISTAS: Vista[] = ["eventos", "ingresos", "poblacion"];
+export type Capas = { eventos: boolean; ingresos: boolean };
 export type Panel =
   | { tipo: "depto"; nombre: string }
   | { tipo: "acceso"; id: Acceso["id"] }
+  | { tipo: "puesto"; acceso: Acceso["id"]; id: string }
   | { tipo: "poblacion"; nombre: string }
   | null;
+/** Qué recorrido repetir: un acceso completo o un solo puesto (null: la secuencia completa). */
+export type Solo = { acceso?: Acceso["id"]; puesto?: string } | null;
 
 const numero = new Intl.NumberFormat("es-SV");
 
-/** Selector compacto arriba a la derecha (flechas para moverse, como un grupo de radio). */
-export function SelectorVista({
-  vista,
-  setVista,
+/**
+ * Controles arriba a la derecha: Eventos e Ingresos se encienden y apagan por separado (pueden verse
+ * juntos); Población es una vista de consulta aparte.
+ */
+export function ControlesCapas({
+  capas,
+  poblacion,
+  alternar,
+  alternarPoblacion,
   tr,
 }: {
-  vista: Vista;
-  setVista: (v: Vista) => void;
+  capas: Capas;
+  poblacion: boolean;
+  alternar: (c: keyof Capas) => void;
+  alternarPoblacion: () => void;
   tr: Tr;
 }) {
-  const grupo = useRef<HTMLDivElement>(null);
-  const mover = (e: KeyboardEvent, i: number) => {
-    const paso =
-      e.key === "ArrowRight" || e.key === "ArrowDown"
-        ? 1
-        : e.key === "ArrowLeft" || e.key === "ArrowUp"
-          ? -1
-          : 0;
-    if (!paso) return;
-    e.preventDefault();
-    const sig = VISTAS[(i + paso + VISTAS.length) % VISTAS.length];
-    setVista(sig);
-    grupo.current?.querySelector<HTMLButtonElement>(`[data-vista="${sig}"]`)?.focus();
-  };
   return (
-    <div ref={grupo} className="ez-mpv-selector" role="radiogroup" aria-label={tr("ez_mpv_vista")}>
-      {VISTAS.map((v, i) => (
+    <div className="ez-mpv-controles" role="toolbar" aria-label={tr("ez_mpv_capas")}>
+      {(["eventos", "ingresos"] as const).map((c) => (
         <button
-          key={v}
+          key={c}
           type="button"
-          role="radio"
-          data-vista={v}
-          aria-checked={vista === v}
-          tabIndex={vista === v ? 0 : -1}
-          onClick={() => setVista(v)}
-          onKeyDown={(e) => mover(e, i)}
+          data-capa={c}
+          aria-pressed={!poblacion && capas[c]}
+          onClick={() => alternar(c)}
         >
-          {tr(`ez_mpv_${v}`)}
+          <span className={`ez-mpv-muestra ez-mpv-muestra-${c}`} aria-hidden="true">
+            {c === "ingresos" ? <Plane size={11} /> : null}
+          </span>
+          {tr(`ez_mpv_${c}`)}
         </button>
       ))}
+      <span className="ez-mpv-separador" aria-hidden="true" />
+      <button
+        type="button"
+        data-capa="poblacion"
+        aria-pressed={poblacion}
+        onClick={alternarPoblacion}
+      >
+        {tr("ez_mpv_poblacion")}
+      </button>
     </div>
   );
 }
@@ -83,83 +86,121 @@ export function SelectorVista({
 
 const siglas: Record<Acceso["id"], string> = { aeropuerto: "✈", guatemala: "GT", honduras: "HN" };
 
-/** Puntos reales de entrada y la etiqueta (botón) de cada acceso, con guías tenues a sus puestos. */
+/**
+ * Accesos al país: un marcador pequeño por cruce fronterizo (con zona de toque amplia), un ícono de
+ * avión en el aeropuerto y una etiqueta por acceso, fuera de la silueta, que agrupa su resumen.
+ */
 export function CapaAccesos({
   geos,
   escala,
+  compacto,
   elegido,
-  explorable,
+  accesoProps,
+  puestoProps,
 }: {
   geos: AccesoGeo[];
   escala: number;
-  elegido: Acceso["id"] | null;
-  explorable: (g: AccesoGeo) => Record<string, unknown>;
+  /** En pantallas angostas la etiqueta es solo la sigla (no tapa puestos ni marcadores). */
+  compacto: boolean;
+  elegido: string;
+  accesoProps: (g: AccesoGeo) => Record<string, unknown>;
+  puestoProps: (g: AccesoGeo, p: AccesoGeo["puestos"][number]) => Record<string, unknown>;
 }) {
   return (
     <g className="ez-mpi-capa">
       {geos.map((g) => {
         const [x, y] = g.etiqueta;
-        const ancho = (g.acceso.nombre.length * 7.4 + 44) / escala;
+        const ancho = compacto ? 22 / escala : (g.acceso.nombre.length * 7.4 + 44) / escala;
         const alto = 26 / escala;
+        const grupoElegido =
+          elegido === `a:${g.acceso.id}` || g.puestos.some((p) => elegido === `i:${p.id}`);
         return (
           <g
             key={g.acceso.id}
-            className={`ez-mpi-acceso ez-mpi-${g.acceso.id} ${elegido === g.acceso.id ? "ez-mp-elegido" : ""} ${elegido && elegido !== g.acceso.id ? "ez-mp-tenue" : ""}`}
-            data-foco={`a:${g.acceso.id}`}
-            {...explorable(g)}
+            className={`ez-mpi-grupo ez-mpi-${g.acceso.id} ${grupoElegido ? "ez-mp-elegido" : ""} ${elegido && !grupoElegido ? "ez-mp-tenue" : ""}`}
           >
-            {g.puestos.map((p) => (
-              <g key={p.id} aria-hidden="true">
-                <circle
-                  cx={p.punto[0]}
-                  cy={p.punto[1]}
-                  r={(g.acceso.tipo === "aereo" ? 9 : 6) / escala}
-                  className="ez-mpi-anillo"
-                />
-                <circle
-                  cx={p.punto[0]}
-                  cy={p.punto[1]}
-                  r={(g.acceso.tipo === "aereo" ? 5 : 3.4) / escala}
-                  className="ez-mpi-puesto"
-                />
-              </g>
-            ))}
-            <rect
-              x={x - ancho / 2}
-              y={y - alto / 2}
-              width={ancho}
-              height={alto}
-              rx={alto / 2}
-              className="ez-mpi-chip"
-              strokeWidth={1 / escala}
-            />
-            <circle
-              cx={x - ancho / 2 + 13 / escala}
-              cy={y}
-              r={9 / escala}
-              className="ez-mpi-sigla-fondo"
-            />
-            <text
-              x={x - ancho / 2 + 13 / escala}
-              y={y}
-              dy="0.36em"
-              textAnchor="middle"
-              fontSize={(g.acceso.id === "aeropuerto" ? 10.5 : 8) / escala}
-              className="ez-mpi-sigla"
-              aria-hidden="true"
+            <g
+              className={`ez-mpi-acceso ${elegido === `a:${g.acceso.id}` ? "ez-mp-elegido" : ""}`}
+              data-foco={`a:${g.acceso.id}`}
+              {...accesoProps(g)}
             >
-              {siglas[g.acceso.id]}
-            </text>
-            <text
-              x={x - ancho / 2 + 28 / escala}
-              y={y}
-              dy="0.36em"
-              fontSize={12.5 / escala}
-              className="ez-mpi-nombre"
-              aria-hidden="true"
-            >
-              {g.acceso.nombre}
-            </text>
+              <rect
+                x={x - ancho / 2}
+                y={y - alto / 2}
+                width={ancho}
+                height={alto}
+                rx={alto / 2}
+                className="ez-mpi-chip"
+                strokeWidth={1 / escala}
+              />
+              <circle
+                cx={x - ancho / 2 + 11 / escala}
+                cy={y}
+                r={9 / escala}
+                className="ez-mpi-sigla-fondo"
+              />
+              <text
+                x={x - ancho / 2 + 11 / escala}
+                y={y}
+                dy="0.36em"
+                textAnchor="middle"
+                fontSize={(g.acceso.id === "aeropuerto" ? 10.5 : 8) / escala}
+                className="ez-mpi-sigla"
+                aria-hidden="true"
+              >
+                {siglas[g.acceso.id]}
+              </text>
+              {!compacto && (
+                <text
+                  x={x - ancho / 2 + 28 / escala}
+                  y={y}
+                  dy="0.36em"
+                  fontSize={12.5 / escala}
+                  className="ez-mpi-nombre"
+                  aria-hidden="true"
+                >
+                  {g.acceso.nombre}
+                </text>
+              )}
+            </g>
+            {g.puestos.map((p) => {
+              const aereo = g.acceso.tipo === "aereo";
+              return (
+                <g
+                  key={p.id}
+                  className={`ez-mpi-marca ${aereo ? "ez-mpi-avion" : ""} ${elegido === `i:${p.id}` ? "ez-mp-elegido" : ""}`}
+                  data-foco={`i:${p.id}`}
+                  {...puestoProps(g, p)}
+                >
+                  <circle cx={p.punto[0]} cy={p.punto[1]} r={16 / escala} className="ez-mpi-zona" />
+                  <circle
+                    cx={p.punto[0]}
+                    cy={p.punto[1]}
+                    r={(aereo ? 12 : 7) / escala}
+                    className="ez-mpi-anillo"
+                  />
+                  <circle
+                    cx={p.punto[0]}
+                    cy={p.punto[1]}
+                    r={(aereo ? 9.5 : 3.6) / escala}
+                    className="ez-mpi-puesto"
+                  />
+                  {aereo && (
+                    <text
+                      x={p.punto[0]}
+                      y={p.punto[1]}
+                      dy="0.36em"
+                      textAnchor="middle"
+                      fontSize={11 / escala}
+                      className="ez-mpi-sigla"
+                      aria-hidden="true"
+                    >
+                      ✈
+                    </text>
+                  )}
+                </g>
+              );
+            })}
           </g>
         );
       })}
@@ -180,11 +221,15 @@ export function PulsosIngreso({
   escala,
 }: {
   geos: AccesoGeo[];
-  solo: Acceso["id"] | null;
+  solo: Solo;
   escala: number;
 }) {
   const lista = geos.flatMap((g) =>
-    solo && g.acceso.id !== solo ? [] : g.puestos.map((p) => ({ p, tipo: g.acceso.tipo })),
+    solo?.acceso && g.acceso.id !== solo.acceso
+      ? []
+      : g.puestos
+          .filter((p) => !solo?.puesto || p.id === solo.puesto)
+          .map((p) => ({ p, tipo: g.acceso.tipo })),
   );
   return (
     <g className="ez-mpi-pulsos" aria-hidden="true">
@@ -195,7 +240,12 @@ export function PulsosIngreso({
           style={{ ["--t" as string]: `${i * PULSO_S}s` }}
         >
           <path d={p.camino} pathLength={1} className="ez-mpi-estela" strokeWidth={1.1 / escala} />
-          <path d={p.camino} pathLength={1} className="ez-mpi-punto ez-mpi-brillo" strokeWidth={18 / escala} />
+          <path
+            d={p.camino}
+            pathLength={1}
+            className="ez-mpi-punto ez-mpi-brillo"
+            strokeWidth={18 / escala}
+          />
           <path d={p.camino} pathLength={1} className="ez-mpi-punto" strokeWidth={7 / escala} />
           <circle
             cx={p.fin[0]}
@@ -413,6 +463,45 @@ export function DetalleAcceso({
           {tr("ez_mpv_verRecorrido")}
         </button>
         {sinDatos && <span className="ez-mpv-ilustrativa">{tr("ez_mpv_ilustrativa")}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Detalle de un punto de entrada: período, conteo y fuente cuando estén disponibles. */
+export function DetallePuesto({
+  acceso,
+  puestoId,
+  verRecorrido,
+  tr,
+}: {
+  acceso: Acceso;
+  puestoId: string;
+  verRecorrido: () => void;
+  tr: Tr;
+}) {
+  const p = acceso.puestos.find((x) => x.id === puestoId);
+  if (!p) return null;
+  return (
+    <div className="ez-mpv-acceso">
+      <Metrica titulo={tr("ez_mpv_entradas")} cifra={p.entradas} fuente={FUENTE_DGME} tr={tr} />
+      {acceso.tipo === "aereo" && (
+        <Metrica
+          titulo={tr("ez_mpv_pasajeros")}
+          cifra={acceso.pasajerosLlegada ?? null}
+          fuente={FUENTE_CEPA}
+          tr={tr}
+        />
+      )}
+      <p className="ez-mpv-fuente">
+        {tr("ez_mpv_periodo")}: {p.entradas?.periodo ?? tr("ez_mpv_sinDatos")}
+      </p>
+      <div className="ez-mpv-recorrido">
+        <button type="button" className="ez-boton-blanco" onClick={verRecorrido}>
+          <Play size={14} aria-hidden="true" />
+          {tr("ez_mpv_verRecorrido")}
+        </button>
+        {!p.entradas && <span className="ez-mpv-ilustrativa">{tr("ez_mpv_ilustrativa")}</span>}
       </div>
     </div>
   );

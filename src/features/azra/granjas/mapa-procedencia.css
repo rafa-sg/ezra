@@ -18,6 +18,7 @@
   --mp-hub: #0b0b0f;
   --mp-hub-texto: #ffffff;
   --mp-esqueleto: rgba(15, 15, 20, 0.06);
+  --mp-limite: rgba(90, 96, 130, 0.22);
   --mp-esqueleto-brillo: rgba(15, 15, 20, 0.11);
   position: relative;
   display: grid;
@@ -43,6 +44,7 @@
   --mp-hub: #f5f5f7;
   --mp-hub-texto: #0b0b0f;
   --mp-esqueleto: rgba(255, 255, 255, 0.06);
+  --mp-limite: rgba(200, 210, 255, 0.16);
   --mp-esqueleto-brillo: rgba(255, 255, 255, 0.12);
 }
 
@@ -50,9 +52,9 @@
 .azra .ez-mp-escena {
   position: relative;
   width: 100%;
-  max-width: calc((100vh - 250px) * 676 / 490);
+  max-width: calc((100vh - 230px) * 700 / 400);
   margin-inline: auto;
-  aspect-ratio: 676 / 490;
+  aspect-ratio: 700 / 400;
 }
 .azra .ez-mp-escena svg {
   display: block;

@@ -577,3 +577,9 @@ Pedido del propietario (video 627 y captura de Instagram), primero en maqueta y 
 - Ingresos: puntos reales (aeropuerto; La Hachadura, Las Chinamas, San Cristóbal, Anguiatú; El Poy, El Amatillo), los terrestres ajustados al perímetro. Sin cifras: DGME (entradas migratorias, comparables entre los tres) y CEPA (pasajeros en llegadas, solo aeropuerto) quedan en `null` → «Datos aún no disponibles». El filtro «Por día» se habilita solo con registros diarios. Los pulsos son «Animación ilustrativa», nunca tráfico en vivo.
 - Población: tabla oficial TAB_POB_2 del Censo 2024 (ONEC/BCR); los 14 departamentos + 107.055 «no especificado» suman 6.029.976 (lo comprueba una prueba).
 - Campo magnético: solo puntos decorativos (DOM directo por rAF, sin re-render); marcadores y conexiones fijos; táctil = halo breve; movimiento reducido = brillo sin desplazamiento y recorridos estáticos.
+
+## 2026-11-21 (tarde) · Mapa de Inicio: capas juntas, sin cápsula, límites departamentales
+
+- Eventos e Ingresos son interruptores independientes (`aria-pressed`) y Inicio abre con ambos; Población queda como consulta aparte. Sin la cápsula «ezrá»: el país se centra (`VB` 280,200,700,400) y la relación con Ezra es un ancla discreta sobre el borde norte (`ANCLA`), de la que sale solo la conexión del marcador elegido.
+- Ingresos: un marcador pequeño por cruce (zona de toque de 16 px) y un avión en el aeropuerto; cada uno abre su detalle (período, conteo, fuente) y repite solo su recorrido; la etiqueta del acceso abre el resumen. En pantallas angostas la etiqueta es solo la sigla, y un marcador de eventos que cae sobre un cruce se aparta lo justo.
+- Límites reales de los 14 departamentos (`bordes()`): línea fina y tenue, también zona de cursor (nombre) y de toque; la selección realza contorno y puntos con suavidad. Límites y marcadores no se mueven con el efecto magnético.

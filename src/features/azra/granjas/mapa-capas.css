@@ -18,28 +18,34 @@
   display: block;
 }
 
-/* Selector compacto arriba a la derecha. */
-.azra .ez-mpv-selector {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 3;
+/* Columna del mapa: controles arriba a la derecha y el país centrado debajo. */
+.azra .ez-mp-columna {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.azra .ez-mpv-controles {
   display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-self: end;
   gap: 2px;
   padding: 3px;
   border: 1px solid var(--ep-borde);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--ep-tarjeta) 88%, transparent);
-  backdrop-filter: blur(6px);
+  background: var(--ep-tarjeta);
   box-shadow: var(--ez-sombra-s);
 }
-.azra .ez-mpv-selector button {
-  min-height: 30px;
-  padding: 0 12px;
+.azra .ez-mpv-controles button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 13px;
   border: 0;
   border-radius: 999px;
   background: none;
-  color: var(--ep-texto-2);
+  color: var(--ep-suave);
   font: inherit;
   font-size: 12.5px;
   font-weight: 500;
@@ -48,16 +54,93 @@
     background 160ms ease,
     color 160ms ease;
 }
-.azra .ez-mpv-selector button:hover {
+.azra .ez-mpv-controles button:hover {
   color: var(--ep-texto);
 }
-.azra .ez-mpv-selector button[aria-checked="true"] {
+.azra .ez-mpv-controles button[aria-pressed="true"] {
+  background: var(--ep-superficie-2);
+  color: var(--ep-texto);
+  font-weight: 600;
+}
+.azra .ez-mpv-controles button[data-capa="poblacion"][aria-pressed="true"] {
   background: var(--mp-hub);
   color: var(--mp-hub-texto);
 }
-.azra .ez-mpv-selector button:focus-visible {
+.azra .ez-mpv-controles button:focus-visible {
   outline: 2px solid var(--mp-ruta);
   outline-offset: 1px;
+}
+/* Muestra de cada capa: apagada se ve hueca. */
+.azra .ez-mpv-muestra {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--mp-nodo);
+  border-radius: 50%;
+  color: var(--mp-nodo);
+  transition: background 160ms ease;
+}
+.azra [aria-pressed="true"] > .ez-mpv-muestra {
+  background: var(--mp-nodo);
+  color: #fff;
+}
+.azra .ez-mpv-separador {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--ep-borde);
+}
+
+/* Límites departamentales: línea fina y tenue entre los puntos; zona de cursor y toque. */
+.azra .ez-mp-limite {
+  fill: transparent;
+  stroke: var(--mp-limite);
+  stroke-width: 0.8px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  transition:
+    stroke 200ms ease,
+    stroke-width 200ms ease;
+}
+.azra .ez-mp-limite-activo {
+  cursor: pointer;
+}
+.azra .ez-mp-limite-sobre {
+  stroke: color-mix(in srgb, var(--mp-ruta) 40%, var(--mp-limite));
+}
+.azra .ez-mp-limite-elegido {
+  stroke: color-mix(in srgb, var(--mp-ruta) 60%, transparent);
+  stroke-width: 1.4px;
+}
+/* La selección realza los puntos con suavidad: el contraste fuerte queda para el marcador activo. */
+.azra .ez-mp .ez-mp-p-activo {
+  fill: color-mix(in srgb, var(--mp-punto-activo) 55%, var(--mp-punto));
+}
+
+/* Ancla discreta de ezrá. */
+.azra .ez-mp-ezra {
+  pointer-events: none;
+}
+.azra .ez-mp-ezra-aro {
+  fill: none;
+  stroke: var(--mp-nodo);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.45;
+}
+.azra .ez-mp-ezra-punto {
+  fill: var(--mp-nodo);
+  opacity: 0.7;
+}
+.azra .ez-mp-ezra text {
+  fill: var(--ep-suave);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.azra .ez-mp-ezra-activa .ez-mp-ezra-aro,
+.azra .ez-mp-ezra-activa .ez-mp-ezra-punto {
+  opacity: 1;
 }
 
 /* Puntos: el campo magnético los aparta un poco y los ilumina; vuelven solos al retirar el cursor. */
@@ -136,8 +219,35 @@
   outline: none;
   transition: opacity 240ms ease;
 }
-.azra .ez-mpi-acceso.ez-mp-tenue {
-  opacity: 0.4;
+.azra .ez-mpi-grupo {
+  transition: opacity 240ms ease;
+}
+.azra .ez-mpi-grupo.ez-mp-tenue {
+  opacity: 0.45;
+}
+/* Marcadores de cada cruce: pequeños, con zona de toque amplia. */
+.azra .ez-mpi-marca {
+  cursor: pointer;
+  outline: none;
+}
+.azra .ez-mpi-zona {
+  fill: transparent;
+}
+.azra .ez-mpi-marca:hover .ez-mpi-anillo,
+.azra .ez-mpi-marca.ez-mp-elegido .ez-mpi-anillo {
+  opacity: 1;
+}
+.azra .ez-mpi-marca:focus-visible .ez-mpi-zona {
+  stroke: var(--mp-ruta);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+.azra .ez-mpi-marca.ez-mp-elegido .ez-mpi-puesto {
+  stroke: var(--mp-ruta);
+  stroke-width: 2.5px;
+}
+.azra .ez-mpi-avion .ez-mpi-puesto {
+  fill: var(--mp-ruta);
 }
 .azra .ez-mpi-anillo {
   fill: var(--mp-halo);

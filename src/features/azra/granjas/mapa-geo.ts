@@ -57,8 +57,10 @@ export function geo() {
   return geoCache;
 }
 /** El país con espacio arriba para ezrá. */
-export const VB: [number, number, number, number] = [292, 112, 676, 490];
-export const HUB: [number, number] = [630, 150];
+/** El país centrado (sin la cápsula de arriba), con margen para los recorridos que llegan desde afuera. */
+export const VB: [number, number, number, number] = [280, 200, 700, 400];
+/** Punto de anclaje discreto de ezrá, integrado sobre el borde norte: origen de la conexión elegida. */
+export const ANCLA: [number, number] = [640, 222];
 export const X_PAIS: [number, number] = [308, 951];
 
 type P2 = [number, number];
@@ -140,4 +142,20 @@ export function geometriaAccesos(): AccesoGeo[] {
     }),
   }));
   return accesosCache;
+}
+
+let bordesCache: { nombre: string; d: string }[] | null = null;
+/** Límites reales de cada departamento como trazos (para separarlos con una línea fina). */
+export function bordes() {
+  if (bordesCache) return bordesCache;
+  bordesCache = Object.values(GEOGRAFIA).map((dep) => ({
+    nombre: dep.nombre,
+    d: dep.anillos
+      .map((anillo) => {
+        const pts = anillo.map(proyectar);
+        return `M${pts.map(([x, y]) => `${f1(x)},${f1(y)}`).join("L")}Z`;
+      })
+      .join(""),
+  }));
+  return bordesCache;
 }
