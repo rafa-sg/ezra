@@ -29,7 +29,7 @@ export type Resumen = {
 };
 export type Recibo = {
   id: string;
-  canal: "instagram" | "facebook" | "tiktok" | "spotmi";
+  canal: "instagram" | "facebook" | "tiktok" | "youtube" | "spotmi";
   cuenta: string;
   estado: string;
   remotoId: string | null;

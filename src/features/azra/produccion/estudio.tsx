@@ -105,6 +105,7 @@ const nombresCanales = {
   instagram: "Instagram",
   tiktok: "TikTok",
   facebook: "Facebook",
+  youtube: "YouTube",
 };
 const vacio = (agente: Agente = "cazador"): ContenidoEncargo => ({
   titulo: "",

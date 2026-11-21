@@ -6,7 +6,7 @@ import type { ContenidoPieza } from "./pieza";
  * Adaptadores directos a las API oficiales. Cada uno distingue leer la identidad,
  * tener permiso y haber publicado de verdad. Nada aquí elige cuenta ni aprueba.
  */
-export type CanalConexion = "instagram" | "facebook" | "tiktok" | "spotmi";
+export type CanalConexion = "instagram" | "facebook" | "tiktok" | "youtube" | "spotmi";
 export type EstadoConexion =
   | "sin_configurar"
   | "requiere_oauth"
@@ -85,18 +85,20 @@ export type Adaptador = {
 export const versionGraph = () => process.env.META_GRAPH_VERSION?.trim() || "v26.0";
 export const baseRedireccion = () =>
   (process.env.EZRA_OAUTH_REDIRECT_BASE?.trim() || "http://127.0.0.1:3000").replace(/\/$/, "");
+/** Puentes https de n8n (Meta y TikTok exigen https registrado; Ezra sigue en http://127.0.0.1). */
+const puenteN8n: Partial<Record<CanalConexion, string>> = {
+  instagram: "INSTAGRAM_REDIRECT_URI",
+  facebook: "META_REDIRECT_URI",
+  tiktok: "TIKTOK_REDIRECT_URI",
+};
 export const redireccion = (canal: CanalConexion) => {
-  const configurada =
-    canal === "instagram"
-      ? process.env.INSTAGRAM_REDIRECT_URI
-      : canal === "facebook"
-        ? process.env.META_REDIRECT_URI
-        : undefined;
+  const variable = puenteN8n[canal];
+  const configurada = variable ? process.env[variable] : undefined;
   if (configurada?.trim()) {
     const esperada = `https://spotmi.app.n8n.cloud/webhook/ezra-oauth-${canal}`;
     if (configurada.trim() !== esperada)
       throw new WorkflowError(
-        "La dirección de retorno de Meta no coincide con el puente OAuth de n8n.",
+        `La dirección de retorno de ${canal === "tiktok" ? "TikTok" : "Meta"} no coincide con el puente OAuth de n8n.`,
         503,
       );
     return esperada;
@@ -104,10 +106,13 @@ export const redireccion = (canal: CanalConexion) => {
   return `${baseRedireccion()}/conexiones/${canal}/callback`;
 };
 const faltan = (...nombres: string[]) => nombres.filter((n) => !process.env[n]?.trim());
-const exigeHttps = () =>
-  redireccion("instagram").startsWith("https://")
+/** Instagram y TikTok solo aceptan direcciones de regreso https: se revisa la de cada canal. */
+const exigeHttps = (canal: "instagram" | "tiktok") =>
+  redireccion(canal).startsWith("https://")
     ? []
-    : ["INSTAGRAM_REDIRECT_URI (https) o EZRA_OAUTH_REDIRECT_BASE (https)"];
+    : [
+        `${canal === "tiktok" ? "TIKTOK_REDIRECT_URI" : "INSTAGRAM_REDIRECT_URI"} (https) o EZRA_OAUTH_REDIRECT_BASE (https)`,
+      ];
 const conTokenKey = (lista: string[]) => [...lista, ...faltan("EZRA_TOKEN_KEY")];
 
 export class ErrorProveedor extends WorkflowError {
@@ -119,7 +124,12 @@ export class ErrorProveedor extends WorkflowError {
     super(mensaje, status);
   }
 }
-export async function leerJson(solicitar: Solicitar, url: string, init: RequestInit = {}, tiempo = 30000) {
+export async function leerJson(
+  solicitar: Solicitar,
+  url: string,
+  init: RequestInit = {},
+  tiempo = 30000,
+) {
   let respuesta: Response;
   try {
     respuesta = await solicitar(url, {
@@ -184,7 +194,8 @@ const lista = (v: unknown) =>
 const enSegundos = (s: unknown) =>
   Number(s) > 0 ? new Date(Date.now() + Number(s) * 1000).toISOString() : undefined;
 const hashtags = (t: string) => (t.match(/#[\p{L}\p{N}_]+/gu) ?? []).length;
-const textoDe = (c: ContenidoPieza, canal: CanalConexion) => (c.textos[canal] ?? "").trim();
+const textoDe = (c: ContenidoPieza, canal: CanalConexion) =>
+  ((c.textos as Record<string, string>)[canal] ?? "").trim();
 
 /* ── Instagram (Instagram API con inicio de sesión de Instagram) ── */
 const permisosInstagram = ["instagram_business_basic", "instagram_business_content_publish"];
@@ -297,7 +308,10 @@ export const instagram: Adaptador = {
   oauth: true,
   capacidadPublicar: "publicar",
   configuracion: () =>
-    conTokenKey([...faltan("INSTAGRAM_APP_ID", "INSTAGRAM_APP_SECRET"), ...exigeHttps()]),
+    conTokenKey([
+      ...faltan("INSTAGRAM_APP_ID", "INSTAGRAM_APP_SECRET"),
+      ...exigeHttps("instagram"),
+    ]),
   urlAutorizacion: (estado) =>
     `https://www.instagram.com/oauth/authorize?${new URLSearchParams({
       client_id: process.env.INSTAGRAM_APP_ID!,
@@ -415,8 +429,18 @@ export const instagram: Adaptador = {
  * Business Discovery para leer posts recientes de cuentas profesionales de terceros. Solo
  * funcionan con el inicio de sesión de Facebook: la conexión de Instagram no sirve para esto.
  */
-export const permisosLecturaInstagram = ["instagram_basic", "instagram_manage_insights", "pages_read_engagement"];
-const permisosFacebook = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "instagram_basic", "instagram_manage_insights"];
+export const permisosLecturaInstagram = [
+  "instagram_basic",
+  "instagram_manage_insights",
+  "pages_read_engagement",
+];
+const permisosFacebook = [
+  "pages_show_list",
+  "pages_read_engagement",
+  "pages_manage_posts",
+  "instagram_basic",
+  "instagram_manage_insights",
+];
 export const graphFb = () => `https://graph.facebook.com/${versionGraph()}`;
 async function verificarFacebook(secreto: Secreto, solicitar: Solicitar): Promise<Verificacion> {
   const token = encodeURIComponent(secreto.acceso);
@@ -678,7 +702,7 @@ export const tiktok: Adaptador = {
   oauth: true,
   capacidadPublicar: "subir_borrador",
   configuracion: () =>
-    conTokenKey([...faltan("TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET"), ...exigeHttps()]),
+    conTokenKey([...faltan("TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET"), ...exigeHttps("tiktok")]),
   urlAutorizacion: (estado) =>
     `https://www.tiktok.com/v2/auth/authorize/?${new URLSearchParams({
       client_key: process.env.TIKTOK_CLIENT_KEY!,
@@ -993,9 +1017,263 @@ export const spotmi: Adaptador = {
   },
 };
 
+/* ── YouTube (YouTube Data API v3 con OAuth de Google) ──
+ * Solo sube videos en PRIVADO: el «borrador» se revisa y publica a mano en YouTube Studio. Además,
+ * Google deja en privado los videos subidos por proyectos de API sin auditar. Nada se hace público.
+ */
+const googleToken = "https://oauth2.googleapis.com/token";
+const youtubeApi = "https://www.googleapis.com/youtube/v3";
+const permisosYoutube = [
+  "https://www.googleapis.com/auth/youtube.readonly",
+  "https://www.googleapis.com/auth/youtube.upload",
+];
+async function renovarYoutube(secreto: Secreto, solicitar: Solicitar): Promise<Secreto> {
+  if (!secreto.expiraAcceso || Date.parse(secreto.expiraAcceso) - Date.now() > 5 * 60000)
+    return secreto;
+  if (!secreto.refresco)
+    throw new ErrorProveedor(
+      "La autorización de YouTube venció. Vuelve a conectar.",
+      "vencido",
+      401,
+    );
+  const r = await leerJson(solicitar, googleToken, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.YOUTUBE_CLIENT_ID!,
+      client_secret: process.env.YOUTUBE_CLIENT_SECRET!,
+      grant_type: "refresh_token",
+      refresh_token: secreto.refresco,
+    }),
+  });
+  // Google no devuelve un refresh_token nuevo al renovar: se conserva el anterior.
+  return {
+    ...secreto,
+    acceso: texto(r.access_token),
+    expiraAcceso: enSegundos(r.expires_in),
+    usuario: texto(r.scope) || secreto.usuario,
+  };
+}
+async function verificarYoutube(secreto: Secreto, solicitar: Solicitar): Promise<Verificacion> {
+  const actual = await renovarYoutube(secreto, solicitar);
+  const r = await leerJson(solicitar, `${youtubeApi}/channels?part=snippet&mine=true`, {
+    headers: { Authorization: `Bearer ${actual.acceso}` },
+  });
+  const canal = ((r.items as Record<string, unknown>[] | undefined) ?? [])[0];
+  if (!canal)
+    throw new ErrorProveedor(
+      "Esta cuenta de Google no tiene un canal de YouTube. Crea el canal o entra con la cuenta que lo administra.",
+      "permiso",
+      403,
+    );
+  const permisos = texto(actual.usuario).split(" ").filter(Boolean);
+  const subir = permisos.includes("https://www.googleapis.com/auth/youtube.upload");
+  return {
+    estado: "restringida",
+    identidad: {
+      id: texto(canal.id),
+      nombre:
+        texto((canal.snippet as Record<string, unknown> | undefined)?.title) || "Canal de YouTube",
+      tipo: "canal",
+    },
+    permisos,
+    capacidades: subir ? ["leer_identidad", "subir_borrador"] : ["leer_identidad"],
+    expira: null,
+    secreto: actual,
+    aviso: subir
+      ? "Ezra sube videos en privado: los revisas y publicas tú en YouTube Studio. Mientras el proyecto de Google no esté auditado, YouTube también los deja privados."
+      : "Falta el permiso youtube.upload: solo se puede leer el canal.",
+  };
+}
+export const youtube: Adaptador = {
+  canal: "youtube",
+  oauth: true,
+  capacidadPublicar: "subir_borrador",
+  // Google acepta http://127.0.0.1 como dirección de regreso: no hace falta https para esta conexión.
+  configuracion: () => conTokenKey(faltan("YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET")),
+  urlAutorizacion: (estado) =>
+    `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
+      client_id: process.env.YOUTUBE_CLIENT_ID!,
+      redirect_uri: redireccion("youtube"),
+      response_type: "code",
+      scope: permisosYoutube.join(" "),
+      access_type: "offline",
+      prompt: "consent",
+      include_granted_scopes: "true",
+      state: estado,
+    })}`,
+  async canjear(codigo, solicitar) {
+    const r = await leerJson(solicitar, googleToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: process.env.YOUTUBE_CLIENT_ID!,
+        client_secret: process.env.YOUTUBE_CLIENT_SECRET!,
+        code: codigo,
+        grant_type: "authorization_code",
+        redirect_uri: redireccion("youtube"),
+      }),
+    });
+    return verificarYoutube(
+      {
+        acceso: texto(r.access_token),
+        refresco: texto(r.refresh_token) || undefined,
+        expiraAcceso: enSegundos(r.expires_in),
+        usuario: texto(r.scope),
+      },
+      solicitar,
+    );
+  },
+  verificar: verificarYoutube,
+  async revocar(secreto, solicitar) {
+    await leerJson(
+      solicitar,
+      `https://oauth2.googleapis.com/revoke?${new URLSearchParams({ token: secreto.refresco || secreto.acceso })}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      },
+    );
+  },
+  validar(contenido, medios) {
+    const problemas: string[] = [];
+    if (medios.length !== 1 || !medios[0].mime.startsWith("video/"))
+      problemas.push("YouTube necesita exactamente un video.");
+    else if (medios[0].mime !== "video/mp4")
+      problemas.push("YouTube necesita MP4; usa el paso de render.");
+    if (!contenido.titulo.trim()) problemas.push("YouTube necesita un título.");
+    else if (contenido.titulo.trim().length > 100)
+      problemas.push("El título de YouTube admite hasta 100 caracteres.");
+    if (/[<>]/.test(contenido.titulo)) problemas.push("El título de YouTube no admite < ni >.");
+    return problemas;
+  },
+  plan: (contenido, medios) => [
+    `POST upload/youtube/v3/videos?uploadType=resumable · «${contenido.titulo.slice(0, 100)}» · privado`,
+    `PUT <dirección de subida> · ${medios[0]?.bytes ?? 0} bytes de video/mp4`,
+    "GET youtube/v3/videos?part=status,processingDetails hasta que termine el procesamiento",
+    "El video queda en privado: revísalo y publícalo tú en YouTube Studio.",
+  ],
+  async publicar(envio, solicitar) {
+    const secreto = await renovarYoutube(envio.secreto, solicitar);
+    const [medio] = envio.medios;
+    const bytes = await envio.bytes(medio);
+    const descripcion = (
+      textoDe(envio.contenido, "youtube") ||
+      textoDe(envio.contenido, "instagram") ||
+      textoDe(envio.contenido, "facebook")
+    ).slice(0, 5000);
+    let inicio: Response;
+    try {
+      inicio = await solicitar(
+        "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${secreto.acceso}`,
+            "Content-Type": "application/json; charset=UTF-8",
+            "X-Upload-Content-Type": "video/mp4",
+            "X-Upload-Content-Length": String(bytes.length),
+          },
+          body: JSON.stringify({
+            snippet: {
+              title: envio.contenido.titulo.trim().slice(0, 100),
+              description: descripcion.replace(/[<>]/g, ""),
+              categoryId: "19",
+            },
+            status: {
+              privacyStatus: "private",
+              selfDeclaredMadeForKids: false,
+              containsSyntheticMedia: envio.contenido.divulgaciones.imagenGenerada,
+            },
+          }),
+          signal: AbortSignal.timeout(60000),
+          redirect: "error",
+        },
+      );
+    } catch {
+      throw new ErrorProveedor(
+        "YouTube no respondió al iniciar la subida. No se subió nada.",
+        "red",
+        504,
+      );
+    }
+    const destino = inicio.headers.get("location");
+    if (!inicio.ok || !destino?.startsWith("https://www.googleapis.com/"))
+      throw new ErrorProveedor(
+        `YouTube rechazó la subida (${inicio.status}).`,
+        inicio.status === 401 ? "vencido" : inicio.status === 403 ? "permiso" : "rechazo",
+        inicio.status === 401 ? 401 : 422,
+      );
+    let fin: Response;
+    try {
+      fin = await solicitar(destino, {
+        method: "PUT",
+        headers: { "Content-Type": "video/mp4" },
+        body: new Uint8Array(bytes),
+        signal: AbortSignal.timeout(600000),
+        redirect: "error",
+      });
+    } catch {
+      throw new ErrorProveedor(
+        "La subida a YouTube se interrumpió. El resultado es desconocido: revisa YouTube Studio.",
+        "ambiguo",
+        504,
+      );
+    }
+    const datos = (await fin.json().catch(() => ({}))) as { id?: string };
+    if (!fin.ok || !datos.id)
+      throw new ErrorProveedor(
+        `YouTube no confirmó la subida (${fin.status}). Revisa YouTube Studio.`,
+        "ambiguo",
+        502,
+      );
+    return {
+      estado: "procesando",
+      remotoId: datos.id,
+      enlace: `https://studio.youtube.com/video/${datos.id}/edit`,
+    };
+  },
+  async confirmar(recibo, envio, solicitar) {
+    if (!recibo.remotoId)
+      return {
+        estado: "desconocido",
+        error: "No hay identificador de YouTube que consultar. Revisa YouTube Studio.",
+      };
+    const secreto = await renovarYoutube(envio.secreto, solicitar);
+    const r = await leerJson(
+      solicitar,
+      `${youtubeApi}/videos?part=status,processingDetails&id=${encodeURIComponent(recibo.remotoId)}`,
+      {
+        headers: { Authorization: `Bearer ${secreto.acceso}` },
+      },
+    );
+    const video = ((r.items as Record<string, Record<string, unknown>>[] | undefined) ?? [])[0];
+    const enlace = `https://studio.youtube.com/video/${recibo.remotoId}/edit`;
+    if (!video)
+      return {
+        estado: "fallido",
+        remotoId: recibo.remotoId,
+        error: "YouTube ya no encuentra el video (¿se borró?).",
+      };
+    const subida = texto(video.status?.uploadStatus);
+    const proceso = texto(video.processingDetails?.processingStatus);
+    if (subida === "rejected" || subida === "failed" || proceso === "failed")
+      return {
+        estado: "fallido",
+        remotoId: recibo.remotoId,
+        enlace,
+        error: `YouTube: ${texto(video.status?.rejectionReason || video.status?.failureReason) || "no pudo procesar el video"}.`,
+      };
+    if (subida === "processed" || proceso === "succeeded")
+      return { estado: "borrador_subido", remotoId: recibo.remotoId, enlace };
+    return { estado: "procesando", remotoId: recibo.remotoId, enlace };
+  },
+};
+
 export const adaptadores: Record<CanalConexion, Adaptador> = {
   instagram,
   facebook,
   tiktok,
+  youtube,
   spotmi,
 };

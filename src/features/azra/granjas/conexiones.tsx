@@ -10,6 +10,7 @@ const nombres = {
   instagram: "Instagram",
   tiktok: "TikTok",
   facebook: "Facebook",
+  youtube: "YouTube",
 } as const;
 type Almacen = {
   local: boolean;
@@ -163,6 +164,7 @@ export function ConexionesGranjas({
               )}
               {c.aviso && <p className="ep-nota">{c.aviso}</p>}
               {c.canal === "tiktok" && <p className="ep-nota">{g("tiktokPolitica")}</p>}
+              {c.canal === "youtube" && <p className="ep-nota">{g("youtubePolitica")}</p>}
               {c.canal === "facebook" && c.opciones.length > 1 && (
                 <label className="eg-campo">
                   {g("paginaPublicar")}

@@ -25,7 +25,7 @@ export const contenidoPiezaSchema = z.object({
   canales: z
     .array(z.enum(canales))
     .min(1)
-    .max(4)
+    .max(5)
     .refine((v) => new Set(v).size === v.length),
   programacion: z.discriminatedUnion("tipo", [
     z.object({ tipo: z.literal("ahora") }),

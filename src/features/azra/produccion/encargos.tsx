@@ -14,7 +14,7 @@ export type AccionEncargo =
   | { tipo: "rechazar"; id: string; motivo: string }
   | { tipo: "fecha"; id: string; fechaPrevista: string };
 
-const nombresCanal: Record<string, string> = { spotmi: "Spotmi web", instagram: "Instagram", tiktok: "TikTok", facebook: "Facebook" };
+const nombresCanal: Record<string, string> = { spotmi: "Spotmi web", instagram: "Instagram", tiktok: "TikTok", facebook: "Facebook", youtube: "YouTube" };
 const filtros = ["todos", "por_hacer", "pendiente_revision", "cambios_solicitados", "aprobado", "rechazado"] as const;
 type Filtro = (typeof filtros)[number];
 const enFiltro = (f: Filtro, ed: EstadoEditorial) => f === "todos" || (f === "por_hacer" ? ed === "borrador" : ed === f);

@@ -18,7 +18,7 @@ export const agentes = [
   "disenador_post",
   "imagen_evento",
 ] as const;
-export const canales = ["spotmi", "instagram", "tiktok", "facebook"] as const;
+export const canales = ["spotmi", "instagram", "tiktok", "facebook", "youtube"] as const;
 export const proveedores = ["astra", "claude", "gemini"] as const;
 export const estados = ["pendiente", "preparando", "revision", "aprobado", "rechazado"] as const;
 export const enlaceSeguro = z
@@ -55,7 +55,7 @@ export const contenidoEncargoSchema = z.object({
   canales: z
     .array(z.enum(canales))
     .min(1)
-    .max(4)
+    .max(5)
     .refine((v) => new Set(v).size === v.length),
   encargo: z.string().trim().max(8000),
   resultado: z.string().max(24000),

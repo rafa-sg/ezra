@@ -9,8 +9,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ can
   try {
     const { usuario } = await administrador();
     const { canal } = await params;
-    if (!["instagram", "facebook", "tiktok"].includes(canal)) throw new WorkflowError("Canal desconocido.", 404);
-    return Response.redirect(iniciarOAuth(canal as "instagram" | "facebook" | "tiktok", usuario), 302);
+    if (!["instagram", "facebook", "tiktok", "youtube"].includes(canal)) throw new WorkflowError("Canal desconocido.", 404);
+    return Response.redirect(iniciarOAuth(canal as "instagram" | "facebook" | "tiktok" | "youtube", usuario), 302);
   } catch (error) {
     return errorApi(error);
   }

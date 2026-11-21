@@ -6,8 +6,8 @@ import type { Agente, ContenidoEncargo } from "@/lib/produccion/modelo";
 type Tr = (c: string) => string;
 type EventoElegible = { id: string; titulo: string; fecha: string | null; fuenteUrl: string; lugar: string; municipio: string; estado: string };
 type Proveedor = ContenidoEncargo["proveedor"];
-const canales = ["instagram", "spotmi", "tiktok", "facebook"] as const;
-const nombresCanal: Record<string, string> = { spotmi: "Spotmi web", instagram: "Instagram", tiktok: "TikTok", facebook: "Facebook" };
+const canales = ["instagram", "spotmi", "tiktok", "facebook", "youtube"] as const;
+const nombresCanal: Record<string, string> = { spotmi: "Spotmi web", instagram: "Instagram", tiktok: "TikTok", facebook: "Facebook", youtube: "YouTube" };
 /** Lo que se puede pedir hoy (cada opción es un especialista que ya existe). */
 const objetivos: { clave: string; agente: Agente }[] = [
   { clave: "eventos", agente: "cazador" },

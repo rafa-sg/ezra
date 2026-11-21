@@ -36,6 +36,7 @@ export const nombresCanal: Record<string, string> = {
   instagram: "Instagram",
   tiktok: "TikTok",
   facebook: "Facebook",
+  youtube: "YouTube",
 };
 const SIN = "sin_ubicacion";
 

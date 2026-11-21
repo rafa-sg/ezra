@@ -16,7 +16,7 @@ import {
   type Verificacion,
 } from "./adaptadores";
 
-export const canalesConexion: CanalConexion[] = ["instagram", "facebook", "tiktok", "spotmi"];
+export const canalesConexion: CanalConexion[] = ["instagram", "facebook", "tiktok", "youtube", "spotmi"];
 const globales = globalThis as typeof globalThis & { ezraSolicitar?: Solicitar };
 /** Las pruebas sustituyen la red; en uso normal es fetch. */
 export const solicitar: Solicitar = (url, init) => (globales.ezraSolicitar ?? fetch)(url, init);

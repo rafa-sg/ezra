@@ -13,9 +13,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ cana
   const destino = new URL("/azra/produccion", url.origin);
   destino.searchParams.set("seccion", "conexiones");
   try {
-    if (!["instagram", "facebook", "tiktok"].includes(canal)) throw new Error("Canal desconocido.");
+    if (!["instagram", "facebook", "tiktok", "youtube"].includes(canal)) throw new Error("Canal desconocido.");
     const { usuario } = await administrador();
-    await completarOAuth(canal as "instagram" | "facebook" | "tiktok", {
+    await completarOAuth(canal as "instagram" | "facebook" | "tiktok" | "youtube", {
       estado: url.searchParams.get("state"),
       codigo: url.searchParams.get("code"),
       error: url.searchParams.get("error"),

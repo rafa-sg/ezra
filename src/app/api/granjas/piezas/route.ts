@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 const id = z.string().uuid();
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
-const destinos = z.array(z.enum(["instagram", "facebook", "tiktok", "spotmi"])).min(1).max(4);
+const destinos = z.array(z.enum(["instagram", "facebook", "tiktok", "youtube", "spotmi"])).min(1).max(5);
 const accion = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("editar"), piezaId: id, version: z.number().int(), contenido: z.unknown() }),
   z.object({ accion: z.literal("aprobar"), piezaId: id, hash, comprobaciones: z.object({ hechos: z.boolean(), derechos: z.boolean(), marca: z.boolean() }) }),

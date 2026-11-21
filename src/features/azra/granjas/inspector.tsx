@@ -5,7 +5,7 @@ import { agentes, canales, type Agente } from "@/lib/produccion/modelo";
 import { proveedoresNodo, salidasNodo, aceptaNodo, type Grafo, type Nodo } from "@/lib/granjas/modelo";
 import type { Artefacto, MedioResumen, Paso, Resumen } from "./cliente";
 
-const nombresCanales = { spotmi: "Spotmi web", instagram: "Instagram", tiktok: "TikTok", facebook: "Facebook" };
+const nombresCanales = { spotmi: "Spotmi web", instagram: "Instagram", tiktok: "TikTok", facebook: "Facebook", youtube: "YouTube" };
 export type AccionesPaso = {
   ejecutarSolo: (nodoId: string, ia: boolean) => void;
   reintentar: (pasoId: string, ia: boolean) => void;

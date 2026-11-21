@@ -230,7 +230,7 @@ export function revisarDestinos(pieza: Pieza, destinos: CanalConexion[]): Revisi
       problemas.push(
         conexion.estado === "sin_configurar"
           ? `Falta configurar la conexión (${conexion.configFaltante.join(", ")}).`
-          : `La cuenta no está autorizada para ${canal === "tiktok" ? "subir borradores" : canal === "spotmi" ? "enviar propuestas" : "publicar"} (${conexion.estado}).`,
+          : `La cuenta no está autorizada para ${canal === "tiktok" || canal === "youtube" ? "subir borradores" : canal === "spotmi" ? "enviar propuestas" : "publicar"} (${conexion.estado}).`,
       );
     for (const m of medios) {
       if (m.generado && !pieza.contenido.divulgaciones.imagenGenerada)
@@ -238,7 +238,13 @@ export function revisarDestinos(pieza: Pieza, destinos: CanalConexion[]): Revisi
       if (!m.licencia.trim())
         problemas.push(`«${m.nombre || m.archivo}» no tiene nota de permiso o licencia.`);
     }
-    if (canal !== "spotmi" && !(pieza.contenido.textos[canal] ?? "").trim() && canal !== "tiktok")
+    // TikTok y YouTube pueden ir sin texto propio (YouTube usa el título de la pieza y, si hay, el texto de Instagram).
+    if (
+      canal !== "spotmi" &&
+      canal !== "tiktok" &&
+      canal !== "youtube" &&
+      !((pieza.contenido.textos as Record<string, string>)[canal] ?? "").trim()
+    )
       problemas.push("Falta el texto para este canal.");
     problemas.push(...adaptadores[canal].validar(pieza.contenido, medios));
     if (

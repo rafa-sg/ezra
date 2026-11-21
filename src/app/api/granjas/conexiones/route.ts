@@ -6,7 +6,7 @@ import { versionGraph } from "@/lib/granjas/adaptadores";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const canal = z.enum(["instagram", "facebook", "tiktok", "spotmi"]);
+const canal = z.enum(["instagram", "facebook", "tiktok", "youtube", "spotmi"]);
 const accion = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("verificar"), canal }),
   z.object({ accion: z.literal("desconectar"), canal }),

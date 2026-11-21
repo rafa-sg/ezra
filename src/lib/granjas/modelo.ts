@@ -47,7 +47,7 @@ export const nodoSchema = z.object({
   medios: z.array(id).max(20).default([]),
   canales: z
     .array(z.enum(canales))
-    .max(4)
+    .max(5)
     .refine((v) => new Set(v).size === v.length)
     .default([]),
   segundosPorImagen: z.number().int().min(1).max(15).default(4),
@@ -79,7 +79,7 @@ export const datosGranjaSchema = z.object({
   formato: z.enum(formatos),
   canales: z
     .array(z.enum(canales))
-    .max(4)
+    .max(5)
     .refine((v) => new Set(v).size === v.length),
   politicaFuentes: politicaFuentesSchema,
   ajustes: z
