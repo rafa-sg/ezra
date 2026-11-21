@@ -9,27 +9,7 @@
   font-family: var(--ez-fuente);
   overflow: hidden;
 }
-/* En el tema claro se ve la lámpara de lava del estudio (fondo-lava.tsx) detrás del Inicio. */
-.azra .ez-inicio[data-tema="claro"] {
-  background: transparent;
-}
-.azra .ez-inicio-liquido {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  opacity: 0.9;
-}
-.azra .ez-liquido {
-  display: block;
-  width: 100%;
-  height: 100%;
-  /* Oculto hasta que WebGL arranca: sin GPU queda el degradado de la página, sin marcadores raros. */
-  visibility: hidden;
-}
-.azra .ez-liquido.ez-liquido-activo {
-  visibility: visible;
-}
-
+.azra .ez-inicio { --ez-halo: none; }
 /* ── Hero ── */
 .azra .ez-hero {
   position: relative;
@@ -48,9 +28,6 @@
   height: 70%;
   mask-image: linear-gradient(180deg, #000 55%, transparent);
   opacity: 0.75;
-}
-.azra [data-tema="liquido"] .ez-hero-liquido {
-  display: none;
 }
 .azra .ez-hero-contenido {
   position: relative;

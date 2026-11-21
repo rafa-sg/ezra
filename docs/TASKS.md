@@ -169,7 +169,7 @@
 - [x] Conexiones compartidas con Creación de contenido: todo «Sin conectar».
 - [ ] Verificar MCP/API/webhooks de GHL y diseñar el adaptador real (ver `docs/features/bot-de-atencion.md`).
 - [ ] Traducción EN del módulo; revisión visual del propietario.
-- [ ] Confirmación del propietario para borrar el acceso `rafasanguti11@gmail.com` (Sgmotos).
+- [ ] Confirmación del propietario para borrar el acceso `(correo del cliente Sgmotos; ver data/access.json)` (Sgmotos).
 
 ## 2026-10-07 · Herramientas de contenido: Conexiones
 
@@ -382,3 +382,18 @@ Se añadió «Preparar referencia para Gemini» a tarjetas sin medio o con refer
 - [x] Rediseño claro (19 nov): paleta por variables, cabecera con menú de cuenta, barra lateral con selección tenue y menú desplegable en móvil, Inicio con pendientes como sección principal, una acción principal por pantalla, detalles técnicos plegados. Capturas en `output/rediseno-claro-2026-11-19/` (1440 y 390). Check 139/139, build, integración 7/7; recorridos con clics en `work/estudio-visual.mts`, `work/imagen-original-visual.mts` y `work/estudio-auditoria.mts`.
 - [ ] Pendiente visual: el lienzo de Granjas conserva su estructura (solo cambió de color); el pie «spotmi · creative studio» podría retirarse; los textos de ayuda de Granjas y Eventos (de otras sesiones) siguen largos.
 - [ ] La referencia visual adjunta no llegó: si el propietario la comparte, ajustar contra ella.
+
+### 2026-11-20 · Inicio, fuentes y apariencia
+Mapa trasladado desde Granjas a Inicio con filtros plegables, directorio de fuentes por granja y recorrido de fuentes en grupos de cinco. Verificados el alta de un enlace en datos aislados, el mapa y la persistencia del modo oscuro a 390 y 1440 px. Pasaron lint, tipos, 161 pruebas unitarias, compilación aislada y 7 integraciones.
+
+Mapa integrado al ancho del tablero de Inicio. Los indicadores preceden a la visualización y los filtros y las fuentes quedan debajo.
+Paleta del mapa actualizada en ambos temas del estudio.
+Inicio mantiene el mapa a todo lo ancho con la paleta anterior y fondos neutros por tema.
+
+### 2026-11-20 (noche) · Mapa protagonista en Inicio
+- [x] Mapa de procedencia en `src/features/azra/granjas/mapa-procedencia.tsx` (+ `.css`), Inicio reordenado, sol y luna, barra plegable en su borde, migración de «líquido» a claro, filtro de fechas por día local. Check 161/161; build e integración 7/7 en una copia limpia con Next 16.3.8. Arnés `work/mapa-inicio-visual.mts` (no versionado) con copia de los datos reales a 1440, 1024, 390 y 360 px: sin desborde, sin etiquetas superpuestas, líneas unidas tras plegar, selección conservada al cambiar tema y ancho, tema y barra recordados al recargar.
+- [ ] El propietario instaló `next@16.5.0-canary.57` con pnpm (22:25): con esa versión el servidor de desarrollo no acepta la sesión de prueba (401) y aparecieron `pnpm-lock.yaml` y `pnpm-workspace.yaml` junto al `package-lock.json`. Decidir: volver a npm con Next 16.4.6 estable o seguir con pnpm (y actualizar Dockerfile y README).
+- [x] Mapa de Inicio v2 (país protagonista, lateral único, rutas al elegir, carga sin saltos). Check 161/161; build e integración 7/7 en la copia limpia con Next 16.3.8. Arnés `work/mapa-inicio-v2.mts` (no versionado): primera carga con datos demorados 1,8 s (país visible, 0 px de salto), paso rápido del cursor, clics rápidos, Eventos ↔ Contenidos (0 px), lateral con 12 fuentes y 4 destinos simulados solo en la prueba, movimiento reducido, oscuro, barra plegada (13/13 rutas unidas), 390 y 360 px sin desborde.
+- [x] (21 nov) Mapa con ezrá al centro, controles debajo, carga por partes con líneas fantasma; Codex y Claude Code locales con diagnóstico real. Check 165/165 (4 nuevas en `tests/ia-local.test.ts`); build e integración 7/7 en la copia limpia (Next 16.3.8). Comprobación real en esta Mac: Codex 0.162.1 y Claude Code 2.1.330 con sesión, todas las restricciones aceptadas; una prueba real de respuesta cada uno («OK»: 6,0 s y 2,3 s). Arneses `work/mapa-inicio-v2.mts` y `work/ia-local-visual.mts` (no versionados).
+- [ ] Revisar el video de carga del propietario cuando lo guarde fuera de la carpeta temporal de macOS (Escritorio o Descargas).
+- [ ] Decidir Next: volver a npm con 16.4.6 estable o seguir con el canary de pnpm.

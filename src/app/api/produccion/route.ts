@@ -16,7 +16,7 @@ import {
   derivarEncargo,
   invalidarDependientes,
 } from "@/lib/produccion/modelo";
-import { buscarHerramienta } from "@/lib/produccion/proveedores";
+import { diagnosticoReciente, utilizable } from "@/lib/produccion/ia-local";
 import { direccionSpotmi } from "@/lib/produccion/spotmi";
 import { invalidarPorEncargo } from "@/lib/granjas/ejecucion";
 import { especialistasVisibles } from "@/lib/granjas/especialistas";
@@ -70,16 +70,19 @@ const accionSchema = z.discriminatedUnion("accion", [
 export async function GET() {
   try {
     await requireAdmin();
+    // Disponible = sesión comprobada (no basta con encontrar el programa).
     const [codex, claude] = await Promise.all([
-      buscarHerramienta("codex"),
-      buscarHerramienta("claude"),
+      diagnosticoReciente("astra"),
+      diagnosticoReciente("claude"),
     ]);
     return Response.json({
       produccion: await leerProduccion(),
       conexiones: {
         spotmi: direccionSpotmi(),
-        astraLocal: Boolean(codex),
-        claudeLocal: Boolean(claude),
+        astraLocal: utilizable(codex),
+        claudeLocal: utilizable(claude),
+        astraEstado: codex.estado,
+        claudeEstado: claude.estado,
         geminiConfigurado: Boolean(process.env.GEMINI_API_KEY?.trim()),
         geminiHabilitado: geminiProduccionHabilitado(),
         modelo: modeloGemini(),

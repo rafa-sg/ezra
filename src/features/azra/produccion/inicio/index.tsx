@@ -1,12 +1,22 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Eye, EyeOff, GripVertical, RefreshCw, Settings2, SlidersHorizontal, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Eye,
+  EyeOff,
+  GripVertical,
+  RefreshCw,
+  Settings2,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import type { ResumenInicio } from "@/lib/produccion/inicio";
 import type { EstadoOnboarding } from "@/lib/produccion/onboarding";
-import { temas, type Preferencias, type WidgetPulso } from "@/lib/produccion/preferencias-modelo";
+import type { Preferencias, WidgetPulso } from "@/lib/produccion/preferencias-modelo";
+import { DatosYConexiones } from "../../granjas/trazabilidad";
 import { Modal } from "../../ui";
 import { Aparece } from "./aparece";
-import { FondoLiquido } from "./fondo-liquido";
 import { componentes, equipo, nombreAgente, rolAgente, type DestinoInicio } from "./widgets";
 import { haceCuanto } from "../encargos";
 import "./inicio.css";
@@ -14,7 +24,16 @@ import "./inicio.css";
 export type { DestinoInicio };
 
 async function pedirJson<T>(url: string, cuerpo?: unknown): Promise<T> {
-  const r = await fetch(url, cuerpo === undefined ? { cache: "no-store" } : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
+  const r = await fetch(
+    url,
+    cuerpo === undefined
+      ? { cache: "no-store" }
+      : {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cuerpo),
+        },
+  );
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error((j as { error?: string }).error ?? `Error ${r.status}`);
   return j as T;
@@ -54,7 +73,10 @@ export function Inicio({
   const tablero = useRef<HTMLElement>(null);
   useEffect(() => {
     let vivo = true;
-    Promise.all([pedirJson<ResumenInicio>("/api/produccion/inicio"), pedirJson<{ preferencias: Preferencias }>("/api/produccion/preferencias")])
+    Promise.all([
+      pedirJson<ResumenInicio>("/api/produccion/inicio"),
+      pedirJson<{ preferencias: Preferencias }>("/api/produccion/preferencias"),
+    ])
       .then(([d, p]) => {
         if (!vivo) return;
         setDatos(d);
@@ -74,7 +96,10 @@ export function Inicio({
     const anterior = prefs;
     setPrefs({ ...prefs, ...cambios });
     try {
-      const r = await pedirJson<{ preferencias: Preferencias }>("/api/produccion/preferencias", { revision: prefs.revision, cambios });
+      const r = await pedirJson<{ preferencias: Preferencias }>("/api/produccion/preferencias", {
+        revision: prefs.revision,
+        cambios,
+      });
       setPrefs(r.preferencias);
       setAviso(tr("ez_guardado"));
     } catch (e) {
@@ -103,7 +128,8 @@ export function Inicio({
     setArrastrando(null);
     void guardar({ widgets: lista });
   };
-  const cambiar = (id: WidgetPulso, cambio: Partial<Preferencias["widgets"][number]>) => void guardar({ widgets: widgets.map((w) => (w.id === id ? { ...w, ...cambio } : w)) });
+  const cambiar = (id: WidgetPulso, cambio: Partial<Preferencias["widgets"][number]>) =>
+    void guardar({ widgets: widgets.map((w) => (w.id === id ? { ...w, ...cambio } : w)) });
 
   if (error && !datos)
     return (
@@ -120,16 +146,21 @@ export function Inicio({
         <p role="status">{tr("p_cargando")}</p>
       </div>
     );
-  const tema = prefs.temas.inicio ?? "claro";
   const pasoGuia = guia?.paso ?? 1;
   const hechos = guia ? Math.min(5, guia.completado ? 5 : pasoGuia - 1) : 0;
   const props = { datos, tr, fecha, onIr, onNuevo, prefs };
   const titulo = (id: WidgetPulso) => widgets.find((w) => w.id === id)?.titulo || tr(`ez_w_${id}`);
   const ocultos = widgets.filter((w) => !w.visible);
   return (
-    <div className="ez-inicio" data-tema={tema}>
-      {tema === "liquido" && <FondoLiquido className="ez-inicio-liquido" />}
-      <section className="ez-tablero" ref={tablero} aria-labelledby="ez-tablero-titulo" tabIndex={-1}>
+    <div className="ez-inicio">
+      <section
+        className="ez-tablero"
+        ref={tablero}
+        aria-labelledby="ez-tablero-titulo"
+        tabIndex={-1}
+      >
+        {/* Arriba, sin texto: solo el mapa con ezrá y sus conexiones. Los controles y el resumen van debajo. */}
+        <DatosYConexiones tr={tr} fecha={fecha} />
         <div className="ez-trabajo-cabecera">
           <div>
             <h2 id="ez-tablero-titulo" className="ez-titulo-seccion">
@@ -144,17 +175,19 @@ export function Inicio({
             </p>
           </div>
           <div className="ez-tablero-controles">
-            <div className="ez-segmentado" role="radiogroup" aria-label={tr("ez_tema")}>
-              {temas.map((t) => (
-                <button key={t} role="radio" aria-checked={tema === t} onClick={() => void guardar({ temas: { ...prefs.temas, inicio: t } })}>
-                  {tr(`ez_tema_${t}`)}
-                </button>
-              ))}
-            </div>
-            <button className="ez-boton-blanco" onClick={() => setRecarga((x) => x + 1)} aria-label={tr("p_actualizar")} title={tr("p_actualizar")}>
+            <button
+              className="ez-boton-blanco"
+              onClick={() => setRecarga((x) => x + 1)}
+              aria-label={tr("p_actualizar")}
+              title={tr("p_actualizar")}
+            >
               <RefreshCw size={15} aria-hidden="true" />
             </button>
-            <button className={editando ? "ez-boton-negro" : "ez-boton-blanco"} aria-pressed={editando} onClick={() => setEditando(!editando)}>
+            <button
+              className={editando ? "ez-boton-negro" : "ez-boton-blanco"}
+              aria-pressed={editando}
+              onClick={() => setEditando(!editando)}
+            >
               <SlidersHorizontal size={15} aria-hidden="true" />
               {tr(editando ? "ez_listo" : "ez_personalizar")}
             </button>
@@ -163,14 +196,43 @@ export function Inicio({
         {/* Indicadores: cada uno abre los registros que lo componen. */}
         <ul className="ez-indicadores" aria-label={tr("ez_trabajo_indicadores")}>
           {[
-            { k: "atencion", n: datos.pendientes.length, ir: () => document.getElementById("ez-w-atencion")?.scrollIntoView({ behavior: "smooth", block: "center" }) },
-            { k: "ejecucion", n: datos.trabajo.trabajando.length, ir: () => onIr({ seccion: "granjas" }) },
-            { k: "bloqueados", n: datos.trabajo.bloqueados.length, ir: () => document.getElementById("ez-w-ejecucion")?.scrollIntoView({ behavior: "smooth", block: "center" }), alerta: true },
+            {
+              k: "atencion",
+              n: datos.pendientes.length,
+              ir: () =>
+                document
+                  .getElementById("ez-w-atencion")
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+            },
+            {
+              k: "ejecucion",
+              n: datos.trabajo.trabajando.length,
+              ir: () => onIr({ seccion: "granjas" }),
+            },
+            {
+              k: "bloqueados",
+              n: datos.trabajo.bloqueados.length,
+              ir: () =>
+                document
+                  .getElementById("ez-w-ejecucion")
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+              alerta: true,
+            },
             { k: "eventos", n: datos.eventos.nuevos, ir: () => onIr({ seccion: "eventos" }) },
-            { k: "listo", n: datos.trabajo.listo.length, ir: () => document.getElementById("ez-w-listo")?.scrollIntoView({ behavior: "smooth", block: "center" }) },
+            {
+              k: "listo",
+              n: datos.trabajo.listo.length,
+              ir: () =>
+                document
+                  .getElementById("ez-w-listo")
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+            },
           ].map((x) => (
             <li key={x.k}>
-              <button className={`ez-indicador ${x.alerta && x.n ? "ez-indicador-alerta" : ""}`} onClick={x.ir}>
+              <button
+                className={`ez-indicador ${x.alerta && x.n ? "ez-indicador-alerta" : ""}`}
+                onClick={x.ir}
+              >
                 <strong>{x.n}</strong>
                 <span>{tr(`ez_ind_${x.k}`)}</span>
               </button>
@@ -196,7 +258,14 @@ export function Inicio({
                 {hechos} / 5 {tr("p_ob_completados")}
               </small>
             </span>
-            <span className="ez-barra" role="progressbar" aria-valuemin={0} aria-valuemax={5} aria-valuenow={hechos} aria-label={tr("p_ob_progreso")}>
+            <span
+              className="ez-barra"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={5}
+              aria-valuenow={hechos}
+              aria-label={tr("p_ob_progreso")}
+            >
               <span style={{ width: `${(hechos / 5) * 100}%` }} />
             </span>
             <button className="ez-boton-negro" onClick={onGuia}>
@@ -209,7 +278,11 @@ export function Inicio({
           <div className="ez-agregar">
             <span>{tr("ez_agregar")}</span>
             {ocultos.map((w) => (
-              <button key={w.id} className="ez-boton-blanco" onClick={() => cambiar(w.id, { visible: true })}>
+              <button
+                key={w.id}
+                className="ez-boton-blanco"
+                onClick={() => cambiar(w.id, { visible: true })}
+              >
                 + {titulo(w.id)}
               </button>
             ))}
@@ -222,7 +295,11 @@ export function Inicio({
             .map((w, i, visibles) => {
               const Componente = componentes[w.id];
               return (
-                <Aparece key={w.id} como="section" className={`ez-widget ez-tam-${w.tamano} ez-con-halo`}>
+                <Aparece
+                  key={w.id}
+                  como="section"
+                  className={`ez-widget ez-tam-${w.tamano} ez-con-halo`}
+                >
                   <div
                     className={`ez-tarjeta ez-widget-tarjeta ${arrastrando === w.id ? "ez-arrastrando" : ""}`}
                     aria-labelledby={`ez-w-${w.id}`}
@@ -240,20 +317,36 @@ export function Inicio({
                   >
                     <header className="ez-widget-cabecera">
                       <h3 id={`ez-w-${w.id}`}>{titulo(w.id)}</h3>
-                      {w.id === "atencion" && datos.pendientes.length > 0 && <span className="ez-contador">{datos.pendientes.length}</span>}
+                      {w.id === "atencion" && datos.pendientes.length > 0 && (
+                        <span className="ez-contador">{datos.pendientes.length}</span>
+                      )}
                       {editando && (
                         <span className="ez-widget-herramientas">
                           <GripVertical size={16} className="ez-asa" aria-hidden="true" />
-                          <button aria-label={`${tr("ez_subir")}: ${titulo(w.id)}`} disabled={i === 0} onClick={() => mover(w.id, -1)}>
+                          <button
+                            aria-label={`${tr("ez_subir")}: ${titulo(w.id)}`}
+                            disabled={i === 0}
+                            onClick={() => mover(w.id, -1)}
+                          >
                             <ArrowUp size={15} />
                           </button>
-                          <button aria-label={`${tr("ez_bajar")}: ${titulo(w.id)}`} disabled={i === visibles.length - 1} onClick={() => mover(w.id, 1)}>
+                          <button
+                            aria-label={`${tr("ez_bajar")}: ${titulo(w.id)}`}
+                            disabled={i === visibles.length - 1}
+                            onClick={() => mover(w.id, 1)}
+                          >
                             <ArrowDown size={15} />
                           </button>
-                          <button aria-label={`${tr("ez_propiedades")}: ${titulo(w.id)}`} onClick={() => setPropiedades(w.id)}>
+                          <button
+                            aria-label={`${tr("ez_propiedades")}: ${titulo(w.id)}`}
+                            onClick={() => setPropiedades(w.id)}
+                          >
                             <Settings2 size={15} />
                           </button>
-                          <button aria-label={`${tr("ez_ocultar")}: ${titulo(w.id)}`} onClick={() => cambiar(w.id, { visible: false })}>
+                          <button
+                            aria-label={`${tr("ez_ocultar")}: ${titulo(w.id)}`}
+                            onClick={() => cambiar(w.id, { visible: false })}
+                          >
                             <EyeOff size={15} />
                           </button>
                         </span>
@@ -275,7 +368,14 @@ export function Inicio({
         )}
       </section>
 
-      <Modal open={Boolean(propiedades)} onClose={() => setPropiedades(null)} label={tr("ez_propiedades")} className="ep-modal ez-panel" dismissOnBackdrop hideClose>
+      <Modal
+        open={Boolean(propiedades)}
+        onClose={() => setPropiedades(null)}
+        label={tr("ez_propiedades")}
+        className="ep-modal ez-panel"
+        dismissOnBackdrop
+        hideClose
+      >
         {propiedades && propiedades !== "agentes_equipo" && (
           <PanelWidget
             key={propiedades}
@@ -331,19 +431,35 @@ function PanelWidget({
     >
       <header>
         <h2>{tr("ez_propiedades")}</h2>
-        <button type="button" className="ez-cerrar" aria-label={tr("p_cancelar")} onClick={onCerrar}>
+        <button
+          type="button"
+          className="ez-cerrar"
+          aria-label={tr("p_cancelar")}
+          onClick={onCerrar}
+        >
           <X size={18} />
         </button>
       </header>
       <label className="eg-campo">
         {tr("ez_prop_titulo")}
-        <input value={titulo} maxLength={40} placeholder={porDefecto} onChange={(e) => setTitulo(e.target.value)} />
+        <input
+          value={titulo}
+          maxLength={40}
+          placeholder={porDefecto}
+          onChange={(e) => setTitulo(e.target.value)}
+        />
       </label>
       <fieldset className="ez-segmentado-campo">
         <legend>{tr("ez_prop_tamano")}</legend>
         <div className="ez-segmentado" role="radiogroup">
           {(["s", "m", "l"] as const).map((t) => (
-            <button type="button" key={t} role="radio" aria-checked={tamano === t} onClick={() => setTamano(t)}>
+            <button
+              type="button"
+              key={t}
+              role="radio"
+              aria-checked={tamano === t}
+              onClick={() => setTamano(t)}
+            >
               {tr(`ez_tam_${t}`)}
             </button>
           ))}
@@ -365,9 +481,24 @@ function PanelWidget({
   );
 }
 
-function PanelAgentes({ prefs, tr, onCerrar, onGuardar }: { prefs: Preferencias; tr: (c: string) => string; onCerrar: () => void; onGuardar: (a: Preferencias["agentes"]) => void }) {
+function PanelAgentes({
+  prefs,
+  tr,
+  onCerrar,
+  onGuardar,
+}: {
+  prefs: Preferencias;
+  tr: (c: string) => string;
+  onCerrar: () => void;
+  onGuardar: (a: Preferencias["agentes"]) => void;
+}) {
   const [valores, setValores] = useState(() =>
-    Object.fromEntries(equipo.map(({ agente }) => [agente, { nombre: prefs.agentes[agente]?.nombre ?? "", rol: prefs.agentes[agente]?.rol ?? "" }])),
+    Object.fromEntries(
+      equipo.map(({ agente }) => [
+        agente,
+        { nombre: prefs.agentes[agente]?.nombre ?? "", rol: prefs.agentes[agente]?.rol ?? "" },
+      ]),
+    ),
   );
   return (
     <form
@@ -379,7 +510,12 @@ function PanelAgentes({ prefs, tr, onCerrar, onGuardar }: { prefs: Preferencias;
     >
       <header>
         <h2>{tr("ez_editarAgentes")}</h2>
-        <button type="button" className="ez-cerrar" aria-label={tr("p_cancelar")} onClick={onCerrar}>
+        <button
+          type="button"
+          className="ez-cerrar"
+          aria-label={tr("p_cancelar")}
+          onClick={onCerrar}
+        >
           <X size={18} />
         </button>
       </header>
@@ -388,11 +524,25 @@ function PanelAgentes({ prefs, tr, onCerrar, onGuardar }: { prefs: Preferencias;
           <legend>{tr(`p_${agente}_titulo`)}</legend>
           <label className="eg-campo">
             {tr("ez_prop_nombre")}
-            <input value={valores[agente].nombre} maxLength={30} placeholder={nombreAgente(agente, { ...prefs, agentes: {} }, tr)} onChange={(e) => setValores({ ...valores, [agente]: { ...valores[agente], nombre: e.target.value } })} />
+            <input
+              value={valores[agente].nombre}
+              maxLength={30}
+              placeholder={nombreAgente(agente, { ...prefs, agentes: {} }, tr)}
+              onChange={(e) =>
+                setValores({ ...valores, [agente]: { ...valores[agente], nombre: e.target.value } })
+              }
+            />
           </label>
           <label className="eg-campo">
             {tr("ez_prop_rol")}
-            <input value={valores[agente].rol} maxLength={90} placeholder={rolAgente(agente, { ...prefs, agentes: {} }, tr)} onChange={(e) => setValores({ ...valores, [agente]: { ...valores[agente], rol: e.target.value } })} />
+            <input
+              value={valores[agente].rol}
+              maxLength={90}
+              placeholder={rolAgente(agente, { ...prefs, agentes: {} }, tr)}
+              onChange={(e) =>
+                setValores({ ...valores, [agente]: { ...valores[agente], rol: e.target.value } })
+              }
+            />
           </label>
         </fieldset>
       ))}

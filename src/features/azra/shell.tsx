@@ -2,7 +2,19 @@
 import Link from "next/link";
 import { useClerk } from "@clerk/nextjs";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Check, ChevronUp, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Sparkles, X } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  LogOut,
+  Menu,
+  Moon,
+  Settings,
+  Sparkles,
+  Sun,
+  X,
+} from "lucide-react";
 import { LanguageProvider, useLanguage, type MessageKey } from "./i18n";
 import { href } from "./routes";
 import { setAccountScope } from "./account/service";
@@ -32,6 +44,7 @@ function Shell({ children, user }: ShellProps) {
     }
   }
   const tt = (clave: string) => t(clave as MessageKey);
+  const tema = useTema();
   const contraida = useSidebarContraida();
   const [movilAbierta, setMovilAbierta] = useState(false);
   const lateral = useRef<HTMLElement>(null);
@@ -55,11 +68,20 @@ function Shell({ children, user }: ShellProps) {
     };
   }, [movilAbierta]);
   return (
-    <div className="azra ep-shell ez-app" data-sidebar={contraida ? "contraida" : "expandida"}>
+    <div
+      className="azra ep-shell ez-app"
+      data-global-theme={tema === "oscuro" ? "dark" : "light"}
+      data-sidebar={contraida ? "contraida" : "expandida"}
+    >
       <a href="#az-content" className="ep-saltar">
         {t("skip")}
       </a>
-      <aside ref={lateral} id="ez-sidebar" className={`ez-sidebar ${movilAbierta ? "ez-sidebar-abierta" : ""}`} aria-label={tt("ez_sb_navegacion")}>
+      <aside
+        ref={lateral}
+        id="ez-sidebar"
+        className={`ez-sidebar ${movilAbierta ? "ez-sidebar-abierta" : ""}`}
+        aria-label={tt("ez_sb_navegacion")}
+      >
         <div className="ez-sidebar-cabeza">
           <Link href={href("produccion")} className="ez-sidebar-marca" aria-label="ezrá · Spotmi">
             <span className="ez-logo" aria-hidden="true">
@@ -71,33 +93,64 @@ function Shell({ children, user }: ShellProps) {
             </span>
           </Link>
           <button
-            className="ez-sidebar-plegar"
-            onClick={() => guardarSidebarContraida(!contraida)}
-            aria-pressed={contraida}
-            aria-label={tt(contraida ? "ez_sb_expandir" : "ez_sb_contraer")}
-            data-tooltip={tt(contraida ? "ez_sb_expandir" : "ez_sb_contraer")}
+            className="ez-sidebar-cerrar"
+            onClick={() => (setMovilAbierta(false), hamburguesa.current?.focus())}
+            aria-label={tt("ez_sb_cerrarMenu")}
           >
-            {contraida ? <PanelLeftOpen size={17} aria-hidden="true" /> : <PanelLeftClose size={17} aria-hidden="true" />}
-          </button>
-          <button className="ez-sidebar-cerrar" onClick={() => (setMovilAbierta(false), hamburguesa.current?.focus())} aria-label={tt("ez_sb_cerrarMenu")}>
             <X size={18} aria-hidden="true" />
           </button>
         </div>
         {/* El estudio llena este espacio: «Nuevo encargo» y las secciones. */}
         <div id="ez-sidebar-nav" className="ez-sidebar-nav" />
         <div className="ez-sidebar-pie">
-          <MenuCuenta user={user} locale={locale} setLocale={setLocale} salir={salir} saliendo={saliendo} t={t} />
+          <MenuCuenta
+            user={user}
+            locale={locale}
+            setLocale={setLocale}
+            salir={salir}
+            saliendo={saliendo}
+            t={t}
+          />
         </div>
       </aside>
-      {movilAbierta && <div className="ez-sidebar-velo" aria-hidden="true" onClick={() => setMovilAbierta(false)} />}
-      <div className="ez-principal">
+      {/* Plegar o expandir: botón discreto en el borde de la barra, visible en ambos estados. */}
+      <button
+        className="ez-sidebar-borde"
+        onClick={() => guardarSidebarContraida(!contraida)}
+        aria-controls="ez-sidebar"
+        aria-expanded={!contraida}
+        aria-label={tt(contraida ? "ez_sb_expandir" : "ez_sb_contraer")}
+        title={tt(contraida ? "ez_sb_expandir" : "ez_sb_contraer")}
+      >
+        {contraida ? (
+          <ChevronRight size={14} aria-hidden="true" />
+        ) : (
+          <ChevronLeft size={14} aria-hidden="true" />
+        )}
+      </button>
+      {movilAbierta && (
+        <div
+          className="ez-sidebar-velo"
+          aria-hidden="true"
+          onClick={() => setMovilAbierta(false)}
+        />
+      )}
+      <div className="ez-principal" data-tema={tema}>
         <header className="ez-cabecera">
-          <button ref={hamburguesa} className="ez-hamburguesa" aria-controls="ez-sidebar" aria-expanded={movilAbierta} aria-label={tt("ez_sb_abrirMenu")} onClick={() => setMovilAbierta(true)}>
+          <button
+            ref={hamburguesa}
+            className="ez-hamburguesa"
+            aria-controls="ez-sidebar"
+            aria-expanded={movilAbierta}
+            aria-label={tt("ez_sb_abrirMenu")}
+            onClick={() => setMovilAbierta(true)}
+          >
             <Menu size={20} aria-hidden="true" />
           </button>
           {/* Título de la página y acciones contextuales (las pone cada sección). */}
           <div id="ez-cabecera-titulo" className="ez-cabecera-titulo" />
           <div id="ez-cabecera-acciones" className="ez-cabecera-acciones" />
+          <SelectorTema tema={tema} tt={tt} />
         </header>
         {error && (
           <p className="ep-session-error" role="alert">
@@ -108,6 +161,86 @@ function Shell({ children, user }: ShellProps) {
           {children}
         </main>
       </div>
+    </div>
+  );
+}
+
+/*
+ * Tema del estudio (por navegador): claro u oscuro. Migra preferencias anteriores: «líquido» pasa a
+ * claro y el interruptor de modo oscuro anterior («ezra:dark») se respeta la primera vez.
+ */
+type Tema = "claro" | "oscuro";
+const CLAVE_TEMA = "ezra:tema";
+function leerTema(): Tema {
+  try {
+    const v = window.localStorage.getItem(CLAVE_TEMA);
+    if (v === "claro" || v === "oscuro") return v;
+    if (v === "liquido") return "claro";
+    return window.localStorage.getItem("ezra:dark") === "1" ? "oscuro" : "claro";
+  } catch {
+    return "claro";
+  }
+}
+function suscribirTema(cb: () => void) {
+  window.addEventListener("storage", cb);
+  window.addEventListener("ezra:tema", cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener("ezra:tema", cb);
+  };
+}
+function useTema() {
+  const tema = useSyncExternalStore(suscribirTema, leerTema, () => "claro" as Tema);
+  // Una vez, al abrir: deja guardada la preferencia migrada (líquido → claro; «ezra:dark» anterior).
+  // Lee el almacenamiento, no el valor renderizado: durante la hidratación ese valor es siempre «claro».
+  useEffect(() => {
+    try {
+      const migrado = leerTema();
+      if (window.localStorage.getItem(CLAVE_TEMA) !== migrado) guardarTema(migrado);
+      window.localStorage.removeItem("ezra:dark");
+    } catch {
+      /* Sin almacenamiento: el tema dura solo esta visita. */
+    }
+  }, []);
+  return tema;
+}
+function guardarTema(tema: Tema) {
+  try {
+    window.localStorage.setItem(CLAVE_TEMA, tema);
+  } catch {
+    /* Sin almacenamiento: el tema dura solo esta visita. */
+  }
+  window.dispatchEvent(new Event("ezra:tema"));
+}
+/** Sol y luna: dos botones pequeños; el activo queda marcado (aria-pressed). Las flechas cambian entre ellos. */
+function SelectorTema({ tema, tt }: { tema: Tema; tt: (c: string) => string }) {
+  const opciones = [
+    { id: "claro" as const, Icono: Sun, etiqueta: tt("ez_tema_usarClaro") },
+    { id: "oscuro" as const, Icono: Moon, etiqueta: tt("ez_tema_usarOscuro") },
+  ];
+  return (
+    <div className="ez-tema" role="group" aria-label={tt("ez_tema_global")}>
+      {opciones.map(({ id, Icono, etiqueta }) => (
+        <button
+          key={id}
+          data-tema-opcion={id}
+          aria-pressed={tema === id}
+          aria-label={etiqueta}
+          title={etiqueta}
+          onClick={() => guardarTema(id)}
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+            e.preventDefault();
+            const otro = id === "claro" ? "oscuro" : "claro";
+            guardarTema(otro);
+            e.currentTarget.parentElement
+              ?.querySelector<HTMLElement>(`[data-tema-opcion="${otro}"]`)
+              ?.focus();
+          }}
+        >
+          <Icono size={16} aria-hidden="true" />
+        </button>
+      ))}
     </div>
   );
 }
@@ -168,7 +301,8 @@ function MenuCuenta({
       }
     };
     const fuera = (e: PointerEvent) => {
-      if (!panel.current?.contains(e.target as Node) && !boton.current?.contains(e.target as Node)) setAbierto(false);
+      if (!panel.current?.contains(e.target as Node) && !boton.current?.contains(e.target as Node))
+        setAbierto(false);
     };
     document.addEventListener("keydown", tecla);
     document.addEventListener("pointerdown", fuera);
@@ -186,7 +320,14 @@ function MenuCuenta({
     .join("");
   return (
     <div className="ep-cuenta">
-      <button ref={boton} className="ep-cuenta-boton" aria-expanded={abierto} aria-controls="ep-cuenta-panel" onClick={() => setAbierto(!abierto)} data-tooltip={t("ez_sb_perfil" as MessageKey)}>
+      <button
+        ref={boton}
+        className="ep-cuenta-boton"
+        aria-expanded={abierto}
+        aria-controls="ep-cuenta-panel"
+        onClick={() => setAbierto(!abierto)}
+        data-tooltip={t("ez_sb_perfil" as MessageKey)}
+      >
         <span className="ep-avatar" aria-hidden="true">
           {iniciales}
         </span>

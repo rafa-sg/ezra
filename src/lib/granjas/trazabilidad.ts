@@ -2,6 +2,7 @@ import { base, json } from "./db";
 import { clasificarFuente } from "./confianza";
 import { leerConfianzaDominios } from "./eventos";
 import { departamentoCanonico } from "./panorama";
+import { diaLocal } from "./tiempo";
 import { leerProduccion } from "../produccion/almacen";
 import { estadoEditorial, estadoEntrega } from "../produccion/resumen-encargo";
 
@@ -134,10 +135,12 @@ export function trazabilidad(filtros: FiltrosTraza = {}, opciones: { encargos?: 
   const tipoFecha = filtros.tipoFecha ?? "evento";
   const enRango = (dia: string | null) => (!filtros.desde || (dia !== null && dia.slice(0, 10) >= filtros.desde)) && (!filtros.hasta || (dia !== null && dia.slice(0, 10) <= filtros.hasta));
   const fechaDe = (e: (typeof eventos)[number]) => {
-    if (tipoFecha === "descubrimiento") return e.descubierto;
+    // Descubrimiento y publicación son instantes (UTC): se comparan por su día en El Salvador.
+    if (tipoFecha === "descubrimiento") return diaLocal(new Date(e.descubierto));
     if (tipoFecha === "publicacion") {
       const fechas = (contenidosDe.get(e.id) ?? []).map((id) => contenidos.find((c) => c.id === id)?.publicado).filter((x): x is string => Boolean(x));
-      return fechas.sort()[0] ?? null;
+      const primera = fechas.sort()[0];
+      return primera ? diaLocal(new Date(primera)) : null;
     }
     return e.fecha;
   };

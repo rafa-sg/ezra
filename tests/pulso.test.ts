@@ -46,6 +46,7 @@ test("preferencias: valores por defecto, revisión optimista, por usuario, valid
   const conAgente = prefs.guardarPreferencias("u1", 2, prefs.cambiosSchema.parse({ agentes: { verificador: { nombre: "Revisor", rol: "" } } }));
   const soloTema = prefs.guardarPreferencias("u1", conAgente.revision, prefs.cambiosSchema.parse({ temas: { inicio: "liquido" } }));
   assert.deepEqual(soloTema.widgets.map((w) => w.id), orden2);
+  assert.equal(soloTema.temas.inicio, "claro", "el tema líquido retirado se migra a claro");
   assert.equal(soloTema.agentes.verificador.nombre, "Revisor");
   assert.throws(() => prefs.cambiosSchema.parse({ revision: 99 }), "la revisión no se cambia por aquí");
   // Valor corrupto en la base: se usan los valores por defecto sin romper.

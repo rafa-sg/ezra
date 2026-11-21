@@ -1,9 +1,7 @@
 /*
  * Tokens del estudio Ezra (estilo Avvyren + OrbAI). Se mapean sobre las variables --ep-* que ya usan
- * todas las pantallas, así heredan el estilo sin reescribirse. Tres temas por sección:
- *   claro   — fondo #F7F7F8 con degradados lavanda y azul (Avvyren)
- *   oscuro  — negro con tarjetas grafito (sección de mapa)
- *   liquido — escala de grises con el fondo líquido y tarjetas blancas flotantes (OrbAI)
+ * todas las pantallas, así heredan el estilo sin reescribirse. Dos temas para todo el estudio, que se
+ * eligen con el sol y la luna de la cabecera (shell.tsx): claro (por defecto) y oscuro.
  */
 .azra.ep-shell,
 .azra .ep-estudio,
@@ -45,10 +43,12 @@
   --ep-acento: #111117;
   --ep-acento-hover: #2a2a33;
   --ep-seleccion: #efeffb;
-  --ez-fondo-pagina: radial-gradient(1200px 600px at 100% -10%, rgba(124, 116, 255, 0.16), transparent 60%), radial-gradient(900px 500px at -10% 30%, rgba(80, 160, 255, 0.12), transparent 60%), #f7f7f8;
+  --ez-fondo-pagina: #fff;
   --ez-titulo-2: #8a8a96;
 }
 /* ── Tema oscuro ── */
+.azra.ep-shell[data-global-theme="dark"],
+.azra[data-global-theme="dark"] :is(.ep-estudio, .ep-modal, [data-tema]),
 .azra [data-tema="oscuro"] {
   --ep-fondo: #050507;
   --ep-tarjeta: #111116;
@@ -71,28 +71,12 @@
   --ep-proceso: #84caff;
   --ep-hecho: #47cd89;
   --ep-error: #f97066;
-  --ez-fondo-pagina: radial-gradient(900px 500px at 80% -10%, rgba(59, 108, 255, 0.22), transparent 60%), #050507;
+  --ez-fondo-pagina: #202124;
   --ez-titulo-2: #7d7d8a;
   --ez-sombra: 0 20px 50px -20px rgba(0, 0, 0, 0.8);
   --ez-sombra-l: 0 30px 80px -30px rgba(0, 0, 0, 0.9);
   color-scheme: dark;
 }
-/* ── Tema líquido ── */
-.azra [data-tema="liquido"] {
-  --ep-fondo: #e9e9ec;
-  --ep-tarjeta: #ffffff;
-  --ep-superficie: #ffffff;
-  --ep-superficie-2: #f4f4f6;
-  --ep-borde: rgba(15, 15, 20, 0.07);
-  --ep-texto: #0b0b0f;
-  --ep-suave: #63636e;
-  --ep-acento: #0b0b0f;
-  --ez-fondo-pagina: linear-gradient(180deg, #f1f1f3, #dedee2);
-  --ez-titulo-2: #8d8d97;
-  --ez-sombra: 0 24px 60px -24px rgba(0, 0, 0, 0.35), 0 4px 12px -4px rgba(0, 0, 0, 0.08);
-  --ez-sombra-l: 0 40px 90px -30px rgba(0, 0, 0, 0.45);
-}
-
 .azra.ep-shell,
 .azra .ep-estudio {
   font-family: var(--ez-fuente);
@@ -710,7 +694,7 @@
   .azra.ez-app[data-sidebar="contraida"] [data-tooltip]::after {
     display: none;
   }
-  .azra .ez-sidebar-plegar {
+  .azra .ez-sidebar-borde {
     display: none;
   }
   .azra .ez-sidebar-cerrar,
@@ -744,7 +728,7 @@
 /* ── Lámpara de lava (fondo de todo el estudio) ── */
 .azra .ep-estudio {
   position: relative;
-  background: transparent;
+  background: var(--ez-fondo-pagina);
 }
 .azra .ez-lava {
   position: fixed;
@@ -980,4 +964,148 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+.azra[data-global-theme="dark"] :is(.ez-sidebar,.ez-cabecera,.ez-sb-item[aria-current="page"],.ez-cuenta-menu) {background:var(--ep-tarjeta);color:var(--ep-texto)}
+
+.azra[data-global-theme="dark"] .ez-lava {filter:brightness(.14) saturate(.6)}
+.azra[data-global-theme="dark"] :is(input,select,textarea) {color-scheme:dark;background-color:var(--ep-superficie);color:var(--ep-texto)}
+
+/* Plegar la barra lateral: botón redondo en su borde derecho, visible expandida y contraída. */
+.azra .ez-sidebar-borde {
+  position: fixed;
+  top: 28px;
+  left: calc(var(--ez-sb-ancho) - 13px);
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--ep-borde-control);
+  border-radius: 999px;
+  background: var(--ep-tarjeta);
+  color: var(--ep-suave);
+  box-shadow: var(--ez-sombra-s);
+  cursor: pointer;
+  transition: left 200ms cubic-bezier(0.22, 1, 0.36, 1), color 150ms ease;
+}
+.azra .ez-sidebar-borde:hover {
+  color: var(--ep-texto);
+}
+.azra .ez-sidebar-borde:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-sidebar-borde {
+    transition: none;
+  }
+}
+
+/* Tema: sol y luna en la cabecera. */
+.azra .ez-tema {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--ep-borde);
+  border-radius: 999px;
+  background: var(--ep-superficie-2);
+}
+.azra .ez-tema button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ep-suave);
+  cursor: pointer;
+}
+.azra .ez-tema button:hover {
+  color: var(--ep-texto);
+}
+.azra .ez-tema button[aria-pressed="true"] {
+  background: var(--ep-tarjeta);
+  color: var(--ep-texto);
+  box-shadow: var(--ez-sombra-s);
+}
+.azra .ez-tema button:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 1px;
+}
+.azra[data-global-theme="dark"] .ez-sidebar-borde {
+  background: var(--ep-superficie-2);
+}
+/* En móvil la barra es un cajón con su propio botón de cerrar: sin botón de borde. */
+@media (max-width: 899px) {
+  .azra .ez-sidebar-borde {
+    display: none;
+  }
+}
+
+/* Conexiones · Codex y Claude Code locales: estado comprobado y acciones separadas. */
+.azra .ez-ia-estado.ez-ia-ok {
+  background: var(--ep-hecho-fondo, #ecfdf3);
+  color: var(--ep-hecho, #067647);
+}
+.azra .ez-ia-estado.ez-ia-atencion {
+  background: var(--ep-atencion-fondo, #fffaeb);
+  color: var(--ep-atencion, #b54708);
+}
+.azra .ez-ia-estado.ez-ia-error {
+  background: var(--ep-error-fondo, #fef3f2);
+  color: var(--ep-error, #b42318);
+}
+.azra .ez-ia-datos {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0;
+  font-size: 13px;
+}
+.azra .ez-ia-datos div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.azra .ez-ia-datos dt {
+  color: var(--ep-suave);
+}
+.azra .ez-ia-datos dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.azra .ez-ia-detalle {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.azra .ez-ia-detalle.ez-ia-atencion {
+  background: var(--ep-atencion-fondo, #fffaeb);
+}
+.azra .ez-ia-detalle.ez-ia-error {
+  background: var(--ep-error-fondo, #fef3f2);
+}
+.azra .ez-ia-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.azra .ez-gira {
+  animation: ez-gira 0.9s linear infinite;
+}
+@keyframes ez-gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-gira {
+    animation: none;
+  }
 }

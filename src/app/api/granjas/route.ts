@@ -1,8 +1,14 @@
 import { z } from "zod";
 import { leerProduccion } from "@/lib/produccion/almacen";
-import { buscarHerramienta } from "@/lib/produccion/proveedores";
+import { diagnosticoReciente, utilizable } from "@/lib/produccion/ia-local";
 import { administrador, cuerpo, errorApi } from "@/lib/granjas/api";
-import { actualizarGranja, crearDesdeReceta, crearGranja, duplicarGranja, listarGranjas } from "@/lib/granjas/almacen";
+import {
+  actualizarGranja,
+  crearDesdeReceta,
+  crearGranja,
+  duplicarGranja,
+  listarGranjas,
+} from "@/lib/granjas/almacen";
 import { datosGranjaSchema, grafoSchema, recetas } from "@/lib/granjas/modelo";
 import { listarMedios } from "@/lib/granjas/medios";
 import { especialistasVisibles } from "@/lib/granjas/especialistas";
@@ -28,15 +34,58 @@ const accion = z.discriminatedUnion("accion", [
 export async function GET() {
   try {
     await administrador();
-    const [produccion, codex, claude] = await Promise.all([leerProduccion(), buscarHerramienta("codex"), buscarHerramienta("claude")]);
+    const [produccion, codex, claude] = await Promise.all([
+      leerProduccion(),
+      diagnosticoReciente("astra"),
+      diagnosticoReciente("claude"),
+    ]);
     return Response.json({
       granjas: listarGranjas(),
-      recetas: recetas.map((r) => ({ clave: r.clave, nombre: r.datos.nombre, objetivo: r.datos.objetivo, formato: r.datos.formato, pasos: r.pasos.length })),
-      encargos: produccion.encargos.map((e) => ({ id: e.id, titulo: e.titulo, agente: e.agente, version: e.version, estado: e.estado, origen: e.origenResultado })),
-      medios: listarMedios().map(({ id, mime, nombre, ancho, alto, duracion, licencia, generado, bytes, procedencia, creado }) => ({ id, mime, nombre, ancho, alto, duracion, licencia, generado, bytes, origen: procedencia.origen, creado })),
+      recetas: recetas.map((r) => ({
+        clave: r.clave,
+        nombre: r.datos.nombre,
+        objetivo: r.datos.objetivo,
+        formato: r.datos.formato,
+        pasos: r.pasos.length,
+      })),
+      encargos: produccion.encargos.map((e) => ({
+        id: e.id,
+        titulo: e.titulo,
+        agente: e.agente,
+        version: e.version,
+        estado: e.estado,
+        origen: e.origenResultado,
+      })),
+      medios: listarMedios().map(
+        ({
+          id,
+          mime,
+          nombre,
+          ancho,
+          alto,
+          duracion,
+          licencia,
+          generado,
+          bytes,
+          procedencia,
+          creado,
+        }) => ({
+          id,
+          mime,
+          nombre,
+          ancho,
+          alto,
+          duracion,
+          licencia,
+          generado,
+          bytes,
+          origen: procedencia.origen,
+          creado,
+        }),
+      ),
       ia: {
-        astra: Boolean(codex),
-        claude: Boolean(claude),
+        astra: utilizable(codex),
+        claude: utilizable(claude),
         gemini: geminiProduccionHabilitado(),
       },
       especialistas: especialistasVisibles(),
@@ -57,7 +106,11 @@ export async function POST(request: Request) {
           ? crearDesdeReceta(a.clave)
           : a.accion === "duplicar"
             ? duplicarGranja(a.id)
-            : actualizarGranja(a.id, a.revision, { datos: a.datos, grafo: a.grafo, estado: a.estado });
+            : actualizarGranja(a.id, a.revision, {
+                datos: a.datos,
+                grafo: a.grafo,
+                estado: a.estado,
+              });
     return Response.json({ granja });
   } catch (error) {
     return errorApi(error);

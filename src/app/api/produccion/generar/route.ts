@@ -4,7 +4,8 @@ import { apiError } from "@/lib/http";
 import { WorkflowError } from "@/lib/workflow";
 import { leerProduccion } from "@/lib/produccion/almacen";
 import { reservarGeneracion, guardarEntrega, registrarFallo } from "@/lib/produccion/generacion";
-import { buscarHerramienta, generarGemini, generarLocal } from "@/lib/produccion/proveedores";
+import { generarGemini, generarLocal } from "@/lib/produccion/proveedores";
+import { diagnosticoReciente } from "@/lib/produccion/ia-local";
 import { geminiProduccionHabilitado } from "@/lib/ia/gemini";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,18 +37,31 @@ export async function POST(request: Request) {
           "La ejecución de Gemini todavía no está habilitada en este estudio.",
           503,
         );
-    } else if (!(await buscarHerramienta(encargo.proveedor === "astra" ? "codex" : "claude")))
-      throw new WorkflowError(
-        "No se encontró la herramienta local. Puedes copiar el encargo a tu sesión de IA.",
-        503,
-      );
+    } else {
+      // Antes de gastar un intento: programa, opciones de seguridad y sesión comprobados (no solo el ejecutable).
+      const diag = await diagnosticoReciente(encargo.proveedor, 60_000);
+      if (diag.estado === "no_instalado")
+        throw new WorkflowError(
+          "No se encontró la herramienta local. Puedes copiar el encargo a tu sesión de IA.",
+          503,
+        );
+      if (diag.estado === "sesion_pendiente" || diag.estado === "incompatible")
+        throw new WorkflowError(diag.detalle, 503);
+    }
     const reservado = await reservarGeneracion(encargo.id, leido.data.revision);
     let entrega;
     try {
-      entrega = reservado.proveedor === "gemini" ? await generarGemini(reservado) : await generarLocal(reservado);
+      entrega =
+        reservado.proveedor === "gemini"
+          ? await generarGemini(reservado)
+          : await generarLocal(reservado);
     } catch (error) {
       // El intento ya contó: queda en el historial qué falló; el resultado anterior se conserva.
-      await registrarFallo(reservado.id, error instanceof Error ? error.message : "La IA no entregó un resultado.", reservado.proveedor).catch(() => undefined);
+      await registrarFallo(
+        reservado.id,
+        error instanceof Error ? error.message : "La IA no entregó un resultado.",
+        reservado.proveedor,
+      ).catch(() => undefined);
       throw error;
     }
     return Response.json(await guardarEntrega(reservado, entrega));

@@ -78,7 +78,7 @@ El propietario decidió continuar con Codex; este archivo conserva el relevo par
 ## Relevo — Configuración reducida (2026-10-07, tarde)
 
 - Configuración solo tiene Mi perfil, Empresa y Usuarios. Eliminados (recuperables de git): `src/features/azra/{credentials,workflows,announcements}/`, `tests/azra-credentials.test.ts`, 132 textos ES/EN, el componente «Pendiente». `/azra/settings` y cualquier URL vieja de ajustes → Mi perfil. En Empresa › Funciones los «Configurar» quedaron deshabilitados (apuntaban a páginas eliminadas).
-- **Pendiente de confirmación del propietario:** borrar el acceso `sgmotos` con `rafasanguti11@gmail.com` de `data/access.json`. Es el acceso del cliente Sgmotos (no un duplicado). No se borró nada; no hay semillas con ese correo. El usuario de Clerk y el localStorage del navegador quedan a cargo del propietario.
+- **Pendiente de confirmación del propietario:** borrar el acceso `sgmotos` con `(correo del cliente Sgmotos; ver data/access.json)` de `data/access.json`. Es el acceso del cliente Sgmotos (no un duplicado). No se borró nada; no hay semillas con ese correo. El usuario de Clerk y el localStorage del navegador quedan a cargo del propietario.
 
 ## Relevo prioritario — «Pregúntale a la IA» real con Gemini (2026-10-07)
 

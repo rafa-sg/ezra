@@ -2,11 +2,7 @@
 .azra .ez-dc {
   display: grid;
   gap: 14px;
-  padding: 22px;
-  border: 1px solid var(--ep-borde);
-  border-radius: var(--ez-radio-xl);
-  background: var(--ep-tarjeta);
-  box-shadow: var(--ez-sombra-s);
+  margin-block: 24px;
   font-family: var(--ez-fuente);
 }
 .azra .ez-dc-cabecera {
@@ -76,7 +72,7 @@
 }
 .azra .ez-dc-cuerpo {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
@@ -84,8 +80,7 @@
   min-width: 0;
 }
 .azra .ez-dc-panel {
-  position: sticky;
-  top: 80px;
+  position: static;
   display: grid;
   gap: 8px;
   max-height: calc(100vh - 110px);
@@ -156,127 +151,6 @@
 }
 
 /* Geografía */
-.azra .ez-geo {
-  display: grid;
-  gap: 10px;
-}
-.azra .ez-geo-barra {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.azra .ez-geo-mapa {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.azra .ez-geo-pais {
-  fill: #eef0f6;
-  stroke: #c9ccd8;
-  stroke-width: 1.2;
-}
-.azra .ez-geo-depto {
-  fill: #e6e8f0;
-  stroke: #ffffff;
-  stroke-width: 1.4;
-  cursor: pointer;
-  transition: fill 150ms ease;
-}
-.azra .ez-geo-depto.ez-geo-con {
-  fill: #7c8cff;
-}
-.azra .ez-geo-depto:hover {
-  stroke: var(--ez-negro);
-}
-.azra .ez-geo-depto.ez-geo-elegido {
-  stroke: var(--ez-negro);
-  stroke-width: 2.4;
-}
-.azra .ez-geo-marcador {
-  cursor: pointer;
-}
-.azra .ez-geo-marcador circle {
-  fill: rgba(11, 11, 15, 0.82);
-  stroke: #fff;
-  stroke-width: 2;
-}
-.azra .ez-geo-marcador text {
-  fill: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  font-family: var(--ez-fuente);
-  pointer-events: none;
-}
-.azra .ez-geo-marcador.ez-geo-elegido circle {
-  fill: var(--ez-azul);
-}
-.azra .ez-geo-lista {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.azra .ez-geo-lista button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--ep-borde);
-  border-radius: 999px;
-  background: var(--ep-tarjeta);
-  color: var(--ep-texto-2);
-  font: inherit;
-  font-size: 12.5px;
-  cursor: pointer;
-}
-.azra .ez-geo-lista button span {
-  color: var(--ep-suave);
-  font-weight: 600;
-}
-.azra .ez-geo-lista button[aria-pressed="true"] {
-  border-color: var(--ez-negro);
-  background: var(--ez-negro);
-  color: #fff;
-}
-.azra .ez-geo-lista button[aria-pressed="true"] span {
-  color: rgba(255, 255, 255, 0.8);
-}
-.azra .ez-geo-lista .ez-geo-sin {
-  border-style: dashed;
-}
-.azra .ez-geo-lista button:focus-visible {
-  outline: 2px solid var(--ez-violeta);
-  outline-offset: 2px;
-}
-.azra .ez-geo-leyenda {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--ep-texto-2);
-  font-size: 12.5px;
-}
-.azra .ez-geo-leyenda-circulos {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 4px;
-}
-.azra .ez-geo-leyenda-circulos i {
-  display: block;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: rgba(11, 11, 15, 0.82);
-  box-shadow: 0 0 0 1px var(--ep-borde);
-}
-.azra .ez-geo-atribucion {
-  margin: 0;
-  color: var(--ep-suave);
-  font-size: 11.5px;
-}
 
 /* Trazabilidad */
 .azra .ez-traza {
@@ -319,7 +193,7 @@
   overflow: hidden;
   border: 1px solid var(--ep-borde-suave);
   border-radius: 16px;
-  background: #fbfbfd;
+  background: var(--ep-superficie-2);
   cursor: grab;
   touch-action: none;
 }
@@ -373,7 +247,7 @@
   cursor: pointer;
 }
 .azra .ez-nodo-t rect {
-  fill: #fff;
+  fill: var(--ep-tarjeta);
   stroke: var(--ep-borde-control);
 }
 .azra .ez-nodo-t:hover rect {
@@ -435,9 +309,6 @@
   }
 }
 @media (max-width: 640px) {
-  .azra .ez-dc {
-    padding: 14px;
-  }
   .azra .ez-dc-totales {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -446,183 +317,16 @@
   }
 }
 
-/* ── Geografía en panel oscuro (diseño de puntos, ahora funcional) ── */
-.azra .ez-geo-zoom {
-  display: inline-flex;
-  gap: 6px;
-  margin-left: auto;
-}
-.azra .ez-geo-zoom .ez-boton-blanco {
-  min-height: 34px;
-  padding: 0 10px;
-  font-size: 13px;
-}
-.azra .ez-geo-oscuro {
-  overflow: hidden;
-  border-radius: 22px;
-  background: radial-gradient(900px 420px at 50% -10%, rgba(59, 108, 255, 0.22), transparent 65%), #050507;
-  box-shadow: var(--ez-sombra);
-  cursor: grab;
-  touch-action: none;
-}
-.azra .ez-geo-oscuro:active {
-  cursor: grabbing;
-}
-.azra .ez-geo-oscuro svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.azra .ez-geo-puntos circle {
-  cursor: pointer;
-}
-.azra .ez-p-vacio {
-  fill: rgba(255, 255, 255, 0.12);
-}
-.azra .ez-p-datos {
-  fill: rgba(170, 190, 255, 0.38);
-}
-.azra .ez-p-activo {
-  fill: #9fb7ff;
-}
-.azra .ez-o-arco path:first-child {
-  fill: none;
-}
-.azra .ez-o-punteado path:first-child {
-  stroke-dasharray: 5 6;
-  opacity: 0.6;
-}
-.azra .ez-o-error path:first-child {
-  stroke-dasharray: 5 4;
-}
-.azra .ez-toque {
-  fill: none;
-  stroke: transparent;
-  stroke-width: 16;
-  cursor: pointer;
-}
-.azra .ez-o-arco-fino {
-  fill: none;
-  stroke: rgba(143, 168, 255, 0.26);
-  stroke-width: 1;
-  stroke-dasharray: 3 4;
-}
-.azra .ez-o-pulsos circle {
-  fill: #dbe5ff;
-  filter: drop-shadow(0 0 4px #7c9bff);
-}
-.azra .ez-o-halo {
-  fill: rgba(59, 108, 255, 0.5);
-}
-.azra .ez-o-centro {
-  fill: #8fb0ff;
-  stroke: #fff;
-  stroke-width: 1.5;
-}
-.azra .ez-o-nodo,
-.azra .ez-o-lado,
-.azra .ez-o-pastilla,
-.azra .ez-o-sin {
-  cursor: pointer;
-}
-.azra .ez-o-nodo:hover .ez-o-centro,
-.azra .ez-o-lado:hover .ez-o-centro,
-.azra .ez-o-elegido .ez-o-centro {
-  fill: #fff;
-  stroke: #8fb0ff;
-  stroke-width: 3;
-}
-.azra .ez-o-etiqueta text {
-  fill: #d6d9e6;
-  font-size: 12.5px;
-  font-family: var(--ez-fuente);
-}
-.azra .ez-o-guia {
-  fill: none;
-  stroke: rgba(214, 217, 230, 0.45);
-  stroke-width: 1;
-}
-.azra .ez-o-titulo {
-  fill: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: var(--ez-fuente);
-}
-.azra .ez-o-texto {
-  fill: #a9adbf;
-  font-size: 12px;
-  font-family: var(--ez-fuente);
-}
-.azra .ez-o-apagado {
-  opacity: 0.5;
-}
-.azra .ez-o-hub rect {
-  fill: #fff;
-}
-.azra .ez-o-hub text {
-  fill: #0b0b0f;
-  font-size: 16px;
-  font-weight: 700;
-  font-family: var(--ez-fuente);
-  letter-spacing: -0.02em;
-}
-.azra .ez-o-pastilla rect {
-  fill: rgba(20, 22, 32, 0.92);
-  stroke: rgba(255, 255, 255, 0.14);
-}
-.azra .ez-o-pastilla circle {
-  fill: #6f8fff;
-}
-.azra .ez-o-pastilla text {
-  fill: #e6e8f2;
-  font-size: 11.5px;
-  font-weight: 600;
-  font-family: var(--ez-fuente);
-}
-.azra .ez-o-sin rect {
-  fill: rgba(20, 22, 32, 0.9);
-  stroke: rgba(255, 255, 255, 0.3);
-  stroke-dasharray: 4 4;
-}
-.azra .ez-o-sin text {
-  fill: #e6e8f2;
-  font-size: 12.5px;
-  font-family: var(--ez-fuente);
-}
-.azra .ez-o-sin.ez-o-elegido rect {
-  stroke: #8fb0ff;
-  stroke-dasharray: none;
-}
-.azra .ez-geo-oscuro .ez-atenuado {
-  opacity: 0.2;
-}
-.azra .ez-geo-leyenda {
-  flex-wrap: wrap;
-}
-@media (max-width: 767px) {
-  .azra .ez-o-pastilla,
-  .azra .ez-o-etiqueta {
-    display: none;
-  }
-  .azra .ez-o-titulo {
-    font-size: 22px;
-  }
-  .azra .ez-geo-zoom {
-    margin-left: 0;
-  }
-}
-
 /* Que nada del bloque fuerce un ancho mayor que la pantalla (las cuadrículas tomaban el ancho mínimo del contenido). */
 .azra .ez-panorama > *,
 .azra .ez-dc,
 .azra .ez-dc-vista,
-.azra .ez-geo,
 .azra .ez-traza,
 .azra .ez-dc-filtros label {
   min-width: 0;
 }
 .azra .ez-dc-cuerpo {
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr);
 }
 .azra .ez-dc-filtros select,
 .azra .ez-dc-filtros input {
@@ -633,4 +337,80 @@
   .azra .ez-dc-cuerpo {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.azra .ez-map-filters {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--ep-borde);
+  border-radius: 14px;
+  color: var(--ep-texto);
+}
+.azra .ez-map-filters summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.azra .ez-source-directory form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.8rem;
+}
+.azra .ez-source-directory label {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.7rem;
+}
+.azra .ez-source-directory a {
+  color: var(--ep-texto);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+/* Inicio: barra del mapa, leyenda y extras debajo (filtros y fuentes de recolección). */
+.azra .ez-dc-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+.azra .ez-dc-barra .ez-dc-sub {
+  flex: 1 1 260px;
+  margin: 0;
+}
+.azra .ez-dc-leyenda {
+  margin: 0;
+  color: var(--ep-suave);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.azra .ez-dc-extras {
+  display: grid;
+  gap: 10px;
+}
+
+/* Totales mientras cargan: misma estructura que los reales; el número es un bloque que brilla. */
+.azra .ez-dc-totales-cargando dd span {
+  border-radius: 8px;
+  color: transparent;
+  background: linear-gradient(
+      90deg,
+      var(--ep-superficie-2) 0%,
+      var(--ep-borde) 50%,
+      var(--ep-superficie-2) 100%
+    )
+    0 0 / 200% 100%;
+  animation: ez-mp-brillo 1.3s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-dc-totales-cargando dd span {
+    animation: none;
+  }
+}
+
+.azra details.ez-dc-leyenda summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+.azra details.ez-dc-leyenda p {
+  margin: 6px 0 0;
 }
