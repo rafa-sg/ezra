@@ -31,6 +31,7 @@ No hace falta instalar Node.js: viene dentro del contenedor.
 **macOS**
 
 1. Instalá Docker Desktop desde https://www.docker.com/products/docker-desktop/ (elegí Apple Silicon o Intel según tu Mac) y abrilo. Esperá a que el ícono de la ballena diga «Docker Desktop is running».
+   - **Alternativa sin contraseña de administrador (Colima):** si tenés Homebrew, en la Terminal escribí `brew install colima docker docker-compose` y después `colima start --mount-inotify`. Para que Docker encuentre Compose, agregá `"cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"]` a `~/.docker/config.json`. Con Colima, clona el proyecto dentro de tu carpeta de usuario (por ejemplo `~/Proyectos`): las carpetas de fuera no se comparten con Docker.
 2. Abrí la app **Terminal** y escribí `git --version`. Si macOS ofrece instalar las «herramientas de línea de comandos», aceptá.
 
 **Windows 10 u 11**
@@ -121,7 +122,7 @@ Ese correo quedó como administración solo en **tu** volumen de datos. Si entr�
 
 1. Abrí `src/features/azra/messages/es.json` y buscá `"ez_trabajo_l1": "Tu trabajo,"`.
 2. Cambiá el texto, por ejemplo a `"Mi trabajo,"`, y guardá.
-3. Mirá el navegador: en uno o dos segundos el título de Inicio cambia solo. Si no cambia, recargá la página.
+3. Mirá el navegador: en unos segundos el título de Inicio cambia solo. Dentro de Docker, Ezra revisa los archivos cada segundo (en Mac y Windows los avisos de cambio no siempre llegan al contenedor); si no cambia, recargá la página.
 
 Volvé el texto a como estaba si solo era una prueba (`git checkout -- src/features/azra/messages/es.json`).
 
@@ -193,6 +194,8 @@ No subas cambios directamente a `main`.
 | Entrás pero dice que tu cuenta no tiene acceso | Ejecutá el paso 5 con el **mismo** correo con el que entraste. Si ya había otro correo configurado, empezá de cero con `docker compose down -v`. |
 | El código 424242 no funciona | El correo debe contener `+clerk_test`. En el panel de Clerk, comprobá que la aplicación esté en *Development*. |
 | Los cambios no aparecen en el navegador (Windows) | El proyecto está en una carpeta de Windows. Clonalo dentro de Ubuntu (`cd ~` en la ventana de Ubuntu) y trabajá desde ahí. |
+| La terminal dice «Couldn't find any `pages` or `app` directory» | Docker no ve las carpetas del proyecto. Con Colima, el proyecto debe estar dentro de tu carpeta de usuario; con Docker Desktop, revisá *Settings → Resources → File sharing*. |
+| La computadora trabaja mucho con Docker encendido | Es la revisión de archivos de cada segundo. En Linux nativo podés desactivarla poniendo `EZRA_DOCKER_POLL: "0"` en `compose.yaml`. |
 | Al construir aparece `npm warn allow-scripts protobufjs…` | Es un aviso normal; podés ignorarlo. |
 | `npm ci` falla al construir | Revisá tu conexión. Si cambiaste dependencias, `package-lock.json` debe estar actualizado. |
 | Todo raro después de muchos cambios | `docker compose down` y `docker compose up --build`. Tus datos se conservan. |

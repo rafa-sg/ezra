@@ -5,6 +5,11 @@ FROM node:24.18.0-bookworm-slim
 ENV NEXT_TELEMETRY_DISABLED=1 \
     EZRA_DATA_DIR=/datos
 
+# ffmpeg: Ezra lo usa para medir imágenes y armar videos (y las pruebas lo necesitan).
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
+
 # Carpetas de la app y de los datos, a nombre del usuario sin privilegios «node».
 RUN mkdir -p /app /datos && chown node:node /app /datos
 WORKDIR /app

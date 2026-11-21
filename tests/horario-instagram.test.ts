@@ -1,7 +1,6 @@
 import test, { before } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -11,6 +10,7 @@ process.env.EZRA_GRANJAS_TRABAJADOR = "0";
 process.env.EZRA_PRODUCCION_IA = "1";
 process.env.GEMINI_API_KEY = "clave-de-prueba";
 import type { Dependencias } from "../src/lib/granjas/pasos";
+import { hayFfmpeg, rutaFfmpeg } from "./helpers/ffmpeg";
 let horario: typeof import("../src/lib/granjas/horario");
 let almacen: typeof import("../src/lib/granjas/almacen");
 let ejecucion: typeof import("../src/lib/granjas/ejecucion");
@@ -156,9 +156,9 @@ test("granja «Post para Instagram»: Gemini simulado corrige o cae a la plantil
   eventoAprobado("Festival de Jazz", 8);
   eventos.crearEvento({ ...uno, titulo: "Evento sin aprobar" });
   // Imagen oficial con permiso para el primero (fondo de la plantilla).
-  if (existsSync("/opt/homebrew/bin/ffmpeg")) {
+  if (hayFfmpeg) {
     const destino = path.join(process.env.EZRA_DATA_DIR!, "fondo.jpg");
-    execFileSync("/opt/homebrew/bin/ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", "color=c=orange:s=640x800", "-frames:v", "1", destino]);
+    execFileSync(rutaFfmpeg, ["-v", "error", "-y", "-f", "lavfi", "-i", "color=c=orange:s=640x800", "-frames:v", "1", destino]);
     const medio = await medios.guardarMedio(await readFile(destino), { nombre: "Cartel oficial", procedencia: { origen: "subida", nota: "prueba" }, licencia: "Permiso de prueba", generado: false });
     eventos.autorizarImagen(uno.id, eventos.leerEvento(uno.id).revision, medio.id, "Autorizado por la organización (prueba)");
   }

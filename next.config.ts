@@ -8,6 +8,10 @@ const config: NextConfig = {
   // En Docker el servidor escucha en 0.0.0.0 y Next solo admitiría localhost: sin esto, desde
   // http://127.0.0.1:3000 se bloquean los recursos de desarrollo y la recarga en vivo.
   allowedDevOrigins: ["127.0.0.1"],
+  // Solo en Docker (compose.yaml): en Mac y Windows los avisos de archivos cambiados no siempre cruzan
+  // a la máquina virtual de Docker, así que Next revisa los archivos cada cierto tiempo. Fuera de
+  // Docker no se usa (la guía de Next lo desaconseja salvo como último recurso).
+  ...(Number(process.env.EZRA_DOCKER_POLL) > 0 ? { watchOptions: { pollIntervalMs: Number(process.env.EZRA_DOCKER_POLL) } } : {}),
   async headers() {
     return [
       {

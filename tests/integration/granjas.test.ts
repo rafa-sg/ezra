@@ -25,6 +25,9 @@ async function iniciar(directorio: string) {
         ...process.env,
         ...(await clerkTestEnvironment(directorio)),
         EZRA_DATA_DIR: directorio,
+        // Esta prueba verifica el trabajador real (en datos aislados): se enciende aunque el entorno
+        // lo apague, como hace el contenedor de Docker con EZRA_GRANJAS_TRABAJADOR=0.
+        EZRA_GRANJAS_TRABAJADOR: "1",
         GEMINI_API_KEY: "",
         // Ninguna credencial social: la API debe explicar qué falta sin fingir conexiones.
         INSTAGRAM_APP_ID: "",

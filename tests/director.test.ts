@@ -1,6 +1,5 @@
 import test, { before } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
@@ -9,6 +8,7 @@ process.env.EZRA_DATA_DIR = path.resolve(`work/director-test-${process.pid}-${Da
 process.env.EZRA_GRANJAS_TRABAJADOR = "0";
 process.env.EZRA_PRODUCCION_IA = "1";
 import type { Dependencias } from "../src/lib/granjas/pasos";
+import { hayFfmpeg } from "./helpers/ffmpeg";
 let director: typeof import("../src/lib/granjas/director");
 let directorWeb: typeof import("../src/lib/granjas/director-web");
 let diseno: typeof import("../src/lib/granjas/diseno");
@@ -216,7 +216,7 @@ test("video: guion validado (titular del evento, nada sin confirmar, máx. 4 esc
   assert.ok(video.guionSchema.safeParse(r.guion).success, "la plantilla cumple el esquema");
 });
 
-test("video del post: MP4 vertical 1080×1920 real con ffmpeg, guardado en el post y un intento del límite", { skip: !existsSync("/opt/homebrew/bin/ffmpeg") }, async () => {
+test("video del post: MP4 vertical 1080×1920 real con ffmpeg, guardado en el post y un intento del límite", { skip: !hayFfmpeg }, async () => {
   db.base().exec("delete from posts_ig; delete from eventos; delete from usos_ia;");
   const e = eventoAprobado("Festival del Maíz de Suchitoto", 3);
   const post = instagram.crearPost({ eventoId: e.id, granjaId: null, ejecucionId: null, cuenta: "@spotmi.sv", texto: instagram.textoPlantilla(e), textoOrigen: "plantilla", nota: "" });

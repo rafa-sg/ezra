@@ -1,7 +1,6 @@
 import test, { before } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -9,6 +8,7 @@ import path from "node:path";
 process.env.EZRA_DATA_DIR = path.resolve(`work/eventos-fuentes-test-${process.pid}-${Date.now()}`);
 process.env.EZRA_GRANJAS_TRABAJADOR = "0";
 import type { Respuesta } from "../src/lib/granjas/fuentes";
+import { hayFfmpeg, rutaFfmpeg } from "./helpers/ffmpeg";
 let eventos: typeof import("../src/lib/granjas/eventos");
 let completar: typeof import("../src/lib/granjas/completar-imagenes");
 let imagenes: typeof import("../src/lib/granjas/imagenes");
@@ -18,8 +18,7 @@ let redes: typeof import("../src/lib/granjas/redes");
 let verificador: typeof import("../src/lib/granjas/verificador");
 let gemini: typeof import("../src/lib/ia/gemini");
 let cripto: typeof import("../src/lib/granjas/cripto");
-const ffmpeg = "/opt/homebrew/bin/ffmpeg";
-const hayFfmpeg = existsSync(ffmpeg);
+const ffmpeg = rutaFfmpeg;
 let cartel: Buffer;
 let otroCartel: Buffer;
 let banner: Buffer;

@@ -18,6 +18,8 @@ services:
       # trabajador y horarios de las granjas, IA de pago y publicación en redes.
       EZRA_GRANJAS_TRABAJADOR: "0"
       EZRA_PRODUCCION_IA: "0"
+      # Recarga en vivo fiable en Mac y Windows: Next revisa los archivos cada 1 s (0 la desactiva).
+      EZRA_DOCKER_POLL: "1000"
       GEMINI_API_KEY: ""
       INSTAGRAM_APP_ID: ""
       INSTAGRAM_APP_SECRET: ""

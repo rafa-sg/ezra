@@ -1,7 +1,6 @@
 import test, { before } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -12,6 +11,7 @@ process.env.EZRA_GRANJAS_TRABAJADOR = "0";
 process.env.EZRA_PRODUCCION_IA = "0";
 import type { Dependencias } from "../src/lib/granjas/pasos";
 import type { Grafo, Nodo } from "../src/lib/granjas/modelo";
+import { hayFfmpeg, rutaFfmpeg } from "./helpers/ffmpeg";
 let modelo: typeof import("../src/lib/granjas/modelo");
 let almacen: typeof import("../src/lib/granjas/almacen");
 let ejecucion: typeof import("../src/lib/granjas/ejecucion");
@@ -68,10 +68,10 @@ async function vaciarCola(d = deps()) {
 }
 async function imagenPrueba(color = "red") {
   const destino = path.join(process.env.EZRA_DATA_DIR!, `${color}-${uuid()}.jpg`);
-  execFileSync("/opt/homebrew/bin/ffmpeg", ["-v", "error", "-f", "lavfi", "-i", `color=c=${color}:s=320x240`, "-frames:v", "1", destino]);
+  execFileSync(rutaFfmpeg, ["-v", "error", "-f", "lavfi", "-i", `color=c=${color}:s=320x240`, "-frames:v", "1", destino]);
   return readFile(destino);
 }
-const hayFfmpeg = existsSync("/opt/homebrew/bin/ffmpeg");
+
 
 test("grafo: rechaza ciclos, duplicados, nodos faltantes e incompatibilidades", () => {
   const a = nodo({ tipo: "agente", agente: "cazador", titulo: "Caza" });
