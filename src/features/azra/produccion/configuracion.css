@@ -372,19 +372,21 @@
   }
 }
 
-/* Círculo de uso (barra lateral): anillo con el logo de Ezra, como el de Codex. */
+/* Botón de uso (barra lateral): solo el logo de Ezra, sin anillo; alineado con los íconos del menú. */
 .azra .cf-anillo {
   position: relative;
   display: grid;
   place-items: center;
   width: 40px;
   height: 40px;
-  margin: 4px 0 4px 4px;
+  margin: 2px 0 2px 2px;
   padding: 0;
   border: 0;
-  border-radius: 50%;
+  border-radius: 12px;
   background: transparent;
+  color: var(--ep-texto);
   cursor: pointer;
+  transition: background var(--ez-transicion);
 }
 .azra .cf-anillo:hover:not(:disabled),
 .azra .cf-anillo[aria-expanded="true"] {
@@ -394,34 +396,10 @@
   outline: 2px solid var(--ez-violeta);
   outline-offset: 2px;
 }
-.azra .cf-anillo svg {
-  position: absolute;
-  inset: 2px;
-  width: 36px;
-  height: 36px;
-}
-.azra .cf-anillo-fondo,
-.azra .cf-anillo-arco {
-  fill: none;
-  stroke-width: 2.5;
-}
-.azra .cf-anillo-fondo {
-  stroke: var(--ep-borde-control);
-}
-.azra .cf-anillo-arco {
-  stroke: var(--ep-texto);
-  stroke-linecap: round;
-  transition: stroke-dasharray var(--ez-transicion);
-}
-.azra .cf-anillo-logo {
-  width: 22px !important;
-  height: 22px !important;
-  border-radius: 7px;
-}
 .azra .cf-anillo-punto {
   position: absolute;
-  top: 5px;
-  left: 6px;
+  top: 8px;
+  right: 8px;
   width: 7px;
   height: 7px;
   border: 1.5px solid var(--ep-fondo);

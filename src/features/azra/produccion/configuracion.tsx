@@ -152,26 +152,19 @@ function filasUso(uso: ResumenUsoIA, tr: Tr, locale: string): Fila[] {
     },
   ];
 }
+/** Como en Claude: la barra muestra lo usado y va subiendo; naranja desde el 80 %. */
 function Barra({ fila, tr }: { fila: Fila; tr: Tr }) {
-  const bajo = fila.restante !== null && fila.restante < 20;
+  const usado = fila.restante === null ? null : 100 - fila.restante;
+  const alto = usado !== null && usado >= 80;
+  const texto = usado === null ? tr("cf_sinLimiteCorto") : `${usado} % ${tr("cf_usado")}`;
   return (
     <div className="cf-limite">
       <div className="cf-limite-cabeza">
         <strong>{fila.titulo}</strong>
       </div>
       <div className="cf-limite-linea">
-        <span>
-          {fila.restante === null
-            ? fila.detalle
-            : fila.reanuda
-              ? faltaPara(fila.reanuda, tr)
-              : fila.detalle}
-        </span>
-        <span className={bajo ? "cf-bajo" : undefined}>
-          {fila.restante === null
-            ? tr("cf_sinLimiteCorto")
-            : `${fila.restante} % ${tr("cf_restante")}`}
-        </span>
+        <span>{usado === null || !fila.reanuda ? fila.detalle : faltaPara(fila.reanuda, tr)}</span>
+        <span className={alto ? "cf-bajo" : undefined}>{texto}</span>
       </div>
       <div
         className="cf-barra"
@@ -179,21 +172,14 @@ function Barra({ fila, tr }: { fila: Fila; tr: Tr }) {
         aria-label={fila.titulo}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={fila.restante ?? undefined}
-        aria-valuetext={
-          fila.restante === null
-            ? tr("cf_sinLimiteCorto")
-            : `${fila.restante} % ${tr("cf_restante")}`
-        }
+        aria-valuenow={usado ?? undefined}
+        aria-valuetext={texto}
       >
-        {fila.restante !== null && (
-          <span
-            className={bajo ? "cf-barra-baja" : undefined}
-            style={{ width: `${fila.restante}%` }}
-          />
+        {usado !== null && usado > 0 && (
+          <span className={alto ? "cf-barra-baja" : undefined} style={{ width: `${usado}%` }} />
         )}
       </div>
-      {fila.restante !== null && <small className="cf-limite-detalle">{fila.detalle}</small>}
+      {usado !== null && <small className="cf-limite-detalle">{fila.detalle}</small>}
     </div>
   );
 }
@@ -276,24 +262,8 @@ export function BotonConsumo({
         data-tooltip={`${tr("p_consumo")}${anillo === null ? "" : ` · ${Math.round(anillo)} % ${tr("cf_usado")}`}`}
         onClick={() => setAbierto((a) => !a)}
       >
-        {/* Como el anillo de Codex: el arco es lo gastado del límite más apretado; punto rojo si queda < 20 %. */}
-        <svg viewBox="0 0 36 36" aria-hidden="true">
-          <circle cx="18" cy="18" r="15.5" className="cf-anillo-fondo" />
-          {anillo !== null && anillo > 0 && (
-            <circle
-              cx="18"
-              cy="18"
-              r="15.5"
-              className="cf-anillo-arco"
-              pathLength={100}
-              strokeDasharray={`${Math.max(2, anillo)} 100`}
-              transform="rotate(-90 18 18)"
-            />
-          )}
-        </svg>
-        <span className="ez-logo cf-anillo-logo" aria-hidden="true">
-          <Sparkles size={12} />
-        </span>
+        {/* Solo el logo de Ezra. El punto rojo avisa cuando algún límite pasa del 80 %. */}
+        <Sparkles size={20} strokeWidth={1.75} aria-hidden="true" />
         {anillo !== null && anillo >= 80 && <span className="cf-anillo-punto" aria-hidden="true" />}
       </button>
       {abierto &&
