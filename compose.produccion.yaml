@@ -1,0 +1,44 @@
+# Ezra en el servidor: `docker compose --env-file .env.produccion -f compose.produccion.yaml up -d --build`
+# Guía completa: docs/DESPLIEGUE_VPS.md. No usar en tu computadora (para eso está compose.yaml).
+name: ezra-produccion
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.produccion
+      args:
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?Falta en .env.produccion}
+    image: ezra-produccion
+    env_file:
+      - .env.produccion
+    environment:
+      EZRA_DATA_DIR: /datos
+    # Solo Caddy llega a la app; el puerto 3000 no se publica en internet.
+    expose:
+      - "3000"
+    volumes:
+      - datos:/datos
+    restart: unless-stopped
+
+  caddy:
+    # Recibe https://EZRA_DOMINIO, obtiene el certificado gratis (Let's Encrypt) y lo pasa a la app.
+    image: caddy:2
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      EZRA_DOMINIO: ${EZRA_DOMINIO:?Falta en .env.produccion}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_datos:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  # Base SQLite, medios y accesos. Sobrevive a reinicios y actualizaciones; solo se borra con `down -v`.
+  datos:
+  caddy_datos:
+  caddy_config:

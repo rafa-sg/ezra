@@ -27,3 +27,7 @@ handoff/
 .venv/
 .clerk/
 output/
+
+# Servidor de producción
+.env.produccion
+!.env.produccion.example

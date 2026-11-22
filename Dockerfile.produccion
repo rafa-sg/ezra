@@ -1,0 +1,43 @@
+# Ezra en un servidor (producción). Se usa con compose.produccion.yaml; ver docs/DESPLIEGUE_VPS.md.
+# Distinto del Dockerfile de desarrollo: compila una vez y arranca con `next start`.
+FROM node:24.18.0-bookworm-slim AS base
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# 1. Dependencias exactas de package-lock.json.
+FROM base AS dependencias
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+# 2. Compilación. Las variables NEXT_PUBLIC_* quedan dentro del código del navegador al compilar,
+#    por eso llegan como argumentos. Nunca pasar aquí claves secretas.
+FROM dependencias AS compilacion
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+ARG NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+ARG NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/
+ARG NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
+    NEXT_PUBLIC_CLERK_SIGN_IN_URL=$NEXT_PUBLIC_CLERK_SIGN_IN_URL \
+    NEXT_PUBLIC_CLERK_SIGN_UP_URL=$NEXT_PUBLIC_CLERK_SIGN_UP_URL \
+    NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=$NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL \
+    NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=$NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL
+COPY . .
+RUN test -n "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" || (echo "Falta NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY en .env.produccion" && exit 1)
+RUN npm run build
+
+# 3. Imagen final: ffmpeg (imágenes y videos) y la app compilada, con el usuario sin privilegios «node».
+FROM base AS ejecucion
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
+ENV NODE_ENV=production \
+    EZRA_DATA_DIR=/datos
+RUN mkdir -p /app /datos && chown node:node /app /datos
+WORKDIR /app
+COPY --from=compilacion --chown=node:node /app ./
+USER node
+# Si SQLite no funciona en esta imagen, la construcción falla aquí y no al abrir la web.
+RUN node -e "const {DatabaseSync}=require('node:sqlite');const d=new DatabaseSync(':memory:');d.exec('create table t(x)');console.log('SQLite', process.version, 'OK')"
+EXPOSE 3000
+CMD ["node_modules/.bin/next", "start", "--hostname", "0.0.0.0", "--port", "3000"]

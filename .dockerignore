@@ -3,6 +3,7 @@
 .env*
 !.env.example
 !.env.docker.example
+!.env.produccion.example
 .clerk/
 # Datos reales, respaldos, medios y trabajo local
 data/
@@ -27,5 +28,8 @@ playwright-report/
 .DS_Store
 *.log
 Dockerfile
+Dockerfile.produccion
 compose.yaml
+compose.produccion.yaml
+Caddyfile
 .dockerignore

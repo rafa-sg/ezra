@@ -1,0 +1,5 @@
+# Caddy pone HTTPS automático al dominio de EZRA_DOMINIO y pasa todo a Ezra.
+{$EZRA_DOMINIO} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}

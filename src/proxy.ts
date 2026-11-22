@@ -9,16 +9,29 @@ const authenticate = clerkMiddleware(
   },
 );
 
+// Dominios públicos permitidos además de la computadora local (solo en el servidor). Ejemplo:
+// EZRA_DOMINIOS=ezra.spotmi.com.sv. Vacío = Ezra solo responde en localhost, como siempre.
+const dominiosPermitidos = (process.env.EZRA_DOMINIOS || "")
+  .split(",")
+  .map((dominio) => dominio.trim().toLowerCase())
+  .filter(Boolean);
+
+function hostPermitido(host: string) {
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host)) return true;
+  const nombre = host.toLowerCase().replace(/:\d+$/, "");
+  return dominiosPermitidos.includes(nombre);
+}
+
 export default async function proxy(request: NextRequest, event: NextFetchEvent) {
   const host = request.headers.get("host") || "";
   // n8n in Docker reaches the Mac as host.docker.internal. Only the secret-protected
-  // results callback accepts that host; everything else stays loopback-only.
+  // results callback accepts that host; everything else stays loopback-only or EZRA_DOMINIOS.
   const dockerCallback =
     request.nextUrl.pathname === "/api/automation/results" &&
     /^host\.docker\.internal(:\d+)?$/.test(host);
-  if (!dockerCallback && !/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host))
+  if (!dockerCallback && !hostPermitido(host))
     return NextResponse.json(
-      { error: "Este piloto solo está disponible en tu computadora." },
+      { error: "Ezra no está disponible en esta dirección." },
       { status: 403 },
     );
   const origin = request.headers.get("origin");
