@@ -1,7 +1,8 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, MailPlus, RefreshCw, Save, Send, UserMinus } from "lucide-react";
 import { seccionesEquipo, type Miembro, type SeccionEquipo } from "@/lib/equipo/modelo";
+import type { Solicitud } from "@/lib/equipo/solicitudes";
 import { pedir } from "../granjas/cliente";
 import "./equipo.css";
 
@@ -74,8 +75,14 @@ export function SeccionEquipo({ tr }: { tr: (c: string) => string }) {
   const [nuevo, setNuevo] = useState<Borrador>({ rol: "socio", secciones: [], soloLectura: false });
   const [editando, setEditando] = useState<{ id: string; valor: Borrador } | null>(null);
   const [retirando, setRetirando] = useState<string | null>(null);
+  const [solicitudes, setSolicitudes] = useState<Solicitud[] | null>(null);
+  const correoInvitar = useRef<HTMLInputElement>(null);
   const cargar = useCallback(async () => {
     try {
+      // Las solicitudes no deben impedir ver el equipo si fallan.
+      void pedir<{ solicitudes: Solicitud[] }>("/api/equipo/solicitudes")
+        .then((r) => setSolicitudes(r.solicitudes))
+        .catch(() => setSolicitudes([]));
       setMiembros((await pedir<Respuesta>("/api/equipo")).miembros ?? []);
     } catch (e) {
       setError((e as Error).message);
@@ -106,8 +113,52 @@ export function SeccionEquipo({ tr }: { tr: (c: string) => string }) {
         ? tr("eq_retirado")
         : tr("eq_activo");
   const rol = (m: Miembro) => tr(`eq_rol_${m.rol}`);
+  async function cambiarSolicitud(id: string, estado: "invitada" | "descartada") {
+    try {
+      setSolicitudes((await pedir<{ solicitudes: Solicitud[] }>("/api/equipo/solicitudes", { id, estado })).solicitudes);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
   return (
     <div className="eq">
+      {solicitudes && solicitudes.length > 0 && (
+        <section className="eg-bloque">
+          <h2 className="eg-subtitulo">
+            {tr("eq_solicitudes")} · {solicitudes.length}
+          </h2>
+          <p className="ep-nota">{tr("eq_solicitudesAyuda")}</p>
+          <ul className="eq-solicitudes">
+            {solicitudes.map((s) => (
+              <li key={s.id}>
+                <div>
+                  <strong>{s.nombre}</strong> <span>{s.email}</span>
+                  {s.motivo && <p>{s.motivo}</p>}
+                  <small>{new Date(s.creado).toLocaleString("es-SV", { timeZone: "America/El_Salvador" })}</small>
+                </div>
+                <div className="eq-solicitud-acciones">
+                  <button
+                    className="ep-boton ep-primario"
+                    onClick={() => {
+                      // Llena el formulario de invitación; tú eliges rol y secciones antes de enviar.
+                      setEmail(s.email);
+                      setNombre(s.nombre);
+                      correoInvitar.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      correoInvitar.current?.focus();
+                    }}
+                  >
+                    <MailPlus size={15} aria-hidden="true" />
+                    {tr("eq_usarInvitacion")}
+                  </button>
+                  <button className="ep-boton" onClick={() => void cambiarSolicitud(s.id, "descartada")}>
+                    {tr("eq_descartar")}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section className="eg-bloque">
         <h2 className="eg-subtitulo">{tr("eq_invitar")}</h2>
         <form
@@ -116,11 +167,14 @@ export function SeccionEquipo({ tr }: { tr: (c: string) => string }) {
             e.preventDefault();
             void enviar(
               { accion: "invitar", datos: { email, nombre, ...nuevo } },
-              () => (
-                setEmail(""),
-                setNombre(""),
-                setNuevo({ rol: "socio", secciones: [], soloLectura: false })
-              ),
+              () => {
+                // Si venía de una solicitud de acceso, queda como invitada.
+                const pendiente = solicitudes?.find((x) => x.email === email.trim().toLowerCase());
+                if (pendiente) void cambiarSolicitud(pendiente.id, "invitada");
+                setEmail("");
+                setNombre("");
+                setNuevo({ rol: "socio", secciones: [], soloLectura: false });
+              },
             );
           }}
         >
@@ -131,6 +185,7 @@ export function SeccionEquipo({ tr }: { tr: (c: string) => string }) {
               required
               maxLength={254}
               autoComplete="off"
+              ref={correoInvitar}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />

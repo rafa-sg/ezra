@@ -527,6 +527,19 @@ const migraciones: string[] = [
   `
   alter table consumo_ia add column costo_reportado real;
   `,
+  // 16 · Solicitudes de acceso desde el login (sin IP ni datos de más): el propietario decide.
+  `
+  create table solicitudes_acceso (
+    id text primary key,
+    nombre text not null,
+    email text not null,
+    motivo text not null default '',
+    estado text not null default 'nueva',
+    creado text not null,
+    actualizado text not null
+  );
+  create index solicitudes_acceso_estado on solicitudes_acceso (estado, creado);
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

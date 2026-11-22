@@ -114,3 +114,35 @@
     justify-content: flex-start;
   }
 }
+
+/* Solicitudes de acceso (desde el login). */
+.azra .eq-solicitudes {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.azra .eq-solicitudes li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--ep-borde);
+  border-radius: var(--ez-radio, 14px);
+  background: var(--ep-tarjeta);
+}
+.azra .eq-solicitudes span,
+.azra .eq-solicitudes small {
+  color: var(--ep-suave);
+}
+.azra .eq-solicitudes p {
+  margin: 4px 0;
+  max-width: 60ch;
+}
+.azra .eq-solicitud-acciones {
+  display: flex;
+  gap: 8px;
+}
