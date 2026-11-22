@@ -198,7 +198,7 @@ const textoDe = (c: ContenidoPieza, canal: CanalConexion) =>
   ((c.textos as Record<string, string>)[canal] ?? "").trim();
 
 /* ── Instagram (Instagram API con inicio de sesión de Instagram) ── */
-const permisosInstagram = ["instagram_business_basic", "instagram_business_content_publish"];
+export const permisosInstagram = ["instagram_business_basic", "instagram_business_content_publish"];
 const graphIg = () => `https://graph.instagram.com/${versionGraph()}`;
 async function verificarInstagram(
   secreto: Secreto,
@@ -434,7 +434,7 @@ export const permisosLecturaInstagram = [
   "instagram_manage_insights",
   "pages_read_engagement",
 ];
-const permisosFacebook = [
+export const permisosFacebook = [
   "pages_show_list",
   "pages_read_engagement",
   "pages_manage_posts",
@@ -1024,7 +1024,7 @@ export const spotmi: Adaptador = {
 const googleToken = "https://oauth2.googleapis.com/token";
 export const youtubeApi = "https://www.googleapis.com/youtube/v3";
 export const permisoYoutubeAnalytics = "https://www.googleapis.com/auth/yt-analytics.readonly";
-const permisosYoutube = [
+export const permisosYoutube = [
   "https://www.googleapis.com/auth/youtube.readonly",
   "https://www.googleapis.com/auth/youtube.upload",
 ];

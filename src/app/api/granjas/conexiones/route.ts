@@ -12,6 +12,7 @@ import {
   verificarConexion,
 } from "@/lib/granjas/conexiones";
 import { versionGraph } from "@/lib/granjas/adaptadores";
+import { guiasRedes } from "@/lib/granjas/guias-redes";
 import { WorkflowError } from "@/lib/workflow";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ export async function GET() {
       {
         conexiones: listarConexiones(equipo),
         canales: estadoCanales(equipo),
+        guias: guiasRedes(equipo),
         rol: equipo.rol,
         claveTokens: claveConfigurada(),
         redireccionBase: guiaRedireccion(),

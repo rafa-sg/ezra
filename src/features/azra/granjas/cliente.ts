@@ -76,6 +76,7 @@ export type Detalle = {
 export type ConexionesRespuesta = {
   conexiones: Conexion[];
   canales: ReturnType<typeof import("@/lib/granjas/conexiones").estadoCanales>;
+  guias: import("@/lib/granjas/guias-redes").GuiaRed[];
   rol: "propietario" | "socio" | "invitado";
   claveTokens: boolean;
   redireccionBase: string;
