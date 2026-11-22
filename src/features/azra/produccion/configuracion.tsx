@@ -345,7 +345,7 @@ export function BotonConsumo({
           >
             <p className="cf-globo-titulo">{tr("cf_limitesIA")}</p>
             {/* Solo esta parte se desplaza: el título y «Administrar uso» quedan fijos. */}
-            <div className="cf-globo-cuerpo" tabIndex={0} aria-label={tr("cf_limitesIA")}>
+            <div className="cf-globo-cuerpo">
               {error && <p className="cf-nota">{tr("cf_errorUso")}</p>}
               {!uso && !error && <p className="cf-nota">{tr("cf_cargando")}</p>}
               {uso && <GruposUso uso={uso} tr={tr} locale={locale} />}
