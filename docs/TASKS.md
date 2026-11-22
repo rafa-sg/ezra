@@ -149,7 +149,19 @@
 - [ ] Modo oscuro del panel Clips no verificado en pantalla (el arnés emuló el sistema y la app usa su propio interruptor).
 - [ ] Rehacer «Render de clips» completo borra los clips sin pieza y deja inválidas las piezas anteriores; no hay historial visible de versiones de un clip (solo en auditoría).
 
+### 21 nov (noche) · Auditoría de la API de YouTube (Ezra `361a0fb`, `9177402`; spotmi-web `a368073`, `7dcef5d` en `feat/ezra-youtube-api`, sin push)
+
+- [x] Ezra: «Videos virales» guarda `videosConsultados`; a los 30 días se borran videos, enlaces de YouTube, estadísticas del texto y del historial, y el resumen de Referencias de Clips (al arrancar el trabajador, cada hora y al abrir el estudio). La interfaz muestra la fecha de consulta y la de borrado.
+- [x] Ezra: «Desconectar» ya revocaba en Google y borraba el token; ahora también olvida las métricas en memoria y borra id y enlace de los videos en los recibos. A Gemini (Clips) solo van cifras agregadas, sin títulos, canales ni enlaces.
+- [x] Pruebas: `tests/youtube-cumplimiento.test.ts` (4) y una aserción nueva en `tests/clips.test.ts`. Check 203/203, build aislado (2 advertencias conocidas), integración 7/7, `tsconfig.json` y `next-env.d.ts` restaurados.
+- [x] spotmi-web (worktree `~/dev/spotmi-web-ezra`, rama `feat/ezra-youtube-api` desde `origin/main`; `hero` y su trabajo sin commit no se tocaron): sección `#ezra-youtube` en privacidad (es/en), párrafo 20 en términos (es/en), página `/es/ezra` y `/en/ezra` (sitemap), enlaces reales en las páginas legales (`src/components/texto-legal.tsx`). Typecheck, lint y vitest de lo tocado (21/21); las 6 páginas responden 200 en `next dev` con variables de ejemplo; 390 y 1440 sin desborde. No se corrió `pnpm verificar` completo (sus pruebas de datos usan la base real y el worktree no tiene `.env.local`).
+- [x] `docs/youtube-audit/`: diagramas (SVG editable + PNG 2250 px, `node docs/youtube-audit/render.mjs`), guion del video y borrador del formulario (secciones 6 y 7 sin verificar: la página se cortó).
+- [ ] Propietario: revisar los textos, hacer push y abrir el PR de `feat/ezra-youtube-api`, publicar; grabar el video; completar `[COMPLETAR]` y decidir `[ELIGE]` en `form-answers.md`; enviar el formulario.
+- [ ] Opcional: comprobar periódicamente si Google revocó el token (hoy, si se quita el acceso desde la cuenta de Google, el token local queda hasta pulsar «Desconectar»).
+- [ ] Al mezclar `hero` con `main` habrá conflicto en `messages/*.json` (ambas ramas los cambian).
+
 ### Te toca (propietario)
+- [ ] YouTube API: revisar y publicar privacidad, términos y `/es/ezra` (spotmi-web `feat/ezra-youtube-api`), grabar el video con `docs/youtube-audit/screencast-script.md` y enviar el formulario con `docs/youtube-audit/form-answers.md`.
 - [ ] Clips: aprobar un encargo «Videos virales», crear la granja Clips, subir un video tuyo (o con permiso) y, cuando la clave de Gemini tenga facturación, ejecutarla. Revisar si el límite de 20 min por video y los 15–60 s por clip te sirven.
 - [ ] Supabase: correr `work/supabase-probar-sin-aplicar.sql` en el SQL Editor (debe terminar en «PRUEBAS TERMINADAS»), luego `work/supabase-aplicar.sql`, luego `pnpm exec supabase login` y `pnpm exec supabase migration repair --status applied 20261103 20261117 --linked` en spotmi-web.
 - [ ] Crear la cuenta editorial (Authentication → Users), habilitarla con `work/supabase-habilitar-editorial.sql` y poner `SPOTMI_EDITORIAL_EMAIL` y `SPOTMI_EDITORIAL_PASSWORD` en `.env.local`. Reiniciar `npm run dev` y pulsar Conexiones → Spotmi web → Conectar.

@@ -628,3 +628,11 @@ Pedido del propietario (video 627 y captura de Instagram), primero en maqueta y 
 - Subtítulos y gancho como imágenes de next/og superpuestas con ffmpeg: el ffmpeg de Homebrew no tiene libass ni drawtext. Zonas seguras: 250 arriba, 480 abajo, 90 izquierda, 150 derecha.
 - La revisión de Clips es por clip, no por paso: aprobar un clip crea su pieza y aprueba su huella (la revisión genérica se rechaza en esta granja). La publicación reutiliza la autorización por versión y destino con PUBLICAR; `autorizarPublicacion` exige que el clip siga aprobado y que «Tu revisión» esté cerrada.
 - El trabajo previo «Videos virales» (sin commit, de otra sesión) se guardó tal cual en `d5bd7cf` a pedido del propietario. Los cambios de Docker/README/package.json/.env.example siguen sin commit: no son de esta tarea.
+
+## 2026-11-21 (noche, 5) · Cumplimiento de las YouTube API Services Developer Policies
+
+- Plazo verificado en la página oficial (III.E.4): los datos que no son del canal autorizado (Non-Authorized Data) y sus estadísticas se guardan como máximo 30 días; después se borran o se vuelven a consultar. Ezra los **borra** (videos, enlaces de YouTube en fuentes, estadísticas en el texto y en el historial, resumen de Referencias de Clips); para tenerlos otra vez se vuelve a ejecutar el encargo. Encargos anteriores cuentan desde su última entrega.
+- Revocación (III.D.2): al desconectar se revoca en Google de inmediato y no queda nada de la API: token, métricas en memoria e id/enlace de los videos subidos en los recibos. Si se revoca desde la cuenta de Google, el token local queda hasta «Desconectar» (documentado; plazo de 7 días a pedido).
+- A Gemini (Clips) solo van cifras agregadas de «Videos virales»; nunca títulos, canales ni enlaces de videos ajenos.
+- Textos legales en spotmi-web (rama `feat/ezra-youtube-api`, worktree aparte para no tocar `hero`): las páginas legales enlazan las URL del texto porque la política pide *enlazar* los Términos de YouTube y la Política de privacidad de Google. Se usa https://policies.google.com/privacy (la política cita http://www.google.com/policies/privacy, que redirige allí).
+- `form-answers.md` recomienda cuota por defecto y no aceptar el almacenamiento de 36 meses de métricas derivadas, coherente con el borrado a 30 días.
