@@ -258,7 +258,7 @@
   color: var(--ez-negro);
 }
 
-/* ── Estructura común: barra lateral (240 px expandida · 72 px contraída) y cabecera discreta ── */
+/* ── Estructura común: barra lateral (240 px; en escritorio se oculta del todo, ver el final) y cabecera discreta ── */
 .azra.ez-app {
   --ez-sb-ancho: 240px;
   display: grid;
@@ -694,7 +694,8 @@
   .azra.ez-app[data-sidebar="contraida"] [data-tooltip]::after {
     display: none;
   }
-  .azra .ez-sidebar-borde {
+  .azra .ez-sidebar-plegar,
+  .azra .ez-sidebar-abrir {
     display: none;
   }
   .azra .ez-sidebar-cerrar,
@@ -971,37 +972,6 @@
 .azra[data-global-theme="dark"] .ez-lava {filter:brightness(.14) saturate(.6)}
 .azra[data-global-theme="dark"] :is(input,select,textarea) {color-scheme:dark;background-color:var(--ep-superficie);color:var(--ep-texto)}
 
-/* Plegar la barra lateral: botón redondo en su borde derecho, visible expandida y contraída. */
-.azra .ez-sidebar-borde {
-  position: fixed;
-  top: 28px;
-  left: calc(var(--ez-sb-ancho) - 13px);
-  z-index: 40;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 1px solid var(--ep-borde-control);
-  border-radius: 999px;
-  background: var(--ep-tarjeta);
-  color: var(--ep-suave);
-  box-shadow: var(--ez-sombra-s);
-  cursor: pointer;
-  transition: left 200ms cubic-bezier(0.22, 1, 0.36, 1), color 150ms ease;
-}
-.azra .ez-sidebar-borde:hover {
-  color: var(--ep-texto);
-}
-.azra .ez-sidebar-borde:focus-visible {
-  outline: 2px solid var(--ez-violeta);
-  outline-offset: 2px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .azra .ez-sidebar-borde {
-    transition: none;
-  }
-}
 
 /* Tema: sol y luna en la cabecera. */
 .azra .ez-tema {
@@ -1036,15 +1006,6 @@
 .azra .ez-tema button:focus-visible {
   outline: 2px solid var(--ez-violeta);
   outline-offset: 1px;
-}
-.azra[data-global-theme="dark"] .ez-sidebar-borde {
-  background: var(--ep-superficie-2);
-}
-/* En móvil la barra es un cajón con su propio botón de cerrar: sin botón de borde. */
-@media (max-width: 899px) {
-  .azra .ez-sidebar-borde {
-    display: none;
-  }
 }
 
 /* Conexiones · Codex y Claude Code locales: estado comprobado y acciones separadas. */
@@ -1107,5 +1068,97 @@
 @media (prefers-reduced-motion: reduce) {
   .azra .ez-gira {
     animation: none;
+  }
+}
+
+/*
+ * Barra lateral al estilo Gemini (solo escritorio): se oculta del todo y vuelve deslizándose desde la
+ * izquierda. La columna y el panel se mueven con la misma curva y duración, así el borde derecho del
+ * panel siempre coincide con el del contenido. El contenido del panel se desvanece al salir y aparece
+ * un instante después de entrar. Con la barra oculta queda un solo botón arriba a la izquierda.
+ */
+.azra .ez-sidebar-abrir {
+  display: none;
+}
+@media (min-width: 900px) {
+  .azra.ez-app {
+    --ez-sb-curva: cubic-bezier(0.2, 0, 0, 1);
+    transition: grid-template-columns 300ms var(--ez-sb-curva);
+  }
+  .azra.ez-app[data-sidebar="oculta"] {
+    --ez-sb-ancho: 0px;
+  }
+  .azra .ez-sidebar {
+    width: 240px;
+    transition:
+      transform 300ms var(--ez-sb-curva),
+      visibility 0s linear 0s;
+  }
+  .azra .ez-sidebar > * {
+    transition: opacity 180ms ease 110ms;
+  }
+  .azra.ez-app[data-sidebar="oculta"] .ez-sidebar {
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 300ms var(--ez-sb-curva),
+      visibility 0s linear 300ms;
+  }
+  .azra.ez-app[data-sidebar="oculta"] .ez-sidebar > * {
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+  .azra .ez-sidebar-abrir {
+    position: fixed;
+    top: 15px;
+    left: 16px;
+    z-index: 45;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: none;
+    color: var(--ep-suave);
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 120ms ease,
+      visibility 0s linear 120ms;
+  }
+  .azra.ez-app[data-sidebar="oculta"] .ez-sidebar-abrir {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 200ms ease 180ms;
+  }
+  .azra .ez-sidebar-abrir:hover {
+    border-color: var(--ep-borde);
+    background: var(--ep-tarjeta);
+    color: var(--ep-texto);
+  }
+  .azra .ez-sidebar-abrir:focus-visible {
+    outline: 2px solid var(--ez-violeta);
+  }
+  /* Espacio para el botón: el título de la cabecera no queda debajo. */
+  .azra .ez-cabecera {
+    transition: padding-left 300ms var(--ez-sb-curva);
+  }
+  .azra.ez-app[data-sidebar="oculta"] .ez-cabecera {
+    padding-left: 66px;
+  }
+}
+@media (min-width: 900px) and (prefers-reduced-motion: reduce) {
+  .azra.ez-app,
+  .azra .ez-sidebar,
+  .azra .ez-sidebar > *,
+  .azra.ez-app[data-sidebar="oculta"] .ez-sidebar,
+  .azra.ez-app[data-sidebar="oculta"] .ez-sidebar > *,
+  .azra .ez-sidebar-abrir,
+  .azra.ez-app[data-sidebar="oculta"] .ez-sidebar-abrir,
+  .azra .ez-cabecera {
+    transition: none;
   }
 }

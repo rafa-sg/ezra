@@ -4,12 +4,12 @@ import { useClerk } from "@clerk/nextjs";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   Check,
-  ChevronLeft,
-  ChevronRight,
   ChevronUp,
   LogOut,
   Menu,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   Sparkles,
   Sun,
@@ -49,6 +49,15 @@ function Shell({ children, user }: ShellProps) {
   const [movilAbierta, setMovilAbierta] = useState(false);
   const lateral = useRef<HTMLElement>(null);
   const hamburguesa = useRef<HTMLButtonElement>(null);
+  const plegar = useRef<HTMLButtonElement>(null);
+  const abrir = useRef<HTMLButtonElement>(null);
+  // Como en Gemini: la barra se oculta del todo y vuelve deslizándose desde la izquierda. El foco pasa
+  // al botón que queda visible (el que se pulsó desaparece con la barra).
+  const alternarBarra = () => {
+    const ocultar = !contraida;
+    guardarSidebarContraida(ocultar);
+    requestAnimationFrame(() => (ocultar ? abrir : plegar).current?.focus());
+  };
   // Cajón móvil: Escape cierra y devuelve el foco; elegir una sección (evento del estudio) también lo cierra.
   useEffect(() => {
     if (!movilAbierta) return;
@@ -71,7 +80,7 @@ function Shell({ children, user }: ShellProps) {
     <div
       className="azra ep-shell ez-app"
       data-global-theme={tema === "oscuro" ? "dark" : "light"}
-      data-sidebar={contraida ? "contraida" : "expandida"}
+      data-sidebar={contraida ? "oculta" : "expandida"}
     >
       <a href="#az-content" className="ep-saltar">
         {t("skip")}
@@ -93,6 +102,17 @@ function Shell({ children, user }: ShellProps) {
             </span>
           </Link>
           <button
+            ref={plegar}
+            className="ez-sidebar-plegar"
+            onClick={alternarBarra}
+            aria-controls="ez-sidebar"
+            aria-expanded={!contraida}
+            aria-label={tt("ez_sb_contraer")}
+            title={tt("ez_sb_contraer")}
+          >
+            <PanelLeftClose size={18} aria-hidden="true" />
+          </button>
+          <button
             className="ez-sidebar-cerrar"
             onClick={() => (setMovilAbierta(false), hamburguesa.current?.focus())}
             aria-label={tt("ez_sb_cerrarMenu")}
@@ -113,20 +133,18 @@ function Shell({ children, user }: ShellProps) {
           />
         </div>
       </aside>
-      {/* Plegar o expandir: botón discreto en el borde de la barra, visible en ambos estados. */}
+      {/* Con la barra oculta solo queda este botón, arriba a la izquierda (escritorio). */}
       <button
-        className="ez-sidebar-borde"
-        onClick={() => guardarSidebarContraida(!contraida)}
+        ref={abrir}
+        className="ez-sidebar-abrir"
+        onClick={alternarBarra}
         aria-controls="ez-sidebar"
         aria-expanded={!contraida}
-        aria-label={tt(contraida ? "ez_sb_expandir" : "ez_sb_contraer")}
-        title={tt(contraida ? "ez_sb_expandir" : "ez_sb_contraer")}
+        aria-label={tt("ez_sb_expandir")}
+        title={tt("ez_sb_expandir")}
+        tabIndex={contraida ? 0 : -1}
       >
-        {contraida ? (
-          <ChevronRight size={14} aria-hidden="true" />
-        ) : (
-          <ChevronLeft size={14} aria-hidden="true" />
-        )}
+        <PanelLeftOpen size={18} aria-hidden="true" />
       </button>
       {movilAbierta && (
         <div
@@ -245,7 +263,7 @@ function SelectorTema({ tema, tt }: { tema: Tema; tt: (c: string) => string }) {
   );
 }
 
-/* Preferencia de la barra lateral (por navegador): contraída o expandida. */
+/* Preferencia de la barra lateral (por navegador): oculta o visible. La clave conserva su nombre anterior. */
 const CLAVE_SIDEBAR = "ezra:sidebar-contraida";
 function leerSidebar() {
   try {
