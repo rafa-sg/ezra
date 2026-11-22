@@ -1162,3 +1162,12 @@
     transition: none;
   }
 }
+
+/* Secciones fijas al pie de la barra (Consumo): encima de la línea y de la cuenta. */
+.azra .ez-sidebar-abajo:not(:empty) {
+  padding: 8px 0 10px;
+}
+/* Oscuro: el ícono de la sección activa se ve (antes quedaba negro sobre negro). */
+.azra[data-global-theme="dark"] .ez-sb-item[aria-current="page"] svg {
+  color: var(--ep-texto);
+}

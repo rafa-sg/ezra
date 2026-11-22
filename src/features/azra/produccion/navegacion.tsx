@@ -30,6 +30,7 @@ function EnEspacio({ id, children }: { id: string; children: ReactNode }) {
  */
 export function NavegacionLateral({
   items,
+  abajo = [],
   actual,
   tr,
   onIr,
@@ -37,6 +38,8 @@ export function NavegacionLateral({
   deshabilitado,
 }: {
   items: ItemMenu[];
+  /** Secciones fijas al pie de la barra (encima de la cuenta). */
+  abajo?: ItemMenu[];
   actual: string;
   tr: (c: string) => string;
   onIr: (id: string) => void;
@@ -44,51 +47,57 @@ export function NavegacionLateral({
   deshabilitado?: boolean;
 }) {
   const avisar = () => window.dispatchEvent(new Event("ezra:navego"));
+  const boton = ({ id, icono: Icono, etiqueta, contador, contadorAyuda }: ItemMenu) => (
+    <button
+      key={id}
+      className="ez-sb-item"
+      aria-current={actual === id ? "page" : undefined}
+      disabled={deshabilitado}
+      data-tooltip={contador ? `${etiqueta} · ${contador} ${contadorAyuda ?? ""}`.trim() : etiqueta}
+      onClick={() => {
+        avisar();
+        onIr(id);
+      }}
+    >
+      <Icono size={18} aria-hidden />
+      <span className="ez-sb-etiqueta">{etiqueta}</span>
+      {contador ? (
+        <span className="ez-sb-contador">
+          {contador}
+          {contadorAyuda && <span className="ez-oculto"> {contadorAyuda}</span>}
+        </span>
+      ) : null}
+    </button>
+  );
   return (
-    <EnEspacio id="ez-sidebar-nav">
-      <button
-        className="ez-sb-nuevo"
-        onClick={() => {
-          avisar();
-          onNuevo();
-        }}
-        disabled={deshabilitado}
-        data-tooltip={tr("p_nuevo")}
-      >
-        <Plus size={18} aria-hidden="true" />
-        <span className="ez-sb-etiqueta">{tr("p_nuevo")}</span>
-      </button>
-      <nav className="ez-sb-lista" aria-label={tr("productionStudio")}>
-        {items.map(({ id, icono: Icono, etiqueta, contador, contadorAyuda, elemento }) =>
-          elemento ? (
-            <div key={id}>{elemento}</div>
-          ) : (
-            <button
-              key={id}
-              className="ez-sb-item"
-              aria-current={actual === id ? "page" : undefined}
-              disabled={deshabilitado}
-              data-tooltip={
-                contador ? `${etiqueta} · ${contador} ${contadorAyuda ?? ""}`.trim() : etiqueta
-              }
-              onClick={() => {
-                avisar();
-                onIr(id);
-              }}
-            >
-              <Icono size={18} aria-hidden />
-              <span className="ez-sb-etiqueta">{etiqueta}</span>
-              {contador ? (
-                <span className="ez-sb-contador">
-                  {contador}
-                  {contadorAyuda && <span className="ez-oculto"> {contadorAyuda}</span>}
-                </span>
-              ) : null}
-            </button>
-          ),
-        )}
-      </nav>
-    </EnEspacio>
+    <>
+      <EnEspacio id="ez-sidebar-nav">
+        <button
+          className="ez-sb-nuevo"
+          onClick={() => {
+            avisar();
+            onNuevo();
+          }}
+          disabled={deshabilitado}
+          data-tooltip={tr("p_nuevo")}
+        >
+          <Plus size={18} aria-hidden="true" />
+          <span className="ez-sb-etiqueta">{tr("p_nuevo")}</span>
+        </button>
+        <nav className="ez-sb-lista" aria-label={tr("productionStudio")}>
+          {items.map((item) =>
+            item.elemento ? <div key={item.id}>{item.elemento}</div> : boton(item),
+          )}
+        </nav>
+      </EnEspacio>
+      {abajo.length > 0 && (
+        <EnEspacio id="ez-sidebar-abajo">
+          <nav className="ez-sb-lista" aria-label={tr("ez_sb_abajo")}>
+            {abajo.map(boton)}
+          </nav>
+        </EnEspacio>
+      )}
+    </>
   );
 }
 

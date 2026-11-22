@@ -602,7 +602,11 @@ export function EstudioProduccion({
       <div className="ep-marco">
         {/* Navegación en la barra superior: píldora «Menú · % del día» y «Nuevo encargo». */}
         <NavegacionLateral
-          items={navegacion.map(({ id, icono, etiqueta }) => ({
+          // Consumo va fijo abajo, encima de la cuenta (no en la lista principal).
+          abajo={navegacion
+            .filter((n) => n.id === "consumo")
+            .map(({ id, icono, etiqueta }) => ({ id, icono, etiqueta: tr(etiqueta) }))}
+          items={navegacion.filter((n) => n.id !== "consumo").map(({ id, icono, etiqueta }) => ({
             id,
             icono,
             etiqueta: tr(etiqueta),

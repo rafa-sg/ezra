@@ -124,6 +124,8 @@ function Shell({ children, user }: ShellProps) {
         </div>
         {/* El estudio llena este espacio: «Nuevo encargo» y las secciones. */}
         <div id="ez-sidebar-nav" className="ez-sidebar-nav" />
+        {/* Secciones fijas abajo (Consumo), justo encima de la línea y de la cuenta. */}
+        <div id="ez-sidebar-abajo" className="ez-sidebar-abajo" />
         <div className="ez-sidebar-pie">
           <MenuCuenta
             user={user}

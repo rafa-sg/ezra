@@ -2257,5 +2257,6 @@
   "g_cx_conectarCompartida": "Connect shared account",
   "g_cx_otraCompartida": "Add another shared account",
   "g_cx_conectarPersonal": "Connect personal account",
-  "g_cx_otraPersonal": "Add another personal account"
+  "g_cx_otraPersonal": "Add another personal account",
+  "ez_sb_abajo": "Usage"
 }
