@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /** Resumen de una fuente (DGME por defecto, o MITUR) en un período cargado. */
 export async function GET(request: Request) {
   try {
-    await administrador();
+    await administrador("inicio");
     const p = new URL(request.url).searchParams;
     const fuente = p.get("fuente") === "MITUR" ? "MITUR" : "DGME";
     const periodo = p.get("periodo");
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    await administrador();
+    await administrador("inicio", "escribir");
     const { csv, accion, reemplazar } = await cuerpo(
       request,
       z.object({ csv: z.string().max(2_000_000), accion: z.enum(["vista", "guardar"]), reemplazar: z.boolean().default(false) }),

@@ -11,5 +11,6 @@ export default async function Page({ params }: { params: Promise<{ segments?: st
   if (!ruta || retiradas.test(ruta)) redirect(INICIO);
   if (ruta !== "produccion") notFound();
   const cuenta = await sessionAccount().catch(() => null);
-  return <AzraScreen soloLectura={cuenta?.role !== "admin"} />;
+  // Socios e invitados usan el estudio con las secciones de su acceso; los clientes del piloto, solo vista.
+  return <AzraScreen soloLectura={!cuenta?.equipo} equipo={cuenta?.equipo ?? null} />;
 }

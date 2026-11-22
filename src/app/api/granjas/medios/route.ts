@@ -8,7 +8,7 @@ export const maxDuration = 120;
 /** Subida de medios propios o con permiso. La nota de permiso es obligatoria. */
 export async function POST(request: Request) {
   try {
-    await administrador();
+    await administrador("*", "escribir");
     if (Number(request.headers.get("content-length") || 0) > LIMITE_MEDIO + 100_000)
       throw new WorkflowError("El archivo supera 200 MB.", 413);
     const formulario = await request.formData();

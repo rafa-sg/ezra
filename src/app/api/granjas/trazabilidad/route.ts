@@ -11,7 +11,7 @@ const dia = z.string().refine(diaValido).nullable().catch(null);
 /** Trazabilidad (procedencia y producción) con filtros compartidos por el mapa y la vista de conexiones. */
 export async function GET(request: Request) {
   try {
-    await administrador();
+    await administrador("granjas");
     const p = new URL(request.url).searchParams;
     const filtros = {
       departamento: texto.parse(p.get("departamento")),

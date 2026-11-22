@@ -449,6 +449,33 @@ const migraciones: string[] = [
   );
   create index clips_ejecucion on clips (ejecucion_id, numero);
   `,
+  // 13 · Equipo: el espacio Spotmi y sus miembros (propietario, socios e invitados). Solo se entra por
+  // invitación; todo lo que ya existía queda en el espacio «spotmi».
+  `
+  create table espacios (
+    id text primary key,
+    nombre text not null,
+    creado text not null
+  );
+  insert into espacios (id, nombre, creado) values ('spotmi', 'Spotmi', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+  create table miembros (
+    id text primary key,
+    espacio_id text not null references espacios(id),
+    email text not null,
+    nombre text not null default '',
+    rol text not null check (rol in ('propietario', 'socio', 'invitado')),
+    secciones text not null default '[]',
+    solo_lectura integer not null default 0,
+    clerk_user_id text unique,
+    estado text not null check (estado in ('invitado', 'activo', 'retirado')),
+    invitacion_id text,
+    invitado_por text,
+    creado text not null,
+    actualizado text not null,
+    ultimo_acceso text,
+    unique (espacio_id, email)
+  );
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

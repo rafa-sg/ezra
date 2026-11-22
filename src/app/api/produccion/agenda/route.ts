@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /** Agenda del calendario: fecha prevista, autorización, publicación confirmada y eventos. Solo administración. */
 export async function GET(request: Request) {
   try {
-    await administrador();
+    await administrador("calendario");
     const p = new URL(request.url).searchParams;
     const dia = z.string().refine(diaValido).optional().catch(undefined);
     return Response.json(await agenda({ desde: dia.parse(p.get("desde") ?? undefined), hasta: dia.parse(p.get("hasta") ?? undefined) }), { headers: { "Cache-Control": "no-store" } });

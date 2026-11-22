@@ -18,7 +18,7 @@ const accion = z.discriminatedUnion("accion", [
 
 export async function GET(request: Request) {
   try {
-    await administrador();
+    await administrador("granjas");
     const piezaId = new URL(request.url).searchParams.get("id");
     if (!piezaId) throw new WorkflowError("Falta la vista previa.", 400);
     return Response.json(vistaPieza(piezaId));
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
-    const { usuario } = await administrador();
+    const { usuario } = await administrador("granjas", "escribir");
     const a = await cuerpo(request, accion, 120_000);
     if (a.accion === "editar") return Response.json(vistaPieza(editarPieza(a.piezaId, a.version, a.contenido).id));
     if (a.accion === "aprobar") return Response.json(vistaPieza(aprobarPieza(a.piezaId, a.hash, a.comprobaciones).id));

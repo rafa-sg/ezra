@@ -14,7 +14,7 @@ const accion = z.discriminatedUnion("accion", [
 /** «Tu revisión» de la granja Clips: aprobar, rechazar con motivo o pedir cambios, clip por clip. */
 export async function POST(request: Request) {
   try {
-    await administrador();
+    await administrador("granjas", "escribir");
     const a = await cuerpo(request, accion, 20_000);
     if (a.accion === "aprobar") return Response.json({ clip: aprobarClip(a.clipId, a.comprobaciones) });
     if (a.accion === "rechazar") return Response.json({ clip: rechazarClip(a.clipId, a.motivo) });

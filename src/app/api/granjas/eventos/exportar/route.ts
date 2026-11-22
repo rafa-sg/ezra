@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /** Respaldo sin Spotmi: los eventos hallados un día (hora de El Salvador), en CSV o JSON. */
 export async function GET(request: Request) {
   try {
-    await administrador();
+    await administrador("eventos");
     const p = new URL(request.url).searchParams;
     const dia = z.string().refine(diaValido).catch(diaLocal()).parse(p.get("dia") ?? diaLocal());
     const formato = p.get("formato") === "json" ? "json" : "csv";

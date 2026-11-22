@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /** Eventos y granjas relacionados con un encargo (vínculos guardados; solo administración). */
 export async function GET(request: Request) {
   try {
-    await administrador();
+    await administrador("encargos");
     const id = z.string().uuid().safeParse(new URL(request.url).searchParams.get("id"));
     if (!id.success) throw new WorkflowError("Encargo inválido.", 400);
     const r = await relacionesEncargo(id.data);

@@ -26,6 +26,7 @@ import {
   Ban,
   CircleArrowRight,
   LayoutGrid,
+  Users,
 } from "lucide-react";
 import { useLanguage, type MessageKey } from "../i18n";
 import { useClerk } from "@clerk/nextjs";
@@ -63,6 +64,8 @@ import { AgendaCalendario } from "./agenda";
 import { CalendarioVistas } from "./calendario";
 import { Bienvenida, leerGuia } from "./bienvenida";
 import type { EstadoOnboarding } from "@/lib/produccion/onboarding";
+import type { Equipo } from "@/lib/equipo/modelo";
+import { SeccionEquipo } from "./equipo";
 import "./estudio.css";
 import "./tokens.css";
 
@@ -76,6 +79,7 @@ const secciones = [
   "calendario",
   "conexiones",
   "consumo",
+  "equipo",
 ] as const;
 type Seccion = (typeof secciones)[number];
 /** Secciones retiradas del menú (equipo, fuentes, cola): sus enlaces abren Granjas. */
@@ -126,12 +130,24 @@ async function datosRespuesta(respuesta: Response) {
   if (!respuesta.ok) throw new Error(datos.error || String(respuesta.status));
   return datos;
 }
-export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boolean }) {
+export function EstudioProduccion({
+  soloLectura = false,
+  equipo = null,
+}: {
+  soloLectura?: boolean;
+  equipo?: Equipo | null;
+}) {
+  // Secciones de esta sesión (el servidor vuelve a comprobarlas en cada solicitud).
+  const esPropietario = equipo?.rol === "propietario";
+  const permitida = (s: Seccion) =>
+    s === "equipo" ? esPropietario : (equipo?.secciones as readonly string[] | undefined)?.includes(s) ?? false;
+  const primera: Seccion = secciones.find(permitida) ?? "inicio";
+  const accesible = (s: Seccion | null) => (s && permitida(s) ? s : s ? primera : null);
   const { signOut } = useClerk();
   const { t, locale } = useLanguage();
   const tr = (clave: string) => t(clave as MessageKey);
   const g = (clave: string) => t(`g_${clave}` as MessageKey);
-  const [seccion, setSeccion] = useState<Seccion>("inicio");
+  const [seccion, setSeccion] = useState<Seccion>(primera);
   // % del día para la píldora del menú (se recalcula con cada cambio que refresca el Inicio).
   // Contadores de la barra lateral (solo cuando aportan): eventos nuevos por revisar.
   const [eventosNuevos, setEventosNuevos] = useState(0);
@@ -169,7 +185,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
   const encargos = produccion?.encargos ?? [];
   // Menú desplegable de móvil: Escape lo cierra y devuelve el foco al botón.
   useEffect(() => {
-    if (soloLectura) return;
+    if (soloLectura || !permitida("inicio")) return;
     let vivo = true;
     fetch("/api/produccion/inicio", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
@@ -181,6 +197,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     return () => {
       vivo = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [versionInicio, soloLectura]);
   // Aviso del navegador si cierras o recargas con cambios del encargo sin guardar.
   useEffect(() => {
@@ -223,7 +240,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     return () => controlador.abort();
   }, [soloLectura]);
   useEffect(() => {
-    if (soloLectura) return;
+    if (soloLectura || !esPropietario) return;
     let vivo = true;
     leerGuia().then((v) => {
       if (!vivo || !v) return;
@@ -242,11 +259,11 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     return () => {
       vivo = false;
     };
-  }, [soloLectura]);
+  }, [soloLectura, esPropietario]);
   useEffect(() => {
     if (soloLectura) return;
     const parametros = new URLSearchParams(window.location.search);
-    const pedida = seccionDe(parametros.get("seccion"));
+    const pedida = accesible(seccionDe(parametros.get("seccion")));
     if (!pedida) return;
     const resultado = parametros.get("conexion");
     // Se conserva la sección en la dirección; el resultado del OAuth se quita (solo se muestra una vez).
@@ -261,12 +278,15 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
       if (resultado && /^(instagram|facebook|tiktok):(ok|error)$/.test(resultado))
         setAvisoOAuth(resultado);
     });
+    // El acceso (equipo) no cambia mientras la página está abierta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [soloLectura]);
   useEffect(() => {
     const atras = () =>
-      setSeccion(seccionDe(new URLSearchParams(window.location.search).get("seccion")) ?? "inicio");
+      setSeccion(accesible(seccionDe(new URLSearchParams(window.location.search).get("seccion"))) ?? primera);
     window.addEventListener("popstate", atras);
     return () => window.removeEventListener("popstate", atras);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const { cuentas: cuentasApp, recargar: recargarApps } = useCuentasApp();
   const [appPedida, setAppPedida] = useState<string | null>(null);
@@ -530,7 +550,8 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
     { id: "calendario", icono: CalendarDays, etiqueta: "p_calendario" },
     { id: "conexiones", icono: Cable, etiqueta: "p_conexiones" },
     { id: "consumo", icono: Gauge, etiqueta: "p_consumo" },
-  ] as const;
+    { id: "equipo", icono: Users, etiqueta: "eq_titulo" },
+  ].filter((n) => permitida(n.id as Seccion));
   const visiblesEn = (actual?: Agente) =>
     agentes.filter((a) => especialistas.includes(a) || a === actual);
   return (
@@ -598,7 +619,9 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
           tr={tr}
           onIr={(id) => navegar(id as Seccion)}
           onNuevo={() => crear()}
-          deshabilitado={soloLectura || !produccion}
+          deshabilitado={
+            soloLectura || !produccion || !permitida("encargos") || Boolean(equipo?.soloLectura)
+          }
         />
         {!soloLectura && (
           <CabeceraPagina
@@ -883,6 +906,7 @@ export function EstudioProduccion({ soloLectura = false }: { soloLectura?: boole
               <SeccionConsumo g={g} fecha={fecha} locale={locale} />
             </>
           )}
+          {!soloLectura && seccion === "equipo" && esPropietario && <SeccionEquipo tr={tr} />}
           {!soloLectura && seccion === "calendario" && (
             <>
               <CalendarioVistas

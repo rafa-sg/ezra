@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import JSZip from "jszip";
-import { administrador, errorApi } from "@/lib/granjas/api";
+import { errorApi, propietario } from "@/lib/granjas/api";
 import { archivoBase, base, carpetaMedios, carpetaRespaldos, copiarBase } from "@/lib/granjas/db";
 import { resumenCola } from "@/lib/granjas/cola";
 import { dataDirectory } from "@/lib/store";
@@ -15,7 +15,7 @@ const tamano = async (archivo: string) => (await stat(archivo).catch(() => null)
 /** Dónde vive cada cosa, sin rutas de secretos ni tokens. */
 export async function GET(request: Request) {
   try {
-    await administrador();
+    await propietario();
     if (new URL(request.url).searchParams.get("descargar") === "1") return respaldo();
     const db = base();
     const cuenta = (sql: string) => (db.prepare(sql).get() as { n: number }).n;

@@ -1,5 +1,5 @@
+import { propietario } from "@/lib/granjas/api";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
 import { apiError } from "@/lib/http";
 import { guardarAjuste, leerAjuste } from "@/lib/granjas/ajustes";
 import {
@@ -20,7 +20,7 @@ async function ultimo(p: ProveedorLocal) {
 }
 export async function GET() {
   try {
-    await requireAdmin();
+    await propietario();
     const [astra, claude] = await Promise.all([ultimo("astra"), ultimo("claude")]);
     return Response.json({ astra, claude });
   } catch (error) {
@@ -33,7 +33,7 @@ const pedido = z.object({
 });
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    await propietario();
     const { proveedor, accion } = pedido.parse(await request.json().catch(() => ({})));
     const anterior = leerAjuste(clave(proveedor), diagnosticoSchema.nullable(), null);
     const nuevo = accion === "probar" ? await probar(proveedor) : await diagnosticar(proveedor);

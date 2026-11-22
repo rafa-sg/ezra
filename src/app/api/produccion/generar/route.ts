@@ -1,5 +1,5 @@
+import { administrador } from "@/lib/granjas/api";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
 import { apiError } from "@/lib/http";
 import { WorkflowError } from "@/lib/workflow";
 import { leerProduccion } from "@/lib/produccion/almacen";
@@ -20,7 +20,7 @@ const globales = globalThis as typeof globalThis & { produccionEnCurso?: boolean
 export async function POST(request: Request) {
   let adquirido = false;
   try {
-    await requireAdmin();
+    await administrador("encargos", "escribir");
     const texto = await request.text();
     if (Buffer.byteLength(texto) > 1000) throw new WorkflowError("Petición demasiado grande.", 413);
     const leido = peticionSchema.safeParse(JSON.parse(texto));

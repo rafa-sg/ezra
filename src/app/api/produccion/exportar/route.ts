@@ -1,5 +1,5 @@
+import { administrador } from "@/lib/granjas/api";
 import JSZip from "jszip";
-import { requireAdmin } from "@/lib/auth";
 import { apiError } from "@/lib/http";
 import { WorkflowError } from "@/lib/workflow";
 import { leerProduccion } from "@/lib/produccion/almacen";
@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    await administrador("encargos");
     const id = new URL(request.url).searchParams.get("id");
     const produccion = await leerProduccion();
     const zip = new JSZip();

@@ -37,7 +37,7 @@ const accion = z.discriminatedUnion("accion", [
 
 export async function POST(request: Request) {
   try {
-    const { usuario } = await administrador();
+    const { usuario } = await administrador("granjas", "escribir");
     const a = await cuerpo(request, accion);
     switch (a.accion) {
       case "iniciar":

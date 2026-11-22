@@ -33,7 +33,7 @@ const accion = z.discriminatedUnion("accion", [
 
 export async function GET() {
   try {
-    await administrador();
+    await administrador("granjas");
     const [produccion, codex, claude] = await Promise.all([
       leerProduccion(),
       diagnosticoReciente("astra"),
@@ -99,7 +99,7 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    await administrador();
+    await administrador("granjas", "escribir");
     const a = await cuerpo(request, accion);
     const granja =
       a.accion === "crear"

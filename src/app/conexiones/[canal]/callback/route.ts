@@ -14,7 +14,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cana
   destino.searchParams.set("seccion", "conexiones");
   try {
     if (!["instagram", "facebook", "tiktok", "youtube"].includes(canal)) throw new Error("Canal desconocido.");
-    const { usuario } = await administrador();
+    const { usuario } = await administrador("conexiones", "escribir");
     await completarOAuth(canal as "instagram" | "facebook" | "tiktok" | "youtube", {
       estado: url.searchParams.get("state"),
       codigo: url.searchParams.get("code"),

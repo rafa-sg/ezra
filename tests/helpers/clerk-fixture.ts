@@ -24,7 +24,13 @@ export const fixtureUsers = new Map<
   ["unverified", { email: "owner@example.test", verified: false }],
   ["replacement", { email: "new-sgmotos@example.test" }],
   ["duplicate", { email: "owner@example.test" }],
+  // Equipo de Spotmi (fase multiusuario): socios e invitados entran solo por invitación.
+  ["socio", { email: "socio@example.test" }],
+  ["socia", { email: "socia@example.test" }],
+  ["invitado", { email: "invitado@example.test" }],
 ]);
+/** Invitaciones que Ezra pidió a Clerk (el fixture no envía correos). */
+export const fixtureInvitations: { id: string; email: string; revoked: boolean }[] = [];
 let endpoint: Promise<string> | undefined;
 let unavailable = false;
 export function setClerkUnavailable(value: boolean) {
@@ -37,6 +43,48 @@ function backend() {
       res.setHeader("Content-Type", "application/json");
       if (unavailable) {
         res.writeHead(503).end(JSON.stringify({ errors: [{ message: "Fixture offline" }] }));
+        return;
+      }
+      if (req.method === "POST" && req.url === "/v1/invitations") {
+        let body = "";
+        req.on("data", (c) => (body += c));
+        req.on("end", () => {
+          const email = JSON.parse(body || "{}").email_address as string;
+          const id = `inv_${fixtureInvitations.length + 1}`;
+          fixtureInvitations.push({ id, email, revoked: false });
+          res.end(
+            JSON.stringify({
+              object: "invitation",
+              id,
+              email_address: email,
+              public_metadata: {},
+              revoked: false,
+              status: "pending",
+              url: null,
+              expires_at: null,
+              created_at: Date.now(),
+              updated_at: Date.now(),
+            }),
+          );
+        });
+        return;
+      }
+      const revoke = req.url?.match(/^\/v1\/invitations\/(inv_\d+)\/revoke$/)?.[1];
+      if (req.method === "POST" && revoke) {
+        const inv = fixtureInvitations.find((i) => i.id === revoke);
+        if (inv) inv.revoked = true;
+        res.end(
+          JSON.stringify({
+            object: "invitation",
+            id: revoke,
+            email_address: inv?.email ?? "",
+            public_metadata: {},
+            revoked: true,
+            status: "revoked",
+            created_at: Date.now(),
+            updated_at: Date.now(),
+          }),
+        );
         return;
       }
       if (req.url === "/v1/jwks") {

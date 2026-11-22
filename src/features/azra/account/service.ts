@@ -42,7 +42,7 @@ let storageKey = BASE_KEY;
 /** Demo data lives in this browser. Administration keeps the original key;
  * each client gets its own, so a shared browser never shows another account's
  * demo profile. Call before rendering account screens. */
-export function setAccountScope(scope: { role: "admin" | "client"; email: string }) {
+export function setAccountScope(scope: { role: "admin" | "client" | "member"; email: string }) {
   const next =
     scope.role === "admin" ? BASE_KEY : `${BASE_KEY}:client:${scope.email.toLowerCase()}`;
   if (next !== storageKey) {

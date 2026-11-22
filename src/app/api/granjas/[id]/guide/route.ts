@@ -12,14 +12,14 @@ const actionSchema = z.discriminatedUnion("action", [
 type Context = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, { params }: Context) {
   try {
-    await administrador();
+    await administrador("granjas");
     const { id } = await params;
     return Response.json({ guide: readGuide(id), history: guideHistory(id) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return errorApi(error); }
 }
 export async function POST(request: Request, { params }: Context) {
   try {
-    await administrador();
+    await administrador("granjas", "escribir");
     const { id } = await params;
     const action = await cuerpo(request, actionSchema, 500_000);
     const guide = action.action === "save" ? saveGuide(id, action.version, action.content) : approveGuide(id, action.version, action.hash, action.checks);

@@ -1,4 +1,4 @@
-import { administrador, cuerpo, errorApi } from "@/lib/granjas/api";
+import { cuerpo, errorApi, propietario } from "@/lib/granjas/api";
 import { ensurePilotBusinesses } from "@/lib/businesses";
 import { defaultBusinessId } from "@/lib/model";
 import { listarGranjas } from "@/lib/granjas/almacen";
@@ -83,7 +83,7 @@ async function vista(usuario: string, organizationId: string, email: string) {
 }
 export async function GET() {
   try {
-    const { cuenta, usuario } = await administrador();
+    const { cuenta, usuario } = await propietario();
     return Response.json(await vista(usuario, cuenta.organizationId, cuenta.email), {
       headers: { "Cache-Control": "no-store" },
     });
@@ -93,7 +93,7 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    const { cuenta, usuario } = await administrador();
+    const { cuenta, usuario } = await propietario();
     const crudo = await cuerpo(request, z.record(z.string(), z.unknown()), 10_000);
     const p = await disponibles();
     await avanzarOnboarding(usuario, crudo, {

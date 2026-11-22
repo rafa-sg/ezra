@@ -19,7 +19,7 @@ const accion = z.discriminatedUnion("accion", [
 /** Posts listos para subir a mano. Ezra no publica en Instagram. */
 export async function GET() {
   try {
-    await administrador();
+    await administrador("eventos");
     const posts = listarPosts().map((p) => {
       const e = leerEvento(p.eventoId);
       return { ...p, evento: { id: e.id, titulo: e.titulo, fecha: e.fecha, hora: e.hora, lugar: e.lugar, imagenAutorizada: Boolean(e.imagenMedioId) } };
@@ -31,7 +31,7 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    await administrador();
+    await administrador("eventos", "escribir");
     const a = await cuerpo(request, accion, 10_000);
     if (a.accion === "subido") return Response.json({ post: marcarSubido(a.id, a.revision, a.url) });
     if (a.accion === "texto") return Response.json({ post: editarTextoPost(a.id, a.revision, a.texto) });

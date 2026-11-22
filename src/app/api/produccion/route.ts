@@ -1,5 +1,5 @@
+import { administrador } from "@/lib/granjas/api";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
 import { apiError } from "@/lib/http";
 import { WorkflowError } from "@/lib/workflow";
 import { leerProduccion, guardarProduccion } from "@/lib/produccion/almacen";
@@ -70,7 +70,8 @@ const accionSchema = z.discriminatedUnion("accion", [
 ]);
 export async function GET() {
   try {
-    await requireAdmin();
+    // El estudio lo lee al abrir: cualquier miembro; los encargos solo si su acceso incluye esa sección.
+    const { equipo } = await administrador("*");
     // Disponible = sesión comprobada (no basta con encontrar el programa).
     const [codex, claude] = await Promise.all([
       diagnosticoReciente("astra"),
@@ -79,7 +80,9 @@ export async function GET() {
     // Antes de mostrar nada: los resultados de «Videos virales» con más de 30 días se borran.
     await purgarViralesVencidos().catch(() => 0);
     return Response.json({
-      produccion: await leerProduccion(),
+      produccion: await leerProduccion().then((p) =>
+        equipo.secciones.includes("encargos") ? p : { ...p, encargos: [] },
+      ),
       conexiones: {
         spotmi: direccionSpotmi(),
         astraLocal: utilizable(codex),
@@ -98,7 +101,7 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    await administrador("encargos", "escribir");
     const texto = await request.text();
     if (Buffer.byteLength(texto) > 100000)
       throw new WorkflowError("El encargo supera el tamaño permitido.", 413);

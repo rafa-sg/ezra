@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    await administrador();
+    await administrador("apps");
     const params = new URL(request.url).searchParams;
     const canal = params.get("canal");
     if (!canal) throw new WorkflowError("Selecciona un canal de YouTube.", 422);

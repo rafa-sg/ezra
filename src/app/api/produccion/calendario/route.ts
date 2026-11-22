@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /** Calendario en formato iCalendar (.ics): fechas previstas de encargos y eventos aprobados. No programa nada. */
 export async function GET() {
   try {
-    await administrador();
+    await administrador("calendario");
     const ics = calendarioIcs((await leerProduccion()).encargos, listarEventos().filter((e) => e.estado === "aprobado"));
     return new Response(ics, {
       headers: {

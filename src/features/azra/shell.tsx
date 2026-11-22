@@ -18,14 +18,16 @@ import {
 import { LanguageProvider, useLanguage, type MessageKey } from "./i18n";
 import { href } from "./routes";
 import { setAccountScope } from "./account/service";
+import type { Equipo } from "@/lib/equipo/modelo";
 import "./produccion/estudio.css";
 import "./produccion/tokens.css";
 
 export type ShellUser = {
   email: string;
   displayName: string;
-  role: "admin" | "client";
+  role: "admin" | "client" | "member";
   organizationId: string;
+  equipo: Equipo | null;
 };
 type ShellProps = { children: ReactNode; user: ShellUser };
 function Shell({ children, user }: ShellProps) {

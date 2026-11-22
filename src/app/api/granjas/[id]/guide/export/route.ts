@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await administrador();
+    await administrador("granjas");
     const { id } = await params;
     const query = new URL(request.url).searchParams;
     const requested = query.get("version");

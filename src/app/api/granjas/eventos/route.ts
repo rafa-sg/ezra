@@ -106,7 +106,7 @@ function tablaConfianza(lista: ReturnType<typeof listarEventos>) {
 const sinImagenOficial = (e: { imagenTipo: string | null; imagenConfirmada: boolean }) => !e.imagenConfirmada && (e.imagenTipo === null || e.imagenTipo === "prensa" || e.imagenTipo === "ia");
 export async function GET(request: Request) {
   try {
-    await administrador();
+    await administrador("eventos");
     const p = new URL(request.url).searchParams;
     const estado = z.enum(estadosVisibles).nullable().catch(null).parse(p.get("estado"));
     const filtro = { estado, desde: dia.catch(null).parse(p.get("desde")), hasta: dia.catch(null).parse(p.get("hasta")) };
@@ -139,7 +139,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
-    await administrador();
+    await administrador("eventos", "escribir");
     const a = await cuerpo(request, accion, 600_000);
     if (a.accion === "aprobar") return Response.json({ evento: aprobarEvento(a.id, a.revision) });
     if (a.accion === "descartar") return Response.json({ evento: descartarEvento(a.id, a.revision, a.motivo) });

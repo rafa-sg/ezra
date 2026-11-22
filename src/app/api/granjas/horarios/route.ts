@@ -15,7 +15,7 @@ const peticion = z.object({
 });
 export async function GET() {
   try {
-    await administrador();
+    await administrador("granjas");
     const horarios = Object.fromEntries(listarGranjas().filter((g) => g.estado !== "archivada").map((g) => [g.id, vistaHorario(g.id)]));
     return Response.json({ horarios, ahora: new Date().toISOString() }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
@@ -24,7 +24,7 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    const { usuario } = await administrador();
+    const { usuario } = await administrador("granjas", "escribir");
     const p = await cuerpo(request, peticion, 10_000);
     const granja = leerGranja(p.granjaId);
     if (p.maximo !== undefined || p.cuenta !== undefined) {

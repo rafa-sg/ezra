@@ -1,5 +1,15 @@
 # Estado y relevo
 
+## 2026-11-21 (noche) · Ezra multiusuario (rama `feat/equipo-cuentas`)
+
+### Fase 1 · Equipo, roles y acceso por invitación — HECHO
+- [x] Migración 13 (`espacios`, `miembros`); la base real migró sola al recargar `next dev` (respaldo `granjas-v12-2026-11-22T03-45-42-014Z.sqlite`).
+- [x] Propietario, socio e invitado (secciones + solo lectura); `administrador(sección, modo)` y `propietario()` en todas las rutas del estudio.
+- [x] Pantalla Equipo (invitar, cambiar rol, reenviar, quitar acceso); invitaciones de Clerk al invitar y revocación al quitar.
+- [x] Pruebas: `tests/equipo.test.ts` (5) y `tests/integration/equipo.test.ts` (ataques: sin invitación, socio contra rutas del propietario, invitado fuera de sus secciones y escribiendo en solo lectura, quitar acceso inmediato). Check 208/208, build aislado, integración 8/8 (en una copia, sin reiniciar el puerto 3000).
+- [ ] Propietario: en Clerk, Configure › Access mode › **Invite-only** › Save (https://dashboard.clerk.com/~/user-authentication/access-mode). Hasta entonces cualquiera puede crear una cuenta de Clerk, pero Ezra no lo deja entrar.
+- [ ] Propietario: invitar a los tres socios desde Equipo (Clerk enviará los correos).
+
 ## 2026-11-17 · Eventos e Instagram (rama `feat/eventos-instagram`)
 
 ### Fase 0 · Supabase de desarrollo — preparada, falta tu parte

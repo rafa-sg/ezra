@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { administrador, errorApi } from "@/lib/granjas/api";
+import { errorApi, propietario } from "@/lib/granjas/api";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
-    await administrador();
+    await propietario();
     const flujo = await readFile(path.join(process.cwd(), "docs/n8n/ezra-meta.json"), "utf8");
     return new Response(flujo, {
       headers: {

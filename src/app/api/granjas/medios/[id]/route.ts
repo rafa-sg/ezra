@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 /** Solo la administración ve los medios; nunca se exponen públicamente desde esta Mac. */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await administrador();
+    await administrador("*");
     const medio = leerMedio((await params).id);
     // Si el archivo ya no está en disco (por ejemplo, una copia sin la carpeta de medios), 404 claro, no 500.
     const bytes = await readFile(rutaMedio(medio)).catch((e: NodeJS.ErrnoException) => {

@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 /** Estado completo consultado al backend: la interfaz se recupera aunque se cierre la pestaña. */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await administrador();
+    await administrador("granjas");
     const { id } = await params;
     const estado = estadoGranja(id);
     const geminiHabilitado = process.env.EZRA_PRODUCCION_IA === "1" && Boolean(process.env.GEMINI_API_KEY?.trim());

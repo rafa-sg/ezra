@@ -1,0 +1,116 @@
+/* Equipo e invitaciones (solo propietario). Colores por variables del estudio: claro y oscuro. */
+.azra .eq {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.azra .eq-form,
+.azra .eq-editar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.azra .eq-form > .ep-nota,
+.azra .eq-form > .eq-secciones,
+.azra .eq-editar > .eq-secciones {
+  grid-column: 1 / -1;
+}
+.azra .eq-form > .ep-boton,
+.azra .eq-editar > .ep-boton {
+  justify-self: start;
+}
+.azra .eq-secciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  border: 1px solid var(--ep-borde-suave);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0;
+  min-width: 0;
+}
+.azra .eq-secciones legend {
+  font-size: 13px;
+  padding: 0 4px;
+  color: var(--ep-texto-2);
+}
+.azra .eq-secciones label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.azra .eq-solo-lectura {
+  flex-basis: 100%;
+}
+.azra .eq-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.azra .eq-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--ep-borde-suave);
+  border-radius: 10px;
+  background: var(--ep-superficie);
+}
+.azra .eq-fila[data-estado="retirado"] {
+  opacity: 0.6;
+}
+.azra .eq-quien {
+  display: grid;
+  min-width: 0;
+}
+.azra .eq-quien strong,
+.azra .eq-quien small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .eq-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+.azra .eq-chip {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ep-suave);
+  color: var(--ep-texto);
+}
+.azra .eq-chip[data-estado="invitado"] {
+  background: var(--ep-atencion-fondo);
+  color: var(--ep-atencion);
+}
+.azra .eq-chip[data-estado="activo"] {
+  background: var(--ep-hecho-fondo);
+  color: var(--ep-hecho);
+}
+.azra .eq-acciones,
+.azra .eq-confirmar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.azra .eq-editar {
+  grid-column: 1 / -1;
+}
+@media (max-width: 767px) {
+  .azra .eq-fila {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .azra .eq-acciones {
+    justify-content: flex-start;
+  }
+}

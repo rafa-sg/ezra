@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    await administrador();
+    await administrador("granjas");
     return Response.json({ visibles: especialistasVisibles(), catalogo: agentes });
   } catch (error) {
     return errorApi(error);
@@ -15,7 +15,7 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    await administrador();
+    await administrador("granjas", "escribir");
     const { visibles } = await cuerpo(request, z.object({ visibles: z.array(z.enum(agentes)).min(1).max(agentes.length) }), 5_000);
     return Response.json({ visibles: guardarEspecialistas(visibles), catalogo: agentes });
   } catch (error) {

@@ -25,6 +25,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
         displayName: account.displayName,
         role: account.role,
         organizationId: account.organizationId,
+        equipo: account.equipo,
       }}
     >
       {children}

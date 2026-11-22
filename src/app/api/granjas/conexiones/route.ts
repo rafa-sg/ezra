@@ -16,7 +16,7 @@ const accion = z.discriminatedUnion("accion", [
 
 export async function GET() {
   try {
-    await administrador();
+    await administrador("conexiones");
     return Response.json({ conexiones: listarConexiones(), claveTokens: claveConfigurada(), redireccionBase: guiaRedireccion(), versionGraph: versionGraph() });
   } catch (error) {
     return errorApi(error);
@@ -24,7 +24,7 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    await administrador();
+    await administrador("conexiones", "escribir");
     const a = await cuerpo(request, accion, 2000);
     if (a.accion === "verificar") return Response.json({ conexion: await verificarConexion(a.canal) });
     if (a.accion === "desconectar") return Response.json(await desconectar(a.canal));

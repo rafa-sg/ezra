@@ -8,7 +8,7 @@ const pedido = z.object({ revision: z.number().int().min(0), cambios: cambiosSch
 /** Personalización del estudio de la cuenta (solo administración). */
 export async function GET() {
   try {
-    const { usuario } = await administrador();
+    const { usuario } = await administrador("*");
     return Response.json({ preferencias: leerPreferencias(usuario) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return errorApi(error);
@@ -16,7 +16,7 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    const { usuario } = await administrador();
+    const { usuario } = await administrador("*");
     const p = await cuerpo(request, pedido, 20_000);
     return Response.json({ preferencias: guardarPreferencias(usuario, p.revision, p.cambios) });
   } catch (error) {

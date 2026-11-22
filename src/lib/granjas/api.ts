@@ -1,15 +1,35 @@
 import { auth } from "@clerk/nextjs/server";
 import type { z } from "zod";
-import { requireAdmin } from "../auth";
+import { requireAccount, requireAdmin } from "../auth";
+import { permite, type SeccionEquipo } from "../equipo/modelo";
 import { apiError } from "../http";
 import { WorkflowError } from "../workflow";
 
-/** Toda la API de granjas es solo de administración; el id de Clerk liga el estado OAuth a la sesión. */
-export async function administrador() {
-  const cuenta = await requireAdmin();
+/**
+ * Acceso a la API del estudio: el propietario y los socios usan todas las secciones; un invitado, solo
+ * las que le dio el propietario (y sin escribir si es de solo lectura). Se comprueba en cada solicitud.
+ * El id de Clerk (`usuario`) liga el estado OAuth y las preferencias a la sesión.
+ */
+export async function administrador(seccion: SeccionEquipo | "*", modo: "leer" | "escribir" = "leer") {
+  const cuenta = await requireAccount();
+  if (!cuenta.equipo) throw new WorkflowError("Esta acción requiere una cuenta del equipo de Spotmi.", 403);
+  if (!permite(cuenta.equipo, seccion, modo === "escribir"))
+    throw new WorkflowError(
+      modo === "escribir" && cuenta.equipo.soloLectura
+        ? "Tu acceso es de solo lectura."
+        : "Tu acceso no incluye esta sección. Pídeselo al propietario.",
+      403,
+    );
   const { userId } = await auth();
   if (!userId) throw new WorkflowError("Inicia sesión de nuevo.", 401);
-  return { cuenta, usuario: userId };
+  return { cuenta, usuario: userId, equipo: cuenta.equipo };
+}
+/** Solo el propietario: equipo, presupuesto, puente n8n, IA local de esta Mac y conexiones compartidas. */
+export async function propietario() {
+  const cuenta = await requireAdmin();
+  const { userId } = await auth();
+  if (!userId || !cuenta.equipo) throw new WorkflowError("Inicia sesión de nuevo.", 401);
+  return { cuenta, usuario: userId, equipo: cuenta.equipo };
 }
 export async function cuerpo<T extends z.ZodType>(request: Request, esquema: T, limite = 200_000): Promise<z.infer<T>> {
   const texto = await request.text();

@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { administrador } from "@/lib/granjas/api";
 import { apiError } from "@/lib/http";
 import { consultarSpotmi } from "@/lib/produccion/spotmi";
 import { WorkflowError } from "@/lib/workflow";
@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
-    await requireAdmin();
+    await administrador("*");
     return Response.json(await consultarSpotmi());
   } catch (error) {
     return apiError(
