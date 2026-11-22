@@ -29,6 +29,8 @@ export type FilaConsumo = {
   consultas_busqueda: number;
   duracion_ms: number;
   error: string;
+  /** USD que informa el proveedor para esa llamada (null si no lo informa). */
+  costo_reportado?: number | null;
 };
 export type UsoGemini = {
   promptTokenCount?: number;
@@ -52,6 +54,7 @@ export function registrarConsumo(datos: {
   consultasBusqueda: number;
   duracionMs: number;
   error?: string;
+  costoReportado?: number | null;
 }) {
   const u = datos.uso ?? {};
   const prompt = entero(u.promptTokenCount);
@@ -64,8 +67,8 @@ export function registrarConsumo(datos: {
   base()
     .prepare(
       `insert into consumo_ia (id, fecha, origen, granja_id, ejecucion_id, paso_id, paso, modelo, prompt_tokens, candidatos_tokens,
-       pensamiento_tokens, herramientas_tokens, total_tokens, busqueda, consultas_busqueda, duracion_ms, error)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       pensamiento_tokens, herramientas_tokens, total_tokens, busqueda, consultas_busqueda, duracion_ms, error, costo_reportado)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -85,6 +88,9 @@ export function registrarConsumo(datos: {
       entero(datos.consultasBusqueda),
       entero(datos.duracionMs),
       (datos.error ?? "").slice(0, 300),
+      typeof datos.costoReportado === "number" && Number.isFinite(datos.costoReportado) && datos.costoReportado >= 0
+        ? datos.costoReportado
+        : null,
     );
   return id;
 }

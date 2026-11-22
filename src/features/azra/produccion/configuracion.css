@@ -419,3 +419,38 @@
   height: 100%;
   object-fit: cover;
 }
+
+/* Uso por IA: cada proveedor en su propio bloque. */
+.azra .cf-grupo-ia {
+  display: grid;
+  gap: 10px;
+}
+.azra .cf-grupo-ia h4 {
+  margin: 0;
+  color: var(--ep-suave);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.azra .cf-grupo-ia + .cf-grupo-ia {
+  padding-top: 12px;
+  border-top: 1px solid var(--ep-borde-suave);
+}
+.azra .cf-globo .cf-grupo-ia .cf-limite-cabeza strong {
+  font-size: 14px;
+}
+.azra .cf-limites {
+  gap: 14px;
+  padding: 16px 18px;
+}
+.azra .cf-limites .cf-limite {
+  padding: 0;
+}
+.azra .cf-limites .cf-limite + .cf-limite {
+  border-top: 0;
+}
+.azra .cf-globo {
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+}

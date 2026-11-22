@@ -523,6 +523,10 @@ const migraciones: string[] = [
   alter table recibos add column conexion_id text;
   update recibos set conexion_id = (select c.id from conexiones c where c.canal = recibos.canal and c.cuenta_id = recibos.cuenta_id limit 1);
   `,
+  // 15 · Costo que informa el propio proveedor por llamada (Claude Code: total_cost_usd, equivalente en API).
+  `
+  alter table consumo_ia add column costo_reportado real;
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

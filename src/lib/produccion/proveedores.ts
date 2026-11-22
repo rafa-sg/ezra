@@ -165,35 +165,71 @@ export function argumentosLocales(proveedor: "astra" | "claude", salida: string,
     "-",
   ];
 }
-/** Uso real que devuelve Claude Code con `--output-format json` (tokens de esa llamada). */
+/** Uso real que devuelve Claude Code con `--output-format json` (tokens y costo de esa llamada). */
 type UsoClaude = {
   input_tokens?: number;
   output_tokens?: number;
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
 };
-async function registrarClaude(
+const positivo = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0);
+/** Codex imprime al terminar «tokens used» y el total (p. ej. «tokens used\n12,345»). */
+export function tokensCodex(salida: string): number | null {
+  const todos = [...salida.matchAll(/tokens used[\s:]*(\d[\d,.]*)/gi)];
+  const ultimo = todos.at(-1)?.[1]?.replace(/[^\d]/g, "");
+  return ultimo ? Number(ultimo) : null;
+}
+/**
+ * Registra en Consumo una llamada real a Astra (Codex) o Claude (Claude Code) con lo que el propio
+ * programa informa: Claude da tokens, modelo y costo equivalente en la API; Codex, el total de tokens.
+ * Lo que no informa queda en cero o sin costo; nunca se estima. Nunca guarda el prompt ni la respuesta.
+ */
+export async function registrarLlamadaLocal(
+  proveedor: "astra" | "claude",
   contexto: ContextoGemini,
-  respuesta: { usage?: UsoClaude; modelUsage?: Record<string, unknown> },
+  crudo: string,
   duracionMs: number,
   error = "",
 ) {
   try {
-    const u = respuesta.usage ?? {};
-    const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0);
-    const entrada =
-      n(u.input_tokens) + n(u.cache_creation_input_tokens) + n(u.cache_read_input_tokens);
-    const modelo = Object.keys(respuesta.modelUsage ?? {})[0] ?? "claude";
     const { registrarConsumo } = await import("../granjas/consumo");
-    registrarConsumo({
-      ...contexto,
-      modelo: `Claude · ${modelo}`.slice(0, 80),
-      uso: { promptTokenCount: entrada, candidatesTokenCount: n(u.output_tokens) },
-      busqueda: false,
-      consultasBusqueda: 0,
-      duracionMs,
-      error,
-    });
+    if (proveedor === "claude") {
+      let r: { usage?: UsoClaude; modelUsage?: Record<string, unknown>; total_cost_usd?: unknown } =
+        {};
+      try {
+        r = JSON.parse(crudo);
+      } catch {
+        /* Sin JSON: se registra la llamada sin tokens. */
+      }
+      const u = r.usage ?? {};
+      registrarConsumo({
+        ...contexto,
+        modelo: `Claude · ${Object.keys(r.modelUsage ?? {})[0] ?? "claude"}`.slice(0, 80),
+        uso: {
+          promptTokenCount:
+            positivo(u.input_tokens) +
+            positivo(u.cache_creation_input_tokens) +
+            positivo(u.cache_read_input_tokens),
+          candidatesTokenCount: positivo(u.output_tokens),
+        },
+        busqueda: false,
+        consultasBusqueda: 0,
+        duracionMs,
+        error,
+        costoReportado: typeof r.total_cost_usd === "number" ? r.total_cost_usd : null,
+      });
+    } else {
+      const total = tokensCodex(crudo);
+      registrarConsumo({
+        ...contexto,
+        modelo: "Astra · gpt-6-astra",
+        uso: total === null ? null : { totalTokenCount: total },
+        busqueda: false,
+        consultasBusqueda: 0,
+        duracionMs,
+        error,
+      });
+    }
   } catch {
     /* Registrar el uso nunca debe tumbar una entrega. */
   }
@@ -254,7 +290,17 @@ export async function generarLocal(
       argumentosLocales(encargo.proveedor, salida, encargo.agente === "cazador"),
       `Trabaja únicamente con el encargo. ${encargo.agente === "cazador" ? "Puedes buscar y consultar páginas públicas. Prioriza los dominios de las fuentes aportadas, cita la página original y señala lo que no pudiste verificar." : "No tienes acceso a búsqueda. No afirmes haber consultado las URLs."} No tienes herramientas de archivos, comandos, publicación ni mensajes. Entrega texto para revisión.\n\n${opciones.prompt ?? construirEncargo(encargo)}`,
       carpeta,
+      undefined,
+      // Con Codex se lee también su resumen técnico para tomar «tokens used» (nunca se muestra ni guarda).
+      encargo.proveedor === "astra",
     );
+    const contexto = opciones.contexto ?? {
+      origen: "encargo" as const,
+      paso: `Encargo · ${encargo.agente}`,
+    };
+    // Con un ejecutor inyectado (pruebas) no se registra: la base de prueba puede no estar lista.
+    if (!opciones.ejecutar && encargo.proveedor === "astra")
+      await registrarLlamadaLocal("astra", contexto, crudo, Date.now() - inicio);
     let texto: string;
     if (encargo.proveedor === "astra") texto = await readFile(salida, "utf8");
     else {
@@ -269,12 +315,12 @@ export async function generarLocal(
       } catch {
         throw new WorkflowError("Claude no devolvió el formato esperado.", 502);
       }
-      // Tokens reales de esta llamada (los informa Claude Code); van a Consumo junto a Gemini.
-      // Con un ejecutor inyectado (pruebas) no se registra: la base de prueba puede no estar lista.
+      // Tokens y costo reales de esta llamada (los informa Claude Code).
       if (!opciones.ejecutar)
-        await registrarClaude(
-          opciones.contexto ?? { origen: "encargo", paso: `Encargo · ${encargo.agente}` },
-          respuesta,
+        await registrarLlamadaLocal(
+          "claude",
+          contexto,
+          crudo,
           Date.now() - inicio,
           respuesta.is_error ? "Claude no completó la entrega" : "",
         );

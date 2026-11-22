@@ -6,6 +6,7 @@ import {
   argumentosLocales,
   buscarHerramienta,
   ejecutarProceso,
+  registrarLlamadaLocal,
   type EjecutorProceso,
 } from "./proveedores";
 
@@ -221,6 +222,14 @@ export async function probar(
       120000,
       true,
     );
+    // La prueba también gasta del plan: se registra con lo que informa el programa (no en pruebas).
+    if (!opciones.ejecutar)
+      await registrarLlamadaLocal(
+        proveedor,
+        { origen: "prueba", paso: "Probar respuesta" },
+        crudo,
+        Date.now() - inicio,
+      );
     let texto = "";
     if (proveedor === "astra") texto = await readFile(salida, "utf8").catch(() => "");
     else {

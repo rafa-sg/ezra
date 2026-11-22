@@ -55,6 +55,7 @@ test("uso de las 3 IAs: Gemini contra el presupuesto, Astra y Claude contra los 
     origen: "encargo",
     paso: "p",
     modelo: "Claude · claude-prueba",
+    costoReportado: 0.0123,
     uso: { promptTokenCount: 900, candidatesTokenCount: 100 },
     busqueda: false,
     consultasBusqueda: 0,
@@ -89,6 +90,10 @@ test("uso de las 3 IAs: Gemini contra el presupuesto, Astra y Claude contra los 
   r = await uso.resumenUsoIA(ahora);
   assert.equal(r.gemini.dia.usado, 2500, "los tokens de Claude no cuentan contra Gemini");
   assert.equal(r.claude.tokensMes, 1000);
+  assert.equal(r.claude.llamadasMes, 1);
+  assert.equal(r.claude.costoApiMes, 0.0123, "el costo que informó Claude Code, sin estimar");
+  assert.equal(r.astra.llamadasMes, 0);
+  assert.equal(r.astra.costoApiMes, null, "Codex no informa costo: no se inventa");
   assert.equal(r.gemini.costoMes, null, "sin tarifa escrita no hay costo inventado");
   assert.equal(r.chatgpt, null, "sin sesiones de Codex no hay límites de ChatGPT");
   assert.equal(r.gemini.dia.porcentaje, 25);
@@ -101,4 +106,11 @@ test("uso de las 3 IAs: Gemini contra el presupuesto, Astra y Claude contra los 
   assert.equal(r.intentos.reanuda, new Date("2026-12-01T00:00:00-06:00").toISOString());
   assert.equal(r.astra.estado, null, "sin comprobación guardada no se afirma una sesión");
   assert.ok(!JSON.stringify(r).includes("clave-de-prueba"), "nunca devuelve la clave");
+});
+
+test("tokens de Codex: toma el último «tokens used» del resumen técnico", async () => {
+  const { tokensCodex } = await import("../src/lib/produccion/proveedores");
+  assert.equal(tokensCodex("[2026-11-22T05:00:00] codex\nOK\ntokens used\n12,345\n"), 12345);
+  assert.equal(tokensCodex("tokens used: 900\n...\ntokens used: 1,020"), 1020);
+  assert.equal(tokensCodex("sin resumen"), null);
 });

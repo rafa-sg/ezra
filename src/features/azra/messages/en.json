@@ -2361,5 +2361,15 @@
   "cf_llamadas": "calls",
   "cf_enTuPlan": "on your plan",
   "cf_sinCodex": "ChatGPT limits appear once Codex has reported them on this Mac (after using it at least once).",
-  "cf_restablecido": "Window reset, no new usage"
+  "cf_restablecido": "Window reset, no new usage",
+  "cf_intentosDeEzra": "Ezra attempts this month",
+  "cf_compartidos": "shared with the other AI",
+  "cf_compartidosQuedan": "Astra and Claude share 30 attempts a month: {n} left.",
+  "cf_grupoAstra": "ChatGPT · Astra (Codex)",
+  "cf_grupoClaude": "Claude (Claude Code)",
+  "cf_esteMes": "This month in Ezra",
+  "cf_sinTokens": "without reported tokens",
+  "cf_equivaleApi": "API equivalent",
+  "cf_cubrePlanChatgpt": "covered by your ChatGPT plan",
+  "cf_cubrePlanClaude": "covered by your Claude plan"
 }

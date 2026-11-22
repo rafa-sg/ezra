@@ -2361,5 +2361,15 @@
   "cf_llamadas": "llamadas",
   "cf_enTuPlan": "en tu plan",
   "cf_sinCodex": "Los límites de ChatGPT aparecen cuando Codex los haya informado en esta Mac (al usarlo al menos una vez).",
-  "cf_restablecido": "Ventana restablecida, sin uso nuevo"
+  "cf_restablecido": "Ventana restablecida, sin uso nuevo",
+  "cf_intentosDeEzra": "Intentos de Ezra este mes",
+  "cf_compartidos": "compartidos con la otra IA",
+  "cf_compartidosQuedan": "Astra y Claude comparten 30 intentos al mes: quedan {n}.",
+  "cf_grupoAstra": "ChatGPT · Astra (Codex)",
+  "cf_grupoClaude": "Claude (Claude Code)",
+  "cf_esteMes": "Este mes en Ezra",
+  "cf_sinTokens": "sin tokens informados",
+  "cf_equivaleApi": "equivale en la API a",
+  "cf_cubrePlanChatgpt": "lo cubre tu plan de ChatGPT",
+  "cf_cubrePlanClaude": "lo cubre tu plan de Claude"
 }

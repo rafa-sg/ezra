@@ -93,13 +93,6 @@ const usd = (n: number, locale: string) =>
     currency: "USD",
     maximumFractionDigits: n < 1 ? 4 : 2,
   }).format(n);
-/** Gasto real del mes: Gemini con tus tarifas; Astra y Claude van por tu plan (sin cobro por llamada). */
-function lineaGasto(uso: ResumenUsoIA, tr: Tr, locale: string) {
-  const n = formato(locale);
-  const gemini =
-    uso.gemini.costoMes === null ? tr("cf_sinTarifa") : usd(uso.gemini.costoMes, locale);
-  return `${tr("cf_gastoMes")}: Gemini ${gemini} (${uso.gemini.llamadasMes} ${tr("cf_llamadas")}) · Claude ${n.format(uso.claude.tokensMes)} ${tr("cf_tokens")} ${tr("cf_enTuPlan")}`;
-}
 const formato = (locale: string) => new Intl.NumberFormat(locale === "es" ? "es-SV" : "en-US");
 
 type Fila = {
@@ -141,16 +134,83 @@ function filasUso(uso: ResumenUsoIA, tr: Tr, locale: string): Fila[] {
   return [
     ...gpt(uso.chatgpt?.cincoHoras ?? null, tr("cf_chatgpt5h"), "gpt-5h"),
     ...gpt(uso.chatgpt?.semanal ?? null, tr("cf_chatgptSemana"), "gpt-semana"),
+    intentos(uso, "astra", tr),
+    intentos(uso, "claude", tr),
     gem(uso.gemini.dia, tr("cf_geminiDia"), "gemini-dia"),
     gem(uso.gemini.mes, tr("cf_geminiMes"), "gemini-mes"),
+  ];
+}
+/** Intentos de Ezra de un proveedor, sobre el límite de 30 al mes que comparten Astra y Claude. */
+function intentos(uso: ResumenUsoIA, p: "astra" | "claude", tr: Tr): Fila {
+  const { limite, reanuda } = uso.intentos;
+  return {
+    clave: `intentos-${p}`,
+    titulo: tr("cf_intentosDeEzra"),
+    detalle: `${uso[p].usados} ${tr("cf_de")} ${limite} · ${tr("cf_compartidos")}`,
+    restante: Math.max(0, Math.round(100 - (uso[p].usados / limite) * 100)),
+    reanuda,
+  };
+}
+type Grupo = { clave: string; titulo: string; filas: Fila[]; nota: string };
+/** Cada IA por separado: sus límites y lo que el propio proveedor informó este mes. */
+function gruposUso(uso: ResumenUsoIA, tr: Tr, locale: string): Grupo[] {
+  const filas = filasUso(uso, tr, locale);
+  const de = (prefijo: string) => filas.filter((f) => f.clave.startsWith(prefijo));
+  const n = formato(locale);
+  const local = (p: "astra" | "claude") => {
+    const g = uso[p];
+    const partes = [
+      `${n.format(g.tokensMes)} ${tr("cf_tokens")}`,
+      `${g.llamadasMes} ${tr("cf_llamadas")}`,
+    ];
+    if (g.sinTokens) partes.push(`${g.sinTokens} ${tr("cf_sinTokens")}`);
+    const costo =
+      g.costoApiMes === null ? "" : ` · ${tr("cf_equivaleApi")} ${usd(g.costoApiMes, locale)}`;
+    return `${tr("cf_esteMes")}: ${partes.join(" · ")}${costo} · ${tr(p === "astra" ? "cf_cubrePlanChatgpt" : "cf_cubrePlanClaude")}`;
+  };
+  const gemini =
+    uso.gemini.costoMes === null ? tr("cf_sinTarifa") : usd(uso.gemini.costoMes, locale);
+  return [
     {
-      clave: "intentos",
-      titulo: tr("cf_intentos"),
-      detalle: `${uso.intentos.usados} ${tr("cf_de")} ${uso.intentos.limite} · Astra ${uso.astra.usados} · Claude ${uso.claude.usados}`,
-      restante: Math.max(0, Math.round(100 - uso.intentos.porcentaje)),
-      reanuda: uso.intentos.reanuda,
+      clave: "astra",
+      titulo: tr("cf_grupoAstra"),
+      filas: [...de("gpt-"), ...de("intentos-astra")],
+      nota: local("astra"),
+    },
+    {
+      clave: "claude",
+      titulo: tr("cf_grupoClaude"),
+      filas: de("intentos-claude"),
+      nota: local("claude"),
+    },
+    {
+      clave: "gemini",
+      titulo: "Gemini",
+      filas: de("gemini-"),
+      nota: `${tr("cf_gastoMes")}: ${gemini} · ${uso.gemini.llamadasMes} ${tr("cf_llamadas")}`,
     },
   ];
+}
+function GruposUso({ uso, tr, locale }: { uso: ResumenUsoIA; tr: Tr; locale: string }) {
+  return (
+    <>
+      {gruposUso(uso, tr, locale).map((g) => (
+        <section key={g.clave} className="cf-grupo-ia" aria-label={g.titulo}>
+          <h4>{g.titulo}</h4>
+          {g.filas.map((f) => (
+            <Barra key={f.clave} fila={f} tr={tr} />
+          ))}
+          <p className="cf-nota cf-gasto">{g.nota}</p>
+        </section>
+      ))}
+      <p className="cf-nota cf-gasto">
+        {tr("cf_compartidosQuedan").replace(
+          "{n}",
+          String(Math.max(0, uso.intentos.limite - uso.intentos.usados)),
+        )}
+      </p>
+    </>
+  );
 }
 /** Como en Claude: la barra muestra lo usado y va subiendo; naranja desde el 80 %. */
 function Barra({ fila, tr }: { fila: Fila; tr: Tr }) {
@@ -163,7 +223,13 @@ function Barra({ fila, tr }: { fila: Fila; tr: Tr }) {
         <strong>{fila.titulo}</strong>
       </div>
       <div className="cf-limite-linea">
-        <span>{usado === null ? fila.detalle : fila.reanuda ? faltaPara(fila.reanuda, tr) : tr("cf_restablecido")}</span>
+        <span>
+          {usado === null
+            ? fila.detalle
+            : fila.reanuda
+              ? faltaPara(fila.reanuda, tr)
+              : tr("cf_restablecido")}
+        </span>
         <span className={alto ? "cf-bajo" : undefined}>{texto}</span>
       </div>
       <div
@@ -280,8 +346,7 @@ export function BotonConsumo({
             <p className="cf-globo-titulo">{tr("cf_limitesIA")}</p>
             {error && <p className="cf-nota">{tr("cf_errorUso")}</p>}
             {!uso && !error && <p className="cf-nota">{tr("cf_cargando")}</p>}
-            {uso && filasUso(uso, tr, locale).map((f) => <Barra key={f.clave} fila={f} tr={tr} />)}
-            {uso && <p className="cf-nota cf-gasto">{lineaGasto(uso, tr, locale)}</p>}
+            {uso && <GruposUso uso={uso} tr={tr} locale={locale} />}
             <button
               className="cf-globo-accion"
               onClick={() => {
@@ -645,11 +710,8 @@ function PaginaUso({
                 )}
               </p>
               <div className="cf-tarjeta cf-limites">
-                {filasUso(uso, tr, locale).map((f) => (
-                  <Barra key={f.clave} fila={f} tr={tr} />
-                ))}
+                <GruposUso uso={uso} tr={tr} locale={locale} />
               </div>
-              <p className="cf-nota">{lineaGasto(uso, tr, locale)}</p>
               {!uso.chatgpt && <p className="cf-nota">{tr("cf_sinCodex")}</p>}
             </>
           )}

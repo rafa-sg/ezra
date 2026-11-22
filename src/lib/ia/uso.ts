@@ -29,6 +29,15 @@ export type UsoLocal = {
   estado: DiagnosticoIA["estado"] | null;
   comprobado: string | null;
 };
+/** Lo que el propio programa informó este mes en las llamadas de Ezra (no se estima nada). */
+export type GastoLocal = {
+  tokensMes: number;
+  llamadasMes: number;
+  /** Llamadas cuyo programa no informó tokens. */
+  sinTokens: number;
+  /** Suma de lo que el proveedor informó como costo equivalente en API (USD); null si no informa. */
+  costoApiMes: number | null;
+};
 export type ResumenUsoIA = {
   ahora: string;
   gemini: {
@@ -46,8 +55,8 @@ export type ResumenUsoIA = {
   chatgpt: LimitesCodex | null;
   /** Límite único de intentos para Astra y Claude (encargos y granjas). */
   intentos: { limite: number; usados: number; porcentaje: number; reanuda: string };
-  astra: UsoLocal;
-  claude: UsoLocal & { tokensMes: number; llamadasMes: number };
+  astra: UsoLocal & GastoLocal;
+  claude: UsoLocal & GastoLocal;
 };
 
 function intentosGranjas(mes: string) {
@@ -102,7 +111,18 @@ export async function resumenUsoIA(ahora: Date = new Date()): Promise<ResumenUso
     const c = costoLlamada(f, tarifas);
     costoMes = c === null || costoMes === null ? null : costoMes + c;
   }
-  const deClaude = filasMes.filter((f) => f.modelo.startsWith("Claude"));
+  const gasto = (prefijo: string): GastoLocal => {
+    const filas = filasMes.filter((f) => f.modelo.startsWith(prefijo));
+    const conCosto = filas.filter((f) => typeof f.costo_reportado === "number");
+    return {
+      tokensMes: filas.reduce((t, f) => t + f.total_tokens, 0),
+      llamadasMes: filas.length,
+      sinTokens: filas.filter((f) => f.total_tokens === 0).length,
+      costoApiMes: conCosto.length
+        ? conCosto.reduce((t, f) => t + (f.costo_reportado ?? 0), 0)
+        : null,
+    };
+  };
   const chatgpt = await limitesCodex({ ahora }).catch(() => null);
   return {
     ahora: iso,
@@ -123,11 +143,7 @@ export async function resumenUsoIA(ahora: Date = new Date()): Promise<ResumenUso
       porcentaje: Math.min(100, Math.round((total / LIMITE_IA_MENSUAL) * 1000) / 10),
       reanuda: instanteLocal(`${siguienteMes(mesLocal(ahora))}-01`).toISOString(),
     },
-    astra: local("astra"),
-    claude: {
-      ...local("claude"),
-      tokensMes: deClaude.reduce((t, f) => t + f.total_tokens, 0),
-      llamadasMes: deClaude.length,
-    },
+    astra: { ...local("astra"), ...gasto("Astra") },
+    claude: { ...local("claude"), ...gasto("Claude") },
   };
 }
