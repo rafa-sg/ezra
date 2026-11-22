@@ -211,7 +211,7 @@ function suscribirTema(cb: () => void) {
     window.removeEventListener("ezra:tema", cb);
   };
 }
-function useTema() {
+export function useTema() {
   const tema = useSyncExternalStore(suscribirTema, leerTema, () => "claro" as Tema);
   // Una vez, al abrir: deja guardada la preferencia migrada (líquido → claro; «ezra:dark» anterior).
   // Lee el almacenamiento, no el valor renderizado: durante la hidratación ese valor es siempre «claro».
@@ -226,7 +226,7 @@ function useTema() {
   }, []);
   return tema;
 }
-function guardarTema(tema: Tema) {
+export function guardarTema(tema: Tema) {
   try {
     window.localStorage.setItem(CLAVE_TEMA, tema);
   } catch {
@@ -284,16 +284,24 @@ function suscribirSidebar(cb: () => void) {
     window.removeEventListener("ezra:sidebar", cb);
   };
 }
-function useSidebarContraida() {
+export function useSidebarContraida() {
   return useSyncExternalStore(suscribirSidebar, leerSidebar, () => false);
 }
-function guardarSidebarContraida(valor: boolean) {
+export function guardarSidebarContraida(valor: boolean) {
   try {
     window.localStorage.setItem(CLAVE_SIDEBAR, valor ? "1" : "0");
   } catch {
     /* Sin almacenamiento (modo privado): la preferencia dura solo esta visita. */
   }
   window.dispatchEvent(new Event("ezra:sidebar"));
+}
+/** Abre Configuración en el estudio; si ya está abierto, sin recargar (el estudio escucha popstate). */
+function abrirConfiguracion() {
+  const destino = `${href("produccion")}?seccion=ajustes`;
+  if (window.location.pathname !== href("produccion")) return window.location.assign(destino);
+  window.history.pushState({ seccion: "ajustes" }, "", destino);
+  window.dispatchEvent(new PopStateEvent("popstate", { state: { seccion: "ajustes" } }));
+  window.dispatchEvent(new Event("ezra:navego"));
 }
 /** Cuenta, idioma y cierre de sesión en un solo menú (botón con «aria-expanded»; Escape o clic fuera cierran). */
 function MenuCuenta({
@@ -376,6 +384,16 @@ function MenuCuenta({
               </button>
             ))}
           </div>
+          <button
+            className="ep-cuenta-salir"
+            onClick={() => {
+              setAbierto(false);
+              abrirConfiguracion();
+            }}
+          >
+            <Settings size={16} aria-hidden="true" />
+            {t("cf_titulo" as MessageKey)}
+          </button>
           <button className="ep-cuenta-salir" disabled={saliendo} onClick={() => void salir()}>
             <LogOut size={16} aria-hidden="true" />
             {t("signOut")}

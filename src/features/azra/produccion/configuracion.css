@@ -1,0 +1,373 @@
+/* Configuración y globo de Consumo (estilo «Uso» de ChatGPT/Codex, con los tokens --ep-* del estudio). */
+.azra .cf-marco {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+.azra .cf-menu {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 18px;
+}
+.azra .cf-buscar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--ep-borde-control);
+  border-radius: var(--ez-pill);
+  background: var(--ep-superficie);
+  color: var(--ep-suave);
+}
+.azra .cf-buscar:focus-within {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 1px;
+}
+.azra .cf-buscar input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ep-texto);
+  font: inherit;
+}
+.azra .cf-grupo {
+  display: grid;
+  gap: 2px;
+}
+.azra .cf-grupo-titulo {
+  margin: 0 0 4px 12px;
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .cf-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--ez-radio-s);
+  background: transparent;
+  color: var(--ep-texto-2);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.azra .cf-item:hover {
+  background: var(--ep-superficie-2);
+  color: var(--ep-texto);
+}
+.azra .cf-item[aria-current="page"] {
+  background: var(--ep-superficie-2);
+  color: var(--ep-texto);
+  font-weight: 600;
+}
+.azra .cf-item:focus-visible,
+.azra .cf-pestanas button:focus-visible,
+.azra .cf-globo-accion:focus-visible,
+.azra .cf-interruptor:focus-visible,
+.azra .cf-segmentos button:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 1px;
+}
+.azra .cf-item svg {
+  flex: none;
+  color: var(--ep-suave);
+}
+.azra .cf-item span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.azra .cf-item .cf-item-externo {
+  margin-left: auto;
+}
+.azra .cf-avatar {
+  display: inline-grid;
+  flex: none !important;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ep-superficie-2);
+  color: var(--ep-texto-2);
+  font-size: 10px;
+  font-weight: 700;
+}
+.azra .cf-avatar-grande {
+  width: 48px;
+  height: 48px;
+  font-size: 16px;
+}
+.azra .cf-contenido {
+  display: grid;
+  gap: 16px;
+  max-width: 760px;
+  min-width: 0;
+}
+.azra .cf-encabezado h2 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: var(--ez-tracking-titulo);
+}
+.azra .cf-encabezado p,
+.azra .cf-nota {
+  margin: 4px 0 0;
+  color: var(--ep-suave);
+  font-size: 14px;
+}
+.azra .cf-subtitulo {
+  margin: 18px 0 0;
+  font-size: 18px;
+}
+.azra .cf-tarjeta {
+  display: grid;
+  border: 1px solid var(--ep-borde);
+  border-radius: var(--ez-radio);
+  background: var(--ep-tarjeta);
+}
+.azra .cf-perfil {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+}
+.azra .cf-perfil p {
+  margin: 2px 0 0;
+  color: var(--ep-suave);
+}
+.azra .cf-renglon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 18px;
+}
+.azra .cf-renglon + .cf-renglon {
+  border-top: 1px solid var(--ep-borde-suave);
+}
+.azra .cf-renglon p {
+  margin: 3px 0 0;
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .cf-renglon-control {
+  flex: none;
+}
+.azra .cf-renglon select {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--ep-borde-control);
+  border-radius: var(--ez-radio-s);
+  background: var(--ep-superficie);
+  color: var(--ep-texto);
+  font: inherit;
+}
+.azra .cf-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--ez-pill);
+  background: var(--ep-superficie-2);
+  color: var(--ep-texto-2);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.azra .cf-pestanas {
+  display: flex;
+  gap: 4px;
+}
+.azra .cf-pestanas button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--ez-radio-s);
+  background: transparent;
+  color: var(--ep-suave);
+  font: inherit;
+  cursor: pointer;
+}
+.azra .cf-pestanas button[aria-selected="true"] {
+  background: var(--ep-superficie-2);
+  color: var(--ep-texto);
+  font-weight: 600;
+}
+.azra .cf-enlace {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ez-azul);
+  font: inherit;
+  cursor: pointer;
+}
+.azra .cf-limites {
+  gap: 0;
+}
+.azra .cf-limites .cf-limite {
+  padding: 16px 18px;
+}
+.azra .cf-limites .cf-limite + .cf-limite {
+  border-top: 1px solid var(--ep-borde-suave);
+}
+.azra .cf-limite {
+  display: grid;
+  gap: 6px;
+}
+.azra .cf-limite-linea {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ep-suave);
+  font-size: 13px;
+}
+.azra .cf-limite-detalle {
+  color: var(--ep-suave);
+  font-size: 12px;
+}
+.azra .cf-bajo {
+  color: #e8590c;
+  font-weight: 600;
+}
+.azra .cf-barra {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--ez-pill);
+  background: var(--ep-superficie-2);
+}
+.azra .cf-barra span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ep-acento);
+  transition: width var(--ez-transicion);
+}
+.azra .cf-barra .cf-barra-baja {
+  background: #e8590c;
+}
+.azra .cf-segmentos {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--ez-pill);
+  background: var(--ep-superficie-2);
+}
+.azra .cf-segmentos button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--ez-pill);
+  background: transparent;
+  color: var(--ep-suave);
+  font: inherit;
+  cursor: pointer;
+}
+.azra .cf-segmentos button[aria-pressed="true"] {
+  background: var(--ep-tarjeta);
+  color: var(--ep-texto);
+  box-shadow: var(--ez-sombra-s);
+}
+.azra .cf-interruptor {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--ez-pill);
+  background: var(--ep-borde-control);
+  cursor: pointer;
+  transition: background var(--ez-transicion);
+}
+.azra .cf-interruptor span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--ez-sombra-s);
+  transition: transform var(--ez-transicion);
+}
+.azra .cf-interruptor[aria-checked="true"] {
+  background: var(--ez-verde);
+}
+.azra .cf-interruptor[aria-checked="true"] span {
+  transform: translateX(18px);
+}
+.azra .cf-analitica {
+  min-width: 0;
+}
+
+/* Globo de Consumo: flota junto al botón de la barra lateral. */
+.azra .cf-globo {
+  position: fixed;
+  z-index: 80;
+  display: grid;
+  gap: 14px;
+  width: min(340px, calc(100vw - 16px));
+  padding: 16px;
+  border: 1px solid var(--ep-borde);
+  border-radius: var(--ez-radio);
+  background: var(--ep-tarjeta);
+  color: var(--ep-texto);
+  box-shadow: var(--ez-sombra-l);
+  animation: cf-aparecer 160ms ease-out;
+}
+.azra .cf-globo-titulo {
+  margin: 0;
+  font-weight: 600;
+}
+.azra .cf-globo-accion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  border: 1px solid var(--ep-borde-control);
+  border-radius: var(--ez-pill);
+  background: var(--ep-superficie);
+  color: var(--ep-texto);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.azra .cf-globo-accion:hover {
+  background: var(--ep-superficie-2);
+}
+@keyframes cf-aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .cf-globo {
+    animation: none;
+  }
+  .azra .cf-barra span,
+  .azra .cf-interruptor,
+  .azra .cf-interruptor span {
+    transition: none;
+  }
+}
+@media (max-width: 900px) {
+  .azra .cf-marco {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .azra .cf-menu {
+    position: static;
+  }
+  .azra .cf-renglon {
+    flex-wrap: wrap;
+  }
+}

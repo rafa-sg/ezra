@@ -1,5 +1,13 @@
 # Estado y relevo
 
+## 2026-11-21 (noche) · Configuración y Uso de las IAs (Claude, rama `feat/equipo-cuentas`)
+- [x] «Consumo» (abajo en la barra) ya no cambia de pantalla: abre un globo con los límites de Gemini (día/mes) y los 30 intentos de Astra y Claude, y «Administrar uso» lleva a Configuración › Uso (como el anillo de uso de Codex). `?seccion=consumo` y los enlaces viejos abren Configuración › Uso.
+- [x] Configuración (`?seccion=ajustes`, desde «Perfil y ajustes» › Configuración): buscador y grupos Cuenta (Cuenta, Uso, Equipo ↗), App (General: idioma y zona; Apariencia: tema y barra lateral), Datos (Almacenamiento + respaldo, solo propietario) e Integraciones (Conexiones ↗, Apps ↗). Solo lo que funciona en Ezra: sin notificaciones, voz, contraseñas, navegador ni Git.
+- [x] Uso › Resumen: estado de las 3 IAs y barras «% restante / se restablece en…»; sin límite escrito dice «Sin límite configurado». Uso › Analítica: la pantalla de Consumo anterior (presupuesto, tarifas, gráfica).
+- [x] Código: `src/lib/ia/uso.ts`, `GET /api/produccion/uso` (`administrador("consumo")`), `src/features/azra/produccion/configuracion.{tsx,css}`; `shell.tsx` exporta tema y barra. Prueba `tests/uso-ia.test.ts`. Tipos y lint limpios; unitarias 213/213 en una copia en Linux (la build y la integración no se corrieron: falta `/verificar` en la Mac).
+- [ ] Propietario: reiniciar `npm run dev` (el servidor del puerto 3001 sigue con código anterior) y revisar Configuración y el globo de Consumo; correr `/verificar`.
+- [ ] Pendiente (siguiente pedido): conexiones reales de Facebook (perfil + página), TikTok y YouTube con las mismas métricas en Apps.
+
 ## 2026-11-21 (noche) · Ezra multiusuario (rama `feat/equipo-cuentas`)
 
 ### Fase 1 · Equipo, roles y acceso por invitación — HECHO

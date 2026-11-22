@@ -50,7 +50,6 @@ import { Pixel, colores } from "../granjas/pixel";
 import { SeccionGranjas } from "../granjas/granjas";
 import { ConexionesGranjas } from "../granjas/conexiones";
 import { ColocarEnGranja } from "../granjas/colocar";
-import { SeccionConsumo } from "../granjas/consumo";
 import { SeccionEventos } from "../granjas/eventos";
 import { PaginaInstagram } from "../granjas/instagram-pagina";
 import { PaginaYoutube } from "../granjas/youtube-pagina";
@@ -74,6 +73,7 @@ import { Bienvenida, leerGuia } from "./bienvenida";
 import type { EstadoOnboarding } from "@/lib/produccion/onboarding";
 import type { Equipo } from "@/lib/equipo/modelo";
 import { SeccionEquipo } from "./equipo";
+import { BotonConsumo, Configuracion } from "./configuracion";
 import "./estudio.css";
 import "./tokens.css";
 
@@ -88,6 +88,8 @@ const secciones = [
   "conexiones",
   "consumo",
   "equipo",
+  // Configuración (cuenta, uso, apariencia…): se abre desde «Perfil y ajustes» o «Administrar uso».
+  "ajustes",
 ] as const;
 type Seccion = (typeof secciones)[number];
 /** Secciones retiradas del menú (equipo, fuentes, cola): sus enlaces abren Granjas. */
@@ -96,7 +98,9 @@ const seccionDe = (valor: string | null): Seccion | null =>
     ? null
     : valor === "instagram"
       ? "apps"
-      : (secciones as readonly string[]).includes(valor)
+      : valor === "consumo"
+        ? "ajustes"
+        : (secciones as readonly string[]).includes(valor)
         ? (valor as Seccion)
         : "granjas";
 /** Una línea de ayuda por sección para la cabecera (las descripciones que antes iban dentro de cada página). */
@@ -148,7 +152,7 @@ export function EstudioProduccion({
   // Secciones de esta sesión (el servidor vuelve a comprobarlas en cada solicitud).
   const esPropietario = equipo?.rol === "propietario";
   const permitida = (s: Seccion) =>
-    s === "equipo" ? esPropietario : (equipo?.secciones as readonly string[] | undefined)?.includes(s) ?? false;
+    s === "ajustes" ? Boolean(equipo) : s === "equipo" ? esPropietario : (equipo?.secciones as readonly string[] | undefined)?.includes(s) ?? false;
   const primera: Seccion = secciones.find(permitida) ?? "inicio";
   const accesible = (s: Seccion | null) => (s && permitida(s) ? s : s ? primera : null);
   const { signOut } = useClerk();
@@ -325,15 +329,20 @@ export function EstudioProduccion({
     setAviso("");
   }
   function navegar(nueva: Seccion) {
+    // «Consumo» ya no es una página: abre Configuración › Uso (como «Administrar uso» en ChatGPT).
+    const ajuste = nueva === "consumo" ? "&ajuste=uso" : "";
+    if (nueva === "consumo") nueva = "ajustes";
     // La sección queda en la dirección: el botón Atrás vuelve y una recarga no la pierde.
     const url =
       nueva === "inicio"
         ? window.location.pathname
-        : `${window.location.pathname}?seccion=${nueva}`;
+        : `${window.location.pathname}?seccion=${nueva}${ajuste}`;
     if (`${window.location.pathname}${window.location.search}` !== url)
       window.history.pushState({ seccion: nueva }, "", url);
     setSeccion(nueva);
     setAviso("");
+    // Si Configuración ya está abierta, que lea el apartado nuevo de la dirección.
+    if (nueva === "ajustes") window.dispatchEvent(new Event("ezra:ajuste"));
   }
   function crear(agente?: Agente, ficha?: FichaSpotmi) {
     if (soloLectura) return;
@@ -603,9 +612,22 @@ export function EstudioProduccion({
         {/* Navegación en la barra superior: píldora «Menú · % del día» y «Nuevo encargo». */}
         <NavegacionLateral
           // Consumo va fijo abajo, encima de la cuenta (no en la lista principal).
+          // Consumo no cambia de pantalla: abre el globo de uso; «Administrar uso» lleva a Configuración.
           abajo={navegacion
             .filter((n) => n.id === "consumo")
-            .map(({ id, icono, etiqueta }) => ({ id, icono, etiqueta: tr(etiqueta) }))}
+            .map(({ id, icono, etiqueta }) => ({
+              id,
+              icono,
+              etiqueta: tr(etiqueta),
+              elemento: (
+                <BotonConsumo
+                  tr={tr}
+                  activo={!soloLectura && seccion === "ajustes"}
+                  deshabilitado={soloLectura}
+                  onAdministrar={() => navegar("consumo")}
+                />
+              ),
+            }))}
           items={navegacion.filter((n) => n.id !== "consumo").map(({ id, icono, etiqueta }) => ({
             id,
             icono,
@@ -650,7 +672,9 @@ export function EstudioProduccion({
             titulo={
               seccion === "apps" && appActiva
                 ? `${redes[appActiva.canal].nombre} · ${appActiva.nombre}`
-                : tr(navegacion.find((n) => n.id === seccion)?.etiqueta ?? "p_inicio")
+                : seccion === "ajustes"
+                  ? tr("cf_titulo")
+                  : tr(navegacion.find((n) => n.id === seccion)?.etiqueta ?? "p_inicio")
             }
             ayuda={ayudaSeccion[seccion] ? tr(ayudaSeccion[seccion]!) : undefined}
             acciones={
@@ -925,10 +949,15 @@ export function EstudioProduccion({
               {!cuentasApp && <p role="status">{tr("p_cargando")}</p>}
             </>
           )}
-          {!soloLectura && seccion === "consumo" && (
-            <>
-              <SeccionConsumo g={g} fecha={fecha} locale={locale} />
-            </>
+          {!soloLectura && seccion === "ajustes" && (
+            <Configuracion
+              tr={tr}
+              g={g}
+              fecha={fecha}
+              equipo={equipo}
+              puede={(s) => permitida(s as Seccion)}
+              onIr={(s) => navegar(s)}
+            />
           )}
           {!soloLectura && seccion === "equipo" && esPropietario && <SeccionEquipo tr={tr} />}
           {!soloLectura && seccion === "calendario" && (

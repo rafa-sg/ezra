@@ -93,7 +93,9 @@ export function NavegacionLateral({
       {abajo.length > 0 && (
         <EnEspacio id="ez-sidebar-abajo">
           <nav className="ez-sb-lista" aria-label={tr("ez_sb_abajo")}>
-            {abajo.map(boton)}
+            {abajo.map((item) =>
+              item.elemento ? <div key={item.id}>{item.elemento}</div> : boton(item),
+            )}
           </nav>
         </EnEspacio>
       )}

@@ -1,5 +1,11 @@
 # Decisiones
 
+## 2026-11-21 · Configuración y Uso de las IAs
+
+- El uso se mide en Ezra, no se lee de los planes: Gemini por tokens contra el presupuesto que escribe el propietario; Astra y Claude por intentos contra el límite compartido de 30 al mes (encargos + granjas). Ningún porcentaje se inventa: sin límite escrito, la interfaz dice «Sin límite configurado».
+- Las barras muestran lo que queda (como ChatGPT) y se ponen naranjas por debajo del 20 %. El estado de Astra/Claude sale de la última comprobación guardada en Conexiones; sin comprobación dice «Sin comprobar».
+- Configuración solo incluye funciones reales del estudio. Equipo, Conexiones y Apps se abren en su propia sección (flecha ↗) en lugar de duplicarse.
+
 ## 2026-10-07 · Interacción y movimiento del panel
 
 - Una sola capa CSS (`motion.css`) con variables reutilizables: duraciones 140 ms (hover), 210 ms (paneles y vistas), halo 220 ms al entrar y 360 ms al salir, curvas `--az-ease`/`--az-ease-out`, colores de hover/presionado, anillo de foco y sombras. Sin `transition: all`, sin JavaScript de animación ni dependencias.
