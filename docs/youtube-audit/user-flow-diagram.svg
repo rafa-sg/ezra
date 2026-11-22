@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1240" viewBox="0 0 1800 1240" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <!-- Editable source of user-flow-diagram.png. Render with: node docs/youtube-audit/render.mjs -->
+  <defs>
+    <marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#344054"/>
+    </marker>
+    <style>
+      .t{font-size:30px;font-weight:700;fill:#101828}
+      .s{font-size:18px;fill:#475467}
+      .k{font-size:21px;font-weight:700;fill:#101828}
+      .h{font-size:16px;font-weight:700;fill:#101828}
+      .b{font-size:14.5px;fill:#344054}
+      .m{font-size:13.5px;fill:#344054;font-family:Menlo, Consolas, monospace}
+      .c{fill:#ffffff;stroke:#98a2b3;stroke-width:1.5}
+      .g{fill:#fef6ee;stroke:#e04f16;stroke-width:1.5}
+      .r{fill:#fffaeb;stroke:#dc6803;stroke-width:2}
+      .a{stroke:#344054;stroke-width:2.2;fill:none;marker-end:url(#f)}
+    </style>
+  </defs>
+  <rect width="1800" height="1240" fill="#ffffff"/>
+  <text x="40" y="58" class="t">Ezra — user flows with YouTube API Services</text>
+  <text x="40" y="90" class="s">Only user: the Spotmi team, on the owner’s Mac. White = Ezra screen · orange = Google/YouTube · yellow = human review/approval step.</text>
+  <rect x="1240" y="34" width="22" height="16" class="c"/><text x="1270" y="48" class="b">Ezra</text>
+  <rect x="1330" y="34" width="22" height="16" class="g"/><text x="1360" y="48" class="b">Google / YouTube</text>
+  <rect x="1520" y="34" width="22" height="16" class="r"/><text x="1550" y="48" class="b">Human review</text>
+
+  <!-- Lane 1: Connect -->
+  <rect x="40" y="120" width="1720" height="190" rx="16" fill="#f9fafb" stroke="#d0d5dd"/>
+  <text x="60" y="154" class="k">1 · Connect YouTube (OAuth)</text>
+  <rect x="60" y="175" width="300" height="115" rx="10" class="c"/>
+  <text x="76" y="203" class="h">Connections › YouTube</text><text x="76" y="228" class="b">Owner clicks “Conectar”</text><text x="76" y="252" class="b">(Ezra creates a one-time state)</text>
+  <rect x="410" y="175" width="320" height="115" rx="10" class="g"/>
+  <text x="426" y="203" class="h">Google consent screen</text><text x="426" y="228" class="b">youtube.readonly + youtube.upload</text><text x="426" y="252" class="b">(+ yt-analytics.readonly via</text><text x="426" y="274" class="b">“Autorizar métricas”)</text>
+  <rect x="780" y="175" width="300" height="115" rx="10" class="c"/>
+  <text x="796" y="203" class="h">Callback on 127.0.0.1</text><text x="796" y="228" class="b">State checked, code exchanged</text><text x="796" y="252" class="b">for tokens</text>
+  <rect x="1130" y="175" width="300" height="115" rx="10" class="c"/>
+  <text x="1146" y="203" class="h">Tokens stored encrypted</text><text x="1146" y="228" class="b">AES-256-GCM in local SQLite</text>
+  <rect x="1480" y="175" width="260" height="115" rx="10" class="c"/>
+  <text x="1496" y="203" class="h">Channel verified</text><text x="1496" y="228" class="m">channels.list mine=true</text><text x="1496" y="252" class="b">shows @spotmisv</text>
+  <path d="M360,232 L408,232" class="a"/><path d="M730,232 L778,232" class="a"/><path d="M1080,232 L1128,232" class="a"/><path d="M1430,232 L1478,232" class="a"/>
+
+  <!-- Lane 2: Metrics -->
+  <rect x="40" y="330" width="1720" height="170" rx="16" fill="#f9fafb" stroke="#d0d5dd"/>
+  <text x="60" y="364" class="k">2 · View own channel metrics</text>
+  <rect x="60" y="385" width="300" height="95" rx="10" class="c"/>
+  <text x="76" y="413" class="h">Apps › YouTube</text><text x="76" y="438" class="b">Owner opens the channel page</text>
+  <rect x="410" y="385" width="480" height="95" rx="10" class="g"/>
+  <text x="426" y="413" class="h">YouTube Data API + Analytics API</text><text x="426" y="438" class="m">channels · playlistItems · videos · reports</text><text x="426" y="460" class="b">own channel only</text>
+  <rect x="940" y="385" width="800" height="95" rx="10" class="c"/>
+  <text x="956" y="413" class="h">Totals, 12 recent videos, 7/28/90-day views, watch time, subscribers</text><text x="956" y="438" class="b">Shown on screen; kept in memory ≤ 15 min; never written to disk</text>
+  <path d="M360,432 L408,432" class="a"/><path d="M890,432 L938,432" class="a"/>
+
+  <!-- Lane 3: Viral videos -->
+  <rect x="40" y="520" width="1720" height="190" rx="16" fill="#f9fafb" stroke="#d0d5dd"/>
+  <text x="60" y="554" class="k">3 · “Viral videos” request (trend reference)</text>
+  <rect x="60" y="575" width="280" height="115" rx="10" class="c"/>
+  <text x="76" y="603" class="h">New request</text><text x="76" y="628" class="b">“Videos virales”: topic +</text><text x="76" y="650" class="b">period → “Ejecutar”</text>
+  <rect x="380" y="575" width="300" height="115" rx="10" class="g"/>
+  <text x="396" y="603" class="h">YouTube Data API v3</text><text x="396" y="628" class="m">search.list (≈100 units)</text><text x="396" y="652" class="m">videos.list (stats)</text>
+  <rect x="720" y="575" width="320" height="115" rx="10" class="c"/>
+  <text x="736" y="603" class="h">Ranked list</text><text x="736" y="628" class="b">Links + public stats + lookup</text><text x="736" y="650" class="b">date and deletion date</text>
+  <rect x="1080" y="575" width="300" height="115" rx="10" class="r"/>
+  <text x="1096" y="603" class="h">Owner review</text><text x="1096" y="628" class="b">Approve / request changes /</text><text x="1096" y="650" class="b">reject. No video is downloaded.</text>
+  <rect x="1420" y="575" width="320" height="115" rx="10" class="c"/>
+  <text x="1436" y="603" class="h">Auto-delete after 30 days</text><text x="1436" y="628" class="b">IDs, titles, stats, links and</text><text x="1436" y="650" class="b">history erased; run again to refresh</text>
+  <path d="M340,632 L378,632" class="a"/><path d="M680,632 L718,632" class="a"/><path d="M1040,632 L1078,632" class="a"/><path d="M1380,632 L1418,632" class="a"/>
+
+  <!-- Lane 4: Upload -->
+  <rect x="40" y="730" width="1720" height="230" rx="16" fill="#f9fafb" stroke="#d0d5dd"/>
+  <text x="60" y="764" class="k">4 · Upload one of the team’s own videos (always private)</text>
+  <rect x="60" y="785" width="270" height="155" rx="10" class="c"/>
+  <text x="76" y="813" class="h">Farm “Media” step</text><text x="76" y="838" class="b">Owner uploads own MP4</text><text x="76" y="860" class="b">and declares ownership</text><text x="76" y="882" class="b">(or author permission)</text>
+  <rect x="360" y="785" width="260" height="155" rx="10" class="c"/>
+  <text x="376" y="813" class="h">Title / description</text><text x="376" y="838" class="b">Written or pasted by</text><text x="376" y="860" class="b">the owner</text>
+  <rect x="650" y="785" width="270" height="155" rx="10" class="r"/>
+  <text x="666" y="813" class="h">“Tu revisión”</text><text x="666" y="838" class="b">Owner confirms facts, rights</text><text x="666" y="860" class="b">and brand; approves the</text><text x="666" y="882" class="b">exact version (hash)</text>
+  <rect x="950" y="785" width="270" height="155" rx="10" class="r"/>
+  <text x="966" y="813" class="h">Authorize destination</text><text x="966" y="838" class="b">Choose YouTube account,</text><text x="966" y="860" class="b">type PUBLICAR</text><text x="966" y="882" class="b">(edits require re-approval)</text>
+  <rect x="1250" y="785" width="230" height="155" rx="10" class="g"/>
+  <text x="1266" y="813" class="h">videos.insert</text><text x="1266" y="838" class="b">resumable upload,</text><text x="1266" y="860" class="m">privacyStatus=private</text><text x="1266" y="882" class="b">receipt: video ID + link</text>
+  <rect x="1510" y="785" width="230" height="155" rx="10" class="g"/>
+  <text x="1526" y="813" class="h">YouTube Studio</text><text x="1526" y="838" class="b">Owner reviews and</text><text x="1526" y="860" class="b">publishes by hand</text>
+  <path d="M330,862 L358,862" class="a"/><path d="M620,862 L648,862" class="a"/><path d="M920,862 L948,862" class="a"/><path d="M1220,862 L1248,862" class="a"/><path d="M1480,862 L1508,862" class="a"/>
+
+  <!-- Lane 5: Disconnect -->
+  <rect x="40" y="980" width="1720" height="230" rx="16" fill="#f9fafb" stroke="#d0d5dd"/>
+  <text x="60" y="1014" class="k">5 · Disconnect and revoke</text>
+  <rect x="60" y="1035" width="300" height="155" rx="10" class="c"/>
+  <text x="76" y="1063" class="h">Connections › YouTube</text><text x="76" y="1088" class="b">Owner clicks “Desconectar”</text>
+  <rect x="410" y="1035" width="330" height="155" rx="10" class="g"/>
+  <text x="426" y="1063" class="h">Google token revocation</text><text x="426" y="1088" class="m">POST oauth2.googleapis.com/</text><text x="426" y="1110" class="m">revoke?token=…</text><text x="426" y="1134" class="b">(refresh token → all access)</text>
+  <rect x="790" y="1035" width="480" height="155" rx="10" class="c"/>
+  <text x="806" y="1063" class="h">Immediate local deletion</text><text x="806" y="1088" class="b">• Encrypted token row deleted</text><text x="806" y="1110" class="b">• Channel metrics cache cleared</text><text x="806" y="1132" class="b">• Video IDs/links removed from upload receipts</text><text x="806" y="1154" class="b">• Pending authorizations revoked</text>
+  <rect x="1320" y="1035" width="420" height="155" rx="10" class="g"/>
+  <text x="1336" y="1063" class="h">Alternative: Google account</text><text x="1336" y="1088" class="m">security.google.com/settings/</text><text x="1336" y="1110" class="m">security/permissions</text><text x="1336" y="1134" class="b">Ezra loses access; local data erased on</text><text x="1336" y="1156" class="b">“Desconectar” or by request within 7 days</text>
+  <path d="M360,1112 L408,1112" class="a"/><path d="M740,1112 L788,1112" class="a"/>
+</svg>

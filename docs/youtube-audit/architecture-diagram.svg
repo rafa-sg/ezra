@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1180" viewBox="0 0 1800 1180" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <!-- Editable source of architecture-diagram.png. Render with: node docs/youtube-audit/render.mjs -->
+  <defs>
+    <marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#344054"/>
+    </marker>
+    <style>
+      .t{font-size:30px;font-weight:700;fill:#101828}
+      .s{font-size:18px;fill:#475467}
+      .h{font-size:20px;font-weight:700;fill:#101828}
+      .b{font-size:16px;fill:#344054}
+      .m{font-size:15px;fill:#344054;font-family:Menlo, Consolas, monospace}
+      .l{font-size:15px;fill:#1d2939;font-weight:600}
+      .n{font-size:15px;fill:#475467}
+      .w{fill:#ffffff;stroke:#98a2b3;stroke-width:1.5}
+      .a{stroke:#344054;stroke-width:2.2;fill:none;marker-end:url(#f)}
+      .a2{stroke:#344054;stroke-width:2.2;fill:none;marker-end:url(#f);marker-start:url(#f)}
+    </style>
+  </defs>
+  <rect width="1800" height="1180" fill="#ffffff"/>
+  <text x="40" y="58" class="t">Ezra — architecture and YouTube API data flow</text>
+  <text x="40" y="90" class="s">Internal tool of the Spotmi team. Runs only on the owner’s Mac (loopback 127.0.0.1). No public access, no other users. Only Spotmi’s own channel (@spotmisv) is authorized.</text>
+
+  <!-- Mac -->
+  <rect x="40" y="120" width="900" height="910" rx="18" fill="#f2f4f7" stroke="#667085" stroke-width="2"/>
+  <text x="66" y="156" class="h">Owner’s Mac (single team computer)</text>
+
+  <rect x="80" y="180" width="430" height="120" rx="12" class="w"/>
+  <text x="100" y="214" class="h">Browser</text>
+  <text x="100" y="242" class="m">http://127.0.0.1:3000</text>
+  <text x="100" y="270" class="b">Spotmi team member, signed in to Ezra</text>
+
+  <rect x="80" y="370" width="820" height="190" rx="12" fill="#eef4ff" stroke="#444ce7" stroke-width="2"/>
+  <text x="100" y="406" class="h">Ezra server (Next.js, Node.js)</text>
+  <text x="100" y="436" class="b">• Listens only on 127.0.0.1 — not reachable from the internet</text>
+  <text x="100" y="464" class="b">• Calls Google APIs over HTTPS with the owner’s OAuth access token</text>
+  <text x="100" y="492" class="b">• Uploads only the team’s own videos, as private, after a human approves that exact version</text>
+  <text x="100" y="520" class="b">  and authorizes the destination by typing PUBLICAR</text>
+  <text x="100" y="548" class="b">• Hourly job deletes YouTube data about other channels 30 days after the lookup</text>
+
+  <path d="M295,300 L295,368" class="a2"/>
+  <text x="310" y="340" class="n">HTTP on loopback (session cookie)</text>
+
+  <!-- Storage -->
+  <rect x="80" y="640" width="400" height="250" rx="12" class="w"/>
+  <text x="100" y="674" class="h">Local SQLite database</text>
+  <text x="100" y="700" class="m">data/granjas/granjas.sqlite</text>
+  <text x="100" y="732" class="b">• Google OAuth tokens — AES-256-GCM encrypted,</text>
+  <text x="100" y="756" class="b">  kept until “Disconnect”</text>
+  <text x="100" y="786" class="b">• Upload receipts: video ID + YouTube Studio link,</text>
+  <text x="100" y="810" class="b">  erased on “Disconnect”</text>
+  <text x="100" y="840" class="b">• Clips reference: aggregate numbers only,</text>
+  <text x="100" y="864" class="b">  erased 30 days after the lookup</text>
+
+  <rect x="500" y="640" width="400" height="160" rx="12" class="w"/>
+  <text x="520" y="674" class="h">Local JSON store</text>
+  <text x="520" y="700" class="m">data/produccion-spotmi.json</text>
+  <text x="520" y="732" class="b">• “Viral videos” lookups: video ID, title, channel,</text>
+  <text x="520" y="756" class="b">  thumbnail URL, date, duration, public stats</text>
+  <text x="520" y="780" class="b">• Lookup date shown; erased after 30 days</text>
+
+  <rect x="500" y="820" width="400" height="70" rx="12" class="w"/>
+  <text x="520" y="850" class="h">Server memory</text>
+  <text x="520" y="876" class="b">Own-channel stats &amp; Analytics, cache ≤ 15 min</text>
+
+  <rect x="80" y="910" width="820" height="90" rx="12" class="w"/>
+  <text x="100" y="944" class="h">Local media folder</text>
+  <text x="100" y="968" class="b">Videos the team owns (or has the author’s written permission for), uploaded by</text><text x="100" y="990" class="b">the owner. Never downloaded from YouTube.</text>
+
+  <path d="M300,560 L300,638" class="a2"/>
+  <path d="M700,560 L700,638" class="a2"/>
+  <text x="314" y="604" class="n">read / write</text>
+  <text x="714" y="604" class="n">read / write</text>
+
+  <!-- Google -->
+  <rect x="1160" y="120" width="600" height="910" rx="18" fill="#fef6ee" stroke="#e04f16" stroke-width="2"/>
+  <text x="1186" y="156" class="h">Google</text>
+
+  <rect x="1185" y="180" width="550" height="150" rx="12" class="w"/>
+  <text x="1210" y="214" class="h">Google OAuth 2.0</text>
+  <text x="1210" y="242" class="m">accounts.google.com/o/oauth2/v2/auth</text>
+  <text x="1210" y="266" class="m">oauth2.googleapis.com/token · /revoke</text>
+  <text x="1210" y="294" class="b">Scopes: youtube.readonly, youtube.upload,</text>
+  <text x="1210" y="316" class="b">yt-analytics.readonly</text>
+
+  <rect x="1185" y="360" width="550" height="250" rx="12" class="w"/>
+  <text x="1210" y="394" class="h">YouTube Data API v3</text>
+  <text x="1210" y="424" class="m">channels.list (mine=true)</text>
+  <text x="1210" y="450" class="m">playlistItems.list · videos.list</text>
+  <text x="1210" y="476" class="m">search.list (type=video, order=viewCount)</text>
+  <text x="1210" y="502" class="m">videos.insert (resumable,</text>
+  <text x="1210" y="526" class="m">  privacyStatus=private)</text>
+  <text x="1210" y="560" class="b">Own channel + public metadata/statistics</text>
+  <text x="1210" y="584" class="b">of public videos for trend reference</text>
+
+  <rect x="1185" y="640" width="550" height="130" rx="12" class="w"/>
+  <text x="1210" y="674" class="h">YouTube Analytics API v2</text>
+  <text x="1210" y="702" class="m">reports.query (own channel, by day)</text>
+  <text x="1210" y="730" class="b">views, estimatedMinutesWatched,</text>
+  <text x="1210" y="754" class="b">subscribersGained, subscribersLost</text>
+
+  <rect x="1185" y="800" width="550" height="90" rx="12" class="w"/>
+  <text x="1210" y="834" class="h">YouTube Studio</text>
+  <text x="1210" y="856" class="b">Opened directly by the owner in the browser:</text><text x="1210" y="878" class="b">reviews the private video and publishes it by hand</text>
+
+  <rect x="1185" y="910" width="550" height="90" rx="12" fill="#ffffff" stroke="#98a2b3" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="1210" y="944" class="h">Gemini API (optional, Clips feature only)</text>
+  <text x="1210" y="972" class="b">Receives the team’s own video + aggregate numbers only</text>
+
+  <!-- Arrows Ezra ↔ Google -->
+  <path d="M900,400 C1040,400 1040,255 1183,255" class="a2"/>
+  <text x="918" y="272" class="l">auth code ⇄ tokens;</text>
+  <text x="918" y="292" class="l">revoke on Disconnect</text>
+  <path d="M900,470 L1183,470" class="a2"/>
+  <text x="960" y="456" class="l">HTTPS + Bearer token</text>
+  <path d="M900,530 C1040,530 1040,705 1183,705" class="a2"/>
+  <text x="915" y="612" class="l">daily metrics</text>
+
+  <!-- Footer -->
+  <rect x="40" y="1050" width="1720" height="100" rx="14" fill="#ecfdf3" stroke="#12b76a" stroke-width="1.5"/>
+  <text x="66" y="1086" class="h">What travels and what is kept</text>
+  <text x="66" y="1116" class="b">↓ From Google: tokens, own-channel data and metrics, public metadata/stats of searched videos.  ↑ To Google: auth codes, API requests, the team’s own approved MP4 + title + description.</text>
+  <text x="66" y="1140" class="b">Nothing is sold or shared with third parties. Data stays on the Mac. No YouTube audiovisual content is downloaded, cached or cut.</text>
+</svg>
