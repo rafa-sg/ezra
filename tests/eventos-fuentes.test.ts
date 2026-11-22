@@ -186,7 +186,7 @@ test("Instagram Business Discovery (simulado) → Gemini (simulado) → verifica
   process.env.GEMINI_API_KEY = "clave-de-prueba";
   // Conexión de Facebook con la Página elegida y los permisos de lectura.
   db.base()
-    .prepare("insert or replace into conexiones (canal, estado, identidad, capacidades, permisos, opciones, token_cifrado, actualizado) values ('facebook', 'conectada_publicacion', ?, '[]', ?, '[]', ?, ?)")
+    .prepare("insert or replace into conexiones (id, alcance, creado, canal, estado, identidad, capacidades, permisos, opciones, token_cifrado, actualizado) values ('00000000-0000-4000-8000-000000000002', 'compartida', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'facebook', 'conectada_publicacion', ?, '[]', ?, '[]', ?, ?)")
     .run(
       JSON.stringify({ id: "pagina1", nombre: "Spotmi" }),
       JSON.stringify(["pages_show_list", "pages_read_engagement", "pages_manage_posts", "instagram_basic", "instagram_manage_insights"]),

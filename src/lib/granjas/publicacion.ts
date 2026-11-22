@@ -14,7 +14,17 @@ import {
   type Identidad,
   type ResultadoEnvio,
 } from "./adaptadores";
-import { capacidadRequerida, leerConexion, secretoDe, solicitar } from "./conexiones";
+import {
+  capacidadRequerida,
+  canalesConexion,
+  conexionDe,
+  leerConexion,
+  leerConexionId,
+  secretoDe,
+  solicitar,
+  type Conexion,
+} from "./conexiones";
+import type { Equipo } from "../equipo/modelo";
 import {
   CONFIRMACION_PUBLICAR,
   contenidoPiezaSchema,
@@ -202,14 +212,33 @@ const mediosDe = (contenido: ContenidoPieza): Medio[] =>
   contenido.medios.map((m) => leerMedio(m.id));
 export type RevisionDestino = {
   canal: CanalConexion;
+  /** Id de la conexión elegida (null si la red no tiene una cuenta compartida conectada). */
+  conexionId: string | null;
+  alcance: Conexion["alcance"];
   cuenta: Identidad | null;
   problemas: string[];
   plan: string[];
 };
-/** Validación por canal y por cuenta conectada. Usado por la simulación y antes de autorizar. */
-export function revisarDestinos(pieza: Pieza, destinos: CanalConexion[]): RevisionDestino[] {
+/**
+ * Cada destino es una cuenta: un id de conexión, o el nombre de una red (= su cuenta compartida
+ * principal). Con `equipo`, solo se aceptan cuentas que esa sesión puede usar: una personal ajena
+ * responde como inexistente.
+ */
+export function resolverDestinos(destinos: string[], equipo?: Equipo): Conexion[] {
+  return destinos.map((ref) => {
+    if ((canalesConexion as string[]).includes(ref)) {
+      const c = leerConexion(ref as CanalConexion);
+      if (equipo && c.id) return conexionDe(c.id, equipo);
+      return c;
+    }
+    return equipo ? conexionDe(ref, equipo) : leerConexionId(ref);
+  });
+}
+/** Validación por cuenta de destino. Usado por la simulación y antes de autorizar. */
+export function revisarDestinos(pieza: Pieza, destinos: string[], equipo?: Equipo): RevisionDestino[] {
   const medios = mediosDe(pieza.contenido);
-  return destinos.map((canal) => {
+  return resolverDestinos(destinos, equipo).map((conexion) => {
+    const canal = conexion.canal;
     const problemas: string[] = [];
     const puente = estadoN8n();
     if (["facebook", "instagram"].includes(canal) && puente.publicacionHabilitada) {
@@ -222,7 +251,6 @@ export function revisarDestinos(pieza: Pieza, destinos: CanalConexion[]): Revisi
     }
     if (!pieza.contenido.canales.includes(canal))
       problemas.push("Este canal no está entre los destinos de la pieza.");
-    const conexion = leerConexion(canal);
     if (
       !conexion.capacidades.includes(capacidadRequerida(canal)) ||
       !["conectada_publicacion", "restringida"].includes(conexion.estado)
@@ -254,6 +282,8 @@ export function revisarDestinos(pieza: Pieza, destinos: CanalConexion[]): Revisi
       problemas.push("La hora planificada ya pasó.");
     return {
       canal,
+      conexionId: conexion.id,
+      alcance: conexion.alcance,
       cuenta: conexion.identidad,
       problemas,
       plan: conexion.identidad
@@ -263,12 +293,12 @@ export function revisarDestinos(pieza: Pieza, destinos: CanalConexion[]): Revisi
   });
 }
 /** Simulación local: muestra exactamente qué se enviaría, sin tocar la red. */
-export function simular(piezaId: string, destinos: CanalConexion[]) {
+export function simular(piezaId: string, destinos: string[], equipo?: Equipo) {
   const pieza = leerPieza(piezaId);
   return {
     pieza: { id: pieza.id, version: pieza.version, hash: pieza.hash },
     aprobada: Boolean(aprobacionPieza(pieza.id, pieza.hash)),
-    destinos: revisarDestinos(pieza, destinos),
+    destinos: revisarDestinos(pieza, destinos, equipo),
     aviso: "Simulación local: no se envió nada a ninguna red ni a Spotmi.",
   };
 }
@@ -280,9 +310,11 @@ export function simular(piezaId: string, destinos: CanalConexion[]) {
 export function autorizarPublicacion(datos: {
   piezaId: string;
   hash: string;
-  destinos: CanalConexion[];
+  /** Ids de conexión (o red = su cuenta compartida principal). Varias cuentas de la misma red valen. */
+  destinos: string[];
   confirmacion: string;
   usuario: string;
+  equipo?: Equipo;
 }) {
   return transaccion((db) => {
     const pieza = leerPieza(datos.piezaId);
@@ -299,10 +331,11 @@ export function autorizarPublicacion(datos: {
     }
     if (!aprobacionPieza(pieza.id, pieza.hash))
       throw new WorkflowError("Aprueba esta versión antes de autorizar su publicación.", 422);
-    if (!datos.destinos.length || new Set(datos.destinos).size !== datos.destinos.length)
-      throw new WorkflowError("Elige destinos distintos.", 422);
-    const revision = revisarDestinos(pieza, datos.destinos);
-    const conProblemas = revision.filter((r) => r.problemas.length || !r.cuenta?.id);
+    if (!datos.destinos.length) throw new WorkflowError("Elige al menos una cuenta de destino.", 422);
+    const revision = revisarDestinos(pieza, datos.destinos, datos.equipo);
+    const ids = revision.map((r) => r.conexionId ?? `sin:${r.canal}`);
+    if (new Set(ids).size !== ids.length) throw new WorkflowError("Elige cuentas de destino distintas.", 422);
+    const conProblemas = revision.filter((r) => r.problemas.length || !r.cuenta?.id || !r.conexionId);
     if (conProblemas.length)
       throw new WorkflowError(
         conProblemas
@@ -318,6 +351,8 @@ export function autorizarPublicacion(datos: {
     const autorizacionId = crypto.randomUUID();
     const destinos = revision.map((r) => ({
       canal: r.canal,
+      conexionId: r.conexionId!,
+      alcance: r.alcance,
       cuentaId: r.cuenta!.id,
       cuentaNombre: r.cuenta!.nombre,
     }));
@@ -348,14 +383,15 @@ export function autorizarPublicacion(datos: {
       const clave = sha256(`${pieza.hash}|${destino.canal}|${destino.cuentaId}|${previos.length}`);
       const reciboId = crypto.randomUUID();
       db.prepare(
-        `insert into recibos (id, autorizacion_id, pieza_id, hash, canal, cuenta_id, cuenta_nombre, clave_idempotencia, estado, creado, actualizado)
-         values (?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)`,
+        `insert into recibos (id, autorizacion_id, pieza_id, hash, canal, conexion_id, cuenta_id, cuenta_nombre, clave_idempotencia, estado, creado, actualizado)
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)`,
       ).run(
         reciboId,
         autorizacionId,
         pieza.id,
         pieza.hash,
         destino.canal,
+        destino.conexionId,
         destino.cuentaId,
         destino.cuentaNombre,
         clave,
@@ -385,6 +421,7 @@ type FilaRecibo = {
   pieza_id: string;
   hash: string;
   canal: CanalConexion;
+  conexion_id: string | null;
   cuenta_id: string;
   cuenta_nombre: string;
   clave_idempotencia: string;
@@ -428,7 +465,8 @@ function envioDe(recibo: FilaRecibo) {
     contenido: pieza.contenido,
     medios: mediosDe(pieza.contenido),
     bytes: leerBytesMedio,
-    secreto: secretoDe(recibo.canal),
+    // Cada recibo usa el token de SU cuenta (recibos anteriores a la migración: la compartida de la red).
+    secreto: secretoDe(recibo.conexion_id ?? recibo.canal),
     identidad: { id: recibo.cuenta_id, nombre: recibo.cuenta_nombre },
     clave: recibo.clave_idempotencia,
   };
@@ -458,7 +496,12 @@ export async function ejecutarPublicacion(reciboId: string): Promise<void> {
       return "El contenido cambió después de autorizarlo.";
     if (!aprobacionPieza(pieza.id, pieza.hash))
       return "La aprobación de esta versión ya no es válida.";
-    const conexion = leerConexion(recibo.canal);
+    let conexion: Conexion;
+    try {
+      conexion = recibo.conexion_id ? leerConexionId(recibo.conexion_id) : leerConexion(recibo.canal);
+    } catch {
+      return "La cuenta de destino ya no está conectada.";
+    }
     if (conexion.identidad?.id !== recibo.cuenta_id)
       return "La cuenta conectada ya no es la que autorizaste.";
     if (!conexion.capacidades.includes(capacidadRequerida(recibo.canal)))

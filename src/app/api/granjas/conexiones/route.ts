@@ -1,35 +1,67 @@
 import { z } from "zod";
 import { administrador, cuerpo, errorApi } from "@/lib/granjas/api";
 import { claveConfigurada } from "@/lib/granjas/cripto";
-import { conectarDirecto, desconectar, guiaRedireccion, listarConexiones, seleccionarPagina, verificarConexion } from "@/lib/granjas/conexiones";
+import {
+  conectarDirecto,
+  conexionDe,
+  desconectar,
+  estadoCanales,
+  guiaRedireccion,
+  listarConexiones,
+  seleccionarPagina,
+  verificarConexion,
+} from "@/lib/granjas/conexiones";
 import { versionGraph } from "@/lib/granjas/adaptadores";
+import { WorkflowError } from "@/lib/workflow";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const canal = z.enum(["instagram", "facebook", "tiktok", "youtube", "spotmi"]);
+const id = z.string().uuid();
 const accion = z.discriminatedUnion("accion", [
-  z.object({ accion: z.literal("verificar"), canal }),
-  z.object({ accion: z.literal("desconectar"), canal }),
+  z.object({ accion: z.literal("verificar"), id }),
+  z.object({ accion: z.literal("desconectar"), id }),
   z.object({ accion: z.literal("conectar"), canal: z.literal("spotmi") }),
-  z.object({ accion: z.literal("pagina"), paginaId: z.string().regex(/^\d{1,30}$/) }),
+  z.object({ accion: z.literal("pagina"), id, paginaId: z.string().regex(/^\d{1,30}$/) }),
 ]);
 
+/**
+ * Cuentas que esta sesión puede ver: las compartidas de Spotmi (propietario y socios) y sus personales.
+ * Nunca incluye tokens; una cuenta personal ajena no aparece.
+ */
 export async function GET() {
   try {
-    await administrador("conexiones");
-    return Response.json({ conexiones: listarConexiones(), claveTokens: claveConfigurada(), redireccionBase: guiaRedireccion(), versionGraph: versionGraph() });
+    const { equipo } = await administrador("conexiones");
+    return Response.json(
+      {
+        conexiones: listarConexiones(equipo),
+        canales: estadoCanales(equipo),
+        rol: equipo.rol,
+        claveTokens: claveConfigurada(),
+        redireccionBase: guiaRedireccion(),
+        versionGraph: versionGraph(),
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     return errorApi(error);
   }
 }
 export async function POST(request: Request) {
   try {
-    await administrador("conexiones", "escribir");
+    const { equipo } = await administrador("conexiones", "escribir");
     const a = await cuerpo(request, accion, 2000);
-    if (a.accion === "verificar") return Response.json({ conexion: await verificarConexion(a.canal) });
-    if (a.accion === "desconectar") return Response.json(await desconectar(a.canal));
-    if (a.accion === "conectar") return Response.json({ conexion: await conectarDirecto("spotmi") });
-    return Response.json({ conexion: await seleccionarPagina(a.paginaId) });
+    if (a.accion === "conectar") {
+      if (equipo.rol !== "propietario")
+        throw new WorkflowError("Solo el propietario conecta la cuenta editorial de Spotmi web.", 403);
+      return Response.json({ conexion: await conectarDirecto("spotmi") });
+    }
+    if (a.accion === "verificar") {
+      conexionDe(a.id, equipo, "usar");
+      return Response.json({ conexion: await verificarConexion(a.id) });
+    }
+    conexionDe(a.id, equipo, "administrar");
+    if (a.accion === "desconectar") return Response.json(await desconectar(a.id));
+    return Response.json({ conexion: await seleccionarPagina(a.paginaId, a.id) });
   } catch (error) {
     return errorApi(error);
   }

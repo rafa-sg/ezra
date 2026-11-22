@@ -20,7 +20,9 @@ export function PaginaInstagram({
   g,
   tr,
   fecha,
+  conexionId,
 }: {
+  conexionId: string;
   g: Tr;
   tr: Tr;
   fecha: (iso: string) => string;
@@ -32,23 +34,27 @@ export function PaginaInstagram({
   const cargar = useCallback(async (forzar = false) => {
     setCargando(true);
     try {
-      setDatos(await pedir<Datos>(`/api/granjas/instagram${forzar ? "?forzar=1" : ""}`));
+      setDatos(
+        await pedir<Datos>(
+          `/api/granjas/instagram?${new URLSearchParams({ conexion: conexionId, ...(forzar ? { forzar: "1" } : {}) })}`,
+        ),
+      );
       setError("");
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [conexionId]);
   useEffect(() => {
     let vivo = true;
-    pedir<Datos>("/api/granjas/instagram")
+    pedir<Datos>(`/api/granjas/instagram?${new URLSearchParams({ conexion: conexionId })}`)
       .then((d) => vivo && setDatos(d))
       .catch((e) => vivo && setError((e as Error).message));
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [conexionId]);
   const periodo = datos?.periodos.find((p) => p.dias === dias) ?? null;
   const maxInter = Math.max(1, ...interacciones.map((m) => periodo?.valores[m] ?? 0));
   return (

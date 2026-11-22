@@ -37,7 +37,7 @@ export function PaginaYoutube({
   const [dias, setDias] = useState<(typeof periodos)[number]>(28);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
-  const recurso = `/api/granjas/youtube?${new URLSearchParams({ canal: cuenta.id })}`;
+  const recurso = `/api/granjas/youtube?${new URLSearchParams({ conexion: cuenta.conexionId })}`;
   const canal = datos?.canal;
   const registro = datos?.analitica;
   const hasta = registro?.dias.at(-1)?.fecha;
@@ -179,7 +179,7 @@ export function PaginaYoutube({
                   "Authorize YouTube Analytics to see views, watch hours and subscribers by date range.",
                 )}
               </p>
-              <a className="ez-boton-blanco" href="/api/granjas/conexiones/youtube/autorizar?metricas=1">
+              <a className="ez-boton-blanco" href={`/api/granjas/conexiones/youtube/autorizar?metricas=1&alcance=${cuenta.alcance}`}>
                 {t("Autorizar métricas", "Authorize metrics")}{" "}
                 <ArrowUpRight size={14} aria-hidden="true" />
               </a>

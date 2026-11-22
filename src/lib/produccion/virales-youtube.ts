@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Equipo } from "../equipo/modelo";
 import { WorkflowError } from "../workflow";
 import { leerJson, renovarYoutube, youtubeApi, type Secreto, type Solicitar } from "../granjas/adaptadores";
 import type { VideoViral } from "./modelo";
@@ -123,13 +124,19 @@ export function entregaVirales(pedido: { tema: string; dias: PeriodoViral }, vid
 }
 
 /** Renueva el token si hace falta (y lo guarda) y busca con la cuenta de YouTube conectada. */
-export async function buscarViralesConectado(pedido: { tema: string; dias: PeriodoViral }) {
-  const { leerConexion, secretoDe, guardarSecretoRenovado, solicitar } = await import("../granjas/conexiones");
-  const conexion = leerConexion("youtube");
-  if (!conexion.identidad?.id)
+export async function buscarViralesConectado(
+  pedido: { tema: string; dias: PeriodoViral },
+  equipo: Equipo,
+  conexionId?: string,
+) {
+  const { conexionDe, leerConexion, secretoDe, guardarSecretoRenovado, solicitar } = await import("../granjas/conexiones");
+  // La cuenta elegida (comprobada para esta sesión) o la compartida principal de Spotmi.
+  const id = conexionId ?? leerConexion("youtube").id;
+  const conexion = id ? conexionDe(id, equipo) : null;
+  if (!conexion?.identidad?.id || conexion.canal !== "youtube")
     throw new WorkflowError("Conecta YouTube en Conexiones para buscar videos virales.", 409);
-  const original = secretoDe("youtube");
+  const original = secretoDe(conexion.id!);
   const actual = await renovarYoutube(original, solicitar);
-  if (actual !== original && secretoDe("youtube").acceso === original.acceso) guardarSecretoRenovado("youtube", actual);
+  if (actual !== original && secretoDe(conexion.id!).acceso === original.acceso) guardarSecretoRenovado(conexion.id!, actual);
   return buscarVirales(pedido, actual, solicitar);
 }

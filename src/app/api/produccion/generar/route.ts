@@ -15,12 +15,14 @@ const peticionSchema = z.object({
   id: z.string().uuid(),
   revision: z.number().int(),
   confirmar: z.literal(true),
+  /** «Videos virales»: la cuenta de YouTube elegida (si no, la compartida principal). */
+  conexionId: z.string().uuid().optional(),
 });
 const globales = globalThis as typeof globalThis & { produccionEnCurso?: boolean };
 export async function POST(request: Request) {
   let adquirido = false;
   try {
-    await administrador("encargos", "escribir");
+    const { equipo } = await administrador("encargos", "escribir");
     const texto = await request.text();
     if (Buffer.byteLength(texto) > 1000) throw new WorkflowError("Petición demasiado grande.", 413);
     const leido = peticionSchema.safeParse(JSON.parse(texto));
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
       const pedido = leerPedidoViral(encargo.encargo);
       let videos;
       try {
-        videos = await buscarViralesConectado(pedido);
+        videos = await buscarViralesConectado(pedido, equipo, leido.data.conexionId);
       } catch (error) {
         await registrarFallo(encargo.id, error instanceof Error ? error.message : "YouTube no respondió.", "youtube").catch(() => undefined);
         throw error;

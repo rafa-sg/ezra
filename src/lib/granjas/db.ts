@@ -476,6 +476,53 @@ const migraciones: string[] = [
     unique (espacio_id, email)
   );
   `,
+  // 14 · Varias cuentas por red: una fila por cuenta, con id propio, alcance (compartida del espacio o
+  // personal de un miembro) y dueño. La fila que existía de cada red pasa a ser la compartida de Spotmi.
+  `
+  alter table conexiones rename to conexiones_v13;
+  create table conexiones (
+    id text primary key,
+    espacio_id text not null default 'spotmi' references espacios(id),
+    canal text not null,
+    alcance text not null check (alcance in ('compartida', 'personal')),
+    dueno_id text references miembros(id),
+    conectado_por text,
+    cuenta_id text not null default '',
+    estado text not null,
+    identidad text not null default '{}',
+    capacidades text not null default '[]',
+    permisos text not null default '[]',
+    opciones text not null default '[]',
+    token_cifrado text,
+    expira text,
+    verificado text,
+    ultimo_error text not null default '',
+    ultimo_error_fecha text,
+    creado text not null,
+    actualizado text not null,
+    check ((alcance = 'personal') = (dueno_id is not null))
+  );
+  insert into conexiones (id, espacio_id, canal, alcance, dueno_id, conectado_por, cuenta_id, estado, identidad, capacidades, permisos,
+    opciones, token_cifrado, expira, verificado, ultimo_error, ultimo_error_fecha, creado, actualizado)
+  select substr(h, 1, 8) || '-' || substr(h, 9, 4) || '-4' || substr(h, 14, 3) || '-8' || substr(h, 18, 3) || '-' || substr(h, 21, 12),
+    'spotmi', canal, 'compartida', null, null, coalesce(json_extract(identidad, '$.id'), ''), estado, identidad, capacidades, permisos,
+    opciones, token_cifrado, expira, verificado, ultimo_error, ultimo_error_fecha, actualizado, actualizado
+  from (select lower(hex(randomblob(16))) as h, * from conexiones_v13);
+  drop table conexiones_v13;
+  create unique index conexiones_cuenta on conexiones (espacio_id, canal, alcance, coalesce(dueno_id, ''), cuenta_id);
+  create index conexiones_dueno on conexiones (dueno_id);
+  alter table estados_oauth add column alcance text not null default 'compartida';
+  alter table estados_oauth add column miembro_id text;
+  create table oauth_errores (
+    ambito text not null,
+    canal text not null,
+    mensaje text not null,
+    fecha text not null,
+    primary key (ambito, canal)
+  );
+  alter table recibos add column conexion_id text;
+  update recibos set conexion_id = (select c.id from conexiones c where c.canal = recibos.canal and c.cuenta_id = recibos.cuenta_id limit 1);
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

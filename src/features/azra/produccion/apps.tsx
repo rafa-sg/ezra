@@ -10,6 +10,10 @@ export type CanalApp = "instagram" | "tiktok" | "facebook" | "youtube";
 export const canalesApp: CanalApp[] = ["instagram", "tiktok", "facebook", "youtube"];
 export type CuentaApp = {
   canal: CanalApp;
+  /** Id de la conexión en Ezra (una por cuenta; puede haber varias por red). */
+  conexionId: string;
+  alcance: "compartida" | "personal";
+  /** Id de la cuenta en la red (canal de YouTube, usuario de Instagram…). */
   id: string;
   nombre: string;
   estado: string;
@@ -32,6 +36,21 @@ const conectada = (c: Conexion) =>
   Boolean(c.identidad?.id) &&
   ["conectada_lectura", "conectada_publicacion", "restringida"].includes(c.estado);
 
+/** Cuenta activa por red (por navegador): la usan Apps y, por ejemplo, la búsqueda de Videos virales. */
+export function guardarCuentaActiva(c: CuentaApp) {
+  try {
+    window.localStorage.setItem(`ezra:cuenta-activa:${c.canal}`, c.conexionId);
+  } catch {
+    /* sin almacenamiento: dura solo esta visita */
+  }
+}
+export function leerCuentaActiva(canal: CanalApp): string | null {
+  try {
+    return window.localStorage.getItem(`ezra:cuenta-activa:${canal}`);
+  } catch {
+    return null;
+  }
+}
 /** Cuentas realmente conectadas (lo que guarda Conexiones); nunca se inventan cuentas. */
 export function useCuentasApp() {
   const [cuentas, setCuentas] = useState<CuentaApp[] | null>(null);
@@ -49,6 +68,8 @@ export function useCuentasApp() {
           )
           .map((c) => ({
             canal: c.canal,
+            conexionId: c.id!,
+            alcance: c.alcance,
             id: c.identidad!.id,
             nombre: c.identidad!.nombre,
             estado: c.estado,
@@ -222,10 +243,10 @@ export function BotonApps({
                   </p>
                 )}
                 {g.lista.map((c) => {
-                  const esActiva = activa?.canal === c.canal && activa.id === c.id;
+                  const esActiva = activa?.conexionId === c.conexionId;
                   return (
                     <button
-                      key={`${c.canal}:${c.id}`}
+                      key={c.conexionId}
                       type="button"
                       role="menuitemradio"
                       aria-checked={esActiva}
@@ -241,7 +262,10 @@ export function BotonApps({
                       </span>
                       <span className="ez-apps-texto">
                         <strong>{c.nombre}</strong>
-                        <small>{redes[c.canal].nombre}</small>
+                        <small>
+                          {redes[c.canal].nombre} ·{" "}
+                          {tr(c.alcance === "personal" ? "cx_personal" : "cx_compartida")}
+                        </small>
                       </span>
                       {esActiva && <span className="ez-apps-check">{tr("ez_apps_activa")}</span>}
                     </button>
@@ -281,7 +305,7 @@ export function PerfilConexion({
       const r = await fetch("/api/granjas/conexiones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accion: "verificar", canal: cuenta.canal }),
+        body: JSON.stringify({ accion: "verificar", id: cuenta.conexionId }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error((j as { error?: string }).error ?? `Error ${r.status}`);

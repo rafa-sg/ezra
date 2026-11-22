@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Equipo del espacio Spotmi. El propietario es la cuenta de administración de `data/access.json`;
+ * Equipo del espacio Spotmi. Las cuentas de administración de `data/access.json` tienen rol propietario;
  * socios e invitados entran solo por invitación (su correo debe estar en `miembros`).
  */
 export const ESPACIO_SPOTMI = "spotmi";

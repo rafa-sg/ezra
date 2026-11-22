@@ -102,7 +102,8 @@ export function SeccionGranjas({
     let vivo = true;
     Promise.all([
       pedir<Resumen>("/api/granjas"),
-      pedir<ConexionesRespuesta>("/api/granjas/conexiones"),
+      // Sin la sección Conexiones (invitados), la granja abre igual: solo sin destinos.
+      pedir<ConexionesRespuesta>("/api/granjas/conexiones").catch(() => null),
       pedir<HorariosRespuesta>("/api/granjas/horarios"),
     ])
       .then(([r, c, h]) => {

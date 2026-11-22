@@ -401,11 +401,15 @@ test("publicación: aprobación por hash, simulación, envío idempotente, fallo
   assert.equal(recibo.estado, "publicado");
   assert.equal(recibo.enlace, "https://www.facebook.com/pag1/posts/99");
 
-  // Cuenta cambiada entre la autorización y el envío.
+  // Conectar otra Página crea OTRA cuenta: no toma el lugar de la autorizada. Si la autorizada se
+  // desconecta antes del envío, el envío se cancela (nunca va a otra cuenta).
   const otra = publicacion.guardarPiezaNueva(g.id, null, null, { ...contenido, textos: { ...contenido.textos, facebook: "Otra" } });
   publicacion.aprobarPieza(otra.id, otra.hash, { hechos: true, derechos: true, marca: true });
   publicacion.autorizarPublicacion({ piezaId: otra.id, hash: otra.hash, destinos: ["facebook"], confirmacion: "PUBLICAR", usuario: "u" });
-  await conectarFacebook("pag2");
+  const fb2 = await conectarFacebook("pag2");
+  assert.notEqual(fb2.id, fb.id, "otra Página es otra cuenta");
+  assert.equal(conexiones.leerConexion("facebook").id, fb.id, "la compartida principal sigue siendo la primera");
+  await conexiones.desconectar(fb.id!);
   await vaciarCola();
   const cambiado = publicacion.vistaPieza(otra.id).recibos[0];
   assert.equal(cambiado.estado, "cancelado");

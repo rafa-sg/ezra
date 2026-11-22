@@ -2351,3 +2351,33 @@
     margin: 0 auto;
   }
 }
+
+/* Conexiones: varias cuentas por red (compartidas y personales). */
+.azra .cx-grupo h4 {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  color: var(--ep-texto-2);
+}
+.azra .cx-cuentas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.azra .cx-cuenta {
+  border: 1px solid var(--ep-borde-suave);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.azra .cx-cuenta-cabeza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.azra .cx-cuenta-cabeza strong {
+  overflow-wrap: anywhere;
+}

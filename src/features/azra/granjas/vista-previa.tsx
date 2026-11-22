@@ -15,6 +15,8 @@ type Canal = keyof typeof nombres;
 type Simulacion = {
   destinos: {
     canal: Canal;
+    conexionId: string | null;
+    alcance: "compartida" | "personal";
     cuenta: { id: string; nombre: string } | null;
     problemas: string[];
     plan: string[];
@@ -45,8 +47,9 @@ export function VistaPrevia({
   fecha: (iso: string) => string;
   onGuardar: (contenido: ContenidoPieza) => Promise<void>;
   onAprobar: (c: { hechos: boolean; derechos: boolean; marca: boolean }) => void;
-  onSimular: (destinos: Canal[]) => Promise<Simulacion | null>;
-  onAutorizar: (destinos: Canal[], confirmacion: string) => void;
+  /** Destinos = ids de conexión: se pueden elegir varias cuentas de la misma red. */
+  onSimular: (destinos: string[]) => Promise<Simulacion | null>;
+  onAutorizar: (destinos: string[], confirmacion: string) => void;
   onResolver: (reciboId: string, resultado: "no_publicado" | "publicado", enlace: string) => void;
 }) {
   const { pieza } = vista;
@@ -57,12 +60,16 @@ export function VistaPrevia({
     setBorrador(pieza.contenido);
   }
   const [comprobado, setComprobado] = useState({ hechos: false, derechos: false, marca: false });
-  const [destinos, setDestinos] = useState<Canal[]>([]);
+  const [destinos, setDestinos] = useState<string[]>([]);
   const [simulacion, setSimulacion] = useState<Simulacion | null>(null);
   const [confirmacion, setConfirmacion] = useState("");
   const [resolucion, setResolucion] = useState<Record<string, string>>({});
   const modificado = JSON.stringify(borrador) !== JSON.stringify(pieza.contenido);
-  const cuenta = (c: Canal) => conexiones.find((x) => x.canal === c);
+  const cuentasDe = (c: Canal) =>
+    conexiones.filter(
+      (x) => x.canal === c && x.id && ["conectada_publicacion", "conectada_lectura", "restringida", "vencida"].includes(x.estado),
+    );
+  const cuenta = (c: Canal) => cuentasDe(c)[0];
   const texto = (c: Canal) => (borrador.textos as Record<string, string>)[c] ?? "";
   const medioDe = (id: string) =>
     vista.medios.find((m) => m.id === id) ?? medios.find((m) => m.id === id);
@@ -292,22 +299,32 @@ export function VistaPrevia({
         <h4>{g("destinosPublicar")}</h4>
         <div className="ep-canales">
           {borrador.canales.map((c) => {
-            const con = cuenta(c);
-            return (
-              <label className="ep-checkbox" key={c}>
+            const lista = cuentasDe(c);
+            if (!lista.length)
+              return (
+                <p key={c} className="ep-nota">
+                  {nombres[c]} · {g("sinCuenta")}
+                </p>
+              );
+            return lista.map((con) => (
+              <label className="ep-checkbox" key={con.id}>
                 <input
                   type="checkbox"
-                  checked={destinos.includes(c)}
-                  onChange={(e) =>
+                  checked={destinos.includes(con.id!)}
+                  onChange={(e) => {
+                    setSimulacion(null);
                     setDestinos(
-                      e.target.checked ? [...destinos, c] : destinos.filter((x) => x !== c),
-                    )
-                  }
+                      e.target.checked
+                        ? [...destinos, con.id!]
+                        : destinos.filter((x) => x !== con.id),
+                    );
+                  }}
                 />
-                {nombres[c]} · {con?.identidad?.nombre ?? g("sinCuenta")} (
-                {g(`con_${con?.estado ?? "sin_configurar"}`)})
+                {nombres[c]} · {con.identidad?.nombre ?? g("sinCuenta")} ·{" "}
+                {g(con.alcance === "personal" ? "cx_personal" : "cx_compartida")} (
+                {g(`con_${con.estado}`)})
               </label>
-            );
+            ));
           })}
         </div>
         <button
@@ -323,7 +340,10 @@ export function VistaPrevia({
           <div className="eg-simulacion" role="status">
             <p className="ep-nota">{simulacion.aviso}</p>
             {simulacion.destinos.map((d) => (
-              <div key={d.canal} className={d.problemas.length ? "eg-sim-mal" : "eg-sim-bien"}>
+              <div
+                key={d.conexionId ?? d.canal}
+                className={d.problemas.length ? "eg-sim-mal" : "eg-sim-bien"}
+              >
                 <strong>
                   {nombres[d.canal]} · {d.cuenta?.nombre ?? g("sinCuenta")}
                 </strong>

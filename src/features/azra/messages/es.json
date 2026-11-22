@@ -2245,5 +2245,17 @@
   "eq_confirmarQuitar": "Sí, quitar acceso",
   "eq_cancelar": "Cancelar",
   "eq_guardar": "Guardar",
-  "eq_guardado": "Listo."
+  "eq_guardado": "Listo.",
+  "cx_personal": "personal",
+  "cx_compartida": "compartida",
+  "g_cx_personal": "personal",
+  "g_cx_compartida": "compartida",
+  "g_cx_ayuda": "Puedes conectar varias cuentas de cada red. Las compartidas de Spotmi las usan el propietario y los socios; las tuyas solo las ves y usas tú (nadie más, tampoco el propietario).",
+  "g_cx_sinCuentas": "Todavía no hay cuentas conectadas de esta red.",
+  "g_cx_compartidas": "Compartidas de Spotmi",
+  "g_cx_tuyas": "Tus cuentas personales",
+  "g_cx_conectarCompartida": "Conectar cuenta compartida",
+  "g_cx_otraCompartida": "Agregar otra compartida",
+  "g_cx_conectarPersonal": "Conectar cuenta personal",
+  "g_cx_otraPersonal": "Agregar otra personal"
 }

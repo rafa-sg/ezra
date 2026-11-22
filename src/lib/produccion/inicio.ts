@@ -3,7 +3,8 @@ import { estados, siguienteAccion } from "./modelo";
 import { estadoEjecucion } from "./resumen-encargo";
 import { base } from "../granjas/db";
 import { listarGranjas } from "../granjas/almacen";
-import { listarConexiones } from "../granjas/conexiones";
+import { canalesConexion, leerConexion, resumenCanales } from "../granjas/conexiones";
+import type { Equipo } from "../equipo/modelo";
 import { estadoPresupuesto, imagenesIaHoy, leerLimiteImagenes } from "../granjas/consumo";
 import { listarEventos } from "../granjas/eventos";
 import { diaLocal, instanteLocal, sumarDias } from "../granjas/tiempo";
@@ -63,7 +64,7 @@ export function progresoDia(ahora: Date, pendientesActuales: number, aprobadosHo
   return { resueltas, pendientes: pendientesActuales, porcentaje: total ? Math.round((resueltas / total) * 100) : 100 };
 }
 
-export async function resumenInicio(ahora = new Date()) {
+export async function resumenInicio(ahora = new Date(), equipo?: Equipo) {
   const produccion = await leerProduccion();
   const hoy = diaLocal(ahora);
   const hasta = sumarDias(hoy, 14);
@@ -98,7 +99,8 @@ export async function resumenInicio(ahora = new Date()) {
   const postsListos = Number((base().prepare("select count(*) as n from posts_ig where estado = 'listo'").get() as { n: number }).n);
   if (postsListos) pendientes.push({ tipo: "posts", titulo: "Posts de Instagram", detalle: `${postsListos} post(s) listos para subir a mano`, seccion: "eventos" });
 
-  const conexiones = listarConexiones().map((c) => ({ canal: c.canal, estado: c.estado, cuenta: c.identidad?.nombre ?? "", error: c.ultimoError }));
+  // Sin sesión de equipo (pruebas internas): solo las compartidas de Spotmi.
+  const conexiones = (equipo ? resumenCanales(equipo) : canalesConexion.map(leerConexion)).map((c) => ({ canal: c.canal, estado: c.estado, cuenta: c.identidad?.nombre ?? "", error: c.ultimoError }));
   const presupuesto = estadoPresupuesto(ahora);
   if (presupuesto.agotado) pendientes.push({ tipo: "presupuesto", titulo: "Presupuesto de Gemini", detalle: "Se alcanzó el límite: Gemini está en pausa", seccion: "consumo" });
 

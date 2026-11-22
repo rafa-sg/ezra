@@ -11,7 +11,7 @@ import {
 } from "./adaptadores";
 import {
   guardarSecretoRenovado,
-  leerConexion,
+  leerConexionId,
   secretoDe,
   solicitar as solicitarRed,
 } from "./conexiones";
@@ -236,31 +236,36 @@ export async function consultarYoutube(
 }
 export type MetricasYoutube = Awaited<ReturnType<typeof consultarYoutube>>;
 
-let cache: { revision: string | null; datos: MetricasYoutube } | undefined;
-/** Al desconectar YouTube no queda nada del canal en memoria. */
-export function olvidarMetricasYoutube() {
-  cache = undefined;
+/** Caché por conexión (id de Ezra), solo en memoria. */
+const cache = new Map<string, { revision: string | null; datos: MetricasYoutube }>();
+/** Al desconectar YouTube no queda nada del canal en memoria (sin id: se olvidan todos). */
+export function olvidarMetricasYoutube(conexionId?: string) {
+  if (conexionId) cache.delete(conexionId);
+  else cache.clear();
 }
-export async function metricasYoutube(id: string, forzar: boolean) {
-  const conexion = leerConexion("youtube");
-  if (!conexion.identidad?.id || conexion.identidad.id !== id)
+/** Métricas de una conexión de YouTube concreta. El acceso de la sesión se comprueba antes, en la ruta. */
+export async function metricasYoutube(conexionId: string, forzar: boolean) {
+  const conexion = leerConexionId(conexionId);
+  if (conexion.canal !== "youtube" || !conexion.identidad?.id)
     throw new WorkflowError("Este canal de YouTube ya no está conectado.", 404);
-  const original = secretoDe("youtube");
+  const id = conexion.identidad.id;
+  const original = secretoDe(conexionId);
+  const guardada = cache.get(conexionId);
   if (
     !forzar &&
-    cache?.datos.canal.id === id &&
-    cache.revision === conexion.verificado &&
-    Date.now() - Date.parse(cache.datos.leido) < 15 * 60_000
+    guardada?.datos.canal.id === id &&
+    guardada.revision === conexion.verificado &&
+    Date.now() - Date.parse(guardada.datos.leido) < 15 * 60_000
   )
-    return { ...cache.datos, desdeCache: true };
+    return { ...guardada.datos, desdeCache: true };
   const actual = await renovarYoutube(original, solicitarRed);
-  if (actual !== original && secretoDe("youtube").acceso === original.acceso)
-    guardarSecretoRenovado("youtube", actual);
+  if (actual !== original && secretoDe(conexionId).acceso === original.acceso)
+    guardarSecretoRenovado(conexionId, actual);
   const datos = await consultarYoutube(id, actual, solicitarRed);
   // La cuenta puede cambiar mientras se esperan respuestas de Google.
-  const vigente = leerConexion("youtube");
+  const vigente = leerConexionId(conexionId);
   if (vigente.identidad?.id !== id || vigente.verificado !== conexion.verificado)
     throw new WorkflowError("La conexión de YouTube cambió. Recarga la página.", 409);
-  cache = { revision: conexion.verificado, datos };
+  cache.set(conexionId, { revision: conexion.verificado, datos });
   return { ...datos, desdeCache: false };
 }

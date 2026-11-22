@@ -55,8 +55,8 @@ const porId = (id: string) =>
     .get(id, ESPACIO_SPOTMI) as Fila | undefined;
 
 /**
- * El propietario sale de `access.json` (la cuenta de administración ya verificada por Clerk). Su fila se
- * crea o se actualiza aquí; nunca se le asigna el rol por correo desde una invitación.
+ * Cada cuenta de administración sale de `access.json` y ya está verificada por Clerk. Su fila propia
+ * conserva las conexiones personales asociadas a ese miembro.
  */
 export function asegurarPropietario(datos: {
   clerkUserId: string;
@@ -66,22 +66,22 @@ export function asegurarPropietario(datos: {
   return transaccion((db) => {
     const ahora = ahoraIso();
     const actual = db
-      .prepare("select * from miembros where espacio_id = ? and rol = 'propietario'")
-      .get(ESPACIO_SPOTMI) as Fila | undefined;
+      .prepare("select * from miembros where espacio_id = ? and email = ?")
+      .get(ESPACIO_SPOTMI, datos.email) as Fila | undefined;
+    const vinculada = db
+      .prepare("select id from miembros where clerk_user_id = ?")
+      .get(datos.clerkUserId) as { id: string } | undefined;
+    if (
+      (actual?.clerk_user_id && actual.clerk_user_id !== datos.clerkUserId) ||
+      (vinculada && vinculada.id !== actual?.id)
+    )
+      throw new WorkflowError("Este acceso ya está vinculado a otra identidad del equipo.", 403);
     if (actual) {
-      // Otro miembro no puede quedarse con el id de Clerk del propietario.
       db.prepare(
-        "update miembros set clerk_user_id = null where clerk_user_id = ? and id <> ?",
-      ).run(datos.clerkUserId, actual.id);
-      db.prepare(
-        "update miembros set clerk_user_id = ?, email = ?, nombre = case when nombre = '' then ? else nombre end, estado = 'activo', ultimo_acceso = ?, actualizado = ? where id = ?",
-      ).run(datos.clerkUserId, datos.email, datos.nombre, ahora, ahora, actual.id);
+        "update miembros set clerk_user_id = ?, nombre = case when nombre = '' then ? else nombre end, rol = 'propietario', secciones = '[]', solo_lectura = 0, estado = 'activo', ultimo_acceso = ?, actualizado = ? where id = ?",
+      ).run(datos.clerkUserId, datos.nombre, ahora, ahora, actual.id);
       return aMiembro(porId(actual.id)!);
     }
-    // Si el propietario había sido invitado antes como socio, esa fila pasa a ser la suya.
-    db.prepare(
-      "delete from miembros where espacio_id = ? and (email = ? or clerk_user_id = ?)",
-    ).run(ESPACIO_SPOTMI, datos.email, datos.clerkUserId);
     const id = randomUUID();
     db.prepare(
       `insert into miembros (id, espacio_id, email, nombre, rol, secciones, solo_lectura, clerk_user_id, estado, creado, actualizado, ultimo_acceso)

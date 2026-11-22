@@ -2245,5 +2245,17 @@
   "eq_confirmarQuitar": "Yes, remove access",
   "eq_cancelar": "Cancel",
   "eq_guardar": "Save",
-  "eq_guardado": "Done."
+  "eq_guardado": "Done.",
+  "cx_personal": "personal",
+  "cx_compartida": "shared",
+  "g_cx_personal": "personal",
+  "g_cx_compartida": "shared",
+  "g_cx_ayuda": "You can connect several accounts for each network. Spotmi's shared accounts are used by the owner and partners; your own accounts are only seen and used by you (no one else, not even the owner).",
+  "g_cx_sinCuentas": "No accounts connected for this network yet.",
+  "g_cx_compartidas": "Shared by Spotmi",
+  "g_cx_tuyas": "Your personal accounts",
+  "g_cx_conectarCompartida": "Connect shared account",
+  "g_cx_otraCompartida": "Add another shared account",
+  "g_cx_conectarPersonal": "Connect personal account",
+  "g_cx_otraPersonal": "Add another personal account"
 }

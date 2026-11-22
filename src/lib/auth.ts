@@ -4,7 +4,7 @@ import { WorkflowError } from "./workflow";
 import type { Equipo } from "./equipo/modelo";
 
 /**
- * Sesión de Ezra. `admin` es el propietario (access.json), `client` un negocio del piloto (solo vista) y
+ * Sesión de Ezra. `admin` es una cuenta de administración (access.json), `client` un negocio del piloto (solo vista) y
  * `member` un socio o invitado del espacio Spotmi. `equipo` dice qué secciones puede usar; es null para
  * los clientes del piloto.
  */
@@ -60,7 +60,7 @@ export async function requireAccount() {
   return account;
 }
 
-/** Solo el propietario (la cuenta de administración). */
+/** Solo las cuentas de administración. */
 export async function requireAdmin() {
   const account = await requireAccount();
   if (account.role !== "admin")

@@ -169,10 +169,10 @@ test("Desconectar YouTube revoca el token en Google, borra el token local y olvi
     });
     const sinRed = await conexiones.desconectar("youtube");
     assert.match(sinRed.aviso, /quita el acceso también/);
-    // Solo queda el aviso del error, sin token.
-    const resto = db.base().prepare("select token_cifrado, identidad from conexiones where canal = 'youtube'").get() as { token_cifrado: string | null; identidad: string | null };
-    assert.equal(resto.token_cifrado, null);
+    // No queda ninguna fila (ni token ni identidad); solo el aviso, en la tarjeta vacía.
+    assert.equal(db.base().prepare("select count(*) as n from conexiones where canal = 'youtube'").get()!.n, 0);
     assert.equal(conexiones.leerConexion("youtube").identidad, null);
+    assert.match(conexiones.leerConexion("youtube").ultimoError, /quita el acceso también/);
   } finally {
     conexiones.usarRedDePrueba(undefined);
   }

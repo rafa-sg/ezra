@@ -1,6 +1,6 @@
 import { base } from "./db";
 import { listarGranjas } from "./almacen";
-import { listarConexiones } from "./conexiones";
+import { leerConexion } from "./conexiones";
 import { clasificarFuente } from "./confianza";
 import { leerConfianzaDominios } from "./eventos";
 import { diaLocal, instanteLocal, mesLocal, sumarDias } from "./tiempo";
@@ -113,7 +113,7 @@ export function panoramaGranjas(ahora = new Date()) {
 
   // Destinos: Spotmi (propuestas enviadas) e Instagram (posts listos y subidos).
   const cuenta = (sql: string) => Number((db.prepare(sql).get() as { n: number }).n);
-  const ig = listarConexiones().find((c) => c.canal === "instagram");
+  const ig = leerConexion("instagram");
   const destinos = {
     spotmi: { enviados: cuenta("select count(*) as n from eventos where spotmi_estado is not null"), aprobados: cuenta("select count(*) as n from eventos where estado = 'aprobado'") },
     instagram: {

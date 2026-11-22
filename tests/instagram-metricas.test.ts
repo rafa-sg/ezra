@@ -20,7 +20,7 @@ before(async () => {
 const conectar = (expira: string | null = new Date(Date.now() + 40 * 86_400_000).toISOString()) =>
   db
     .base()
-    .prepare("insert or replace into conexiones (canal, estado, identidad, capacidades, permisos, opciones, token_cifrado, expira, actualizado) values ('instagram', 'conectada_publicacion', ?, '[]', '[]', '[]', ?, ?, ?)")
+    .prepare("insert or replace into conexiones (id, alcance, creado, canal, estado, identidad, capacidades, permisos, opciones, token_cifrado, expira, actualizado) values ('00000000-0000-4000-8000-000000000001', 'compartida', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'instagram', 'conectada_publicacion', ?, '[]', '[]', '[]', ?, ?, ?)")
     .run(JSON.stringify({ id: "ig1", nombre: "@spotmi.sv" }), cripto.cifrar({ acceso: "TOKEN-SECRETO-IG" }), expira, new Date().toISOString());
 const respuesta = (cuerpo: unknown, estado = 200) => new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
 
@@ -33,7 +33,7 @@ test("sin conexión: estado claro y nunca números inventados", async () => {
 
 test("cuenta, recientes y totales de 7 y 30 días; métricas faltantes en null; caché de 30 minutos", async () => {
   conectar();
-  db.base().exec("delete from ajustes_estudio where clave = 'instagram_metricas'");
+  db.base().exec("delete from ajustes_estudio where clave like 'instagram_metricas%'");
   const urls: string[] = [];
   const solicitar = async (url: string) => {
     urls.push(url);

@@ -7,7 +7,11 @@ export const dynamic = "force-dynamic";
 
 const id = z.string().uuid();
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
-const destinos = z.array(z.enum(["instagram", "facebook", "tiktok", "youtube", "spotmi"])).min(1).max(5);
+// Cada destino es una cuenta (id de conexión); el nombre de una red equivale a su cuenta compartida principal.
+const destinos = z
+  .array(z.union([z.string().uuid(), z.enum(["instagram", "facebook", "tiktok", "youtube", "spotmi"])]))
+  .min(1)
+  .max(20);
 const accion = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("editar"), piezaId: id, version: z.number().int(), contenido: z.unknown() }),
   z.object({ accion: z.literal("aprobar"), piezaId: id, hash, comprobaciones: z.object({ hechos: z.boolean(), derechos: z.boolean(), marca: z.boolean() }) }),
@@ -28,12 +32,12 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
-    const { usuario } = await administrador("granjas", "escribir");
+    const { usuario, equipo } = await administrador("granjas", "escribir");
     const a = await cuerpo(request, accion, 120_000);
     if (a.accion === "editar") return Response.json(vistaPieza(editarPieza(a.piezaId, a.version, a.contenido).id));
     if (a.accion === "aprobar") return Response.json(vistaPieza(aprobarPieza(a.piezaId, a.hash, a.comprobaciones).id));
-    if (a.accion === "simular") return Response.json(simular(a.piezaId, a.destinos));
-    if (a.accion === "autorizar") return Response.json({ ...autorizarPublicacion({ ...a, usuario }), vista: vistaPieza(a.piezaId) });
+    if (a.accion === "simular") return Response.json(simular(a.piezaId, a.destinos, equipo));
+    if (a.accion === "autorizar") return Response.json({ ...autorizarPublicacion({ ...a, usuario, equipo }), vista: vistaPieza(a.piezaId) });
     resolverDesconocido(a.reciboId, a.resultado, a.enlace);
     return Response.json({ ok: true });
   } catch (error) {

@@ -78,7 +78,9 @@ export async function POST(request: Request) {
     }
     const pendiente = invitacionDe(a.id);
     const miembro = retirar(a.id);
-    const aviso = "";
+    // Quitar acceso también desconecta sus cuentas personales (no quedan tokens huérfanos).
+    const { borrarConexionesPersonales } = await import("@/lib/granjas/conexiones");
+    const aviso = await borrarConexionesPersonales(miembro.id);
     if (pendiente)
       await invitacionesClerk()
         .revocar(pendiente)

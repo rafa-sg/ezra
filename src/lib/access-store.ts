@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
@@ -6,9 +7,10 @@ import { WorkflowError } from "./workflow";
 
 const accessFile = path.join(dataDirectory, "access.json");
 const email = z.string().trim().toLowerCase().email().max(254);
+const additionalAdminUsername = z.templateLiteral(["admin:", z.uuid()]);
 const accountSchema = z
   .object({
-    username: z.enum(["admin", "sgmotos", "motoxspress"]),
+    username: z.union([z.enum(["admin", "sgmotos", "motoxspress"]), additionalAdminUsername]),
     organizationId: z.enum(["owner", "sgmotos", "motoxspress"]),
     displayName: z.string(),
     email,
@@ -16,18 +18,18 @@ const accountSchema = z
     clerkUserId: z.string().max(200).default(""),
   })
   .refine((account) =>
-    account.username === "admin"
-      ? account.role === "admin" && account.organizationId === "owner"
-      : account.role === "client" && account.organizationId === account.username,
+    account.username === "sgmotos" || account.username === "motoxspress"
+      ? account.role === "client" && account.organizationId === account.username
+      : account.role === "admin" && account.organizationId === "owner",
   );
 const accessSchema = z
   .object({
     schemaVersion: z.literal(1),
-    accounts: z.array(accountSchema).min(1).max(3),
+    accounts: z.array(accountSchema).min(1),
   })
   .refine(
     ({ accounts }) =>
-      accounts.filter((account) => account.role === "admin").length === 1 &&
+      accounts.some((account) => account.username === "admin") &&
       new Set(accounts.map((account) => account.email)).size === accounts.length &&
       new Set(accounts.map((account) => account.username)).size === accounts.length &&
       new Set(accounts.map((account) => account.clerkUserId).filter(Boolean)).size ===
@@ -62,7 +64,7 @@ export function configureOwner(rawEmail: string) {
   return enqueueWrite(async () => {
     const existing = await readAccess();
     if (existing) {
-      if (existing.accounts.find((account) => account.role === "admin")?.email === ownerEmail)
+      if (existing.accounts.find((account) => account.username === "admin")?.email === ownerEmail)
         return;
       throw new WorkflowError(
         "El propietario ya está configurado. Se conservó el acceso existente.",
@@ -84,6 +86,28 @@ export function configureOwner(rawEmail: string) {
     });
     await mkdir(dataDirectory, { recursive: true });
     await writeFile(accessFile, JSON.stringify(state, null, 2), { flag: "wx", mode: 0o600 });
+  });
+}
+
+/** Local setup command only. Additional administrators never replace the original owner. */
+export function grantAdministrator(rawEmail: string) {
+  const adminEmail = email.safeParse(rawEmail);
+  if (!adminEmail.success) throw new WorkflowError("Ingresa un correo válido para administración.");
+  return enqueueWrite(async () => {
+    const state = await readAccess();
+    if (!state) throw new WorkflowError("Configura primero la administración.", 409);
+    const existing = state.accounts.find((account) => account.email === adminEmail.data);
+    if (existing?.role === "admin") return;
+    if (existing) throw new WorkflowError("Ese correo ya está asignado a un cliente.", 409);
+    state.accounts.push({
+      username: `admin:${randomUUID()}`,
+      organizationId: "owner",
+      displayName: "Administración",
+      email: adminEmail.data,
+      role: "admin",
+      clerkUserId: "",
+    });
+    await writeJsonAtomic(accessFile, accessSchema.parse(state));
   });
 }
 

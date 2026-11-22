@@ -2,7 +2,7 @@ import { z } from "zod";
 import { WorkflowError } from "../workflow";
 import { leerJson, versionGraph, type Solicitar } from "./adaptadores";
 import { guardarAjuste, leerAjuste } from "./ajustes";
-import { leerConexion, secretoDe, solicitar as solicitarRed, verificarConexion } from "./conexiones";
+import { leerConexion, leerConexionId, secretoDe, solicitar as solicitarRed, verificarConexion } from "./conexiones";
 
 /**
  * Métricas reales de la cuenta de Instagram conectada (API de Instagram con inicio de sesión de
@@ -55,22 +55,25 @@ export function publicacionDe(m: MediaCrudo): PublicacionIg {
 }
 
 /** Lee la cuenta, las 12 publicaciones recientes y los totales de 7 y 30 días. */
-export async function consultarInstagram(opciones: { solicitar?: Solicitar; ahora?: Date } = {}): Promise<MetricasInstagram> {
+export async function consultarInstagram(opciones: { solicitar?: Solicitar; ahora?: Date; conexionId?: string } = {}): Promise<MetricasInstagram> {
   const ahora = opciones.ahora ?? new Date();
   const solicitar = opciones.solicitar ?? solicitarRed;
   const base: MetricasInstagram = { estado: "sin_conexion", leido: ahora.toISOString(), cuenta: null, recientes: [], periodos: [], avisos: [] };
-  const conexion = leerConexion("instagram");
+  // Sin id: la cuenta compartida principal de Spotmi.
+  const ref = opciones.conexionId ?? leerConexion("instagram").id ?? "instagram";
+  const conexion = opciones.conexionId ? leerConexionId(opciones.conexionId) : leerConexion("instagram");
+  if (conexion.canal !== "instagram") throw new WorkflowError("Esa conexión no es de Instagram.", 422);
   if (conexion.estado !== "conectada_publicacion" && conexion.estado !== "conectada_lectura")
     return { ...base, avisos: [conexion.estado === "vencida" ? "El acceso a Instagram venció: vuelve a conectar la cuenta en Conexiones." : "Instagram no está conectado. Conéctalo en Conexiones."] };
   // Un token que vence en menos de 7 días se renueva antes de leer (la verificación lo guarda).
   if (conexion.expira && Date.parse(conexion.expira) - ahora.getTime() < 7 * 86_400_000) {
     try {
-      await verificarConexion("instagram");
+      await verificarConexion(ref);
     } catch (e) {
       base.avisos.push(`No se pudo renovar el acceso: ${motivo(e)}`);
     }
   }
-  const token = encodeURIComponent(secretoDe("instagram").acceso);
+  const token = encodeURIComponent(secretoDe(ref).acceso);
   const resultado: MetricasInstagram = { ...base, estado: "ok" };
   try {
     const yo = await leerJson(solicitar, `${graphIg()}/me?fields=user_id,username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${token}`);
@@ -109,15 +112,17 @@ export async function consultarInstagram(opciones: { solicitar?: Solicitar; ahor
 }
 
 /** Con caché: si la última lectura tiene menos de 30 minutos (y no se fuerza), se devuelve esa. */
-export async function metricasInstagram(opciones: { forzar?: boolean; solicitar?: Solicitar; ahora?: Date } = {}): Promise<MetricasInstagram & { desdeCache: boolean }> {
+export async function metricasInstagram(opciones: { forzar?: boolean; solicitar?: Solicitar; ahora?: Date; conexionId?: string } = {}): Promise<MetricasInstagram & { desdeCache: boolean }> {
   const ahora = opciones.ahora ?? new Date();
-  const guardado = leerAjuste("instagram_metricas", cacheSchema.nullable(), null);
+  // Caché por cuenta: la de una cuenta nunca se muestra para otra.
+  const clave = `instagram_metricas:${opciones.conexionId ?? leerConexion("instagram").id ?? "ninguna"}`;
+  const guardado = leerAjuste(clave, cacheSchema.nullable(), null);
   if (!opciones.forzar && guardado && ahora.getTime() - Date.parse(guardado.leido) < CACHE_MINUTOS * 60_000) {
     const d = guardado.datos as MetricasInstagram;
     if (d && d.estado === "ok") return { ...d, desdeCache: true };
   }
   // Un token ilegible o revocado no debe esconder la última lectura correcta: se trata como lectura fallida.
-  const nuevas: MetricasInstagram = await consultarInstagram({ solicitar: opciones.solicitar, ahora }).catch((e: unknown) => ({
+  const nuevas: MetricasInstagram = await consultarInstagram({ solicitar: opciones.solicitar, ahora, conexionId: opciones.conexionId }).catch((e: unknown) => ({
     estado: "error" as const,
     leido: ahora.toISOString(),
     cuenta: null,
@@ -125,7 +130,7 @@ export async function metricasInstagram(opciones: { forzar?: boolean; solicitar?
     periodos: [],
     avisos: [motivo(e)],
   }));
-  if (nuevas.estado === "ok") guardarAjuste("instagram_metricas", cacheSchema.nullable(), { leido: nuevas.leido, datos: nuevas });
+  if (nuevas.estado === "ok") guardarAjuste(clave, cacheSchema.nullable(), { leido: nuevas.leido, datos: nuevas });
   // Si falla la lectura nueva pero hay una anterior, se muestra la anterior con el aviso.
   if (nuevas.estado !== "ok" && guardado && (guardado.datos as MetricasInstagram)?.estado === "ok")
     return { ...(guardado.datos as MetricasInstagram), avisos: [...nuevas.avisos, "Se muestran las métricas de la última lectura correcta."], desdeCache: true };

@@ -54,7 +54,15 @@ import { SeccionConsumo } from "../granjas/consumo";
 import { SeccionEventos } from "../granjas/eventos";
 import { PaginaInstagram } from "../granjas/instagram-pagina";
 import { PaginaYoutube } from "../granjas/youtube-pagina";
-import { BotonApps, PerfilConexion, redes, useCuentasApp, type CuentaApp } from "./apps";
+import {
+  BotonApps,
+  PerfilConexion,
+  guardarCuentaActiva,
+  leerCuentaActiva,
+  redes,
+  useCuentasApp,
+  type CuentaApp,
+} from "./apps";
 import { Inicio, type DestinoInicio } from "./inicio";
 import { CabeceraPagina, NavegacionLateral } from "./navegacion";
 import { DetalleEncargo, VistaEncargos, type AccionEncargo } from "./encargos";
@@ -297,15 +305,22 @@ export function EstudioProduccion({
     return () => window.removeEventListener("popstate", leer);
   }, []);
   const appActiva: CuentaApp | null =
-    cuentasApp?.find((c) => `${c.canal}:${c.id}` === appPedida || c.canal === appPedida) ??
+    cuentasApp?.find((c) => `${c.canal}:${c.conexionId}` === appPedida) ??
+    cuentasApp?.find((c) => c.canal === appPedida) ??
     cuentasApp?.find((c) => c.canal === "instagram") ??
     cuentasApp?.[0] ??
     null;
+  /** «Videos virales» busca con la cuenta de YouTube activa en Apps (si sigue conectada). */
+  const cuentaYoutube = () => {
+    const id = leerCuentaActiva("youtube");
+    return id && cuentasApp?.some((c) => c.conexionId === id) ? { conexionId: id } : {};
+  };
   function elegirApp(c: CuentaApp) {
-    const url = `${window.location.pathname}?seccion=apps&app=${encodeURIComponent(`${c.canal}:${c.id}`)}`;
+    guardarCuentaActiva(c);
+    const url = `${window.location.pathname}?seccion=apps&app=${encodeURIComponent(`${c.canal}:${c.conexionId}`)}`;
     if (`${window.location.pathname}${window.location.search}` !== url)
       window.history.pushState({ seccion: "apps" }, "", url);
-    setAppPedida(`${c.canal}:${c.id}`);
+    setAppPedida(`${c.canal}:${c.conexionId}`);
     setSeccion("apps");
     setAviso("");
   }
@@ -451,7 +466,10 @@ export function EstudioProduccion({
     if (a.tipo === "ejecutar") {
       setEjecutandoId(a.id);
       try {
-        const datos = await mutar({ id: a.id, confirmar: true }, "/api/produccion/generar");
+        const datos = await mutar(
+          { id: a.id, confirmar: true, ...cuentaYoutube() },
+          "/api/produccion/generar",
+        );
         if (datos?.encargoId && datos.encargoId !== a.id) setDetalle(datos.encargoId);
         // Si falló, se recarga para ver el fallo que quedó en el historial (el resultado anterior se conserva).
         if (!datos)
@@ -494,7 +512,7 @@ export function EstudioProduccion({
   }
   async function generar() {
     const datos = await mutar(
-      { id: seleccionado, confirmar: confirmarIA },
+      { id: seleccionado, confirmar: confirmarIA, ...cuentaYoutube() },
       "/api/produccion/generar",
     );
     if (datos)
@@ -877,13 +895,15 @@ export function EstudioProduccion({
           )}
           {!soloLectura && seccion === "apps" && (
             <>
-              {appActiva?.canal === "instagram" && <PaginaInstagram g={g} tr={tr} fecha={fecha} />}
+              {appActiva?.canal === "instagram" && (
+                <PaginaInstagram key={appActiva.conexionId} conexionId={appActiva.conexionId} g={g} tr={tr} fecha={fecha} />
+              )}
               {appActiva?.canal === "youtube" && (
-                <PaginaYoutube key={appActiva.id} cuenta={appActiva} locale={locale} fecha={fecha} />
+                <PaginaYoutube key={appActiva.conexionId} cuenta={appActiva} locale={locale} fecha={fecha} />
               )}
               {appActiva && appActiva.canal !== "instagram" && appActiva.canal !== "youtube" && (
                 <PerfilConexion
-                  key={`${appActiva.canal}:${appActiva.id}`}
+                  key={appActiva.conexionId}
                   cuenta={appActiva}
                   tr={tr}
                   fecha={fecha}

@@ -73,7 +73,14 @@ export type Detalle = {
   } | null;
   ahora: string;
 };
-export type ConexionesRespuesta = { conexiones: Conexion[]; claveTokens: boolean; redireccionBase: string; versionGraph: string };
+export type ConexionesRespuesta = {
+  conexiones: Conexion[];
+  canales: ReturnType<typeof import("@/lib/granjas/conexiones").estadoCanales>;
+  rol: "propietario" | "socio" | "invitado";
+  claveTokens: boolean;
+  redireccionBase: string;
+  versionGraph: string;
+};
 export type { Granja, Grafo, Nodo, Paso, Artefacto, Conexion, TipoNodo, ContenidoPieza };
 
 export async function pedir<T>(ruta: string, cuerpo?: object): Promise<T> {

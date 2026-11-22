@@ -9,11 +9,13 @@ process.env.EZRA_GRANJAS_TRABAJADOR = "0";
 let equipo: typeof import("../src/lib/equipo/almacen");
 let modelo: typeof import("../src/lib/equipo/modelo");
 let db: typeof import("../src/lib/granjas/db");
+let accesos: typeof import("../src/lib/access-store");
 before(async () => {
   await mkdir(process.env.EZRA_DATA_DIR!, { recursive: true });
   equipo = await import("../src/lib/equipo/almacen");
   modelo = await import("../src/lib/equipo/modelo");
   db = await import("../src/lib/granjas/db");
+  accesos = await import("../src/lib/access-store");
   assert.ok(db.archivoBase.startsWith(process.env.EZRA_DATA_DIR!));
 });
 
@@ -91,4 +93,32 @@ test("equipo: quitar acceso impide entrar; reinvitar vuelve a vincular por corre
   );
   // Duplicado pendiente o activo: error claro.
   assert.throws(() => equipo.invitar({ email: "socio@example.test", rol: "socio" }, "x"), /ya está/);
+});
+
+test("equipo: un segundo administrador conserva su identidad y la del propietario original", async () => {
+  const emailOriginal = "owner@example.test";
+  const emailAdicional = "admin-adicional@example.test";
+  const original = equipo.listarMiembros().find((m) => m.email === emailOriginal)!;
+  const invitacion = equipo.invitar({ email: emailAdicional, rol: "socio" }, emailOriginal);
+  await accesos.configureOwner(emailOriginal);
+  await accesos.bindIdentity({ userId: "user_owner", verifiedEmails: [emailOriginal] });
+  await accesos.assignClient({ email: "cliente@example.test", organizationId: "sgmotos" });
+  await assert.rejects(accesos.grantAdministrator("cliente@example.test"), /asignado a un cliente/);
+  await accesos.grantAdministrator(emailAdicional);
+  await accesos.grantAdministrator(emailAdicional.toUpperCase());
+  assert.equal((await accesos.readAccess())!.accounts.length, 3);
+  await assert.rejects(accesos.bindIdentity({ userId: "user_adicional", verifiedEmails: [] }), /verificarse/);
+  const cuentaAdicional = await accesos.bindIdentity({ userId: "user_adicional", verifiedEmails: [emailAdicional] });
+  assert.equal(cuentaAdicional.role, "admin");
+  const miembroAdicional = equipo.asegurarPropietario({
+    clerkUserId: "user_adicional", email: cuentaAdicional.email, nombre: cuentaAdicional.displayName,
+  });
+  assert.equal(miembroAdicional.id, invitacion.id);
+  assert.equal(miembroAdicional.rol, "propietario");
+  assert.deepEqual(equipo.equipoDe(miembroAdicional).secciones, [...modelo.seccionesEquipo]);
+  await assert.rejects(accesos.bindIdentity({ userId: "user_distinto", verifiedEmails: [emailAdicional] }), /verificarse/);
+  const originalAlVolver = equipo.asegurarPropietario({ clerkUserId: "user_owner", email: emailOriginal, nombre: "Dueño" });
+  assert.equal(originalAlVolver.id, original.id);
+  assert.notEqual(originalAlVolver.id, miembroAdicional.id);
+  assert.equal(equipo.leerMiembro(miembroAdicional.id)?.email, emailAdicional);
 });

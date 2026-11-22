@@ -10,6 +10,12 @@
 - [ ] Propietario: en Clerk, Configure › Access mode › **Invite-only** › Save (https://dashboard.clerk.com/~/user-authentication/access-mode). Hasta entonces cualquiera puede crear una cuenta de Clerk, pero Ezra no lo deja entrar.
 - [ ] Propietario: invitar a los tres socios desde Equipo (Clerk enviará los correos).
 
+### Fase 2 · Varias cuentas por red y publicación múltiple — HECHO
+- [x] Migración 14 (una fila por cuenta, compartida/personal, dueño). Probada sobre una copia de la base real: Instagram y YouTube pasan a compartidas con su token.
+- [x] Conexiones: tarjeta por red con sus cuentas compartidas y las tuyas, «Agregar otra». Apps con selector por cuenta; métricas y Videos virales por cuenta; destinos de publicación por cuenta.
+- [x] Pruebas: `tests/conexiones-equipo.test.ts` (4: visibilidad, ataques, publicación en 3 cuentas con un fallo, quitar acceso) y ataques HTTP en `tests/integration/equipo.test.ts`. Check 213/213, build, integración 8/8.
+- [ ] Propietario: **reiniciar `npm run dev`**. Hasta reiniciar, el servidor abierto sigue con la base en versión 13 y Inicio/Conexiones fallan («No se pudo completar la operación»); al arrancar migra a la 14 con copia en `data/granjas/respaldos/`.
+
 ## 2026-11-17 · Eventos e Instagram (rama `feat/eventos-instagram`)
 
 ### Fase 0 · Supabase de desarrollo — preparada, falta tu parte
@@ -470,3 +476,9 @@ Inicio mantiene el mapa a todo lo ancho con la paleta anterior y fondos neutros 
 - [ ] Completar `docs/datos/dgme-terrestres-ene-jun-2024.csv` con las cifras del PDF de la DGME (transparencia.gob.sv) y cargarlo en Inicio › Cargar CSV.
 - [ ] Presentar la solicitud LAIP a la DGME con el texto de «Cómo pedir los datos» (entradas mensuales 2026 por puesto y nacionalidad).
 - [ ] Opcional: cargar los meses de MITUR con cifra exacta publicada (fuente MITUR, métrica visitantes).
+
+## 2026-11-21 · Segunda cuenta de administración
+
+- [x] Agregar la cuenta solicitada a la instalación local mediante `npm run access:admin`. Confirmadas la nueva entrada de administración y las tres entradas preexistentes. El correo queda en `data/access.json`.
+- [x] `npm run check` (213 pruebas) y build aislado correctos. La compilación muestra dos avisos de Edge Runtime en `src/instrumentation.ts`. La integración del segundo administrador está incluida en la prueba HTTP de equipo. En este entorno los servidores de prueba reciben `listen EPERM` al intentar abrir puertos locales.
+- [ ] Confirmar el primer ingreso de la nueva cuenta y el acceso al Dashboard de Clerk desde una sesión del workspace. La consulta directa a la API de Clerk quedó bloqueada por la resolución de red del entorno local.

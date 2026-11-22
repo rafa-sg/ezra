@@ -14,6 +14,7 @@
     "check": "npm run lint && npm run typecheck && npm test",
     "test:integration": "node --import tsx --test \"tests/integration/*.test.ts\"",
     "access:owner": "node --env-file-if-exists=.env.local --import tsx scripts/configure-owner.ts",
+    "access:admin": "node --env-file-if-exists=.env.local --import tsx scripts/grant-administrator.ts",
     "granjas:trabajador": "node --env-file-if-exists=.env.local --env-file-if-exists=.env.meta.local --import tsx scripts/granjas-trabajador.ts",
     "eventos:importar": "node --env-file-if-exists=.env.local --import tsx scripts/eventos-importar.ts",
     "eventos:imagenes": "node --env-file-if-exists=.env.local --import tsx scripts/eventos-imagenes.ts",

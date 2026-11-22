@@ -23,7 +23,14 @@ type Almacen = {
 };
 const megas = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`;
 
-/** Tarjetas reales por canal. Nada aparece como conectado sin una verificación del servidor. */
+type EstadoCanal = ConexionesRespuesta["canales"][number];
+const conectada = (c: Conexion) => !["sin_configurar", "requiere_oauth"].includes(c.estado);
+
+/**
+ * Una tarjeta por red con todas sus cuentas: las compartidas de Spotmi (las administra el propietario)
+ * y las personales de esta sesión (solo tú las ves). Se puede agregar otra cuenta de la misma red.
+ * Nada aparece como conectado sin una verificación del servidor.
+ */
 export function ConexionesGranjas({
   g,
   fecha,
@@ -43,37 +50,22 @@ export function ConexionesGranjas({
     const reloj = setTimeout(() => setMensaje(""), 4000);
     return () => clearTimeout(reloj);
   }, [mensaje]);
-  const [guia, setGuia] = useState<Conexion | null>(null);
+  const [guia, setGuia] = useState<EstadoCanal | null>(null);
   const cargar = useCallback(async () => {
     try {
-      const [c, a] = await Promise.all([
-        pedir<ConexionesRespuesta>("/api/granjas/conexiones"),
-        pedir<Almacen>("/api/granjas/almacenamiento"),
-      ]);
+      const c = await pedir<ConexionesRespuesta>("/api/granjas/conexiones");
       setDatos(c);
-      setAlmacen(a);
+      // El almacenamiento local (rutas y respaldo) es solo del propietario.
+      if (c.rol === "propietario") setAlmacen(await pedir<Almacen>("/api/granjas/almacenamiento"));
     } catch (e) {
       setError((e as Error).message);
     }
   }, []);
   useEffect(() => {
-    let vivo = true;
-    Promise.all([
-      pedir<ConexionesRespuesta>("/api/granjas/conexiones"),
-      pedir<Almacen>("/api/granjas/almacenamiento"),
-    ])
-      .then(([c, a]) => {
-        if (!vivo) return;
-        setDatos(c);
-        setAlmacen(a);
-      })
-      .catch((e) => vivo && setError((e as Error).message));
-    return () => {
-      vivo = false;
-    };
-  }, []);
-  async function accion(canal: string, cuerpo: object, exito: string) {
-    setOcupado(canal);
+    queueMicrotask(() => void cargar());
+  }, [cargar]);
+  async function accion(clave: string, cuerpo: object, exito: string) {
+    setOcupado(clave);
     setError("");
     setMensaje("");
     try {
@@ -86,19 +78,21 @@ export function ConexionesGranjas({
       await cargar();
     }
   }
-  function conectar(c: Conexion) {
-    if (c.configFaltante.length) return setGuia(c);
-    if (c.canal === "spotmi")
+  /** Abre el OAuth de la red; si falta configurar algo, muestra la guía. */
+  function conectar(canal: EstadoCanal, alcance: "compartida" | "personal") {
+    if (canal.configFaltante.length) return setGuia(canal);
+    if (canal.canal === "spotmi")
       return void accion("spotmi", { accion: "conectar", canal: "spotmi" }, g("conectado"));
-    window.location.assign(`/api/granjas/conexiones/${c.canal}/autorizar`);
+    window.location.assign(`/api/granjas/conexiones/${canal.canal}/autorizar?alcance=${alcance}`);
   }
+  const esPropietario = datos?.rol === "propietario";
 
   return (
     <section className="eg-conexiones">
       <div className="ep-seccion-cabecera">
         <div>
           <h2>{g("redesTitulo")}</h2>
-          <p>{g("redesAyuda")}</p>
+          <p>{g("cx_ayuda")}</p>
         </div>
       </div>
       {aviso && (
@@ -118,145 +112,88 @@ export function ConexionesGranjas({
       )}
       {datos && !datos.claveTokens && <p className="ep-nota">{g("faltaClaveTokens")}</p>}
       <div className="ep-conexiones">
-        <ConexionN8n g={g} fecha={fecha} />
-        {(datos?.conexiones ?? []).map((c) => (
-          <article className="ep-conexion eg-conexion" key={c.canal}>
-            <div className="ep-conexion-icono">{nombres[c.canal].slice(0, 2)}</div>
-            <div className="eg-conexion-cuerpo">
-              <h3>{nombres[c.canal]}</h3>
-              <span className={`ep-pill eg-con-${c.estado}`}>{g(`con_${c.estado}`)}</span>
-              <p className="eg-habilita">
-                <b>{g("habilita")}:</b> {g(`habilita_${c.canal}`)}
-              </p>
-              {!c.verificado && !c.identidad && (
-                <p className="ep-nota">
-                  <b>{g("falta")}:</b>{" "}
-                  {c.configFaltante.length
-                    ? `${g("faltaConfig")} ${c.configFaltante.join(", ")}`
-                    : g("faltaConectar")}
+        {esPropietario && <ConexionN8n g={g} fecha={fecha} />}
+        {(datos?.canales ?? []).map((canal) => {
+          const cuentas = (datos?.conexiones ?? []).filter((c) => c.canal === canal.canal);
+          const compartidas = cuentas.filter((c) => c.alcance === "compartida");
+          const personales = cuentas.filter((c) => c.alcance === "personal");
+          const error = [canal.errorCompartida, canal.errorPersonal].filter(Boolean).join(" · ");
+          return (
+            <article className="ep-conexion eg-conexion" key={canal.canal}>
+              <div className="ep-conexion-icono">{nombres[canal.canal].slice(0, 2)}</div>
+              <div className="eg-conexion-cuerpo">
+                <h3>{nombres[canal.canal]}</h3>
+                <p className="eg-habilita">
+                  <b>{g("habilita")}:</b> {g(`habilita_${canal.canal}`)}
                 </p>
-              )}
-              {(c.verificado || c.identidad) && (
-                <details className="eg-detalles-tecnicos">
-                  <summary>{g("detallesTecnicos")}</summary>
-                  <dl className="eg-datos">
-                    <dt>{g("cuenta")}</dt>
-                    <dd>
-                      {c.identidad
-                        ? `${c.identidad.nombre}${c.identidad.tipo ? ` · ${c.identidad.tipo}` : ""}`
-                        : g("sinVerificar")}
-                    </dd>
-                    <dt>{g("capacidades")}</dt>
-                    <dd>
-                      {c.capacidades.length
-                        ? c.capacidades.map((x) => g(`cap_${x}`)).join(", ")
-                        : "—"}
-                    </dd>
-                    <dt>{g("permisos")}</dt>
-                    <dd>{c.permisos.length ? c.permisos.join(", ") : "—"}</dd>
-                    <dt>{g("vence")}</dt>
-                    <dd>{c.expira ? fecha(c.expira) : "—"}</dd>
-                    <dt>{g("verificado")}</dt>
-                    <dd>{c.verificado ? fecha(c.verificado) : g("nunca")}</dd>
-                    <dt>{g("ultimoError")}</dt>
-                    <dd>
-                      {c.ultimoError
-                        ? `${c.ultimoError}${c.ultimoErrorFecha ? ` (${fecha(c.ultimoErrorFecha)})` : ""}`
-                        : "—"}
-                    </dd>
-                  </dl>
-                </details>
-              )}
-              {c.aviso && <p className="ep-nota">{c.aviso}</p>}
-              {c.canal === "tiktok" && <p className="ep-nota">{g("tiktokPolitica")}</p>}
-              {c.canal === "youtube" && <p className="ep-nota">{g("youtubePolitica")}</p>}
-              {c.canal === "facebook" && c.opciones.length > 1 && (
-                <label className="eg-campo">
-                  {g("paginaPublicar")}
-                  <select
-                    value={c.identidad?.id ?? ""}
-                    onChange={(e) =>
-                      e.target.value &&
-                      void accion(
-                        "facebook",
-                        { accion: "pagina", paginaId: e.target.value },
-                        g("paginaElegida"),
-                      )
-                    }
-                  >
-                    <option value="">{g("eligePagina")}</option>
-                    {c.opciones.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.nombre}{" "}
-                        {o.tareas.includes("CREATE_CONTENT") ? "" : `· ${g("sinPermisoPagina")}`}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <div className="ep-acciones">
-                {["sin_configurar", "requiere_oauth"].includes(c.estado) ? (
-                  <button
-                    type="button"
-                    className="ep-boton"
-                    disabled={ocupado === c.canal}
-                    onClick={() => conectar(c)}
-                  >
-                    <Plug size={15} />
-                    {g("conectarCuenta")}
-                  </button>
-                ) : (
-                  <>
+                {canal.configFaltante.length > 0 && (
+                  <p className="ep-nota">
+                    <b>{g("falta")}:</b> {g("faltaConfig")} {canal.configFaltante.join(", ")}
+                  </p>
+                )}
+                {!cuentas.length && !canal.configFaltante.length && (
+                  <p className="ep-nota">{g("cx_sinCuentas")}</p>
+                )}
+                {error && !cuentas.length && <p className="ep-nota">{error}</p>}
+                {[
+                  { titulo: g("cx_compartidas"), lista: compartidas },
+                  { titulo: g("cx_tuyas"), lista: personales },
+                ]
+                  .filter((grupo) => grupo.lista.length)
+                  .map((grupo) => (
+                    <div key={grupo.titulo} className="cx-grupo">
+                      <h4>{grupo.titulo}</h4>
+                      <ul className="cx-cuentas">
+                        {grupo.lista.map((c) => (
+                          <CuentaConexion
+                            key={c.id}
+                            c={c}
+                            g={g}
+                            fecha={fecha}
+                            ocupado={ocupado === c.id}
+                            administra={c.alcance === "personal" || esPropietario}
+                            onAccion={(cuerpo, exito) => void accion(c.id!, cuerpo, exito)}
+                            onReconectar={() => conectar(canal, c.alcance)}
+                          />
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                {canal.canal === "tiktok" && <p className="ep-nota">{g("tiktokPolitica")}</p>}
+                {canal.canal === "youtube" && <p className="ep-nota">{g("youtubePolitica")}</p>}
+                <div className="ep-acciones">
+                  {canal.puedeCompartida && (canal.canal !== "spotmi" || !compartidas.length) && (
                     <button
                       type="button"
                       className="ep-boton"
-                      disabled={ocupado === c.canal}
-                      onClick={() =>
-                        void accion(
-                          c.canal,
-                          { accion: "verificar", canal: c.canal },
-                          g("verificadaOk"),
-                        )
-                      }
+                      disabled={ocupado === canal.canal}
+                      onClick={() => conectar(canal, "compartida")}
                     >
-                      <ShieldCheck size={15} />
-                      {g("verificar")}
+                      <Plug size={15} aria-hidden="true" />
+                      {g(compartidas.length ? "cx_otraCompartida" : canal.canal === "spotmi" ? "conectarCuenta" : "cx_conectarCompartida")}
                     </button>
+                  )}
+                  {canal.puedePersonal && (
                     <button
                       type="button"
                       className="ep-boton"
-                      disabled={ocupado === c.canal}
-                      onClick={() => conectar(c)}
+                      disabled={ocupado === canal.canal}
+                      onClick={() => conectar(canal, "personal")}
                     >
-                      <RefreshCw size={15} />
-                      {g("reconectar")}
+                      <Plug size={15} aria-hidden="true" />
+                      {g(personales.length ? "cx_otraPersonal" : "cx_conectarPersonal")}
                     </button>
-                    <button
-                      type="button"
-                      className="ep-boton eg-peligro"
-                      disabled={ocupado === c.canal}
-                      onClick={() =>
-                        void accion(
-                          c.canal,
-                          { accion: "desconectar", canal: c.canal },
-                          g("desconectada"),
-                        )
-                      }
-                    >
-                      <Unplug size={15} />
-                      {g("desconectar")}
+                  )}
+                  {canal.configFaltante.length > 0 && (
+                    <button type="button" className="ep-boton ep-texto" onClick={() => setGuia(canal)}>
+                      {g("verGuia")}
                     </button>
-                  </>
-                )}
-                {c.configFaltante.length > 0 && (
-                  <button type="button" className="ep-boton ep-texto" onClick={() => setGuia(c)}>
-                    {g("verGuia")}
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
 
       {almacen && (
@@ -357,5 +294,108 @@ export function ConexionesGranjas({
         )}
       </Modal>
     </section>
+  );
+}
+
+/** Una cuenta conectada: estado, detalles técnicos y acciones (solo quien la administra la cambia). */
+function CuentaConexion({
+  c,
+  g,
+  fecha,
+  ocupado,
+  administra,
+  onAccion,
+  onReconectar,
+}: {
+  c: Conexion;
+  g: (clave: string) => string;
+  fecha: (iso: string) => string;
+  ocupado: boolean;
+  administra: boolean;
+  onAccion: (cuerpo: object, exito: string) => void;
+  onReconectar: () => void;
+}) {
+  return (
+    <li className="cx-cuenta">
+      <div className="cx-cuenta-cabeza">
+        <strong>{c.identidad?.nombre ?? g("sinVerificar")}</strong>
+        <span className={`ep-pill eg-con-${c.estado}`}>{g(`con_${c.estado}`)}</span>
+      </div>
+      {c.aviso && <p className="ep-nota">{c.aviso}</p>}
+      <details className="eg-detalles-tecnicos">
+        <summary>{g("detallesTecnicos")}</summary>
+        <dl className="eg-datos">
+          <dt>{g("cuenta")}</dt>
+          <dd>
+            {c.identidad
+              ? `${c.identidad.nombre}${c.identidad.tipo ? ` · ${c.identidad.tipo}` : ""}`
+              : g("sinVerificar")}
+          </dd>
+          <dt>{g("capacidades")}</dt>
+          <dd>{c.capacidades.length ? c.capacidades.map((x) => g(`cap_${x}`)).join(", ") : "—"}</dd>
+          <dt>{g("permisos")}</dt>
+          <dd>{c.permisos.length ? c.permisos.join(", ") : "—"}</dd>
+          <dt>{g("vence")}</dt>
+          <dd>{c.expira ? fecha(c.expira) : "—"}</dd>
+          <dt>{g("verificado")}</dt>
+          <dd>{c.verificado ? fecha(c.verificado) : g("nunca")}</dd>
+          <dt>{g("ultimoError")}</dt>
+          <dd>
+            {c.ultimoError
+              ? `${c.ultimoError}${c.ultimoErrorFecha ? ` (${fecha(c.ultimoErrorFecha)})` : ""}`
+              : "—"}
+          </dd>
+        </dl>
+      </details>
+      {c.canal === "facebook" && administra && c.opciones.length > 1 && (
+        <label className="eg-campo">
+          {g("paginaPublicar")}
+          <select
+            value={c.identidad?.id ?? ""}
+            onChange={(e) =>
+              e.target.value &&
+              onAccion({ accion: "pagina", id: c.id, paginaId: e.target.value }, g("paginaElegida"))
+            }
+          >
+            <option value="">{g("eligePagina")}</option>
+            {c.opciones.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.nombre} {o.tareas.includes("CREATE_CONTENT") ? "" : `· ${g("sinPermisoPagina")}`}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <div className="ep-acciones">
+        {conectada(c) && (
+          <button
+            type="button"
+            className="ep-boton ep-texto"
+            disabled={ocupado}
+            onClick={() => onAccion({ accion: "verificar", id: c.id }, g("verificadaOk"))}
+          >
+            <ShieldCheck size={15} aria-hidden="true" />
+            {g("verificar")}
+          </button>
+        )}
+        {administra && (
+          <>
+            <button type="button" className="ep-boton ep-texto" disabled={ocupado} onClick={onReconectar}>
+              <RefreshCw size={15} aria-hidden="true" />
+              {g("reconectar")}
+            </button>
+            <button
+              type="button"
+              className="ep-boton ep-texto eg-peligro"
+              disabled={ocupado}
+              onClick={() => onAccion({ accion: "desconectar", id: c.id }, g("desconectada"))}
+            >
+              <Unplug size={15} aria-hidden="true" />
+              {g("desconectar")}
+            </button>
+          </>
+        )}
+      </div>
+    </li>
   );
 }

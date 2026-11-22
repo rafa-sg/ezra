@@ -2,7 +2,8 @@ import { cuerpo, errorApi, propietario } from "@/lib/granjas/api";
 import { ensurePilotBusinesses } from "@/lib/businesses";
 import { defaultBusinessId } from "@/lib/model";
 import { listarGranjas } from "@/lib/granjas/almacen";
-import { listarConexiones } from "@/lib/granjas/conexiones";
+import { resumenCanales } from "@/lib/granjas/conexiones";
+import type { Equipo } from "@/lib/equipo/modelo";
 import { geminiProduccionHabilitado } from "@/lib/ia/gemini";
 import { leerProduccion } from "@/lib/produccion/almacen";
 import { avanzarOnboarding, leerOnboarding, plantillas } from "@/lib/produccion/onboarding";
@@ -30,7 +31,7 @@ async function disponibles() {
     claude: utilizable(claude),
   };
 }
-async function vista(usuario: string, organizationId: string, email: string) {
+async function vista(usuario: string, organizationId: string, email: string, equipo: Equipo) {
   const estado = leerOnboarding(usuario);
   const produccion = await leerProduccion();
   const encargo = estado.encargoId
@@ -76,15 +77,15 @@ async function vista(usuario: string, organizationId: string, email: string) {
       return g ? { id: g.id, nombre: g.nombre } : null;
     })(),
     // Estado comprobado de las conexiones externas (la guía no conecta nada: solo dice qué falta).
-    conexiones: listarConexiones().map((c) => ({ canal: c.canal, estado: c.estado })),
+    conexiones: resumenCanales(equipo).map((c) => ({ canal: c.canal, estado: c.estado })),
     // Una cuenta con trabajo previo no recibe la guía de forma automática.
     tieneTrabajo: produccion.encargos.length > 0 || granjas.some((g) => g.estado === "activa"),
   };
 }
 export async function GET() {
   try {
-    const { cuenta, usuario } = await propietario();
-    return Response.json(await vista(usuario, cuenta.organizationId, cuenta.email), {
+    const { cuenta, usuario, equipo } = await propietario();
+    return Response.json(await vista(usuario, cuenta.organizationId, cuenta.email, equipo), {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
@@ -93,14 +94,14 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    const { cuenta, usuario } = await propietario();
+    const { cuenta, usuario, equipo } = await propietario();
     const crudo = await cuerpo(request, z.record(z.string(), z.unknown()), 10_000);
     const p = await disponibles();
     await avanzarOnboarding(usuario, crudo, {
       espacios: (await espacios(cuenta.organizationId)).map((e) => e.id),
       proveedorPorDefecto: p.gemini ? "gemini" : p.claude ? "claude" : p.astra ? "astra" : "gemini",
     });
-    return Response.json(await vista(usuario, cuenta.organizationId, cuenta.email));
+    return Response.json(await vista(usuario, cuenta.organizationId, cuenta.email, equipo));
   } catch (error) {
     return errorApi(error);
   }

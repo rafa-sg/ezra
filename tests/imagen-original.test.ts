@@ -64,7 +64,7 @@ test("publicación de terceros sin Business Discovery ni Facebook aprobado: moti
 test("cuenta propia (API simulada): imagen, carrusel y video con miniatura; Business Discovery para terceros", async () => {
   const ahora = new Date().toISOString();
   db.base()
-    .prepare("insert or replace into conexiones (canal, estado, identidad, capacidades, permisos, opciones, token_cifrado, actualizado) values ('instagram', 'conectada_publicacion', ?, '[]', '[]', '[]', ?, ?)")
+    .prepare("insert or replace into conexiones (id, alcance, creado, canal, estado, identidad, capacidades, permisos, opciones, token_cifrado, actualizado) values ('00000000-0000-4000-8000-000000000001', 'compartida', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'instagram', 'conectada_publicacion', ?, '[]', '[]', '[]', ?, ?)")
     .run(JSON.stringify({ id: "ig1", nombre: "spotmi.sv" }), cripto.cifrar({ acceso: "token-ig" }), ahora);
   const llamadas: string[] = [];
   const solicitar = async (url: string) => {
@@ -127,7 +127,7 @@ test("guardar: exige comprobar el evento; captura sin duplicar la fuente; invali
   const web = async (u: URL): Promise<Respuesta> => ({ estado: 200, tipo: "image/jpeg", cuerpo: afiche, url: u.toString() });
   // La API (simulada) confirma que la imagen es de esa publicación: Business Discovery con la conexión de Facebook.
   db.base()
-    .prepare("insert or replace into conexiones (canal, estado, identidad, capacidades, permisos, opciones, token_cifrado, actualizado) values ('facebook', 'conectada_publicacion', ?, '[]', ?, '[]', ?, ?)")
+    .prepare("insert or replace into conexiones (id, alcance, creado, canal, estado, identidad, capacidades, permisos, opciones, token_cifrado, actualizado) values ('00000000-0000-4000-8000-000000000002', 'compartida', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'facebook', 'conectada_publicacion', ?, '[]', ?, '[]', ?, ?)")
     .run(JSON.stringify({ id: "pag1", nombre: "Spotmi" }), JSON.stringify(["instagram_basic", "instagram_manage_insights", "pages_read_engagement"]), cripto.cifrar({ acceso: "token-fb", paginaId: "pag1", paginas: { pag1: "token-pag" } }), new Date().toISOString());
   const meta = async (u: string) => {
     const x = new URL(u);

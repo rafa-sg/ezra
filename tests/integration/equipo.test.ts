@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdir, mkdtemp } from "node:fs/promises";
 import path from "node:path";
-import { clerkTestEnvironment, fixtureInvitations, sessionToken } from "../helpers/clerk-fixture";
+import { clerkTestEnvironment, fixtureInvitations, fixtureUsers, sessionToken } from "../helpers/clerk-fixture";
 
 const base = "http://127.0.0.1:3109";
 const pedir = (ruta: string, token = "", init: RequestInit = {}) =>
@@ -107,6 +107,40 @@ test("equipo: solo por invitación, roles y secciones comprobados en el servidor
     const prod = await (await pedir("/api/produccion", invitado)).json();
     assert.deepEqual(prod.produccion.encargos, []);
 
+    // Cuentas personales: la de la socia no existe para el socio ni para el propietario (404), y ninguna
+    // respuesta lleva tokens. La fila se crea directo en la base aislada (OAuth real necesitaría Meta).
+    const socia = sessionToken("socia", base, 300);
+    assert.equal(
+      (await post("/api/equipo", dueno, { accion: "invitar", datos: { email: "socia@example.test", rol: "socio" } })).status,
+      200,
+    );
+    assert.equal((await pedir("/api/equipo", socia)).status, 200);
+    const idSocia = ((await (await pedir("/api/equipo", dueno)).json()).miembros as { id: string; email: string }[]).find(
+      (m) => m.email === "socia@example.test",
+    )!.id;
+    const personal = crypto.randomUUID();
+    const { DatabaseSync } = await import("node:sqlite");
+    const bd = new DatabaseSync(path.join(directorio, "granjas", "granjas.sqlite"));
+    bd.exec("pragma busy_timeout = 5000");
+    bd.prepare(
+      `insert into conexiones (id, espacio_id, canal, alcance, dueno_id, cuenta_id, estado, identidad, token_cifrado, creado, actualizado)
+       values (?, 'spotmi', 'youtube', 'personal', ?, 'UCsocia', 'conectada_lectura', '{"id":"UCsocia","nombre":"Canal de la socia"}', 'CIFRADO-SECRETO', ?, ?)`,
+    ).run(personal, idSocia, new Date().toISOString(), new Date().toISOString());
+    bd.close();
+    const deSocia = await (await pedir("/api/granjas/conexiones", socia)).json();
+    assert.ok(deSocia.conexiones.some((c: { id: string; propia: boolean }) => c.id === personal && c.propia));
+    assert.doesNotMatch(JSON.stringify(deSocia), /CIFRADO-SECRETO|token_cifrado/);
+    for (const intruso of [socio, dueno]) {
+      const lista = await (await pedir("/api/granjas/conexiones", intruso)).json();
+      assert.ok(!lista.conexiones.some((c: { id: string }) => c.id === personal), "no aparece para otros");
+      assert.equal((await pedir(`/api/granjas/youtube?conexion=${personal}`, intruso)).status, 404);
+      for (const accion of ["verificar", "desconectar"])
+        assert.equal((await post("/api/granjas/conexiones", intruso, { accion, id: personal })).status, 404, accion);
+    }
+    // Un socio no conecta cuentas compartidas; el invitado sin Conexiones no ve ninguna.
+    assert.equal((await pedir("/api/granjas/conexiones/youtube/autorizar?alcance=compartida", socio)).status, 403);
+    assert.equal((await pedir("/api/granjas/conexiones", invitado)).status, 403);
+
     // Quitar acceso: el socio deja de entrar de inmediato.
     const lista = (await (await pedir("/api/equipo", dueno)).json()).miembros as { id: string; email: string }[];
     const idSocio = lista.find((m) => m.email === "socio@example.test")!.id;
@@ -115,6 +149,25 @@ test("equipo: solo por invitación, roles y secciones comprobados en el servidor
     // El propietario no puede quitarse el acceso a sí mismo.
     const idDueno = lista.find((m) => m.email === "owner@example.test")!.id;
     assert.equal((await post("/api/equipo", dueno, { accion: "retirar", id: idDueno })).status, 409);
+
+    const correoAdmin = "admin-adicional@example.test";
+    fixtureUsers.set("admin_adicional", { email: correoAdmin, verified: false });
+    const adminAdicional = sessionToken("admin_adicional", base, 300);
+    execFileSync(process.execPath, ["--import", "tsx", "scripts/grant-administrator.ts", correoAdmin], {
+      env: { ...process.env, EZRA_DATA_DIR: directorio },
+    });
+    assert.equal((await pedir("/api/equipo", adminAdicional)).status, 403);
+    fixtureUsers.set("admin_adicional", { email: correoAdmin, verified: true });
+    const respuestaAdmin = await pedir("/api/equipo", adminAdicional);
+    assert.equal(respuestaAdmin.status, 200, await respuestaAdmin.clone().text());
+    const equipoAdmin = await respuestaAdmin.json();
+    assert.equal(equipoAdmin.yo.rol, "propietario");
+    assert.equal(equipoAdmin.yo.email, correoAdmin);
+    assert.notEqual(equipoAdmin.yo.miembroId, idDueno);
+    assert.equal((await pedir("/api/produccion/onboarding", adminAdicional)).status, 200);
+    const respuestaDueno = await pedir("/api/equipo", dueno);
+    assert.equal(respuestaDueno.status, 200);
+    assert.equal((await respuestaDueno.json()).yo.miembroId, idDueno);
   } finally {
     await detener();
   }
