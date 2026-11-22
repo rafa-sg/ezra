@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useClerk } from "@clerk/nextjs";
+import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   Check,
@@ -341,6 +341,9 @@ function MenuCuenta({
       document.removeEventListener("pointerdown", fuera);
     };
   }, [abierto]);
+  // Foto de perfil de la cuenta (Clerk); sin foto propia, las iniciales.
+  const { user: clerk } = useUser();
+  const foto = clerk?.hasImage ? clerk.imageUrl : null;
   const nombre = user.displayName || user.email;
   const iniciales = nombre
     .split(/[\s@.]+/)
@@ -358,8 +361,12 @@ function MenuCuenta({
         onClick={() => setAbierto(!abierto)}
         data-tooltip={t("ez_sb_perfil" as MessageKey)}
       >
-        <span className="ep-avatar" aria-hidden="true">
-          {iniciales}
+        <span className={`ep-avatar${foto ? " ep-avatar-foto" : ""}`} aria-hidden="true">
+          {foto ? (
+            <img src={foto} alt="" width={32} height={32} referrerPolicy="no-referrer" />
+          ) : (
+            iniciales
+          )}
         </span>
         <span className="ep-cuenta-nombre">
           <strong>{nombre}</strong>

@@ -1,10 +1,11 @@
-/** Arranca el trabajador local de las granjas junto al servidor (solo en Node, nunca al compilar). */
+/**
+ * Arranca el trabajador local de las granjas junto al servidor (solo en Node, nunca al compilar).
+ * El código de Node vive en instrumentation-node.ts: con la comparación directa de NEXT_RUNTIME, Next
+ * descarta esta rama al compilar para Edge y ya no avisa de `node:fs`/`node:process`.
+ */
 export async function register() {
-  if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.NEXT_PHASE === "phase-production-build")
-    return;
-  const { existsSync } = await import("node:fs");
-  const { loadEnvFile } = await import("node:process");
-  if (existsSync(".env.meta.local")) loadEnvFile(".env.meta.local");
-  const { iniciarTrabajador } = await import("./lib/granjas/trabajador");
-  iniciarTrabajador();
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { arrancar } = await import("./instrumentation-node");
+    await arrancar();
+  }
 }

@@ -1,5 +1,12 @@
 import { base } from "../granjas/db";
-import { estadoPresupuesto, type Periodo } from "../granjas/consumo";
+import {
+  costoLlamada,
+  estadoPresupuesto,
+  leerTarifas,
+  SOLO_GEMINI,
+  type FilaConsumo,
+  type Periodo,
+} from "../granjas/consumo";
 import { LIMITE_IA_MENSUAL } from "../granjas/pasos";
 import { instanteLocal, mesLocal, siguienteMes } from "../granjas/tiempo";
 import { leerAjuste } from "../granjas/ajustes";
@@ -7,6 +14,7 @@ import { leerProduccion } from "../produccion/almacen";
 import { diagnosticoSchema, type DiagnosticoIA, type ProveedorLocal } from "../produccion/ia-local";
 import { mesEnElSalvador } from "../produccion/generacion";
 import { claveGemini, geminiProduccionHabilitado, modeloGemini } from "./gemini";
+import { limitesCodex, type LimitesCodex } from "./codex-limites";
 
 /**
  * Resumen de uso de las tres IAs del estudio, al estilo de «Uso» de ChatGPT, pero con lo que Ezra sí
@@ -30,11 +38,16 @@ export type ResumenUsoIA = {
     dia: Periodo;
     mes: Periodo;
     agotado: "dia" | "mes" | null;
+    /** Gasto del mes con las tarifas que escribiste (USD); null si algún modelo usado no tiene tarifa. */
+    costoMes: number | null;
+    llamadasMes: number;
   };
+  /** Límites reales del plan de ChatGPT que OpenAI informa a Codex (5 h y semanal). */
+  chatgpt: LimitesCodex | null;
   /** Límite único de intentos para Astra y Claude (encargos y granjas). */
   intentos: { limite: number; usados: number; porcentaje: number; reanuda: string };
   astra: UsoLocal;
-  claude: UsoLocal;
+  claude: UsoLocal & { tokensMes: number; llamadasMes: number };
 };
 
 function intentosGranjas(mes: string) {
@@ -76,6 +89,21 @@ export async function resumenUsoIA(ahora: Date = new Date()): Promise<ResumenUso
     };
   };
   const presupuesto = estadoPresupuesto(ahora);
+  const inicioMes = instanteLocal(`${mesLocal(ahora)}-01`).toISOString();
+  const filasMes = base()
+    .prepare("select * from consumo_ia where fecha >= ?")
+    .all(inicioMes) as FilaConsumo[];
+  const deGemini = base()
+    .prepare(`select * from consumo_ia where fecha >= ? and ${SOLO_GEMINI}`)
+    .all(inicioMes) as FilaConsumo[];
+  const tarifas = leerTarifas();
+  let costoMes: number | null = 0;
+  for (const f of deGemini) {
+    const c = costoLlamada(f, tarifas);
+    costoMes = c === null || costoMes === null ? null : costoMes + c;
+  }
+  const deClaude = filasMes.filter((f) => f.modelo.startsWith("Claude"));
+  const chatgpt = await limitesCodex({ ahora }).catch(() => null);
   return {
     ahora: iso,
     gemini: {
@@ -85,7 +113,10 @@ export async function resumenUsoIA(ahora: Date = new Date()): Promise<ResumenUso
       dia: presupuesto.dia,
       mes: presupuesto.mes,
       agotado: presupuesto.agotado,
+      costoMes,
+      llamadasMes: deGemini.length,
     },
+    chatgpt,
     intentos: {
       limite: LIMITE_IA_MENSUAL,
       usados: total,
@@ -93,6 +124,10 @@ export async function resumenUsoIA(ahora: Date = new Date()): Promise<ResumenUso
       reanuda: instanteLocal(`${siguienteMes(mesLocal(ahora))}-01`).toISOString(),
     },
     astra: local("astra"),
-    claude: local("claude"),
+    claude: {
+      ...local("claude"),
+      tokensMes: deClaude.reduce((t, f) => t + f.total_tokens, 0),
+      llamadasMes: deClaude.length,
+    },
   };
 }

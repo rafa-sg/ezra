@@ -6,6 +6,9 @@
 - [x] Uso › Resumen: estado de las 3 IAs y barras «% restante / se restablece en…»; sin límite escrito dice «Sin límite configurado». Uso › Analítica: la pantalla de Consumo anterior (presupuesto, tarifas, gráfica).
 - [x] Código: `src/lib/ia/uso.ts`, `GET /api/produccion/uso` (`administrador("consumo")`), `src/features/azra/produccion/configuracion.{tsx,css}`; `shell.tsx` exporta tema y barra. Prueba `tests/uso-ia.test.ts`. Tipos y lint limpios; unitarias 213/213 en una copia en Linux (la build y la integración no se corrieron: falta `/verificar` en la Mac).
 - [ ] Propietario: reiniciar `npm run dev` (el servidor del puerto 3001 sigue con código anterior) y revisar Configuración y el globo de Consumo; correr `/verificar`.
+- [x] Círculo de uso (como Codex): en lugar del botón «Consumo», un anillo con el logo de Ezra (arco = lo gastado del límite más apretado; punto rojo con < 20 % restante) y debajo la cuenta con la foto de perfil de Clerk (iniciales si no hay foto).
+- [x] Datos reales: límites del plan de ChatGPT (5 h y semanal) leídos de los eventos `token_count.rate_limits` que Codex guarda en `~/.codex/sessions` (`src/lib/ia/codex-limites.ts`; solo porcentaje y reinicio, «según OpenAI · actualizado hace…»); tokens reales de Claude desde la salida JSON de Claude Code (registrados en Consumo como «Claude · modelo», sin gastar el presupuesto de Gemini); gasto del mes de Gemini con tus tarifas. El formato de las sesiones de Codex no se pudo comprobar en esta Mac (acceso a `~/.codex` denegado): si el globo no muestra ChatGPT tras usar Codex, revisar ese lector.
+- [x] `instrumentation.ts`: el código de Node pasó a `instrumentation-node.ts` (se van los avisos «node:fs/node:process … Edge Runtime» del terminal).
 - [ ] Pendiente (siguiente pedido): conexiones reales de Facebook (perfil + página), TikTok y YouTube con las mismas métricas en Apps.
 
 ## 2026-11-21 (noche) · Ezra multiusuario (rama `feat/equipo-cuentas`)

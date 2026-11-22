@@ -371,3 +371,73 @@
     flex-wrap: wrap;
   }
 }
+
+/* Círculo de uso (barra lateral): anillo con el logo de Ezra, como el de Codex. */
+.azra .cf-anillo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: 4px 0 4px 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.azra .cf-anillo:hover:not(:disabled),
+.azra .cf-anillo[aria-expanded="true"] {
+  background: var(--ep-superficie-2);
+}
+.azra .cf-anillo:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 2px;
+}
+.azra .cf-anillo svg {
+  position: absolute;
+  inset: 2px;
+  width: 36px;
+  height: 36px;
+}
+.azra .cf-anillo-fondo,
+.azra .cf-anillo-arco {
+  fill: none;
+  stroke-width: 2.5;
+}
+.azra .cf-anillo-fondo {
+  stroke: var(--ep-borde-control);
+}
+.azra .cf-anillo-arco {
+  stroke: var(--ep-texto);
+  stroke-linecap: round;
+  transition: stroke-dasharray var(--ez-transicion);
+}
+.azra .cf-anillo-logo {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 7px;
+}
+.azra .cf-anillo-punto {
+  position: absolute;
+  top: 5px;
+  left: 6px;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--ep-fondo);
+  border-radius: 50%;
+  background: #f04438;
+}
+.azra .cf-gasto {
+  margin: 0;
+  font-size: 12px;
+}
+.azra .ep-avatar.ep-avatar-foto {
+  overflow: hidden;
+  padding: 0;
+}
+.azra .ep-avatar-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

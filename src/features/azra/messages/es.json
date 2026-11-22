@@ -2348,5 +2348,17 @@
   "cf_respaldo": "Copia de seguridad",
   "cf_respaldoAyuda": "Descarga la base y los medios en un ZIP, sin tokens de las conexiones.",
   "cf_descargar": "Descargar",
-  "cf_errorAlmacen": "No se pudo leer el almacenamiento."
+  "cf_errorAlmacen": "No se pudo leer el almacenamiento.",
+  "cf_usado": "usado",
+  "cf_chatgpt5h": "ChatGPT (Astra) · límite de 5 horas",
+  "cf_chatgptSemana": "ChatGPT (Astra) · límite semanal",
+  "cf_segunOpenAI": "según OpenAI",
+  "cf_actualizado": "actualizado",
+  "cf_ahora": "ahora",
+  "cf_hace": "hace {n}",
+  "cf_gastoMes": "Gastado este mes",
+  "cf_sinTarifa": "sin tarifa",
+  "cf_llamadas": "llamadas",
+  "cf_enTuPlan": "en tu plan",
+  "cf_sinCodex": "Los límites de ChatGPT aparecen cuando Codex los haya informado en esta Mac (al usarlo al menos una vez)."
 }

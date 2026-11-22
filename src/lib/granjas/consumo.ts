@@ -99,9 +99,11 @@ const sinPresupuesto: Presupuesto = { tokensDia: null, tokensMes: null };
 export const leerPresupuesto = () => leerAjuste("presupuesto", presupuestoSchema, sinPresupuesto);
 export const guardarPresupuesto = (valor: unknown) => guardarAjuste("presupuesto", presupuestoSchema, valor);
 
+/** El presupuesto es de Gemini: las filas de Astra y Claude (van por su plan) no lo gastan. */
+export const SOLO_GEMINI = "modelo not like 'Astra%' and modelo not like 'Claude%'";
 function tokensEntre(desde: Date, hasta: Date) {
   const fila = base()
-    .prepare("select coalesce(sum(total_tokens), 0) as n from consumo_ia where fecha >= ? and fecha < ?")
+    .prepare(`select coalesce(sum(total_tokens), 0) as n from consumo_ia where fecha >= ? and fecha < ? and ${SOLO_GEMINI}`)
     .get(desde.toISOString(), hasta.toISOString()) as { n: number };
   return Number(fila.n);
 }
@@ -187,8 +189,8 @@ export const leerTarifas = () => leerAjuste("tarifas", tarifasSchema, {});
 export const guardarTarifas = (valor: unknown) => guardarAjuste("tarifas", tarifasSchema, valor);
 export function costoLlamada(f: FilaConsumo, tarifas: Tarifas): number | null {
   const t = tarifas[f.modelo];
-  // Astra (Codex con ChatGPT) va por tu plan de ChatGPT: no tiene costo por llamada en Ezra.
-  if (!t && f.modelo.startsWith("Astra")) return 0;
+  // Astra (Codex con ChatGPT) y Claude (Claude Code con tu cuenta) van por tu plan: sin costo por llamada.
+  if (!t && (f.modelo.startsWith("Astra") || f.modelo.startsWith("Claude"))) return 0;
   if (!t) return null;
   const entrada = ((f.prompt_tokens + f.herramientas_tokens) * t.entrada) / 1_000_000;
   const salida = ((f.candidatos_tokens + f.pensamiento_tokens) * t.salida) / 1_000_000;

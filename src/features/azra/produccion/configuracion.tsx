@@ -21,6 +21,7 @@ import {
   Palette,
   Search,
   Settings,
+  Sparkles,
   Sun,
   UserRound,
   Users,
@@ -74,6 +75,31 @@ function faltaPara(iso: string, tr: Tr) {
         : `${m} min`;
   return `${tr("cf_restableceEn")} ${texto}`;
 }
+function haceCuanto(iso: string, tr: Tr) {
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (min < 1) return tr("cf_ahora");
+  const h = Math.round(min / 60);
+  const texto = min < 60 ? `${min} min` : h < 48 ? `${h} h` : `${Math.round(h / 24)} ${tr("cf_d")}`;
+  return tr("cf_hace").replace("{n}", texto);
+}
+/** Lo más gastado entre todos los límites (0–100): es lo que dibuja el círculo. */
+export function usoMaximo(uso: ResumenUsoIA, tr: Tr, locale: string) {
+  const filas = filasUso(uso, tr, locale).filter((f) => f.restante !== null);
+  return filas.length ? Math.max(...filas.map((f) => 100 - f.restante!)) : 0;
+}
+const usd = (n: number, locale: string) =>
+  new Intl.NumberFormat(locale === "es" ? "es-SV" : "en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: n < 1 ? 4 : 2,
+  }).format(n);
+/** Gasto real del mes: Gemini con tus tarifas; Astra y Claude van por tu plan (sin cobro por llamada). */
+function lineaGasto(uso: ResumenUsoIA, tr: Tr, locale: string) {
+  const n = formato(locale);
+  const gemini =
+    uso.gemini.costoMes === null ? tr("cf_sinTarifa") : usd(uso.gemini.costoMes, locale);
+  return `${tr("cf_gastoMes")}: Gemini ${gemini} (${uso.gemini.llamadasMes} ${tr("cf_llamadas")}) · Claude ${n.format(uso.claude.tokensMes)} ${tr("cf_tokens")} ${tr("cf_enTuPlan")}`;
+}
 const formato = (locale: string) => new Intl.NumberFormat(locale === "es" ? "es-SV" : "en-US");
 
 type Fila = {
@@ -96,7 +122,25 @@ function filasUso(uso: ResumenUsoIA, tr: Tr, locale: string): Fila[] {
     restante: p.porcentaje === null ? null : Math.max(0, Math.round(100 - p.porcentaje)),
     reanuda: p.reanuda,
   });
+  const gpt = (
+    v: NonNullable<ResumenUsoIA["chatgpt"]>["cincoHoras"],
+    titulo: string,
+    clave: string,
+  ): Fila[] =>
+    v
+      ? [
+          {
+            clave,
+            titulo,
+            detalle: `${tr("cf_segunOpenAI")} · ${tr("cf_actualizado")} ${haceCuanto(uso.chatgpt!.actualizado, tr)}`,
+            restante: Math.max(0, Math.round(100 - v.usado)),
+            reanuda: v.reanuda,
+          },
+        ]
+      : [];
   return [
+    ...gpt(uso.chatgpt?.cincoHoras ?? null, tr("cf_chatgpt5h"), "gpt-5h"),
+    ...gpt(uso.chatgpt?.semanal ?? null, tr("cf_chatgptSemana"), "gpt-semana"),
     gem(uso.gemini.dia, tr("cf_geminiDia"), "gemini-dia"),
     gem(uso.gemini.mes, tr("cf_geminiMes"), "gemini-mes"),
     {
@@ -175,7 +219,16 @@ export function BotonConsumo({
   const boton = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
-  const { uso, error } = useUsoIA(abierto);
+  // El círculo siempre está visible: se carga al abrir el estudio y se refresca cada minuto.
+  const { uso, error, recargar } = useUsoIA(true);
+  useEffect(() => {
+    const reloj = window.setInterval(() => void recargar(), 60_000);
+    return () => window.clearInterval(reloj);
+  }, [recargar]);
+  useEffect(() => {
+    if (abierto) void recargar();
+  }, [abierto, recargar]);
+  const anillo = uso ? usoMaximo(uso, tr, locale) : null;
   useEffect(() => {
     if (!abierto) return;
     const colocar = () => {
@@ -214,16 +267,34 @@ export function BotonConsumo({
     <>
       <button
         ref={boton}
-        className="ez-sb-item"
+        className="cf-anillo"
         aria-current={activo ? "page" : undefined}
         aria-expanded={abierto}
         aria-haspopup="dialog"
+        aria-label={`${tr("p_consumo")}${anillo === null ? "" : ` · ${Math.round(anillo)} % ${tr("cf_usado")}`}`}
         disabled={deshabilitado}
-        data-tooltip={tr("p_consumo")}
+        data-tooltip={`${tr("p_consumo")}${anillo === null ? "" : ` · ${Math.round(anillo)} % ${tr("cf_usado")}`}`}
         onClick={() => setAbierto((a) => !a)}
       >
-        <Gauge size={18} aria-hidden />
-        <span className="ez-sb-etiqueta">{tr("p_consumo")}</span>
+        {/* Como el anillo de Codex: el arco es lo gastado del límite más apretado; punto rojo si queda < 20 %. */}
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <circle cx="18" cy="18" r="15.5" className="cf-anillo-fondo" />
+          {anillo !== null && anillo > 0 && (
+            <circle
+              cx="18"
+              cy="18"
+              r="15.5"
+              className="cf-anillo-arco"
+              pathLength={100}
+              strokeDasharray={`${Math.max(2, anillo)} 100`}
+              transform="rotate(-90 18 18)"
+            />
+          )}
+        </svg>
+        <span className="ez-logo cf-anillo-logo" aria-hidden="true">
+          <Sparkles size={12} />
+        </span>
+        {anillo !== null && anillo >= 80 && <span className="cf-anillo-punto" aria-hidden="true" />}
       </button>
       {abierto &&
         destino &&
@@ -240,6 +311,7 @@ export function BotonConsumo({
             {error && <p className="cf-nota">{tr("cf_errorUso")}</p>}
             {!uso && !error && <p className="cf-nota">{tr("cf_cargando")}</p>}
             {uso && filasUso(uso, tr, locale).map((f) => <Barra key={f.clave} fila={f} tr={tr} />)}
+            {uso && <p className="cf-nota cf-gasto">{lineaGasto(uso, tr, locale)}</p>}
             <button
               className="cf-globo-accion"
               onClick={() => {
@@ -607,6 +679,8 @@ function PaginaUso({
                   <Barra key={f.clave} fila={f} tr={tr} />
                 ))}
               </div>
+              <p className="cf-nota">{lineaGasto(uso, tr, locale)}</p>
+              {!uso.chatgpt && <p className="cf-nota">{tr("cf_sinCodex")}</p>}
             </>
           )}
         </>

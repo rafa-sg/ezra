@@ -91,10 +91,10 @@ export function ejecutarProceso(
           502,
         );
         // Solo para reconocer avisos conocidos (p. ej. límite de uso); nunca se muestra ni se guarda.
-        if (incluirErrores) Object.defineProperty(error, "salida", { value: salida, enumerable: false });
+        if (incluirErrores)
+          Object.defineProperty(error, "salida", { value: salida, enumerable: false });
         reject(error);
-      }
-      else resolve(salida);
+      } else resolve(salida);
     });
     proceso.stdin.on("error", () => {
       /* El cierre anticipado se informa con el código del proceso. */
@@ -165,9 +165,47 @@ export function argumentosLocales(proveedor: "astra" | "claude", salida: string,
     "-",
   ];
 }
+/** Uso real que devuelve Claude Code con `--output-format json` (tokens de esa llamada). */
+type UsoClaude = {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
+};
+async function registrarClaude(
+  contexto: ContextoGemini,
+  respuesta: { usage?: UsoClaude; modelUsage?: Record<string, unknown> },
+  duracionMs: number,
+  error = "",
+) {
+  try {
+    const u = respuesta.usage ?? {};
+    const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0);
+    const entrada =
+      n(u.input_tokens) + n(u.cache_creation_input_tokens) + n(u.cache_read_input_tokens);
+    const modelo = Object.keys(respuesta.modelUsage ?? {})[0] ?? "claude";
+    const { registrarConsumo } = await import("../granjas/consumo");
+    registrarConsumo({
+      ...contexto,
+      modelo: `Claude · ${modelo}`.slice(0, 80),
+      uso: { promptTokenCount: entrada, candidatesTokenCount: n(u.output_tokens) },
+      busqueda: false,
+      consultasBusqueda: 0,
+      duracionMs,
+      error,
+    });
+  } catch {
+    /* Registrar el uso nunca debe tumbar una entrega. */
+  }
+}
 export async function generarLocal(
   encargo: Encargo,
-  opciones: { binario?: string; ejecutar?: EjecutorProceso; prompt?: string } = {},
+  opciones: {
+    binario?: string;
+    ejecutar?: EjecutorProceso;
+    prompt?: string;
+    contexto?: ContextoGemini;
+  } = {},
 ): Promise<EntregaIA> {
   if (encargo.proveedor === "gemini")
     throw new WorkflowError("Usa el adaptador de Gemini para este encargo.", 422);
@@ -210,6 +248,7 @@ export async function generarLocal(
           503,
         );
     }
+    const inicio = Date.now();
     const crudo = await ejecutar(
       binario,
       argumentosLocales(encargo.proveedor, salida, encargo.agente === "cazador"),
@@ -219,12 +258,26 @@ export async function generarLocal(
     let texto: string;
     if (encargo.proveedor === "astra") texto = await readFile(salida, "utf8");
     else {
-      let respuesta: { is_error?: boolean; result?: unknown };
+      let respuesta: {
+        is_error?: boolean;
+        result?: unknown;
+        usage?: UsoClaude;
+        modelUsage?: Record<string, unknown>;
+      };
       try {
         respuesta = JSON.parse(crudo);
       } catch {
         throw new WorkflowError("Claude no devolvió el formato esperado.", 502);
       }
+      // Tokens reales de esta llamada (los informa Claude Code); van a Consumo junto a Gemini.
+      // Con un ejecutor inyectado (pruebas) no se registra: la base de prueba puede no estar lista.
+      if (!opciones.ejecutar)
+        await registrarClaude(
+          opciones.contexto ?? { origen: "encargo", paso: `Encargo · ${encargo.agente}` },
+          respuesta,
+          Date.now() - inicio,
+          respuesta.is_error ? "Claude no completó la entrega" : "",
+        );
       if (respuesta.is_error || typeof respuesta.result !== "string")
         throw new WorkflowError(
           "Claude no completó la entrega. Revisa el acceso o la cuota de tu sesión.",

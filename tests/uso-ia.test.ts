@@ -8,6 +8,8 @@ process.env.EZRA_DATA_DIR = path.resolve(`work/uso-ia-test-${process.pid}-${Date
 process.env.EZRA_GRANJAS_TRABAJADOR = "0";
 process.env.GEMINI_API_KEY = "clave-de-prueba";
 process.env.EZRA_PRODUCCION_IA = "1";
+// Sesiones de Codex de prueba (nunca las reales de ~/.codex).
+process.env.CODEX_HOME = path.join(process.env.EZRA_DATA_DIR, "codex");
 let uso: typeof import("../src/lib/ia/uso");
 let db: typeof import("../src/lib/granjas/db");
 let consumo: typeof import("../src/lib/granjas/consumo");
@@ -47,6 +49,17 @@ test("uso de las 3 IAs: Gemini contra el presupuesto, Astra y Claude contra los 
     consultasBusqueda: 0,
     duracionMs: 1,
   });
+  // Claude va por su plan: sus tokens se registran pero no gastan el presupuesto de Gemini.
+  consumo.registrarConsumo({
+    fecha: "2026-11-21T20:30:00-06:00",
+    origen: "encargo",
+    paso: "p",
+    modelo: "Claude · claude-prueba",
+    uso: { promptTokenCount: 900, candidatesTokenCount: 100 },
+    busqueda: false,
+    consultasBusqueda: 0,
+    duracionMs: 1,
+  });
   // Intentos de granjas: 2 de Astra y 1 de Claude este mes; uno del mes pasado no cuenta; Gemini no cuenta.
   const ins = db
     .base()
@@ -74,7 +87,10 @@ test("uso de las 3 IAs: Gemini contra el presupuesto, Astra y Claude contra los 
   }));
 
   r = await uso.resumenUsoIA(ahora);
-  assert.equal(r.gemini.dia.usado, 2500);
+  assert.equal(r.gemini.dia.usado, 2500, "los tokens de Claude no cuentan contra Gemini");
+  assert.equal(r.claude.tokensMes, 1000);
+  assert.equal(r.gemini.costoMes, null, "sin tarifa escrita no hay costo inventado");
+  assert.equal(r.chatgpt, null, "sin sesiones de Codex no hay límites de ChatGPT");
   assert.equal(r.gemini.dia.porcentaje, 25);
   assert.equal(r.gemini.mes.limite, 100_000);
   assert.equal(r.intentos.usados, 4);

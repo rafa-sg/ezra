@@ -2348,5 +2348,17 @@
   "cf_respaldo": "Backup",
   "cf_respaldoAyuda": "Download the database and media as a ZIP, without connection tokens.",
   "cf_descargar": "Download",
-  "cf_errorAlmacen": "Couldn't read storage."
+  "cf_errorAlmacen": "Couldn't read storage.",
+  "cf_usado": "used",
+  "cf_chatgpt5h": "ChatGPT (Astra) · 5-hour limit",
+  "cf_chatgptSemana": "ChatGPT (Astra) · weekly limit",
+  "cf_segunOpenAI": "per OpenAI",
+  "cf_actualizado": "updated",
+  "cf_ahora": "just now",
+  "cf_hace": "{n} ago",
+  "cf_gastoMes": "Spent this month",
+  "cf_sinTarifa": "no rate set",
+  "cf_llamadas": "calls",
+  "cf_enTuPlan": "on your plan",
+  "cf_sinCodex": "ChatGPT limits appear once Codex has reported them on this Mac (after using it at least once)."
 }
