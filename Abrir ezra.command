@@ -8,7 +8,7 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 if [ ! -d node_modules ]; then
-  echo "Primera instalación: ejecuta npm install dentro de la carpeta Spotbot."
+  echo "Primera instalación: ejecuta npm ci dentro de la carpeta del proyecto."
   read -r "?Pulsa Enter para cerrar."
   exit 1
 fi

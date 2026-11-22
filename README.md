@@ -6,7 +6,19 @@ El chat, el panel de contenido, el bot y la configuración del diseño anterior 
 
 Consulta [la guía del estudio](docs/ESTUDIO_SPOTMI.md) para configurar las IA, leer eventos y spots reales y conocer el alcance de publicación y video. No depende de Metricool ni HighLevel.
 
-**¿Te invitaron a colaborar?** Seguí la [guía desde cero](#colaborar-en-ezra-guía-desde-cero).
+## Ejecutar en Windows y macOS
+
+Ezra ya incluye [Dockerfile](Dockerfile) y [compose.yaml](compose.yaml). Docker Compose es la opción recomendada para compartir el mismo entorno de desarrollo y probar cambios en equipo. También podés arrancar directo con Node.js en macOS o en PowerShell de Windows.
+
+| | Docker Compose | Instalación nativa |
+| --- | --- | --- |
+| Arranque | `docker compose up --build` | `npm ci` y `npm run dev` |
+| Node.js, SQLite y FFmpeg | Incluidos en la imagen | Instalá Node.js y FFmpeg. SQLite viene con Node.js. |
+| Configuración | `.env.docker` | `.env.local` |
+| Datos | Volumen `ezra_datos` | Carpeta `data/` o el directorio configurado en `EZRA_DATA_DIR` |
+| Acceso | [http://127.0.0.1:3000](http://127.0.0.1:3000) | [http://127.0.0.1:3000](http://127.0.0.1:3000) |
+
+[Instalación con Docker y datos de ejemplo](#colaborar-en-ezra-guía-desde-cero) · [Instalación sin Docker](#instalación-nativa-sin-docker)
 
 ---
 
@@ -30,17 +42,15 @@ No hace falta instalar Node.js: viene dentro del contenedor.
 
 **macOS**
 
-1. Instalá Docker Desktop desde https://www.docker.com/products/docker-desktop/ (elegí Apple Silicon o Intel según tu Mac) y abrilo. Esperá a que el ícono de la ballena diga «Docker Desktop is running».
-   - **Alternativa sin contraseña de administrador (Colima):** si tenés Homebrew, en la Terminal escribí `brew install colima docker docker-compose` y después `colima start --mount-inotify`. Para que Docker encuentre Compose, agregá `"cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"]` a `~/.docker/config.json`. Con Colima, clona el proyecto dentro de tu carpeta de usuario (por ejemplo `~/Proyectos`): las carpetas de fuera no se comparten con Docker.
+1. Instalá y abrí Docker Desktop. Elegí Apple Silicon o Intel según tu Mac y esperá a que Docker termine de iniciar. [Descarga e instalación para Mac](https://docs.docker.com/desktop/setup/install/mac-install/).
+   - **Alternativa con Colima.** Si ya tenés Homebrew, ejecutá `brew install colima docker docker-compose` y `colima start --mount-inotify`. Si Docker no encuentra Compose, agregá a `cliPluginsExtraDirs` en `~/.docker/config.json` la ruta que resulta de `brew --prefix` seguida de `/lib/docker/cli-plugins`. Cloná dentro de tu carpeta de usuario, por ejemplo `~/Proyectos`.
 2. Abrí la app **Terminal** y escribí `git --version`. Si macOS ofrece instalar las «herramientas de línea de comandos», aceptá.
 
-**Windows 10 u 11**
+**Windows con Docker Desktop y WSL 2**
 
-1. Abrí PowerShell como administrador y ejecutá `wsl --install`. Reiniciá. Al volver se abre **Ubuntu** y te pide un usuario y una contraseña de Linux (son solo de tu computadora).
-2. Instalá Docker Desktop y, en *Settings → Resources → WSL integration*, activá **Ubuntu**.
-3. A partir de aquí escribí **todos los comandos en la ventana de Ubuntu**, no en PowerShell. Si clonás el proyecto en una carpeta de Windows (`C:\...`), los cambios no se recargan solos en el navegador.
-4. En Ubuntu: `sudo apt update && sudo apt install -y git`.
-5. Para editar, abrí VS Code e instalá la extensión **WSL**; desde Ubuntu, dentro de la carpeta del proyecto, escribí `code .`.
+1. Si todavía no tenés WSL, ejecutá `wsl --install` en PowerShell como administrador y reiniciá. Abrí Ubuntu para terminar su configuración. [Instalación de WSL](https://learn.microsoft.com/windows/wsl/install/).
+2. Instalá Docker Desktop, elegí el motor WSL 2 y usá contenedores Linux. Una vez abierto, podés clonar y ejecutar Docker desde PowerShell con [Git para Windows](https://git-scm.com/download/win). [Requisitos e instalación de Docker Desktop para Windows](https://docs.docker.com/desktop/setup/install/windows-install/).
+3. Si vas a editar el código a diario, activá **Ubuntu** en **Settings → Resources → WSL integration**, abrí Ubuntu, instalá Git con `sudo apt update && sudo apt install -y git` y cloná dentro de `~`. Desde esa carpeta ejecutá `code .` para usar VS Code con la extensión WSL. [Integración de Docker con WSL 2](https://docs.docker.com/desktop/features/wsl/).
 
 **Linux (Ubuntu, Debian, Fedora…)**
 
@@ -48,7 +58,7 @@ No hace falta instalar Node.js: viene dentro del contenedor.
 2. Agregate al grupo `docker` para no usar `sudo`: `sudo usermod -aG docker $USER` y cerrá sesión y volvé a entrar.
 3. Instalá Git con el gestor de paquetes (`sudo apt install git` o `sudo dnf install git`).
 
-**Qué deberías ver:** `docker --version` muestra una versión, `docker compose version` muestra v2.24 o posterior y `git --version` muestra una versión. Si `docker compose version` falla, Docker no está abierto o no está instalado el complemento Compose.
+Ejecutá `docker compose version` para confirmar que tenés Compose 2.24 o posterior. `docker info` confirma que el motor esté iniciado y `git --version` que Git esté instalado.
 
 ## 2. Aceptar la invitación y clonar
 
@@ -78,11 +88,7 @@ Ezra verifica cada sesión con Clerk; no hay forma de saltarse el inicio de sesi
 
 1. Creá una cuenta en https://dashboard.clerk.com y una aplicación nueva (cualquier nombre, por ejemplo «Ezra dev»). Dejá activado el inicio con **correo electrónico**.
 2. En la aplicación, abrí **Configure → API keys** y copiá la *Publishable key* (`pk_test_…`) y la *Secret key* (`sk_test_…`).
-3. En la carpeta del proyecto, copiá la plantilla:
-
-   ```sh
-   cp .env.docker.example .env.docker
-   ```
+3. En la carpeta del proyecto, copiá la plantilla con `cp .env.docker.example .env.docker` en Terminal o Ubuntu. En PowerShell, usá `Copy-Item .env.docker.example .env.docker`.
 
 4. Abrí `.env.docker` en tu editor y reemplazá `pk_test_reemplazar` y `sk_test_reemplazar` por tus claves.
 
@@ -146,7 +152,7 @@ docker compose run --rm web sh -c "EZRA_DIST_DIR=.next-verificar npm run build &
 
 - En la terminal de `docker compose up`, pulsá **Ctrl + C**. O desde otra terminal: `docker compose down`.
 - Tus datos de ejemplo quedan en el volumen `ezra_datos` y siguen ahí la próxima vez que ejecutes `docker compose up`.
-- Para empezar de cero (borra tus datos de ejemplo y tu cuenta de administración local): `docker compose down -v`.
+- `docker compose down -v` elimina el volumen con todos sus datos y accesos. Usalo solo si querés descartar por completo el entorno de ejemplo.
 - Si cambió `package.json` o `package-lock.json` (por ejemplo, después de `git pull`), arrancá con `docker compose up --build`.
 
 ## 9. Enviar tu cambio para revisión
@@ -191,18 +197,40 @@ No subas cambios directamente a `main`.
 | `env_file … unknown field "path"` | Docker Compose es antiguo. Actualizá Docker Desktop (hace falta Compose v2.24 o posterior). |
 | La página queda en blanco y la terminal dice «Clerk keys are missing from your environment» o «The publishableKey passed to Clerk is invalid» | Falta `.env.docker` o tiene las claves mal copiadas. Revisalo y reiniciá con `docker compose up`. |
 | La página dice «Este piloto solo está disponible en tu computadora» | Abrí exactamente http://127.0.0.1:3000 o http://localhost:3000, no la IP de tu red. |
-| Entrás pero dice que tu cuenta no tiene acceso | Ejecutá el paso 5 con el **mismo** correo con el que entraste. Si ya había otro correo configurado, empezá de cero con `docker compose down -v`. |
+| Entrás pero dice que tu cuenta no tiene acceso | Registrate con el **mismo** correo que configuraste en el paso 5 o en `npm run access:owner`. |
 | El código 424242 no funciona | El correo debe contener `+clerk_test`. En el panel de Clerk, comprobá que la aplicación esté en *Development*. |
-| Los cambios no aparecen en el navegador (Windows) | El proyecto está en una carpeta de Windows. Clonalo dentro de Ubuntu (`cd ~` en la ventana de Ubuntu) y trabajá desde ahí. |
+| Los cambios tardan en aparecer con Docker en Windows | Probá recargar el navegador. Si sigue lento, trabajá desde un clon dentro de Ubuntu (`cd ~`) con la integración WSL 2 habilitada. |
 | La terminal dice «Couldn't find any `pages` or `app` directory» | Docker no ve las carpetas del proyecto. Con Colima, el proyecto debe estar dentro de tu carpeta de usuario; con Docker Desktop, revisá *Settings → Resources → File sharing*. |
 | La computadora trabaja mucho con Docker encendido | Es la revisión de archivos de cada segundo. En Linux nativo podés desactivarla poniendo `EZRA_DOCKER_POLL: "0"` en `compose.yaml`. |
 | Al construir aparece `npm warn allow-scripts protobufjs…` | Es un aviso normal; podés ignorarlo. |
 | `npm ci` falla al construir | Revisá tu conexión. Si cambiaste dependencias, `package-lock.json` debe estar actualizado. |
+| Ezra dice que falta FFmpeg en el arranque nativo | Probá `ffmpeg -version` y `ffprobe -version` en una terminal nueva. Si agregaste la carpeta `bin` al `PATH`, reiniciá Ezra desde esa terminal. |
 | Todo raro después de muchos cambios | `docker compose down` y `docker compose up --build`. Tus datos se conservan. |
 
-## Sin Docker (arranque actual)
+## Instalación nativa sin Docker
 
-Quien ya usa Ezra sin Docker sigue igual: Node.js 22 o posterior, `npm ci` la primera vez y `npm run dev`, con su configuración en `.env.local`. Ese arranque usa la carpeta `data/` del proyecto; el de Docker usa su propio volumen y nunca la toca.
+1. Instalá [Node.js **24.18.0**](https://nodejs.org/download/release/v24.18.0/), la misma versión de la imagen Docker, y Git. Elegí el instalador de tu sistema y arquitectura. Abrí una Terminal en macOS o PowerShell en Windows y verificá con `node --version`, `npm --version` y `git --version`. Si PowerShell bloquea `npm.ps1`, usá `npm.cmd` en los comandos.
+2. Para renderizar videos y ejecutar las pruebas de medios, instalá FFmpeg. En macOS con Homebrew ejecutá `brew install ffmpeg`. En Windows, descargá una compilación, extraela y agregá su carpeta `bin` al `PATH` de tu usuario. Abrí una terminal nueva y comprobá con `ffmpeg -version` y `ffprobe -version`. También podés indicar rutas absolutas en `EZRA_FFMPEG_BIN` y `EZRA_FFPROBE_BIN` en `.env.local`. [Descargas de FFmpeg por sistema](https://ffmpeg.org/download.html).
+3. [Cloná el repositorio](#2-aceptar-la-invitación-y-clonar) y entrá en la carpeta. En una instalación nueva, copiá la plantilla. Si ya usás Ezra, conservá tu `.env.local`.
+
+   | macOS | Windows (PowerShell) |
+   | --- | --- |
+   | `cp .env.example .env.local` | `Copy-Item .env.example .env.local` |
+
+4. En `.env.local`, completá `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` y `CLERK_SECRET_KEY` con las claves de tu [aplicación de desarrollo en Clerk](#3-configurar-tu-acceso-de-desarrollo-clerk). Guardá el secreto en ese archivo local.
+5. En ambos sistemas, instalá las dependencias, registrá tu correo de administración si es una instalación nueva y arrancá Ezra.
+
+   ```sh
+   npm ci
+   npm run access:owner -- tu-correo@ejemplo.com
+   npm run dev
+   ```
+
+6. Abrí [http://127.0.0.1:3000](http://127.0.0.1:3000) e iniciá sesión con el mismo correo. Dejá la terminal abierta y usá **Ctrl + C** para detener el servidor. En macOS también podés usar `Abrir ezra.command` después de instalar las dependencias.
+
+Para verificar un cambio, detené el servidor de desarrollo y ejecutá `npm run check`, `npm run build` y `npm run test:integration`. Funcionan igual en Terminal y PowerShell.
+
+El arranque nativo usa `data/` por defecto. Si querés una instalación de prueba separada, definí `EZRA_DATA_DIR` en `.env.local` antes de configurar el propietario y arrancar. Codex y Claude son opcionales. En Windows, Ezra busca su ejecutable `.exe` en `PATH` o en las rutas absolutas `EZRA_CODEX_BIN` y `EZRA_CLAUDE_BIN`. Los lanzadores `.command` y el instalador del trabajador con `launchctl` son de macOS. En ambos sistemas podés iniciar el trabajador en una terminal con `npm run granjas:trabajador` si lo apagaste en el servidor con `EZRA_GRANJAS_TRABAJADOR=0`.
 
 ## Qué entra en cada lugar
 
@@ -227,16 +255,7 @@ Un piloto local para preparar, revisar y organizar contenido turístico de El Sa
 
 ## Abrir el estudio
 
-Desde Warp o la terminal de VS Code, dentro de esta carpeta:
-
-```sh
-npm install
-npm run dev
-```
-
-Abre **http://127.0.0.1:3000**. En este equipo las dependencias ya están instaladas; normalmente basta `npm run dev`. También puedes abrir `Abrir ezra.command` en macOS. Mantén abierta la terminal mientras usas el estudio. Para detenerlo pulsa **Control + C**.
-
-Requisito: Node.js 22 o posterior. No hace falta comprar dominio ni hosting. Si el puerto 3000 está ocupado, Next indica otro puerto en la terminal.
+Para abrir la versión actual del estudio, seguí la [guía de Windows y macOS](#ejecutar-en-windows-y-macos).
 
 ## Lo que ya funciona
 

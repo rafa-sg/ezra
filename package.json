@@ -10,15 +10,15 @@
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "node --import tsx --test \"tests/*.test.ts\"",
     "check": "npm run lint && npm run typecheck && npm test",
-    "test:integration": "tsx --test tests/integration/*.test.ts",
-    "access:owner": "tsx scripts/configure-owner.ts",
+    "test:integration": "node --import tsx --test \"tests/integration/*.test.ts\"",
+    "access:owner": "node --env-file-if-exists=.env.local --import tsx scripts/configure-owner.ts",
     "granjas:trabajador": "node --env-file-if-exists=.env.local --env-file-if-exists=.env.meta.local --import tsx scripts/granjas-trabajador.ts",
     "eventos:importar": "node --env-file-if-exists=.env.local --import tsx scripts/eventos-importar.ts",
     "eventos:imagenes": "node --env-file-if-exists=.env.local --import tsx scripts/eventos-imagenes.ts",
     "format": "prettier --write .",
-    "demo:datos": "tsx scripts/datos-demo.ts"
+    "demo:datos": "node --import tsx scripts/datos-demo.ts"
   },
   "engines": {
     "node": ">=22"
