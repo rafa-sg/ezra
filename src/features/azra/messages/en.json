@@ -2360,5 +2360,6 @@
   "cf_sinTarifa": "no rate set",
   "cf_llamadas": "calls",
   "cf_enTuPlan": "on your plan",
-  "cf_sinCodex": "ChatGPT limits appear once Codex has reported them on this Mac (after using it at least once)."
+  "cf_sinCodex": "ChatGPT limits appear once Codex has reported them on this Mac (after using it at least once).",
+  "cf_restablecido": "Window reset, no new usage"
 }

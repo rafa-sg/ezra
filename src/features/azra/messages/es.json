@@ -2360,5 +2360,6 @@
   "cf_sinTarifa": "sin tarifa",
   "cf_llamadas": "llamadas",
   "cf_enTuPlan": "en tu plan",
-  "cf_sinCodex": "Los límites de ChatGPT aparecen cuando Codex los haya informado en esta Mac (al usarlo al menos una vez)."
+  "cf_sinCodex": "Los límites de ChatGPT aparecen cuando Codex los haya informado en esta Mac (al usarlo al menos una vez).",
+  "cf_restablecido": "Ventana restablecida, sin uso nuevo"
 }

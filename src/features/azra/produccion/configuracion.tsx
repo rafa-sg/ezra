@@ -163,7 +163,7 @@ function Barra({ fila, tr }: { fila: Fila; tr: Tr }) {
         <strong>{fila.titulo}</strong>
       </div>
       <div className="cf-limite-linea">
-        <span>{usado === null || !fila.reanuda ? fila.detalle : faltaPara(fila.reanuda, tr)}</span>
+        <span>{usado === null ? fila.detalle : fila.reanuda ? faltaPara(fila.reanuda, tr) : tr("cf_restablecido")}</span>
         <span className={alto ? "cf-bajo" : undefined}>{texto}</span>
       </div>
       <div
