@@ -14,7 +14,7 @@ Everything below must stay consistent with what is published at:
 ---
 
 ## Section 1 · Request Type
-**Select the reason for your request:** [ELIGE] The form only offers two options. Recommended: “Complete a compliance audit to request for additional quota”, then in Section 5 choose “No change / Default quota (10k quota points)” unless you really need more `search.list` calls (default: 100 per day). The point of the audit is to have the project verified; Ezra already keeps every upload private by design.
+**Select the reason for your request:** ✅ Decided (21 Nov): “Complete a compliance audit to request for additional quota” (already selected in the form). Reason: “Complete a compliance audit to request for additional quota”, then in Section 5 choose “No change / Default quota (10k quota points)” unless you really need more `search.list` calls (default: 100 per day). The point of the audit is to have the project verified; Ezra already keeps every upload private by design.
 
 ## Section 2 · Organization and Contact Information
 - **Are you applying:** [ELIGE] “As an organization or on behalf of an organization…” if Spotmi is a registered entity; otherwise “As an individual user”.
@@ -63,18 +63,18 @@ Everything below must stay consistent with what is published at:
 
 ## Section 5 · Use Cases and Quota Extension Details
 - **How many project numbers are you adding?** 1
-- **Google Cloud Project Number:** [COMPLETAR] (Google Cloud console › project of the OAuth client used by Ezra › Project number, digits only)
+- **Google Cloud Project Number:** 1092191323833 (prefix of the OAuth client ID used by Ezra; double-check it on the project dashboard of “My First Project” before sending)
 - **Use Case Category:** “Internal Company Tool”, “Video Uploading & Account Management”, “Analytics & Reporting”
 - **Does this API Client require users to sign in with their Google Account (OAuth 2.0)?** Yes
-- **Derived metrics / data storage agreement (36 months):** [ELIGE] Recommended: do **not** opt in. Ezra deletes public statistics of other channels after 30 days and does not keep derived metrics.
+- **Derived metrics / data storage agreement (36 months):** ✅ Do **not** opt in. Ezra deletes public statistics of other channels after 30 days and does not keep derived metrics.
 - **Expected API Usage Volume:** Fewer than 1,000 requests per day
 - **Required evidence (JPEG/PNG):**
   - Privacy Policy screenshots: the section “Ezra y servicios de la API de YouTube” on https://spotmi.com.sv/es/privacidad#ezra-youtube (show the Google Privacy Policy link, the 30-day deletion and the revocation link). Take them after publishing.
-  - Homepage screenshot “showing where Privacy Policy link is located with YouTube branding visible”: the footer of https://spotmi.com.sv has the “Privacidad” link. ⚠️ The homepage has no YouTube branding today; consider also attaching https://spotmi.com.sv/es/ezra, which names YouTube and links the policies. [ELIGE]
+  - Homepage screenshot “showing where Privacy Policy link is located with YouTube branding visible”: the footer of https://spotmi.com.sv has the “Privacidad” link. ⚠️ The homepage has no YouTube branding today; also attach a screenshot of https://spotmi.com.sv/es/ezra, which names YouTube and links the policies (both, once published).
   - Terms of Service: screenshot or PDF of https://spotmi.com.sv/es/terminos#ezra-youtube.
 - **Conditional evidence:** OAuth flow screenshots (Google consent screen), upload interface screenshots (Ezra preview with “Autorizar publicación”), dashboard screenshots (Apps › YouTube). The form notes that for uploads and internal tools a screencast is required → link it in Section 6.
 - **Quota Details for Project #1 — endpoints used:** youtube.channels.list, youtube.playlistItems.list, youtube.videos.list, youtube.search.list, youtube.videos.insert. (YouTube Analytics API `reports.query` is a separate API with its own quota; mention it in the description if there is no checkbox for it.)
-- **Total quota requested:** [ELIGE] Recommended “No change / Default quota (10k quota points)”. If you choose more, a justification draft:
+- **Total quota requested:** ✅ “No change / Default quota (10k quota points)”. If you choose more, a justification draft:
   - search.list — Total per day: 10 calls · Justification: “Manual, owner-triggered ‘Viral videos’ lookups for content research; each lookup makes one search.list call (≈100 units) plus one videos.list call. Typical use is under 5 lookups per day.”
   - videos.insert — Total per day: 5 · Justification: “Only the team's own videos, uploaded as private after human approval; typically 0–3 per day.”
 
