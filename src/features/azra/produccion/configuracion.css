@@ -450,7 +450,40 @@
 .azra .cf-limites .cf-limite + .cf-limite {
   border-top: 0;
 }
+/* Globo compacto: alto fijo y el contenido se desplaza de arriba hacia abajo. */
 .azra .cf-globo {
-  max-height: calc(100vh - 24px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  max-height: min(460px, calc(100vh - 24px));
+  overflow: hidden;
+}
+.azra .cf-globo-cuerpo {
+  display: grid;
+  gap: 14px;
+  min-height: 0;
+  margin-right: -10px;
+  padding-right: 10px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ep-borde-control) transparent;
+  /* Un leve desvanecido abajo indica que hay más contenido. */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
+}
+.azra .cf-globo-cuerpo:focus-visible {
+  outline: 2px solid var(--ez-violeta);
+  outline-offset: 2px;
+}
+.azra .cf-globo-cuerpo::-webkit-scrollbar {
+  width: 6px;
+}
+.azra .cf-globo-cuerpo::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--ep-borde-control);
+}
+.azra .cf-globo .cf-limite {
+  gap: 4px;
+}
+.azra .cf-globo .cf-limite-linea {
+  font-size: 12px;
 }

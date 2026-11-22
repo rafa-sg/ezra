@@ -344,9 +344,12 @@ export function BotonConsumo({
             style={{ left: pos.left, bottom: pos.bottom }}
           >
             <p className="cf-globo-titulo">{tr("cf_limitesIA")}</p>
-            {error && <p className="cf-nota">{tr("cf_errorUso")}</p>}
-            {!uso && !error && <p className="cf-nota">{tr("cf_cargando")}</p>}
-            {uso && <GruposUso uso={uso} tr={tr} locale={locale} />}
+            {/* Solo esta parte se desplaza: el título y «Administrar uso» quedan fijos. */}
+            <div className="cf-globo-cuerpo" tabIndex={0} aria-label={tr("cf_limitesIA")}>
+              {error && <p className="cf-nota">{tr("cf_errorUso")}</p>}
+              {!uso && !error && <p className="cf-nota">{tr("cf_cargando")}</p>}
+              {uso && <GruposUso uso={uso} tr={tr} locale={locale} />}
+            </div>
             <button
               className="cf-globo-accion"
               onClick={() => {
