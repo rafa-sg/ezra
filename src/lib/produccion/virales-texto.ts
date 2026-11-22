@@ -25,3 +25,17 @@ export const cifra = (n: number) => compacto.format(n);
 export const duracionTexto = (s: number | null) =>
   s === null ? "" : s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 export const urlVideo = (id: string) => `https://www.youtube.com/watch?v=${id}`;
+
+/**
+ * Políticas de la API de YouTube (III.E.4): los datos de videos ajenos se guardan como máximo
+ * 30 días; después se borran (o se vuelven a consultar ejecutando otra vez el encargo).
+ */
+export const DIAS_DATOS_YOUTUBE = 30;
+type ConFechas = { videosConsultados?: string | null; historial?: { accion: string; fecha: string }[]; actualizado: string };
+/** Cuándo se consultó YouTube: el campo nuevo o, en encargos anteriores, la última entrega guardada. */
+export function fechaConsultaVirales(e: ConFechas): string {
+  if (e.videosConsultados) return e.videosConsultados;
+  const generado = [...(e.historial ?? [])].reverse().find((h) => h.accion === "generado");
+  return generado?.fecha ?? e.actualizado;
+}
+export const caducidadVirales = (e: ConFechas) => new Date(Date.parse(fechaConsultaVirales(e)) + DIAS_DATOS_YOUTUBE * 24 * 3600 * 1000).toISOString();

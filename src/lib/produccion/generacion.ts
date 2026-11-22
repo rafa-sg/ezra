@@ -65,6 +65,7 @@ export async function guardarEntrega(
         siguiente.origenResultado = origen;
         siguiente.busquedaHtml = entrega.busquedaHtml;
         siguiente.videos = extra.videos ?? [];
+        siguiente.videosConsultados = extra.videos ? new Date().toISOString() : null;
         const anotado = anotar(siguiente, "generado", { nota: origen === "youtube" ? `Búsqueda en YouTube: ${extra.videos?.length ?? 0} videos.` : `Entrega de ${origen}.`, resultado: entrega.texto });
         Object.assign(siguiente, { historial: anotado.historial });
         encargoId = siguiente.id;

@@ -109,6 +109,20 @@ export async function procesarUno(
   return true;
 }
 
+/** Borra los resultados de «Videos virales» y las referencias de Clips con más de 30 días. */
+export async function purgarDatosYoutube(ahora = new Date()) {
+  try {
+    const { purgarViralesVencidos } = await import("../produccion/virales-caducidad");
+    const { purgarReferenciasVencidas } = await import("./clips");
+    const encargos = await purgarViralesVencidos(ahora);
+    const referencias = purgarReferenciasVencidas(ahora);
+    if (encargos || referencias) console.log(`[youtube] datos de terceros borrados: ${encargos} encargo(s), ${referencias} referencia(s).`);
+    return { encargos, referencias };
+  } catch (error) {
+    console.error("[youtube] no se pudo revisar la caducidad:", error instanceof Error ? error.message : error);
+    return null;
+  }
+}
 type Globales = typeof globalThis & { ezraTrabajador?: { detener: () => void } };
 export function iniciarTrabajador() {
   const globales = globalThis as Globales;
@@ -150,12 +164,20 @@ export function iniciarTrabajador() {
   relojHorario.unref?.();
   const primera = setTimeout(() => void horario(), 5_000);
   primera.unref?.();
+  // Políticas de la API de YouTube: los datos de videos ajenos se borran a los 30 días.
+  // Se revisa al arrancar y cada hora (si la Mac estuvo apagada, se borra al volver).
+  const relojYoutube = setInterval(() => void purgarDatosYoutube(), 3600_000);
+  relojYoutube.unref?.();
+  const primeraYoutube = setTimeout(() => void purgarDatosYoutube(), 8_000);
+  primeraYoutube.unref?.();
   globales.ezraTrabajador = {
     detener: () => {
       activo = false;
       clearInterval(reloj);
       clearInterval(relojHorario);
       clearTimeout(primera);
+      clearInterval(relojYoutube);
+      clearTimeout(primeraYoutube);
     },
   };
 }

@@ -1819,6 +1819,8 @@
   "ez_virales_meGusta": "Me gusta",
   "ez_virales_comentarios": "Comentarios",
   "ez_virales_derechos": "Métricas públicas de YouTube en el momento de la búsqueda. Los videos son de sus autores: úsalos como referencia de tendencias; para usar fragmentos necesitas su permiso.",
+  "ez_virales_consultado": "Consulta a YouTube: {fecha}.",
+  "ez_virales_caduca": "Por las políticas de la API de YouTube, estos datos se borran el {fecha}; para tenerlos otra vez, vuelve a ejecutar el encargo.",
   "ez_det_quedan": "quedan {n}",
   "ez_det_ejecutar": "Ejecutar",
   "ez_det_pegarAMano": "Pegar o editar a mano",

@@ -1819,6 +1819,8 @@
   "ez_virales_meGusta": "Likes",
   "ez_virales_comentarios": "Comments",
   "ez_virales_derechos": "Public YouTube metrics at search time. The videos belong to their creators: use them as trend references; you need their permission to use clips.",
+  "ez_virales_consultado": "YouTube lookup: {fecha}.",
+  "ez_virales_caduca": "Under the YouTube API policies, this data is deleted on {fecha}; run the request again to fetch it.",
   "ez_det_quedan": "{n} left",
   "ez_det_ejecutar": "Run",
   "ez_det_pegarAMano": "Paste or edit by hand",

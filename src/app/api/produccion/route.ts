@@ -21,6 +21,7 @@ import { direccionSpotmi } from "@/lib/produccion/spotmi";
 import { invalidarPorEncargo } from "@/lib/granjas/ejecucion";
 import { especialistasVisibles } from "@/lib/granjas/especialistas";
 import { geminiProduccionHabilitado, modeloGemini } from "@/lib/ia/gemini";
+import { purgarViralesVencidos } from "@/lib/produccion/virales-caducidad";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const accionSchema = z.discriminatedUnion("accion", [
@@ -75,6 +76,8 @@ export async function GET() {
       diagnosticoReciente("astra"),
       diagnosticoReciente("claude"),
     ]);
+    // Antes de mostrar nada: los resultados de «Videos virales» con más de 30 días se borran.
+    await purgarViralesVencidos().catch(() => 0);
     return Response.json({
       produccion: await leerProduccion(),
       conexiones: {

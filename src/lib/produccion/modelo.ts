@@ -105,6 +105,8 @@ export const encargoSchema = contenidoEncargoSchema.extend({
   origenResultado: z.enum(["manual", "gemini", "astra", "claude", "youtube"]).default("manual"),
   /** Solo «Videos virales»: la lista ordenable; se vacía si se edita el pedido. */
   videos: z.array(videoViralSchema).max(50).default([]),
+  /** Cuándo se consultó YouTube para «videos» (los datos de terceros se borran a los 30 días). */
+  videosConsultados: z.string().datetime().nullable().default(null),
   busquedaHtml: z.string().max(200000).default(""),
   dependencia: z
     .object({ id: z.string().uuid(), version: z.number().int().positive() })
@@ -180,6 +182,7 @@ export function editarEncargo(actual: Encargo, datos: ContenidoEncargo): Encargo
           comprobaciones: comprobacionesVacias(),
           busquedaHtml: "",
           videos: [],
+          videosConsultados: null,
           notaCambios: "",
         }
       : {}),

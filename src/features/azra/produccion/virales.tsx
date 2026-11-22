@@ -13,7 +13,8 @@ const valor = (v: VideoViral, o: Orden) => (o === "interaccion" ? (v.interaccion
  * Ranking de «Videos virales»: miniatura, enlace y métricas públicas, ordenable por vistas, vistas por
  * día (lo que está pegando ahora) o interacción (me gusta + comentarios por vista).
  */
-export function RankingVirales({ videos, tr }: { videos: VideoViral[]; tr: Tr }) {
+export function RankingVirales({ videos, consultado, caduca, tr }: { videos: VideoViral[]; consultado: string; caduca: string; tr: Tr }) {
+  const dia = (iso: string) => new Intl.DateTimeFormat("es-SV", { dateStyle: "medium", timeStyle: "short", timeZone: "America/El_Salvador" }).format(new Date(iso));
   const [orden, setOrden] = useState<Orden>("vistas");
   const lista = useMemo(() => [...videos].sort((a, b) => valor(b, orden) - valor(a, orden)), [videos, orden]);
   return (
@@ -67,6 +68,9 @@ export function RankingVirales({ videos, tr }: { videos: VideoViral[]; tr: Tr })
         ))}
       </ol>
       <p className="ep-nota">{tr("ez_virales_derechos")}</p>
+      <p className="ep-nota ez-virales-consulta">
+        {tr("ez_virales_consultado").replace("{fecha}", dia(consultado))} {tr("ez_virales_caduca").replace("{fecha}", dia(caduca))}
+      </p>
     </div>
   );
 }

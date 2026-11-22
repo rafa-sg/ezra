@@ -237,6 +237,10 @@ export async function consultarYoutube(
 export type MetricasYoutube = Awaited<ReturnType<typeof consultarYoutube>>;
 
 let cache: { revision: string | null; datos: MetricasYoutube } | undefined;
+/** Al desconectar YouTube no queda nada del canal en memoria. */
+export function olvidarMetricasYoutube() {
+  cache = undefined;
+}
 export async function metricasYoutube(id: string, forzar: boolean) {
   const conexion = leerConexion("youtube");
   if (!conexion.identidad?.id || conexion.identidad.id !== id)

@@ -231,6 +231,12 @@ export async function desconectar(canal: CanalConexion) {
     // Una cuenta desconectada no puede recibir envíos pendientes.
     db.prepare("update autorizaciones set estado = 'revocada', motivo = 'Cuenta desconectada.' where estado = 'vigente' and destinos like ?").run(`%"canal":"${canal}"%`);
   });
+  // YouTube (Developer Policies III.D.2): al revocar no queda nada de la API. Las métricas solo viven en
+  // memoria y se olvidan; del registro de envíos se borran el id del video y el enlace a YouTube Studio.
+  if (canal === "youtube") {
+    (await import("./youtube-metricas")).olvidarMetricasYoutube();
+    base().prepare("update recibos set remoto_id = null, contenedor_id = null, enlace = null, actualizado = ? where canal = 'youtube'").run(new Date().toISOString());
+  }
   if (aviso) registrarError(canal, aviso, "requiere_oauth");
   auditar("conexion.desconectar", canal);
   return { conexion: leerConexion(canal), aviso };

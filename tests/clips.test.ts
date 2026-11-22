@@ -349,7 +349,8 @@ test("granja Clips: Momentos envía el video subido a Gemini con la referencia y
   assert.equal(momentos.estado, "completado", momentos.detalle || momentos.error);
   assert.match(momentos.detalle, /2 clips propuestos/);
   assert.equal(prompts.length, 1);
-  assert.match(prompts[0], /pupusas/i, "la referencia viaja como datos");
+  assert.match(prompts[0], /pupusas/i, "la referencia viaja como datos (palabras frecuentes)");
+  assert.ok(!/vid0000000|Canal \d|youtube\.com/.test(prompts[0]), "a Gemini no van títulos, canales ni enlaces de videos ajenos");
   assert.match(prompts[0], /de 2 a 2 momentos|de 2 a 3 momentos/);
   const guardado = JSON.parse(almacen.leerArtefacto(momentos.salidas[0]).contenido) as import("../src/lib/granjas/clips").Momentos;
   assert.equal(guardado.clips.length, 2);

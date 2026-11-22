@@ -5,6 +5,7 @@ import type { Encargo } from "@/lib/produccion/modelo";
 import { estadoEditorial, estadoEjecucion, estadoEntrega, etapa, tipoResultado, type EstadoEditorial } from "@/lib/produccion/resumen-encargo";
 import type { RelacionesEncargo } from "@/lib/produccion/relaciones";
 import { RankingVirales } from "./virales";
+import { caducidadVirales, fechaConsultaVirales } from "@/lib/produccion/virales-texto";
 import "./encargos.css";
 
 type Tr = (c: string) => string;
@@ -267,7 +268,7 @@ export function DetalleEncargo({
           <Seccion titulo={tr("ez_det_resultado")}>
             {e.resultado.trim() ? (
               <>
-                {virales && e.videos?.length ? <RankingVirales videos={e.videos} tr={tr} /> : <pre className="ez-det-vista">{e.resultado}</pre>}
+                {virales && e.videos?.length ? <RankingVirales videos={e.videos} consultado={fechaConsultaVirales(e)} caduca={caducidadVirales(e)} tr={tr} /> : <pre className="ez-det-vista">{e.resultado}</pre>}
                 <div className="ep-acciones">
                   <button className="ez-boton-blanco" onClick={() => void copiar()}>
                     <Copy size={14} aria-hidden="true" /> {copiado ? tr("p_copiado") : tr("ez_det_copiar")}
