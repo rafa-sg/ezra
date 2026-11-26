@@ -160,7 +160,9 @@ test("granja «Post para Instagram»: Gemini simulado corrige o cae a la plantil
     const destino = path.join(process.env.EZRA_DATA_DIR!, "fondo.jpg");
     execFileSync(rutaFfmpeg, ["-v", "error", "-y", "-f", "lavfi", "-i", "color=c=orange:s=640x800", "-frames:v", "1", destino]);
     const medio = await medios.guardarMedio(await readFile(destino), { nombre: "Cartel oficial", procedencia: { origen: "subida", nota: "prueba" }, licencia: "Permiso de prueba", generado: false });
-    eventos.autorizarImagen(uno.id, eventos.leerEvento(uno.id).revision, medio.id, "Autorizado por la organización (prueba)");
+    const conImagen = eventos.autorizarImagen(uno.id, eventos.leerEvento(uno.id).revision, medio.id, "Autorizado por la organización (prueba)");
+    assert.equal(conImagen.estado, "nuevo", "cambiar la portada exige revisar de nuevo");
+    eventos.aprobarEvento(conImagen.id, conImagen.revision);
   }
   const granja = almacen.crearDesdeReceta("post_instagram_eventos");
   almacen.actualizarGranja(granja.id, granja.revision, { datos: { ...granja, ajustes: { ...granja.ajustes, instagram: { cuenta: "@spotmi.sv", postsPorDia: 2 } } } });

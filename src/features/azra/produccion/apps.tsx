@@ -1,8 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { LayoutGrid, Play, RefreshCw } from "lucide-react";
+import Image from "next/image";
+import { ArrowUpRight, LayoutGrid, Play, RefreshCw } from "lucide-react";
 import type { Conexion } from "@/lib/granjas/conexiones";
+import spotmiAvatar from "../../../../assets/marca/spotmi-icono.png";
 import "./apps.css";
 
 type Tr = (clave: string) => string;
@@ -20,6 +22,26 @@ export type CuentaApp = {
   verificado: string | null;
   aviso: string;
 };
+
+type PendingSpotmiApp = {
+  canal: "facebook" | "tiktok";
+  conexionId: null;
+  nombre: "Spotmi";
+};
+export type AppEntry = CuentaApp | PendingSpotmiApp;
+export const pendingSpotmiApps: readonly PendingSpotmiApp[] = [
+  { canal: "facebook", conexionId: null, nombre: "Spotmi" },
+  { canal: "tiktok", conexionId: null, nombre: "Spotmi" },
+];
+export const appKey = (entry: AppEntry) =>
+  entry.canal + ":" + (entry.conexionId ?? "spotmi-pendiente");
+export function connectedSpotmiApp(accounts: CuentaApp[], channel: PendingSpotmiApp["canal"]) {
+  return accounts.find((account) => {
+    if (account.canal !== channel || account.alcance !== "compartida") return false;
+    const name = account.nombre.trim().toLowerCase().replace(/^@/, "");
+    return name === "spotmi" || (channel === "tiktok" && name === "spotmi.sv");
+  });
+}
 
 /** Identidad de cada red: nombre, sigla del ícono y lo que se llama «cuenta» en ella. */
 export const redes: Record<CanalApp, { nombre: string; sigla: ReactNode; clase: string }> = {
@@ -104,10 +126,10 @@ export function BotonApps({
   deshabilitado,
 }: {
   tr: Tr;
-  cuentas: CuentaApp[] | null;
-  activa: CuentaApp | null;
+  cuentas: AppEntry[] | null;
+  activa: AppEntry | null;
   seccionActiva: boolean;
-  onElegir: (c: CuentaApp) => void;
+  onElegir: (c: AppEntry) => void;
   deshabilitado?: boolean;
 }) {
   const [abierto, setAbierto] = useState(false);
@@ -122,9 +144,10 @@ export function BotonApps({
     if (!r) return;
     const borde = boton.current?.closest(".ez-sidebar")?.getBoundingClientRect().right ?? r.right;
     const ancho = Math.min(280, window.innerWidth - 16);
-    if (borde + 12 + ancho <= window.innerWidth - 8) setPos({ x: borde + 12, y: r.top });
-    else
-      setPos({ x: Math.max(8, Math.min(r.left, window.innerWidth - ancho - 8)), y: r.bottom + 6 });
+    const alLado = borde + 12 + ancho <= window.innerWidth - 8;
+    const x = alLado ? borde + 12 : Math.max(8, Math.min(r.left, window.innerWidth - ancho - 8));
+    const y = Math.max(8, Math.min(alLado ? r.top : r.bottom + 6, window.innerHeight - 312));
+    setPos({ x, y });
   };
   const abrir = () => {
     if (reloj.current) window.clearTimeout(reloj.current);
@@ -220,8 +243,13 @@ export function BotonApps({
             ref={menu}
             className="ez-apps-menu"
             role="menu"
-            aria-label={tr("ez_apps_conectadas")}
-            style={{ left: pos.x, top: pos.y, width: "min(280px, calc(100vw - 16px))" }}
+            aria-label={tr("ez_apps_menu")}
+            style={{
+              left: pos.x,
+              top: pos.y,
+              width: "min(280px, calc(100vw - 16px))",
+              maxHeight: `calc(100dvh - ${pos.y + 8}px)`,
+            }}
             onPointerEnter={(e) => e.pointerType === "mouse" && abrir()}
             onPointerLeave={(e) => e.pointerType === "mouse" && cerrarLuego()}
           >
@@ -243,10 +271,11 @@ export function BotonApps({
                   </p>
                 )}
                 {g.lista.map((c) => {
-                  const esActiva = activa?.conexionId === c.conexionId;
+                  const clave = appKey(c);
+                  const esActiva = activa !== null && appKey(activa) === clave;
                   return (
                     <button
-                      key={c.conexionId}
+                      key={clave}
                       type="button"
                       role="menuitemradio"
                       aria-checked={esActiva}
@@ -261,13 +290,21 @@ export function BotonApps({
                         {redes[c.canal].sigla}
                       </span>
                       <span className="ez-apps-texto">
-                        <strong>{c.nombre}</strong>
+                        <strong>{c.conexionId === null && c.canal === "tiktok" ? "@spotmi.sv" : c.nombre}</strong>
                         <small>
                           {redes[c.canal].nombre} ·{" "}
-                          {tr(c.alcance === "personal" ? "cx_personal" : "cx_compartida")}
+                          {tr(
+                            c.conexionId === null
+                              ? "ez_app_pendiente"
+                              : c.alcance === "personal"
+                                ? "cx_personal"
+                                : "cx_compartida",
+                          )}
                         </small>
                       </span>
-                      {esActiva && <span className="ez-apps-check">{tr("ez_apps_activa")}</span>}
+                      {esActiva && c.conexionId !== null && (
+                        <span className="ez-apps-check">{tr("ez_apps_activa")}</span>
+                      )}
                     </button>
                   );
                 })}
@@ -276,6 +313,67 @@ export function BotonApps({
           </div>,
           destino,
         )}
+    </div>
+  );
+}
+
+export function PendingSpotmiProfile({
+  entry,
+  tr,
+  onConnections,
+}: {
+  entry: PendingSpotmiApp;
+  tr: Tr;
+  onConnections?: () => void;
+}) {
+  const isTikTok = entry.canal === "tiktok";
+  return (
+    <div className="ez-perfil">
+      <section className="ez-perfil-cabeza" aria-label={tr("ez_app_perfil")}>
+        <span className="ez-perfil-foto ez-perfil-foto-spotmi">
+          <Image src={spotmiAvatar} alt="" width={88} height={88} unoptimized />
+        </span>
+        <div className="ez-perfil-datos">
+          <div className="ez-perfil-titulo">
+            <h2>{entry.nombre}</h2>
+            <span className="ez-solo-consulta">{tr("ez_app_pendiente")}</span>
+          </div>
+          {isTikTok ? (
+            <a
+              className="ez-perfil-enlace"
+              href="https://www.tiktok.com/@spotmi.sv"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              @spotmi.sv <ArrowUpRight size={14} aria-hidden="true" />
+            </a>
+          ) : (
+            <p className="ez-perfil-red">{tr("ez_app_facebook_cuenta")}</p>
+          )}
+          <p className="ez-perfil-desc">
+            {tr(isTikTok ? "ez_app_tiktok_spotmi_bio" : "ez_app_facebook_spotmi_bio")}
+          </p>
+          {onConnections && (
+            <div>
+              <button type="button" className="ez-boton-blanco" onClick={onConnections}>
+                {tr("ez_app_irConexiones")}
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+      <section className="ez-perfil-seccion" aria-labelledby="ez-spotmi-pendiente-metricas">
+        <h3 id="ez-spotmi-pendiente-metricas">{tr("ez_app_" + entry.canal + "_tituloMetricas")}</h3>
+        <div className="ez-kpis">
+          {["metrica1", "metrica2", "metrica3"].map((key) => (
+            <div key={key} className="ez-kpi ez-kpi-nd">
+              <strong>{tr("ez_app_noDisponible")}</strong>
+              <span>{tr("ez_app_" + entry.canal + "_" + key)}</span>
+            </div>
+          ))}
+        </div>
+        <p className="ep-nota">{tr("ez_app_metricasPendientes")}</p>
+      </section>
     </div>
   );
 }

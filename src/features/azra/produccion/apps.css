@@ -49,6 +49,7 @@
   flex-direction: column;
   gap: 8px;
   width: 280px;
+  overflow-y: auto;
   font-family: var(--ez-fuente);
 }
 .azra .ez-apps-grupo {
@@ -185,6 +186,23 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.azra .ez-perfil-foto-spotmi {
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--ep-borde);
+  background: #fff;
+}
+.azra .ez-perfil-foto-spotmi img {
+  object-fit: contain;
+}
+.azra .ez-perfil-enlace {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 4px;
+  color: inherit;
+  font-weight: 600;
 }
 .azra .ez-perfil-aro {
   padding: 4px;

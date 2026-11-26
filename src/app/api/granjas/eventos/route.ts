@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { administrador, cuerpo, errorApi } from "@/lib/granjas/api";
+import { administrador, propietario, cuerpo, errorApi } from "@/lib/granjas/api";
 import { WorkflowError } from "@/lib/workflow";
 import {
   aprobarEvento,
@@ -32,6 +32,7 @@ import { estadoImagenesAstra, estadoImagenesIA, generarReferencia, ponerReferenc
 import { promptImagenEvento, revisarPrompt, textoParaModelo } from "@/lib/granjas/prompt-imagen";
 import { importarEventos, MAX_IMPORTAR } from "@/lib/granjas/importar";
 import { actualizarPropuestasPendientes, consultarEstadoSpotmi, enviarEventoASpotmi, spotmiPuedeProponer } from "@/lib/granjas/spotmi-propuestas";
+import { publishEventToSpotmi, spotmiPuedePublicar } from "@/lib/granjas/spotmi-publicacion";
 import { descargarSegura, type MaterialFuente } from "@/lib/granjas/fuentes";
 import { guardarMedio } from "@/lib/granjas/medios";
 import { diaLocal, diaValido } from "@/lib/granjas/tiempo";
@@ -85,6 +86,7 @@ const accion = z.discriminatedUnion("accion", [
   // Confianza por dominio: tipo y puntos que el propietario fija para cada sitio.
   z.object({ accion: z.literal("confianza_dominios"), dominios: confianzaDominiosSchema }),
   z.object({ accion: z.literal("enviar_spotmi"), id }),
+  z.object({ accion: z.literal("publicar_spotmi"), id, revision, confirmation: z.literal("PUBLICAR") }),
   z.object({ accion: z.literal("consultar_spotmi"), id: id.optional() }),
 ]);
 const dia = z.string().refine(diaValido).nullable();
@@ -106,7 +108,7 @@ function tablaConfianza(lista: ReturnType<typeof listarEventos>) {
 const sinImagenOficial = (e: { imagenTipo: string | null; imagenConfirmada: boolean }) => !e.imagenConfirmada && (e.imagenTipo === null || e.imagenTipo === "prensa" || e.imagenTipo === "ia");
 export async function GET(request: Request) {
   try {
-    await administrador("eventos");
+    const access = await administrador("eventos");
     const p = new URL(request.url).searchParams;
     const estado = z.enum(estadosVisibles).nullable().catch(null).parse(p.get("estado"));
     const filtro = { estado, desde: dia.catch(null).parse(p.get("desde")), hasta: dia.catch(null).parse(p.get("hasta")) };
@@ -120,6 +122,7 @@ export async function GET(request: Request) {
         conteo,
         total: todos.length,
         spotmi: spotmiPuedeProponer(),
+        spotmiPublicacion: access.equipo.rol === "propietario" && spotmiPuedePublicar(),
         // Pendientes de «Completar imágenes»: sin imagen, no descartados y que no han terminado.
         // Sin imagen oficial: sin imagen, o con foto de prensa o referencia IA sin confirmar (puede aparecer un afiche).
         sinImagen: todos.filter((e) => sinImagenOficial(e) && e.estado !== "descartado" && (!e.fecha || (e.fechaFin ?? e.fecha) >= hoy)).map((e) => e.id),
@@ -141,6 +144,10 @@ export async function POST(request: Request) {
   try {
     await administrador("eventos", "escribir");
     const a = await cuerpo(request, accion, 600_000);
+    if (a.accion === "publicar_spotmi") {
+      const { usuario } = await propietario();
+      return Response.json({ evento: await publishEventToSpotmi(a.id, { revision: a.revision, confirmation: a.confirmation, actor: usuario }) });
+    }
     if (a.accion === "aprobar") return Response.json({ evento: aprobarEvento(a.id, a.revision) });
     if (a.accion === "descartar") return Response.json({ evento: descartarEvento(a.id, a.revision, a.motivo) });
     if (a.accion === "editar") return Response.json({ evento: editarEvento(a.id, a.revision, a.datos) });

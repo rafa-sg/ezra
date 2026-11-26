@@ -16,7 +16,7 @@ export type EstadoConexion =
   | "restringida"
   | "verificacion_fallida";
 export type Capacidad =
-  "leer_identidad" | "leer_catalogo" | "publicar" | "subir_borrador" | "proponer_borrador";
+  "leer_identidad" | "leer_catalogo" | "publicar" | "subir_borrador" | "proponer_borrador" | "publicar_eventos";
 export type Identidad = { id: string; nombre: string; tipo?: string };
 export type Secreto = {
   acceso: string;
@@ -908,12 +908,14 @@ async function verificarSpotmi(secreto: Secreto, solicitar: Solicitar): Promise<
       nombre: texto(identidad.correo) || "Cuenta editorial",
       tipo: "propuestas",
     },
-    permisos: activo ? ["ezra_proponer_evento"] : [],
-    capacidades: activo ? ["leer_catalogo", "proponer_borrador"] : ["leer_catalogo"],
+    permisos: activo ? ["ezra_proponer_evento", ...(identidad.puede_publicar === true ? ["ezra_publicar_evento"] : [])] : [],
+    capacidades: activo ? ["leer_catalogo", "proponer_borrador", ...(identidad.puede_publicar === true ? ["publicar_eventos" as const] : [])] : ["leer_catalogo"],
     expira: actual.expiraAcceso ?? null,
     secreto: actual,
     aviso: activo
-      ? "Ezra crea propuestas pendientes. Solo el equipo de Spotmi puede publicarlas."
+      ? identidad.puede_publicar === true
+        ? "Publicación directa habilitada: requiere autorizar cada versión desde Eventos."
+        : "Ezra crea propuestas pendientes. La publicación directa todavía no está habilitada."
       : "La cuenta no está habilitada como cliente editorial en Spotmi.",
   };
 }

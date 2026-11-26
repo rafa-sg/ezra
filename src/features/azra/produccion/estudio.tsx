@@ -55,12 +55,16 @@ import { PaginaInstagram } from "../granjas/instagram-pagina";
 import { PaginaYoutube } from "../granjas/youtube-pagina";
 import {
   BotonApps,
+  PendingSpotmiProfile,
   PerfilConexion,
+  appKey,
+  connectedSpotmiApp,
   guardarCuentaActiva,
   leerCuentaActiva,
+  pendingSpotmiApps,
   redes,
   useCuentasApp,
-  type CuentaApp,
+  type AppEntry,
 } from "./apps";
 import { Inicio, type DestinoInicio } from "./inicio";
 import { CabeceraPagina, NavegacionLateral } from "./navegacion";
@@ -301,6 +305,11 @@ export function EstudioProduccion({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const { cuentas: cuentasApp, recargar: recargarApps } = useCuentasApp();
+  const visiblePendingApps =
+    cuentasApp && (esPropietario || equipo?.rol === "socio") && permitida("apps")
+      ? pendingSpotmiApps.filter((entry) => !connectedSpotmiApp(cuentasApp, entry.canal))
+      : [];
+  const entradasApp = cuentasApp && [...cuentasApp, ...visiblePendingApps];
   const [appPedida, setAppPedida] = useState<string | null>(null);
   useEffect(() => {
     const leer = () => setAppPedida(new URLSearchParams(window.location.search).get("app"));
@@ -308,23 +317,28 @@ export function EstudioProduccion({
     window.addEventListener("popstate", leer);
     return () => window.removeEventListener("popstate", leer);
   }, []);
-  const appActiva: CuentaApp | null =
-    cuentasApp?.find((c) => `${c.canal}:${c.conexionId}` === appPedida) ??
-    cuentasApp?.find((c) => c.canal === appPedida) ??
+  const selectedPendingApp = pendingSpotmiApps.find((entry) => appKey(entry) === appPedida);
+  const appActiva: AppEntry | null =
+    entradasApp?.find((entry) => appKey(entry) === appPedida) ??
+    (selectedPendingApp && cuentasApp
+      ? connectedSpotmiApp(cuentasApp, selectedPendingApp.canal)
+      : undefined) ??
+    entradasApp?.find((c) => c.canal === appPedida) ??
     cuentasApp?.find((c) => c.canal === "instagram") ??
-    cuentasApp?.[0] ??
+    entradasApp?.[0] ??
     null;
   /** «Videos virales» busca con la cuenta de YouTube activa en Apps (si sigue conectada). */
   const cuentaYoutube = () => {
     const id = leerCuentaActiva("youtube");
     return id && cuentasApp?.some((c) => c.conexionId === id) ? { conexionId: id } : {};
   };
-  function elegirApp(c: CuentaApp) {
-    guardarCuentaActiva(c);
-    const url = `${window.location.pathname}?seccion=apps&app=${encodeURIComponent(`${c.canal}:${c.conexionId}`)}`;
+  function elegirApp(c: AppEntry) {
+    if (c.conexionId !== null) guardarCuentaActiva(c);
+    const clave = appKey(c);
+    const url = `${window.location.pathname}?seccion=apps&app=${encodeURIComponent(clave)}`;
     if (`${window.location.pathname}${window.location.search}` !== url)
       window.history.pushState({ seccion: "apps" }, "", url);
-    setAppPedida(`${c.canal}:${c.conexionId}`);
+    setAppPedida(clave);
     setSeccion("apps");
     setAviso("");
   }
@@ -646,7 +660,7 @@ export function EstudioProduccion({
                   elemento: (
                     <BotonApps
                       tr={tr}
-                      cuentas={cuentasApp}
+                      cuentas={entradasApp}
                       activa={appActiva}
                       seccionActiva={!soloLectura && seccion === "apps"}
                       deshabilitado={soloLectura || !produccion}
@@ -929,7 +943,18 @@ export function EstudioProduccion({
               {appActiva?.canal === "youtube" && (
                 <PaginaYoutube key={appActiva.conexionId} cuenta={appActiva} locale={locale} fecha={fecha} />
               )}
-              {appActiva && appActiva.canal !== "instagram" && appActiva.canal !== "youtube" && (
+              {appActiva?.conexionId === null && (
+                <PendingSpotmiProfile
+                  entry={appActiva}
+                  tr={tr}
+                  onConnections={
+                    esPropietario && !equipo?.soloLectura && permitida("conexiones")
+                      ? () => navegar("conexiones")
+                      : undefined
+                  }
+                />
+              )}
+              {appActiva && appActiva.conexionId !== null && appActiva.canal !== "instagram" && appActiva.canal !== "youtube" && (
                 <PerfilConexion
                   key={appActiva.conexionId}
                   cuenta={appActiva}

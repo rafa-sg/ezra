@@ -589,9 +589,16 @@ function exigir(evento: Evento, revision: number) {
 }
 function actualizar(id: string, cambios: Record<string, string | number | null>) {
   const claves = Object.keys(cambios);
+  const current = leerEvento(id);
+  if (current.spotmiClave?.startsWith("ezra-publicar-") && !current.spotmiPropuestaId && claves.some((k) => !k.startsWith("spotmi_")))
+    throw new WorkflowError("Hay una publicación a Spotmi sin confirmar. Reintenta «Publicar en Spotmi» antes de modificar el evento.", 409);
+  // El permiso y el archivo forman parte de la versión editorial aprobada.
+  if (current.estado === "aprobado" && claves.some((k) => k.startsWith("imagen_") && !["imagen_recuperada"].includes(k)))
+    cambios.estado = "nuevo";
+  const columnas = Object.keys(cambios);
   base()
-    .prepare(`update eventos set ${claves.map((k) => `${k} = ?`).join(", ")}, revision = revision + 1, actualizado = ? where id = ?`)
-    .run(...claves.map((k) => cambios[k]), ahoraIso(), id);
+    .prepare(`update eventos set ${columnas.map((k) => `${k} = ?`).join(", ")}, revision = revision + 1, actualizado = ? where id = ?`)
+    .run(...columnas.map((k) => cambios[k]), ahoraIso(), id);
   return leerEvento(id);
 }
 export function aprobarEvento(id: string, revision: number) {

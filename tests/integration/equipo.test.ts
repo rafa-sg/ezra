@@ -103,6 +103,9 @@ test("equipo: solo por invitación, roles y secciones comprobados en el servidor
     const escribir = await post("/api/granjas/eventos", invitado, { accion: "descartar", id: crypto.randomUUID(), motivo: "x" });
     assert.equal(escribir.status, 403);
     assert.match((await escribir.json()).error, /solo lectura/);
+    const publication = { accion: "publicar_spotmi", id: crypto.randomUUID(), revision: 1, confirmation: "PUBLICAR" };
+    for (const token of [socio, invitado, ""])
+      assert.ok([401, 403].includes((await post("/api/granjas/eventos", token, publication)).status), "sólo el propietario publica eventos");
     // El estudio abre para el invitado, pero sin encargos (no tiene esa sección).
     const prod = await (await pedir("/api/produccion", invitado)).json();
     assert.deepEqual(prod.produccion.encargos, []);

@@ -55,7 +55,7 @@ export const spotmiPuedeProponer = () => {
 };
 
 /** PostgREST devuelve {code, message}: se conservan para explicar el rechazo. */
-async function rpc(solicitar: Solicitar, acceso: string, funcion: string, cuerpo: object): Promise<Record<string, unknown>> {
+export async function rpc(solicitar: Solicitar, acceso: string, funcion: string, cuerpo: object): Promise<Record<string, unknown>> {
   let r: Response;
   try {
     r = await solicitar(`${supabase()}/rest/v1/rpc/${funcion}`, {
@@ -79,12 +79,14 @@ async function rpc(solicitar: Solicitar, acceso: string, funcion: string, cuerpo
   const mensaje = String(datos.message ?? r.status).slice(0, 300);
   if (r.status === 401 || /jwt/i.test(mensaje)) throw new ErrorProveedor("La sesión editorial venció.", "vencido", 401);
   if (datos.code === "42501") throw new ErrorProveedor(`Spotmi rechazó la cuenta: ${mensaje}`, "permiso", 403);
-  if (datos.code === "PGRST202") throw new ErrorProveedor("Spotmi todavía no tiene la función de propuestas de Ezra (migración 20261103 sin aplicar).", "rechazo", 422);
+  if (datos.code === "PGRST202") throw new ErrorProveedor(funcion === "ezra_publicar_evento"
+    ? "Falta la función de publicación directa de Ezra (migración 20261125 sin aplicar)."
+    : "Spotmi todavía no tiene la función de propuestas de Ezra (migración 20261103 sin aplicar).", "rechazo", 422);
   if (r.status >= 500) throw new ErrorProveedor("Spotmi falló temporalmente. El resultado es desconocido: vuelve a enviar y no se duplicará.", "ambiguo", 502);
   throw new ErrorProveedor(`Spotmi rechazó la propuesta: ${mensaje}`, "rechazo", 422);
 }
 /** Usa la sesión guardada; si venció, la renueva o vuelve a entrar con la cuenta editorial de .env.local. */
-async function conSesion<T>(trabajo: (acceso: string) => Promise<T>, solicitar: Solicitar): Promise<T> {
+export async function conSesion<T>(trabajo: (acceso: string) => Promise<T>, solicitar: Solicitar): Promise<T> {
   if (!spotmiPuedeProponer()) throw sinConexion();
   const intento = async () => {
     const secreto = secretoDe("spotmi");
@@ -107,6 +109,8 @@ export async function enviarEventoASpotmi(id: string, solicitar: Solicitar = sol
   if (!spotmiPuedeProponer()) throw sinConexion();
   const preparado = transaccion(() => {
     const e = leerEvento(id);
+    if (e.spotmiClave?.startsWith("ezra-publicar-"))
+      throw new WorkflowError("Hay una publicación directa iniciada. Confírmala con «Publicar en Spotmi»; no la envíes como propuesta.", 409);
     if (e.spotmiEstado && e.spotmiPropuestaId)
       throw new WorkflowError("Este evento ya se propuso a Spotmi. Consulta su estado.", 409);
     const propuesta = mapearPropuesta(e);

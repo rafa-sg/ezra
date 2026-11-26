@@ -1,5 +1,131 @@
 # Decisiones
 
+## 2026-11-25 · Rectificación del proyecto de producción
+
+Se confirma con los archivos JavaScript desplegados de spotmi.com.sv y ADMIN.md
+que producción es `bvmzrmvrdbfpkdhwazgv`; `nwcmrcgfhdufnaomzkmz` es desarrollo.
+La identificación anterior basada en la etiqueta de rama main PRODUCTION era
+incorrecta. El fix se aplicó y Garmin se publicó una vez en desarrollo; no está
+en la web pública. Se conserva ese recibo y su trazabilidad, sin fingir éxito en
+producción ni alterar la base que usa la web. La cuenta abierta no permite entrar
+al proyecto real y su RPC de identidad no está disponible (PGRST202).
+Se requiere acceso al panel correcto, diagnóstico de esquema y configuración de
+una cuenta editorial de ese proyecto antes de migrar la conexión. No se realiza
+un db push general ni se elimina el evento de desarrollo.
+Los apartados anteriores de esta sesión, debajo, son historial y quedan corregidos
+por esta entrada y la guía SPOTMI_PUBLICACION_DIRECTA.md.
+
+## 2026-11-25 · Corrección del recibo y conservación del historial
+
+El envío autorizado de Garmin expuso un fallo de la función SQL preparada en esta
+sesión: `ezra_publicar_evento.event_id` no referencia la variable local en UPDATE
+y causa 42P01. PostgreSQL revierte la transacción completa. Se sustituye esa variable
+por `published_event_id` en la migración correctiva 202611250001, conservando
+permisos, contenido y clave idempotente. Corrección probada en PostgreSQL local con
+fixture; aplicación remota pendiente. La autorización registrada de Garmin permite
+recuperar el mismo envío; no autoriza editarlo ni crear otra copia.
+
+El propietario pidió ocultar los eventos que llevan dos días vencidos conservando
+la búsqueda histórica. La bandeja usa días de calendario de El Salvador y la fecha
+de cierre de eventos de varios días. Se ocultan en la vista, sin cambiar estado ni
+borrar datos; búsqueda, rango de fechas y «Mostrar eventos vencidos» incluyen el
+historial. Sin fecha confirmada no se ocultan automáticamente.
+
+## 2026-11-25 · Conexión editorial de producción verificada
+
+El propietario creó una cuenta con UUID nuevo y mostró la habilitación con
+activo, puede_publicar y tiene_contrasena en true. Se inició sesión desde el
+adaptador real, se guardó la conexión compartida cifrada y se volvió a verificar.
+Identidad correcta, capacidad publicar_eventos y ninguna configuración faltante.
+No se publicó contenido ni se cambió DNS. La primera publicación sigue exigiendo
+una versión aprobada y autorización expresa PUBLICAR por el propietario.
+
+
+## 2026-11-25 · Proyecto Supabase de producción identificado
+
+El propietario mostró Spotmi-Web en la organización Rodrigo-Claros, rama main
+PRODUCTION. Verificado en el panel abierto: `nwcmrcgfhdufnaomzkmz.supabase.co`.
+No es el proyecto de desarrollo `bvmzrmvrdbfpkdhwazgv` del entorno local.
+No se cambió `.env.local`, no se copiaron claves ni se alteraron permisos.
+Se preparó `docs/supabase/diagnostico_produccion.sql` para comprobar en sólo lectura
+tablas y RPC antes de aplicar migraciones. El intento de introducir SQL en la UI
+no fue fiable; no se obtuvieron resultados de esquema ni se ejecutaron migraciones.
+
+La captura posterior del propietario muestra el diagnóstico parcial ejecutado:
+`events` y `event_proposals` existen, pero `ezra_clientes_editoriales` y
+`ezra_publicaciones` no existen. Esto impide aplicar 20261125 de forma aislada:
+requiere el esquema editorial previo. Falta contrastar el historial de migraciones;
+consulta de sólo lectura en `docs/supabase/comprobar_migraciones.sql`.
+
+El propietario informa cero filas en el historial para las tres versiones.
+Se prepara un ensayo conjunto con dependencias, verificaciones de ACL y ROLLBACK
+en `docs/supabase/probar_instalacion_ezra.sql`. Sin cuentas ni eventos de prueba
+en producción: valida instalación estructural antes de planificar la aplicación
+permanente. Aún no ejecutado; no sustituye los ataques funcionales en desarrollo.
+
+Actualización: el propietario mostró el ensayo terminado con «PRUEBA CORRECTA»
+y ambas tablas revertidas en true. Se prepara `instalar_integracion_ezra.sql`
+con el mismo cuerpo de migraciones probado, un preflight del historial y registro
+de las tres versiones dentro de la misma transacción. La aplicación permanente
+sigue pendiente; instalar no crea cuentas, no concede permiso editorial a ningún
+usuario y no publica eventos. Las pruebas funcionales siguen pendientes.
+
+Actualización posterior: captura del propietario confirma la instalación permanente
+con ambas tablas en true, tres versiones registradas y cero cuentas habilitadas.
+El siguiente paso es una cuenta de Supabase Auth exclusiva, confirmada y sin rol
+administrativo de Spotmi. Su contraseña la introduce el propietario personalmente;
+el UUID permite preparar la habilitación editorial sin revelar credenciales.
+El entorno local todavía no se cambió y no se publicó ningún evento.
+
+El propietario pidió habilitar dos cuentas editoriales y proporcionó sus UUID y
+correos. El script específico está en work/ (excluido de Git) y la plantilla sin
+datos personales en docs/supabase/. Valida identidad y correo confirmado y rechaza
+cuentas del equipo administrador antes de dar el permiso editorial. Ambas quedan
+habilitables, pero el adaptador actual usa una sola conexión editorial compartida
+principal; no crea dos destinos ni publica dos copias. El script aún no se ejecutó.
+
+Actualización: el alta de ambas cuentas fue rechazada porque la primera ya era
+administradora. Se mantuvo la comprobación y se preparó el alta sólo de la segunda.
+El propietario mostró una fila de esa segunda cuenta con activo y puede_publicar
+en true: permiso editorial confirmado. La configuración del servidor y la prueba
+funcional continúan pendientes; no se publicó ningún evento.
+
+El propietario proporcionó una clave publishable de producción. Se actualizó
+`.env.local` con el proyecto confirmado, su clave pública y el correo editorial
+habilitado. Se guardó un respaldo privado del entorno anterior en work/. La
+contraseña continúa pendiente de entrada directa por el propietario; no se ha
+iniciado sesión ni se ha verificado la conexión ni se ha publicado contenido.
+
+## 2026-11-25 · Publicación de eventos con autorización final en Ezra
+
+El propietario confirmó que su autorización en Ezra debe publicar el evento en
+Spotmi sin una segunda aprobación allí. Prevalece sobre el límite anterior de
+«sólo propuestas» para esta acción explícita de Eventos. Aprobar no publica:
+`publicar_spotmi` exige rol propietario, revisión vigente y `PUBLICAR`. El publicador
+genérico conserva su contrato de propuestas; no se habilita publicación automática.
+
+La nueva capacidad `publicar_eventos` sólo llega de la identidad editorial real.
+La migración preparada añade `puede_publicar=false`, RPC limitada, recibos privados
+por cuenta/huella y subida inmutable de portadas en la carpeta de la propia cuenta.
+No otorga rol administrador ni usa service_role en Ezra. El trigger conserva las
+protecciones de 20261117 con una excepción limitada a la RPC autorizada al insertar.
+Cambiar una imagen o permiso invalida la aprobación; durante un envío ambiguo se
+bloquean los cambios y se reintenta la misma clave. El hash incluye cuenta, datos,
+fecha final, archivo y permiso. Una ocultación posterior no se revierte al reintentar.
+
+No aplicado a Supabase: el entorno local sigue apuntando al proyecto de desarrollo
+`bvmzrmvrdbfpkdhwazgv` y faltan las credenciales editoriales. No se tocó DNS, no se
+desplegó, no se reinició el servidor ni se publicó ningún evento. Contrato, migración
+y ensayo SQL reversible en `docs/SPOTMI_PUBLICACION_DIRECTA.md` y `docs/supabase/`.
+
+## 2026-11-22 · Perfiles pendientes de Spotmi en Apps
+
+- Propietarios y socios con acceso a Apps pueden consultar las fichas de Facebook y TikTok antes de
+  autorizar sus cuentas compartidas. Cuando llega la cuenta compartida de Spotmi, ocupa el lugar de
+  la ficha pendiente. El selector mantiene válidos los enlaces que apuntaban a ella.
+- Las fichas pendientes son de presentación. No se guardan IDs ni tokens simulados, no se ofrecen
+  como destinos de publicación y sus métricas aparecen como «No disponible».
+
 ## 2026-11-21 · Configuración y Uso de las IAs
 
 - El uso se mide en Ezra, no se lee de los planes: Gemini por tokens contra el presupuesto que escribe el propietario; Astra y Claude por intentos contra el límite compartido de 30 al mes (encargos + granjas). Ningún porcentaje se inventa: sin límite escrito, la interfaz dice «Sin límite configurado».

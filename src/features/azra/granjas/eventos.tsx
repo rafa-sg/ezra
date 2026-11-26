@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import type { Evento, EstadoVisible } from "@/lib/granjas/eventos";
+import { expiredInInbox, inboxEvents } from "@/lib/event-inbox";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
 import { ListaPosts } from "./posts";
@@ -31,6 +32,7 @@ type Respuesta = {
   conteo: Record<EstadoVisible, number>;
   total: number;
   spotmi: boolean;
+  spotmiPublicacion: boolean;
   categorias: string[];
   departamentos: string[];
   sinImagen: string[];
@@ -102,7 +104,7 @@ const host = (url: string) => {
 const hoyLocal = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "America/El_Salvador" }).format(new Date());
 
-/** Bandeja de eventos: el propietario decide; Spotmi solo recibe propuestas pendientes de lo aprobado. */
+/** Bandeja de eventos: propuestas o publicación directa con autorización de versión. */
 export function SeccionEventos({
   g,
   fecha,
@@ -118,9 +120,16 @@ export function SeccionEventos({
     desde: string;
     hasta: string;
   }>({ estado: "", desde: "", hasta: "" });
+  const [includeExpired, setIncludeExpired] = useState(false);
+  const [today, setToday] = useState(hoyLocal);
+  useEffect(() => {
+    const timer = setInterval(() => setToday(hoyLocal()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const [publication, setPublication] = useState<{ event: EventoVista; confirmation: string } | null>(null);
   const [editando, setEditando] = useState<{ evento: EventoVista; form: Formulario } | null>(null);
   const [descartando, setDescartando] = useState<{ evento: EventoVista; motivo: string } | null>(
     null,
@@ -457,7 +466,11 @@ export function SeccionEventos({
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase();
   const textoBuscado = normal(busqueda.trim());
-  const visibles = datos.eventos
+  const inbox = inboxEvents(datos.eventos, {
+    today, includeExpired, search: busqueda, from: filtro.desde, until: filtro.hasta,
+  });
+  const expiredCount = datos.eventos.filter((event) => expiredInInbox(event, today)).length;
+  const visibles = inbox
     .filter((e) => !cuidado || e.confianza.puntos < 50)
     .filter(
       (e) =>
@@ -523,15 +536,20 @@ export function SeccionEventos({
         </label>
         <details
           className="ev-plegable"
-          open={Boolean(filtro.desde || filtro.hasta || cuidado) || undefined}
+          open={Boolean(filtro.desde || filtro.hasta || cuidado || includeExpired) || undefined}
         >
           <summary>
             {g("ev_masFiltros")}
-            {[filtro.desde, filtro.hasta, cuidado].filter(Boolean).length
-              ? ` · ${[filtro.desde, filtro.hasta, cuidado].filter(Boolean).length}`
+            {[filtro.desde, filtro.hasta, cuidado, includeExpired].filter(Boolean).length
+              ? ` · ${[filtro.desde, filtro.hasta, cuidado, includeExpired].filter(Boolean).length}`
               : ""}
           </summary>
           <div className="ev-plegable-cuerpo">
+            <label className="eg-check">
+              <input type="checkbox" checked={includeExpired} onChange={(e) => setIncludeExpired(e.target.checked)} />
+              {g("ev_mostrarVencidos")} ({expiredCount})
+            </label>
+            <small>{g("ev_historialAyuda")}</small>
             <label className="eg-campo">
               {g("ev_desde")}
               <input
@@ -560,9 +578,10 @@ export function SeccionEventos({
         </details>
         <button
           className="ep-boton ep-texto"
-          disabled={!filtro.estado && !filtro.desde && !filtro.hasta && !cuidado && !busqueda}
+          disabled={!filtro.estado && !filtro.desde && !filtro.hasta && !cuidado && !busqueda && !includeExpired}
           onClick={() => (
             setFiltro({ estado: "", desde: "", hasta: "" }),
+            setIncludeExpired(false),
             setCuidado(false),
             setBusqueda("")
           )}
@@ -1228,6 +1247,17 @@ export function SeccionEventos({
                 {e.estado === "aprobado" && !e.spotmiPropuestaId && (
                   <button
                     className="ep-boton ep-primario"
+                    disabled={ocupado || !datos.spotmiPublicacion}
+                    title={datos.spotmiPublicacion ? undefined : g("ev_publicacionNoHabilitada")}
+                    onClick={() => { setAbierto(null); setPublication({ event: e, confirmation: "" }); }}
+                  >
+                    <Send size={15} />
+                    {g("ev_publicarSpotmi")}
+                  </button>
+                )}
+                {e.estado === "aprobado" && !e.spotmiPropuestaId && !datos.spotmiPublicacion && !e.spotmiClave?.startsWith("ezra-publicar-") && (
+                  <button
+                    className="ep-boton"
                     disabled={ocupado || !datos.spotmi}
                     title={datos.spotmi ? undefined : g("ev_spotmiNoConectado")}
                     onClick={() =>
@@ -1416,6 +1446,40 @@ export function SeccionEventos({
               </div>
             </div>
           ))(enPanel)}
+      </Modal>
+      <Modal open={Boolean(publication)} onClose={() => { if (!ocupado) setPublication(null); }} label={g("ev_publicarSpotmi")} className="ep-modal">
+        {publication && (
+          <form className="eg-guia" onSubmit={async (event) => {
+            event.preventDefault();
+            await accion({ accion: "publicar_spotmi", id: publication.event.id, revision: publication.event.revision, confirmation: publication.confirmation }, g("ev_publicadoSpotmi"));
+            // Un error también puede reservar una clave e incrementar la revisión.
+            setPublication(null);
+          }}>
+            <h2>{g("ev_publicarSpotmi")}</h2>
+            <p>{g("ev_publicacionAviso")}</p>
+            <strong>{publication.event.titulo}</strong>
+            <p>{publication.event.fecha} {publication.event.hora} · {publication.event.lugar}</p>
+            <dl>
+              {([
+                ["ev_fechaFin", publication.event.fechaFin],
+                ["ev_municipio", publication.event.municipio],
+                ["ev_departamento", publication.event.departamento],
+                ["ev_categoria", publication.event.categoria],
+                ["ev_precio", publication.event.precio],
+              ] as const).filter(([, value]) => value).map(([label, value]) => <div key={label}><dt>{g(label)}</dt><dd>{value}</dd></div>)}
+            </dl>
+            {publication.event.boletosUrl && <a href={publication.event.boletosUrl} target="_blank" rel="noreferrer">{g("ev_boletos")}</a>}
+            <p>{publication.event.descripcion}</p>
+            <a href={publication.event.fuenteUrl} target="_blank" rel="noreferrer">{g("ev_fuente")}</a>
+            {publication.event.imagenMedioId && publication.event.imagenConfirmada && publication.event.imagenTipo !== "ia"
+              ? <img src={`/api/granjas/medios/${publication.event.imagenMedioId}`} alt={publication.event.titulo} style={{ maxWidth: "100%", maxHeight: 280, objectFit: "contain" }} />
+              : <p>{g("ev_publicacionSinPortada")}</p>}
+            <label>{g("ev_publicacionConfirmar")}
+              <input value={publication.confirmation} disabled={ocupado} autoComplete="off" onChange={(e) => setPublication({ ...publication, confirmation: e.target.value })} />
+            </label>
+            <button className="ep-boton ep-primario" type="submit" disabled={ocupado || publication.confirmation !== "PUBLICAR"}>{g("ev_publicarSpotmi")}</button>
+          </form>
+        )}
       </Modal>
       <Modal
         open={Boolean(prompt)}
