@@ -133,6 +133,7 @@ export function FilaEvento({
   notaImagen,
   precio,
   onRevisar,
+  onAnticipar,
   acciones,
 }: {
   g: G;
@@ -144,6 +145,7 @@ export function FilaEvento({
   notaImagen: string | null;
   precio: string;
   onRevisar: () => void;
+  onAnticipar?: () => void;
   acciones: AccionMenu[];
 }) {
   const [rota, setRota] = useState(false);
@@ -169,7 +171,7 @@ export function FilaEvento({
       </div>
       <div className="ev-fila-cuerpo">
         <h3 className="ev-titulo">
-          <button type="button" onClick={onRevisar}>
+          <button type="button" onClick={onRevisar} onPointerEnter={onAnticipar} onFocus={onAnticipar}>
             {e.titulo}
           </button>
         </h3>
@@ -202,6 +204,8 @@ export function FilaEvento({
             type="button"
             className="ep-boton ep-primario"
             onClick={onRevisar}
+            onPointerEnter={onAnticipar}
+            onFocus={onAnticipar}
             aria-label={`${g("ev_revisar")}: ${e.titulo}`}
           >
             {g("ev_revisar")}

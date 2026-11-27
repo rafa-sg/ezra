@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { serverTiming } from "@/lib/server-timing";
 import { summarizeEvent } from "@/lib/event-summary";
 import { filtrarEventos } from "@/lib/granjas/eventos";
 import { administrador, propietario, cuerpo, errorApi } from "@/lib/granjas/api";
@@ -109,20 +110,31 @@ function tablaConfianza(lista: ReturnType<typeof listarEventos>) {
 }
 const sinImagenOficial = (e: { imagenTipo: string | null; imagenConfirmada: boolean }) => !e.imagenConfirmada && (e.imagenTipo === null || e.imagenTipo === "prensa" || e.imagenTipo === "ia");
 export async function GET(request: Request) {
+  const timing = serverTiming();
+  const json = (body: unknown) => {
+    timing.mark("prepare");
+    const response = Response.json(body, { headers: { "Cache-Control": "no-store" } });
+    timing.mark("serialize");
+    response.headers.set("Server-Timing", timing.header());
+    return response;
+  };
   try {
-    const access = await administrador("eventos");
+    const access = await administrador("eventos", "leer", timing.mark);
+    timing.mark("access");
     const p = new URL(request.url).searchParams;
     if (p.has("id")) {
       const evento = leerEvento(id.parse(p.get("id")));
-      return Response.json({ evento: { ...evento, ficha: fichaTexto(evento) } }, { headers: { "Cache-Control": "no-store" } });
+      timing.mark("read");
+      return json({ evento: { ...evento, ficha: fichaTexto(evento) } });
     }
     const estado = z.enum(estadosVisibles).nullable().catch(null).parse(p.get("estado"));
     const filtro = { estado, desde: dia.catch(null).parse(p.get("desde")), hasta: dia.catch(null).parse(p.get("hasta")) };
     const todos = listarEventos();
+    timing.mark("read");
     const hoy = diaLocal(new Date());
     const eventos = filtrarEventos(todos, filtro);
     const conteo = Object.fromEntries(estadosVisibles.map((e) => [e, todos.filter((x) => x.estadoVisible === e).length]));
-    return Response.json(
+    return json(
       {
         eventos: p.get("vista") === "resumen" ? eventos.map(summarizeEvent) : eventos.map((e) => ({ ...e, ficha: fichaTexto(e) })),
         conteo,
@@ -140,7 +152,6 @@ export async function GET(request: Request) {
         imagenesIA: await estadoImagenesIA(),
         imagenesAstra: estadoImagenesAstra(),
       },
-      { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     return errorApi(error);

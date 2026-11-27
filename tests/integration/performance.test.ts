@@ -99,13 +99,19 @@ test(
         }),
       });
       assert.equal(pasted.status, 200, await pasted.clone().text());
-      const list = await (await request("/api/granjas/eventos?vista=resumen")).json();
+      const listResponse = await request("/api/granjas/eventos?vista=resumen");
+      assert.match(listResponse.headers.get("server-timing") ?? "", /session;dur=[\d.]+, profile;dur=[\d.]+, identity;dur=[\d.]+, access;dur=[\d.]+, read;dur=[\d.]+, prepare;dur=[\d.]+, serialize;dur=[\d.]+, total;dur=[\d.]+/);
+      assert.match(listResponse.headers.get("x-ezra-proxy-duration") ?? "", /^\d+\.\d{2}$/);
+      const list = await listResponse.json();
       assert.equal(list.eventos.length, 1);
       const item = list.eventos[0];
       assert.ok(!("imagenes" in item) && !("fuentes" in item) && !("ficha" in item));
       const detailUrl = `/api/granjas/eventos?id=${item.id}`;
       assert.equal((await request(detailUrl, "")).status, 401);
-      const detail = await (await request(detailUrl)).json();
+      const detailResponse = await request(detailUrl);
+      assert.match(detailResponse.headers.get("server-timing") ?? "", /session;dur=[\d.]+, profile;dur=[\d.]+, identity;dur=[\d.]+, access;dur=[\d.]+, read;dur=[\d.]+, prepare;dur=[\d.]+, serialize;dur=[\d.]+, total;dur=[\d.]+/);
+      assert.match(detailResponse.headers.get("cache-control") ?? "", /no-store/);
+      const detail = await detailResponse.json();
       assert.equal(detail.evento.revision, item.revision);
       assert.ok(Array.isArray(detail.evento.fuentes) && typeof detail.evento.ficha === "string");
 

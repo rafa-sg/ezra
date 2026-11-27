@@ -1,0 +1,31 @@
+{
+  "mode": "production fixture",
+  "events": 100,
+  "identityProvider": "offline test fixture, not live Clerk",
+  "frameMethod": "requestAnimationFrame intervals, not GPU-presented frame count",
+  "interactionMethod": "PerformanceObserver event entries grouped by interactionId; maximum within each sampling window, not whole-session INP",
+  "runs": [
+    {"label":"desktop_interaction_1","width":1280,"height":720,"durationMs":15657,"frameCount":471,"medianMs":33.3,"p95Ms":34.2,"p99Ms":34.3,"maxMs":34.4,"rafCadenceFps":30.14,"interactionCount":23,"interactionMaxMs":56,"longTasks":0},
+    {"label":"desktop_idle","width":1280,"height":720,"durationMs":16699,"frameCount":500,"medianMs":33.3,"p95Ms":34.1,"p99Ms":34.3,"maxMs":34.4,"rafCadenceFps":30,"interactionCount":1,"interactionMaxMs":48,"longTasks":0},
+    {"label":"desktop_interaction_2","width":1280,"height":720,"durationMs":8432,"frameCount":252,"medianMs":33.3,"p95Ms":34.2,"p99Ms":34.3,"maxMs":34.4,"rafCadenceFps":30,"interactionCount":23,"interactionMaxMs":56,"longTasks":0},
+    {"label":"mobile_interaction","width":390,"height":844,"durationMs":15683,"frameCount":471,"medianMs":33.3,"p95Ms":34.6,"p99Ms":35,"maxMs":35.2,"rafCadenceFps":30.09,"interactionCount":22,"interactionMaxMs":56,"longTasks":0},
+    {"label":"desktop_idle_clean","width":1280,"height":720,"durationMs":24044,"frameCount":722,"medianMs":33.3,"p95Ms":34.7,"p99Ms":35,"maxMs":35.3,"rafCadenceFps":30.07,"interactionCount":0,"interactionMaxMs":0,"longTasks":0}
+  ],
+  "notes": [
+    "First two desktop interaction runs and first idle run include the meter start-button interaction; event maxima are conservative upper bounds for app interactions.",
+    "Mobile and final idle runs exclude meter controls from Event Timing.",
+    "One initial attempt with no frame samples and one mobile attempt without an active meter were discarded.",
+    "Idle cadence was also approximately 30 Hz; these numbers do not establish 60 or 120 FPS on the user's native browser.",
+    "Fixture events contain no image media and do not cover map or social-profile rendering.",
+    "Intervals include pauses between automated actions, so averages/p95 can include idle time; maxima and long tasks were also checked."
+  ],
+  "mobileWidthCheck": {"viewport":390,"page":390,"dialog":390},
+  "liveClerkProfile": {
+    "operation":"read configured owner's profile, no account changes",
+    "samplesMs":[6293.91375,184.488958,176.140792,178.402083,167.379417],
+    "firstCallMs":6293.91375,
+    "warmMedianMs":177.2714375,
+    "notes":"Single process, SDK client/connection reused. Includes client and transport costs; does not isolate DNS, TLS or Clerk server processing. No identities or credentials saved."
+  },
+  "fixtureHttp": {"requests":12,"listMedianMs":9.274541,"lastRouteTotalMs":4.59,"lastProfileMs":2.19,"note":"Local fake identity service, not comparable to live Clerk latency."}
+}

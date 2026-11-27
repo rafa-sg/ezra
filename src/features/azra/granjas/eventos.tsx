@@ -27,6 +27,9 @@ import type { CuentasSeguidas, EstadoLectura } from "@/lib/granjas/redes";
 import { EventCatalog } from "./event-catalog";
 import { ImagenOriginal } from "./imagen-original";
 import { FilaEvento, IndicadorConfianza } from "./eventos-lista";
+import { EventDetailPreview } from "./event-detail-preview";
+import { detailPrefetch } from "@/lib/detail-prefetch";
+import { EventSearch } from "./event-search";
 
 type EventoVista = Evento & { ficha: string };
 const normal = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -158,21 +161,33 @@ export function SeccionEventos({
   const [conIA, setConIA] = useState(false);
   // Panel lateral con la ficha completa y todas las acciones.
   const [abierto, setAbierto] = useState<string | null>(null);
-  const [panelEvent, setPanelEvent] = useState<EventoVista | null>(null);
-  const [detailError, setDetailError] = useState("");
+  const [panelDetail, setPanelDetail] = useState<{
+    id: string;
+    source: Respuesta | null;
+    event: EventoVista | null;
+    error: string;
+  } | null>(null);
+  const details = useMemo(() => detailPrefetch<EventoVista>(async (id, signal) => {
+    if (!datos) throw new Error("La bandeja todavía no está disponible.");
+    const r = await fetch(`/api/granjas/eventos?id=${encodeURIComponent(id)}`, { cache: "no-store", signal });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error ?? `Error ${r.status}`);
+    return data.evento as EventoVista;
+  }), [datos]);
+  useEffect(() => () => details.dispose(), [details]);
   useEffect(() => {
     if (!abierto) return;
-    const controller = new AbortController();
-    fetch(`/api/granjas/eventos?id=${encodeURIComponent(abierto)}`, { cache: "no-store", signal: controller.signal })
-      .then(async (r) => {
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.error ?? `Error ${r.status}`);
-        return data.evento as EventoVista;
+    const { controller, promise } = details.take(abierto);
+    promise
+      .then((event) => {
+        if (!controller.signal.aborted) setPanelDetail({ id: abierto, source: datos, event, error: "" });
       })
-      .then((event) => { setPanelEvent(event); setDetailError(""); })
-      .catch((error) => { if (error.name !== "AbortError") setDetailError(error.message); });
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setPanelDetail({ id: abierto, source: datos, event: null, error: error.message });
+      });
     return () => controller.abort();
-  }, [abierto, datos]);
+  }, [abierto, datos, details]);
   async function withEvent(id: string, action: (event: EventoVista) => void) {
     setOcupado(true);
     setError("");
@@ -278,6 +293,7 @@ export function SeccionEventos({
   const [cuidado, setCuidado] = useState(false);
   const [orden, setOrden] = useState<"fecha" | "confianza_baja" | "confianza_alta">("fecha");
   const [busqueda, setBusqueda] = useState("");
+  const [searchReset, setSearchReset] = useState(0);
   const deferredSearch = useDeferredValue(busqueda);
   const detener = useRef(false);
   /** Recorre de a uno los eventos sin imagen: cada paso es una petición, así se ve el progreso y se puede detener. */
@@ -391,27 +407,32 @@ export function SeccionEventos({
       setError(g("ev_copiaFallo"));
     }
   }
-  const diaCorto = (dia: string) =>
-    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(new Date(`${dia}T12:00:00Z`));
-  const horaCorta = (hora: string) =>
-    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: "UTC",
-    }).format(new Date(`2000-01-01T${hora}:00Z`));
-  const fechaLarga = (dia: string) =>
-    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      timeZone: "UTC",
-    }).format(new Date(`${dia}T12:00:00Z`));
+  const formats = useMemo(() => {
+    const language = locale === "es" ? "es-SV" : "en-US";
+    return {
+      short: new Intl.DateTimeFormat(language, {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      }),
+      hour: new Intl.DateTimeFormat(language, {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "UTC",
+      }),
+      long: new Intl.DateTimeFormat(language, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        timeZone: "UTC",
+      }),
+    };
+  }, [locale]);
+  const diaCorto = (dia: string) => formats.short.format(new Date(`${dia}T12:00:00Z`));
+  const horaCorta = (hora: string) => formats.hour.format(new Date(`2000-01-01T${hora}:00Z`));
+  const fechaLarga = (dia: string) => formats.long.format(new Date(`${dia}T12:00:00Z`));
   /** Organizador o dominio de la fuente (la cuenta si vino de una red). */
   const origenVisible = (e: EventoVista | EventSummary) => {
     if ("sourceAccount" in e) return e.sourceAccount || host(e.fuenteUrl);
@@ -518,7 +539,10 @@ export function SeccionEventos({
         <EventCatalog events={datos.eventos} locale={locale} g={g} />
       </div>
     );
-  const enPanel = panelEvent?.id === abierto ? panelEvent : null;
+  const currentDetail = panelDetail?.id === abierto && panelDetail.source === datos ? panelDetail : null;
+  const enPanel = currentDetail?.event ?? null;
+  const detailError = currentDetail?.error ?? "";
+  const previewEvent = datos?.eventos.find((event) => event.id === abierto);
   return (
     <div className="eg-eventos">
       {pestanas}
@@ -536,11 +560,11 @@ export function SeccionEventos({
       <div className="ev-barra" role="group" aria-label={g("ev_filtros")}>
         <label className="eg-campo ev-buscar">
           {g("ev_buscar")}
-          <input
-            type="search"
-            value={busqueda}
+          <EventSearch
+            key={searchReset}
+            initialValue={busqueda}
             placeholder={g("ev_buscarAyuda")}
-            onChange={(e) => setBusqueda(e.target.value)}
+            onSearch={setBusqueda}
           />
         </label>
         <label className="eg-campo">
@@ -616,7 +640,8 @@ export function SeccionEventos({
             setFiltro({ estado: "", desde: "", hasta: "" }),
             setIncludeExpired(false),
             setCuidado(false),
-            setBusqueda("")
+            setBusqueda(""),
+            setSearchReset((value) => value + 1)
           )}
         >
           {g("ev_limpiar")}
@@ -838,7 +863,8 @@ export function SeccionEventos({
                       ? g("ev_gratis")
                       : `${g("ev_desde")} $${Number.isInteger(e.precioDesde.valor) ? e.precioDesde.valor : e.precioDesde.valor.toFixed(2)}`
                 }
-                onRevisar={() => { setPanelEvent(null); setDetailError(""); setAbierto(e.id); }}
+                onRevisar={() => { setPanelDetail(null); setAbierto(e.id); }}
+                onAnticipar={() => details.warm(e.id)}
                 acciones={[
                   ...(e.estado === "nuevo"
                     ? [
@@ -1033,12 +1059,18 @@ export function SeccionEventos({
       <Modal
         open={Boolean(abierto)}
         onClose={() => setAbierto(null)}
-        label={enPanel?.titulo ?? g("ev_verMas")}
+        label={enPanel?.titulo ?? previewEvent?.titulo ?? g("ev_verMas")}
         className="ep-modal eg-panel-lateral"
         dismissOnBackdrop
       >
         {detailError && <p role="alert">{detailError}</p>}
-        {!enPanel && !detailError && <p role="status">{g("cargando")}</p>}
+        {!enPanel && !detailError && (
+          <EventDetailPreview
+            event={previewEvent}
+            when={[previewEvent?.fecha ? diaCorto(previewEvent.fecha) : "", previewEvent?.hora ? horaCorta(previewEvent.hora) : ""].filter(Boolean).join(" · ")}
+            loading={locale === "es" ? "Abriendo ficha…" : "Opening details…"}
+          />
+        )}
         {enPanel &&
           ((e) => (
             <div className={`eg-panel-evento eg-evento-${e.estadoVisible}`}>

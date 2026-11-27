@@ -10,8 +10,8 @@ import { WorkflowError } from "../workflow";
  * las que le dio el propietario (y sin escribir si es de solo lectura). Se comprueba en cada solicitud.
  * El id de Clerk (`usuario`) liga el estado OAuth y las preferencias a la sesión.
  */
-export async function administrador(seccion: SeccionEquipo | "*", modo: "leer" | "escribir" = "leer") {
-  const cuenta = await requireAccount();
+export async function administrador(seccion: SeccionEquipo | "*", modo: "leer" | "escribir" = "leer", mark?: (phase: string) => void) {
+  const cuenta = await requireAccount(mark);
   if (!cuenta.equipo) throw new WorkflowError("Esta acción requiere una cuenta del equipo de Spotmi.", 403);
   if (!permite(cuenta.equipo, seccion, modo === "escribir"))
     throw new WorkflowError(

@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { summarizeEvent } from "../src/lib/event-summary";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { EventDetailPreview } from "../src/features/azra/granjas/event-detail-preview";
 
 // Base de prueba en work/; Gemini, páginas y Supabase simulados.
 process.env.EZRA_DATA_DIR = path.resolve(`work/eventos-test-${process.pid}-${Date.now()}`);
@@ -395,6 +398,14 @@ test("lista ligera: conserva identidad/revisión y abre historiales solamente en
   assert.equal(summary.confianza.puntos, evento.confianza.puntos);
   for (const field of ["imagenes", "fuentes", "sugerencias", "confirmadoEn", "huella", "ficha"])
     assert.ok(!(field in summary), field);
+  const preview = renderToStaticMarkup(createElement(EventDetailPreview, {
+    event: summary, when: "", loading: "Abriendo ficha…",
+  }));
+  assert.match(preview, /Prueba de resumen de evento/);
+  assert.match(preview, /Datos verificados/);
+  assert.match(preview, /aria-busy="true"/);
+  assert.match(preview, /role="status"/);
+  assert.doesNotMatch(preview, /<button|<form|<a\s/, "el resumen pendiente no ofrece acciones de revisión ni publicación");
   const snapshot = eventos.listarEventos();
   assert.deepEqual(eventos.filtrarEventos(snapshot, { estado: "nuevo" }).map((e) => e.id), eventos.listarEventos({ estado: "nuevo" }).map((e) => e.id));
 });

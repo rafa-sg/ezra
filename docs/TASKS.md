@@ -1,5 +1,45 @@
 # Estado y relevo
 
+## 2026-11-27 · Producción aislada y latencia real del proveedor
+
+- [x] Dos recorridos de escritorio y uno móvil sobre el build de producción, 100 eventos de prueba y perfil simulado local. Máximo Event Timing 56 ms, sin tareas largas; rAF p95 34,2/34,2/34,6 ms, sin picos frente al reposo (p95 34,7 ms). El entorno también da ~30 Hz en reposo: no declarar 60/120 FPS nativos.
+- [x] Móvil: página y ficha de 390 px dentro del viewport de 390 px; búsqueda, fichas distintas y Escape comprobados. Se cerró la pestaña temporal, se restauró viewport y se detuvo el arnés sin reiniciar el servidor habitual.
+- [x] Consulta real de Clerk, sólo lectura: primera llamada 6.293,91 ms; cuatro posteriores 167,38–184,49 ms, mediana 177,27 ms. No se registró información personal ni credenciales. La llamada remota individual sigue teniendo latencia; no introducir una caché de perfiles que retrase rechazo por bloqueo/correo no verificado.
+- [x] Datos resumidos y límites en `docs/performance-browser-2026-11-27.json` y en el informe principal. Arneses reproducibles en `scripts/performance-browser-fixture.mts` y `scripts/measure-clerk-profile.mts`; no son rutas del producto.
+- [ ] Medios reales, mapa/perfiles sociales y FPS en navegador nativo de producción siguen fuera de esta validación sintética. No afirmar que desapareció cualquier lag de toda la aplicación.
+
+## 2026-11-27 · Reducir trabajo repetido y respuesta al escribir
+
+- [x] El buscador mantiene la escritura en un componente independiente y actualiza el listado mediante una transición; «Quitar filtros» reinicia también el texto local. Se reutilizan tres formateadores Intl por idioma en vez de reconstruirlos por cada fila/render.
+- [x] Anticipación al enfocar/pasar por título o Revisar: sólo una lectura pendiente, ligada al listado actual, reutilizable durante menos de 3 segundos y consumida una sola vez. Cambiar listado/unmontar cancela la anticipación; fallos permiten reintento. Cada solicitud sigue pasando por autenticación y cada mutación vuelve a verificar permisos/versión.
+- [x] Las consultas simultáneas de currentUser comparten sólo la promesa en curso por identidad ya autenticada. No se guardan perfiles ni errores terminados, ni roles/permisos locales. Las consultas posteriores vuelven a verificar con Clerk.
+- [x] Server-Timing separa ahora session, profile e identity, además de access/read/prepare/serialize/total. Permite distinguir la API remota de las lecturas locales; no elimina por sí solo la latencia individual de Clerk.
+- [x] `npm run check`: lint, tipos y 233 pruebas; build aislado y 9 integraciones aprobados tras el cambio final. Regresiones de deduplicación, separación entre identidades, fallo/reintento, caducidad/cancelación/consumo de anticipación y contratos HTTP de tiempos.
+- [x] Perfil final de Brave en desarrollo: búsqueda con teclas reales «garmin», una coincidencia, apertura y Escape. INP 61 ms, demora de entrada 1 ms, procesamiento 39 ms, presentación 22 ms (red/CPU sin limitación; redondeos de DevTools). DevTools cerrado al terminar. No se reinició el servidor.
+- [ ] Perfil controlado en producción con repeticiones y cuadros activos/FPS. Una muestra intermedia dio INP 621 ms antes de separar el buscador; otra captura se interrumpió y no se usa como validación de búsqueda. No atribuir porcentajes de mejora entre recorridos/condiciones diferentes.
+- [ ] Medir latencia remota de perfil por separado con las nuevas cabeceras; el coste individual de la consulta de perfil no está eliminado. Para mantener rechazo inmediato de cuenta bloqueada/correo no verificado no se introduce caché de identidad con TTL.
+
+## 2026-11-27 · Ficha inmediata e instrumentación de la espera
+
+- [x] El panel de Eventos muestra inmediatamente los campos ya recibidos en el resumen y «Abriendo ficha…», en lugar de una caja genérica vacía. Las acciones sólo aparecen al recibir el detalle completo.
+- [x] Los resultados del detalle quedan vinculados al evento y a la respuesta del listado que los originó. Se ignoran respuestas abortadas; una actualización del listado retira las acciones hasta recibir la ficha vigente.
+- [x] GET de Eventos añade `Server-Timing` para acceso, lectura, preparación, serialización y total. El proxy informa su duración por separado en `X-Ezra-Proxy-Duration`. No cambian los permisos ni no-store; no se registran identificadores, credenciales o cuerpos.
+- [x] `npm run check`: lint, TypeScript y 229 pruebas aprobadas. Build aislado y las 9 integraciones aprobados en `work/verify-performance`, incluyendo los contratos de tiempos y privacidad.
+- [x] Verificación visual retomada en Brave: apertura y cierre con Escape, foco devuelto a «Revisar». Con perfil temporal de 10.000 ms de latencia se observó título, fecha/hora, lugar, descripción y «Abriendo ficha…» sin Editar/Consultar estado; después llegó el detalle con sus acciones. Perfil retirado, red sin limitación y DevTools cerrados al terminar.
+- [x] Primera lectura real de tiempos: access 317,25 ms, read 0,67 ms, prepare 0,07 ms, serialize 0,17 ms, total de ruta 318,16 ms; proxy separado 10,22 ms. Muestra con simulación 3G: no comparar su tiempo total de red con la medición previa sin limitación. El coste de la ruta se concentra en acceso/permisos, aún sin separar sus funciones internas.
+- [ ] Atribuir la demora de entrada y separar las fases internas de acceso; repetir perfil comparable antes de afirmar reducción de milisegundos.
+- [ ] Completar cambios rápidos entre distintas fichas, refresco de versión y recorrido móvil completo. Se abrió la ficha con emulación 390×844, pero la vista se ajustó a escala reducida; no equivale a una revisión detallada móvil.
+- Archivos del producto: `src/features/azra/granjas/event-detail-preview.tsx`, `eventos.tsx`, `src/app/api/granjas/eventos/route.ts`, `src/lib/server-timing.ts` y `src/proxy.ts`. Servidor existente conservado, sin editar datos reales.
+
+## 2026-11-27 · Medición real de esperas y cuadros
+
+- [x] Perfil directo en Brave/DevTools sobre el servidor existente: INP Eventos 202 ms (180 ms de demora de entrada, 21 ms de presentación), cuadro seleccionado 59,41 ms; no usar el cuadro Idle de 241,59 ms como tirón.
+- [x] Network sin limitación: listado 374 ms; ficha 353 ms, con 352,44 ms esperando respuesta y 0,28 ms de descarga. Miniaturas revalidadas todavía esperan respuesta. Hallazgos y límites en `docs/PERFORMANCE_BROWSER_2026-11-27.md`.
+- [x] Se retiraron los instrumentos visuales. No se reinició el servidor ni se editaron datos. La simulación Fast 4G inicialmente activa quedó desactivada.
+- [x] Instrumentar acceso, lectura, preparación y serialización, con tiempo del proxy separado; primera lectura real documentada arriba.
+- [x] Apertura inmediata con resumen disponible y actualización explícita del detalle implementada y observada con latencia artificial; revisión y publicación esperan la versión completa vigente.
+- [ ] Perfil repetido en producción con viewport fijo y percentiles/cuadros activos. No declarar resuelto el lag a partir de esta muestra.
+
 ## 2026-11-27 · Corrección de integraciones de rendimiento
 
 - [x] El propietario ejecutó las integraciones desde su Terminal. La captura permite identificar dos fallos: `azra.test.ts` esperaba el título anterior de la portada; `performance.test.ts` recibió `Cache-Control: no-store` en la miniatura.

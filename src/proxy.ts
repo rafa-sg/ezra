@@ -23,6 +23,7 @@ function hostPermitido(host: string) {
 }
 
 export default async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const started = performance.now();
   const host = request.headers.get("host") || "";
   // n8n in Docker reaches the Mac as host.docker.internal. Only the secret-protected
   // results callback accepts that host; everything else stays loopback-only or EZRA_DOMINIOS.
@@ -56,6 +57,10 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
     response.headers.set("x-middleware-next", "1");
   }
   if (request.nextUrl.pathname.startsWith("/api/")) {
+    // Separate from route Server-Timing: includes Clerk middleware, not route execution.
+    if (request.nextUrl.pathname === "/api/granjas/eventos" && request.method === "GET" &&
+        response.headers.get("x-middleware-next") === "1" && response.status < 300)
+      response.headers.set("X-Ezra-Proxy-Duration", (performance.now() - started).toFixed(2));
     // Sólo esta ruta define una caché privada revalidable DESPUÉS de comprobar permisos.
     // No se excluye del middleware de Clerk ni de las comprobaciones de origen.
     const routeControlsCache =
