@@ -107,9 +107,9 @@ export async function limitesCodex(
   // modificados más tarde primero.
   const dias: string[] = [];
   for (const a of await subcarpetas(raiz))
-    for (const m of await subcarpetas(path.join(raiz, a)))
-      for (const d of await subcarpetas(path.join(raiz, a, m))) {
-        dias.push(path.join(raiz, a, m, d));
+    for (const m of await subcarpetas(path.join(/* turbopackIgnore: true */ raiz, a)))
+      for (const d of await subcarpetas(path.join(/* turbopackIgnore: true */ raiz, a, m))) {
+        dias.push(path.join(/* turbopackIgnore: true */ raiz, a, m, d));
         if (dias.length >= (opciones.dias ?? 7)) break;
       }
   const archivos: { ruta: string; mtime: number }[] = [];

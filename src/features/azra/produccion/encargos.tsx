@@ -6,6 +6,7 @@ import { estadoEditorial, estadoEjecucion, estadoEntrega, etapa, tipoResultado, 
 import type { RelacionesEncargo } from "@/lib/produccion/relaciones";
 import { RankingVirales } from "./virales";
 import { caducidadVirales, fechaConsultaVirales } from "@/lib/produccion/virales-texto";
+import { haceCuanto } from "./tiempo";
 import "./encargos.css";
 
 type Tr = (c: string) => string;
@@ -29,13 +30,6 @@ const claseEstado: Record<EstadoEditorial | "fallida", string> = {
   fallida: "ez-est-error",
 };
 
-/** «hace 12 min», «hace 3 h», «hace 2 días». */
-export function haceCuanto(iso: string, tr: Tr) {
-  const min = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60_000));
-  const h = Math.round(min / 60);
-  const [clave, n] = min < 60 ? ["ez_hace_min", min] : h < 48 ? ["ez_hace_h", h] : ["ez_hace_dias", Math.round(h / 24)];
-  return tr(clave).replace("{n}", String(n));
-}
 const fechaPrevistaLegible = (v: string, locale: string) =>
   new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(`${v}:00Z`));
 

@@ -2,6 +2,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { agendaVigente, SIN_UBICACION, type EventoMapa } from "../src/lib/granjas/agenda-mapa";
 import { ACCESOS, POBLACION_2024 } from "../src/lib/granjas/datos-pais";
+import { geo, nearbyPointIndices } from "../src/features/azra/granjas/mapa-geo";
+
+test("índice del cursor: conserva exactamente los vecinos y excluye las divisiones", () => {
+  const { puntos } = geo();
+  assert.equal(puntos.length, 2164, "la optimización conserva la silueta existente");
+  for (const radius of [32, 64, 128, 214])
+    for (const [x, y] of [[300, 230], [500, 400], [650, 400], [900, 500], [1000, 600]]) {
+      const inside = (i: number) => Math.hypot(puntos[i].x - x, puntos[i].y - y) <= radius;
+      const actual = nearbyPointIndices(x, y, radius).filter(inside).sort((a, b) => a - b);
+      const expected = puntos.flatMap((p, i) => !p.limite && inside(i) ? [i] : []);
+      assert.deepEqual(actual, expected);
+    }
+  assert.ok(nearbyPointIndices(650, 400, 64).length < puntos.length / 3);
+});
 
 const ev = (o: Partial<EventoMapa> & { id: string }): EventoMapa => ({
   titulo: "Festival",

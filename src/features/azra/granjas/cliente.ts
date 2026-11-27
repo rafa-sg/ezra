@@ -84,8 +84,8 @@ export type ConexionesRespuesta = {
 };
 export type { Granja, Grafo, Nodo, Paso, Artefacto, Conexion, TipoNodo, ContenidoPieza };
 
-export async function pedir<T>(ruta: string, cuerpo?: object): Promise<T> {
-  const respuesta = await fetch(ruta, cuerpo ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) } : undefined);
+export async function pedir<T>(ruta: string, cuerpo?: object, options?: { signal?: AbortSignal }): Promise<T> {
+  const respuesta = await fetch(ruta, { ...options, ...(cuerpo ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) } : { cache: "no-store" }) });
   const datos = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) throw new Error(datos.error || `Error ${respuesta.status}`);
   return datos as T;

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Copy,
@@ -15,6 +15,8 @@ import {
   X,
 } from "lucide-react";
 import type { Evento, EstadoVisible } from "@/lib/granjas/eventos";
+import type { EventSummary } from "@/lib/event-summary";
+import { Pagination, usePagination } from "../pagination";
 import { expiredInInbox, inboxEvents } from "@/lib/event-inbox";
 import { Modal } from "../ui";
 import { pedir } from "./cliente";
@@ -27,8 +29,9 @@ import { ImagenOriginal } from "./imagen-original";
 import { FilaEvento, IndicadorConfianza } from "./eventos-lista";
 
 type EventoVista = Evento & { ficha: string };
+const normal = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 type Respuesta = {
-  eventos: EventoVista[];
+  eventos: EventSummary[];
   conteo: Record<EstadoVisible, number>;
   total: number;
   spotmi: boolean;
@@ -155,6 +158,30 @@ export function SeccionEventos({
   const [conIA, setConIA] = useState(false);
   // Panel lateral con la ficha completa y todas las acciones.
   const [abierto, setAbierto] = useState<string | null>(null);
+  const [panelEvent, setPanelEvent] = useState<EventoVista | null>(null);
+  const [detailError, setDetailError] = useState("");
+  useEffect(() => {
+    if (!abierto) return;
+    const controller = new AbortController();
+    fetch(`/api/granjas/eventos?id=${encodeURIComponent(abierto)}`, { cache: "no-store", signal: controller.signal })
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error ?? `Error ${r.status}`);
+        return data.evento as EventoVista;
+      })
+      .then((event) => { setPanelEvent(event); setDetailError(""); })
+      .catch((error) => { if (error.name !== "AbortError") setDetailError(error.message); });
+    return () => controller.abort();
+  }, [abierto, datos]);
+  async function withEvent(id: string, action: (event: EventoVista) => void) {
+    setOcupado(true);
+    setError("");
+    try {
+      const { evento } = await pedir<{ evento: EventoVista }>(`/api/granjas/eventos?id=${encodeURIComponent(id)}`);
+      action(evento);
+    } catch (error) { setError((error as Error).message); }
+    finally { setOcupado(false); }
+  }
   // Editor del prompt de la imagen de referencia IA.
   const [prompt, setPrompt] = useState<{
     evento: EventoVista;
@@ -169,11 +196,11 @@ export function SeccionEventos({
     modo: "buscar" | "captura";
   } | null>(null);
   const [geminiReference, setGeminiReference] = useState<{
-    event: EventoVista;
+    event: Pick<EventoVista, "id" | "titulo">;
     text: string;
     copied: boolean;
   } | null>(null);
-  async function prepareGeminiReference(event: EventoVista) {
+  async function prepareGeminiReference(event: Pick<EventoVista, "id" | "titulo">) {
     setOcupado(true);
     setError("");
     try {
@@ -206,7 +233,7 @@ export function SeccionEventos({
     }
   }
   /** Sube la imagen hecha en la app de Gemini y la deja como referencia IA del evento. */
-  async function subirReferencia(e: EventoVista, file: File) {
+  async function subirReferencia(e: Pick<EventoVista, "id">, file: File) {
     setOcupado(true);
     setError("");
     try {
@@ -251,6 +278,7 @@ export function SeccionEventos({
   const [cuidado, setCuidado] = useState(false);
   const [orden, setOrden] = useState<"fecha" | "confianza_baja" | "confianza_alta">("fecha");
   const [busqueda, setBusqueda] = useState("");
+  const deferredSearch = useDeferredValue(busqueda);
   const detener = useRef(false);
   /** Recorre de a uno los eventos sin imagen: cada paso es una petición, así se ve el progreso y se puede detener. */
   async function completarImagenes(ids: string[]) {
@@ -308,10 +336,9 @@ export function SeccionEventos({
       await cargar();
     }
   }
-  const consulta =
-    pestana === "catalogo"
-      ? ""
-      : `estado=${filtro.estado}&desde=${filtro.desde}&hasta=${filtro.hasta}`;
+  const consulta = pestana === "catalogo"
+    ? "vista=resumen"
+    : `vista=resumen&estado=${filtro.estado}&desde=${filtro.desde}&hasta=${filtro.hasta}`;
   const cargar = useCallback(async () => {
     try {
       setDatos(await pedir<Respuesta>(`/api/granjas/eventos?${consulta}`));
@@ -321,11 +348,18 @@ export function SeccionEventos({
   }, [consulta]);
   useEffect(() => {
     let vivo = true;
-    pedir<Respuesta>(`/api/granjas/eventos?${consulta}`)
+    const controller = new AbortController();
+    fetch(`/api/granjas/eventos?${consulta}`, { signal: controller.signal, cache: "no-store" })
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error ?? `Error ${r.status}`);
+        return data as Respuesta;
+      })
       .then((r) => vivo && setDatos(r))
       .catch((e) => vivo && setError((e as Error).message));
     return () => {
       vivo = false;
+      controller.abort();
     };
   }, [consulta]);
   useEffect(() => {
@@ -379,11 +413,12 @@ export function SeccionEventos({
       timeZone: "UTC",
     }).format(new Date(`${dia}T12:00:00Z`));
   /** Organizador o dominio de la fuente (la cuenta si vino de una red). */
-  const origenVisible = (e: EventoVista) => {
+  const origenVisible = (e: EventoVista | EventSummary) => {
+    if ("sourceAccount" in e) return e.sourceAccount || host(e.fuenteUrl);
     const f = e.fuentes.find((x) => x.url === e.fuenteUrl) ?? e.fuentes[0];
     return f?.cuenta || host(e.fuenteUrl);
   };
-  const etiquetaImagen = (e: EventoVista) =>
+  const etiquetaImagen = (e: EventoVista | EventSummary) =>
     e.imagenTipo === "ia"
       ? g("ev_etiqueta_ia")
       : e.imagenTipo === "prensa"
@@ -437,6 +472,31 @@ export function SeccionEventos({
       ))}
     </div>
   );
+  const visibles = useMemo(() => {
+  if (!datos) return [];
+  const textoBuscado = normal(deferredSearch.trim());
+  const inbox = inboxEvents(datos.eventos, {
+    today, includeExpired, search: deferredSearch, from: filtro.desde, until: filtro.hasta,
+  });
+  return inbox
+    .filter((e) => !cuidado || e.confianza.puntos < 50)
+    .filter(
+      (e) =>
+        !textoBuscado ||
+        normal([e.titulo, e.lugar, e.municipio, e.departamento].filter(Boolean).join(" ")).includes(
+          textoBuscado,
+        ),
+    )
+    .sort((a, b) =>
+      orden === "confianza_baja"
+        ? a.confianza.puntos - b.confianza.puntos
+        : orden === "confianza_alta"
+          ? b.confianza.puntos - a.confianza.puntos
+          : 0,
+    );
+  }, [datos, deferredSearch, today, includeExpired, filtro.desde, filtro.hasta, cuidado, orden]);
+  const expiredCount = useMemo(() => datos?.eventos.filter((event) => expiredInInbox(event, today)).length ?? 0, [datos, today]);
+  const pagination = usePagination(visibles, JSON.stringify([filtro, deferredSearch, cuidado, orden, includeExpired, today]));
   if (pestana === "posts")
     return (
       <div className="eg-eventos">
@@ -458,34 +518,7 @@ export function SeccionEventos({
         <EventCatalog events={datos.eventos} locale={locale} g={g} />
       </div>
     );
-  const enPanel = abierto ? (datos.eventos.find((x) => x.id === abierto) ?? null) : null;
-  // Búsqueda local por nombre y lugar (sin acentos ni mayúsculas), sobre los eventos ya cargados.
-  const normal = (t: string) =>
-    t
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-  const textoBuscado = normal(busqueda.trim());
-  const inbox = inboxEvents(datos.eventos, {
-    today, includeExpired, search: busqueda, from: filtro.desde, until: filtro.hasta,
-  });
-  const expiredCount = datos.eventos.filter((event) => expiredInInbox(event, today)).length;
-  const visibles = inbox
-    .filter((e) => !cuidado || e.confianza.puntos < 50)
-    .filter(
-      (e) =>
-        !textoBuscado ||
-        normal([e.titulo, e.lugar, e.municipio, e.departamento].filter(Boolean).join(" ")).includes(
-          textoBuscado,
-        ),
-    )
-    .sort((a, b) =>
-      orden === "confianza_baja"
-        ? a.confianza.puntos - b.confianza.puntos
-        : orden === "confianza_alta"
-          ? b.confianza.puntos - a.confianza.puntos
-          : 0,
-    );
+  const enPanel = panelEvent?.id === abierto ? panelEvent : null;
   return (
     <div className="eg-eventos">
       {pestanas}
@@ -771,7 +804,7 @@ export function SeccionEventos({
         <p className="ep-nota">{g("ev_vacioFiltro")}</p>
       ) : (
         <ul className="ev-lista" aria-label={g("ev_tab_bandeja")}>
-          {visibles.map((e) => {
+          {pagination.items.map((e) => {
             const sinImagen = !e.imagenMedioId || e.imagenTipo === "ia";
             const porConfirmar = (t: string) => <span className="ev-por-confirmar">{t}</span>;
             return (
@@ -805,7 +838,7 @@ export function SeccionEventos({
                       ? g("ev_gratis")
                       : `${g("ev_desde")} $${Number.isInteger(e.precioDesde.valor) ? e.precioDesde.valor : e.precioDesde.valor.toFixed(2)}`
                 }
-                onRevisar={() => setAbierto(e.id)}
+                onRevisar={() => { setPanelEvent(null); setDetailError(""); setAbierto(e.id); }}
                 acciones={[
                   ...(e.estado === "nuevo"
                     ? [
@@ -827,13 +860,13 @@ export function SeccionEventos({
                           clave: "buscar",
                           etiqueta: g("ev_menu_buscarImagen"),
                           deshabilitada: ocupado,
-                          onClick: () => setOriginal({ evento: e, modo: "buscar" }),
+                          onClick: () => void withEvent(e.id, (event) => setOriginal({ evento: event, modo: "buscar" })),
                         },
                         {
                           clave: "captura",
                           etiqueta: g("ev_menu_subirCaptura"),
                           deshabilitada: ocupado,
-                          onClick: () => setOriginal({ evento: e, modo: "captura" }),
+                          onClick: () => void withEvent(e.id, (event) => setOriginal({ evento: event, modo: "captura" })),
                         },
                         {
                           clave: "gemini",
@@ -850,7 +883,7 @@ export function SeccionEventos({
                           etiqueta: g("ev_descartar"),
                           peligro: true,
                           deshabilitada: ocupado,
-                          onClick: () => setDescartando({ evento: e, motivo: "" }),
+                          onClick: () => void withEvent(e.id, (event) => setDescartando({ evento: event, motivo: "" })),
                         },
                       ]
                     : []),
@@ -860,6 +893,7 @@ export function SeccionEventos({
           })}
         </ul>
       )}
+      <Pagination pagination={pagination} locale={locale} />
       {/* Configuración de fuentes (cuentas a seguir y confianza por dominio), plegada. */}
       <details className="ev-plegable ev-configuracion">
         <summary>{g("ev_configFuentes")}</summary>
@@ -997,12 +1031,14 @@ export function SeccionEventos({
         )}
       </Modal>
       <Modal
-        open={Boolean(enPanel)}
+        open={Boolean(abierto)}
         onClose={() => setAbierto(null)}
         label={enPanel?.titulo ?? g("ev_verMas")}
         className="ep-modal eg-panel-lateral"
         dismissOnBackdrop
       >
+        {detailError && <p role="alert">{detailError}</p>}
+        {!enPanel && !detailError && <p role="status">{g("cargando")}</p>}
         {enPanel &&
           ((e) => (
             <div className={`eg-panel-evento eg-evento-${e.estadoVisible}`}>
@@ -1873,10 +1909,10 @@ function CuadroFecha({
 
 /** Calendario: eventos aprobados o enviados a Spotmi con fecha confirmada, por día. */
 export function AgendaEventos({ g, locale }: { g: (clave: string) => string; locale: string }) {
-  const [eventos, setEventos] = useState<EventoVista[] | null>(null);
+  const [eventos, setEventos] = useState<EventSummary[] | null>(null);
   useEffect(() => {
     let vivo = true;
-    pedir<Respuesta>(`/api/granjas/eventos?desde=${hoyLocal()}`)
+    pedir<Respuesta>(`/api/granjas/eventos?vista=resumen&desde=${hoyLocal()}`)
       .then((r) => vivo && setEventos(r.eventos.filter((e) => e.fecha && e.estado === "aprobado")))
       .catch(() => vivo && setEventos([]));
     return () => {

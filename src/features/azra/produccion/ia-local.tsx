@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Loader2, Play, RefreshCw } from "lucide-react";
 import type { DiagnosticoIA, EstadoIA } from "@/lib/produccion/ia-local";
-import { haceCuanto } from "./encargos";
+import { haceCuanto } from "./tiempo";
 
 type Tr = (c: string) => string;
 type Proveedor = "astra" | "claude";

@@ -6,9 +6,11 @@ import { EstudioProduccion } from "./produccion/estudio";
 export function AzraScreen({
   soloLectura = false,
   equipo = null,
+  initialSection = null,
 }: {
   soloLectura?: boolean;
   equipo?: Equipo | null;
+  initialSection?: string | null;
 }) {
-  return <EstudioProduccion soloLectura={soloLectura} equipo={equipo} />;
+  return <EstudioProduccion soloLectura={soloLectura} equipo={equipo} initialSection={initialSection} />;
 }

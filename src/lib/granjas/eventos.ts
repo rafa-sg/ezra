@@ -365,6 +365,10 @@ export function listarEventos(filtro: { estado?: EstadoVisible | null; desde?: s
   const filas = (base().prepare("select * from eventos order by coalesce(fecha, '9999-12-31'), creado desc limit 2000").all() as Fila[]).map((f) =>
     aEvento(f, fuentes.get(String(f.id)) ?? [], ajustes, hoy, imagenes.get(String(f.id)) ?? []),
   );
+  return filtrarEventos(filas, filtro);
+}
+/** Permite derivar conteos y lista de una misma lectura consistente. */
+export function filtrarEventos(filas: Evento[], filtro: { estado?: EstadoVisible | null; desde?: string | null; hasta?: string | null; creadoEl?: string | null } = {}) {
   return filas.filter(
     (e) =>
       (!filtro.estado || e.estadoVisible === filtro.estado) &&

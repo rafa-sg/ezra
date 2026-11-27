@@ -1,7 +1,7 @@
 import type { Evento } from "./granjas/eventos";
 
 /** Only reviewed, dated events belong in the visitor preview. Never implies publication. */
-export function catalogEvents(events: Evento[], today: string) {
+export function catalogEvents<T extends Pick<Evento, "estado" | "fecha" | "fechaFin">>(events: T[], today: string) {
   return events
     .filter(
       (event) =>
@@ -23,11 +23,12 @@ export function eventSource(url: string): string | null {
 
 export function eventCover(
   event: Pick<Evento, "imagenMedioId" | "imagenConfirmada" | "imagenPermiso" | "imagenTipo">,
+  thumbnail?: 160 | 480,
 ): string | null {
   return event.imagenMedioId &&
     event.imagenConfirmada &&
     event.imagenPermiso.trim() &&
     event.imagenTipo !== "ia"
-    ? `/api/granjas/medios/${encodeURIComponent(event.imagenMedioId)}`
+    ? `/api/granjas/medios/${encodeURIComponent(event.imagenMedioId)}${thumbnail ? `?thumbnail=${thumbnail}` : ""}`
     : null;
 }

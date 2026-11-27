@@ -18,11 +18,15 @@ const clave = (p: ProveedorLocal) => `ia-local:${p}`;
 async function ultimo(p: ProveedorLocal) {
   return leerAjuste(clave(p), diagnosticoSchema.nullable(), null) ?? (await diagnosticoReciente(p));
 }
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await propietario();
-    const [astra, claude] = await Promise.all([ultimo("astra"), ultimo("claude")]);
-    return Response.json({ astra, claude });
+    const actualizar = new URL(request.url).searchParams.get("actualizar") === "1";
+    const [astra, claude] = await Promise.all([
+      actualizar ? diagnosticoReciente("astra") : ultimo("astra"),
+      actualizar ? diagnosticoReciente("claude") : ultimo("claude"),
+    ]);
+    return Response.json({ astra, claude }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return apiError(error);
   }

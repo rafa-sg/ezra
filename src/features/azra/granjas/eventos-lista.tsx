@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { CalendarDays, Image as Imagen, MapPin, MoreHorizontal } from "lucide-react";
+import type { EventSummary } from "@/lib/event-summary";
 import type { Evento } from "@/lib/granjas/eventos";
 import "./eventos-lista.css";
 
@@ -135,7 +136,7 @@ export function FilaEvento({
   acciones,
 }: {
   g: G;
-  evento: Evento;
+  evento: EventSummary;
   categoria: string;
   fecha: ReactNode;
   lugar: ReactNode;
@@ -151,7 +152,10 @@ export function FilaEvento({
       <div className="ev-miniatura" aria-hidden="true">
         {e.imagenMedioId && !rota ? (
           <img
-            src={`/api/granjas/medios/${e.imagenMedioId}`}
+            src={`/api/granjas/medios/${e.imagenMedioId}?thumbnail=160`}
+            width={80}
+            height={80}
+            decoding="async"
             alt=""
             loading="lazy"
             onError={() => setRota(true)}
@@ -188,7 +192,7 @@ export function FilaEvento({
           <span className={`ep-pill ev-pill-${e.estadoVisible}`}>
             {g(`ev_estado_${e.estadoVisible}`)}
           </span>
-          {e.cambios.length > 0 && (
+          {e.changesCount > 0 && (
             <span className="ep-pill eg-pill-actualizado">{g("ev_actualizado")}</span>
           )}
         </span>

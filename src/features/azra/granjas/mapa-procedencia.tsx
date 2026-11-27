@@ -89,6 +89,21 @@ function useMovReducido() {
   }, []);
   return r;
 }
+/** Cambiar un período sólo recarga su fuente; la solicitud anterior se cancela. */
+function useIncomeSummary(source: Fuente, period: string | null, revision: number) {
+  const [summary, setSummary] = useState<ResumenIngresos | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    const query = new URLSearchParams({ fuente: source, ...(period ? { periodo: period } : {}) });
+    fetch(`/api/granjas/ingresos?${query}`, { cache: "no-store", signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => setSummary(data as ResumenIngresos | null))
+      .catch((error) => { if (error.name !== "AbortError") setSummary(null); });
+    return () => controller.abort();
+  }, [source, period, revision]);
+  return summary;
+}
+
 /** Ancho real de un elemento (la barra lateral plegada o expandida lo cambia). */
 function useAncho<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -96,9 +111,22 @@ function useAncho<T extends HTMLElement>() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setAncho(e.contentRect.width));
+    // La barra lateral anima su ancho: actualizar una vez al estabilizarse, no en cada cuadro.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let initialized = false;
+    const ro = new ResizeObserver(([e]) => {
+      const width = Math.round(e.contentRect.width);
+      clearTimeout(timer);
+      if (!initialized) {
+        initialized = true;
+        setAncho(width);
+      } else timer = setTimeout(() => setAncho(width), 100);
+    });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      clearTimeout(timer);
+      ro.disconnect();
+    };
   }, []);
   return [ref, ancho] as const;
 }
@@ -276,27 +304,11 @@ export function MapaProcedencia({
     DGME: null,
     MITUR: null,
   });
-  const [resumenes, setResumenes] = useState<Record<Fuente, ResumenIngresos | null>>({
-    DGME: null,
-    MITUR: null,
-  });
   const [recargaIngresos, setRecargaIngresos] = useState(0);
-  useEffect(() => {
-    let vivo = true;
-    for (const f of ["DGME", "MITUR"] as const) {
-      const q = new URLSearchParams({
-        fuente: f,
-        ...(periodos[f] ? { periodo: periodos[f]! } : {}),
-      });
-      fetch(`/api/granjas/ingresos?${q}`, { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((j) => vivo && setResumenes((x) => ({ ...x, [f]: j as ResumenIngresos | null })))
-        .catch(() => vivo && setResumenes((x) => ({ ...x, [f]: null })));
-    }
-    return () => {
-      vivo = false;
-    };
-  }, [periodos, recargaIngresos]);
+  const resumenes = {
+    DGME: useIncomeSummary("DGME", periodos.DGME, recargaIngresos),
+    MITUR: useIncomeSummary("MITUR", periodos.MITUR, recargaIngresos),
+  };
   const ingresos = resumenes.DGME;
   const hoy = diaLocal();
   // Un solo origen para el marcador y su agenda: eventos confirmados, vigentes y sin duplicados.

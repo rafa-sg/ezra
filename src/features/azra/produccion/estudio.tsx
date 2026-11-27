@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   ArrowUpRight,
   ArrowRight,
@@ -30,6 +30,9 @@ import {
 } from "lucide-react";
 import { useLanguage, type MessageKey } from "../i18n";
 import { useClerk } from "@clerk/nextjs";
+import dynamic from "next/dynamic";
+import type { ResumenInicio } from "@/lib/produccion/inicio";
+import type { DiagnosticoIA } from "@/lib/produccion/ia-local";
 import { Modal } from "../ui";
 import {
   agentes,
@@ -47,12 +50,6 @@ import {
 } from "@/lib/produccion/modelo";
 import type { FichaSpotmi } from "@/lib/produccion/spotmi";
 import { Pixel, colores } from "../granjas/pixel";
-import { SeccionGranjas } from "../granjas/granjas";
-import { ConexionesGranjas } from "../granjas/conexiones";
-import { ColocarEnGranja } from "../granjas/colocar";
-import { SeccionEventos } from "../granjas/eventos";
-import { PaginaInstagram } from "../granjas/instagram-pagina";
-import { PaginaYoutube } from "../granjas/youtube-pagina";
 import {
   BotonApps,
   PendingSpotmiProfile,
@@ -68,18 +65,33 @@ import {
 } from "./apps";
 import { Inicio, type DestinoInicio } from "./inicio";
 import { CabeceraPagina, NavegacionLateral } from "./navegacion";
-import { DetalleEncargo, VistaEncargos, type AccionEncargo } from "./encargos";
-import { NuevoEncargo } from "./nuevo-encargo";
-import { ConexionesIALocal } from "./ia-local";
-import { AgendaCalendario } from "./agenda";
-import { CalendarioVistas } from "./calendario";
+import type { AccionEncargo } from "./encargos";
 import { Bienvenida, leerGuia } from "./bienvenida";
 import type { EstadoOnboarding } from "@/lib/produccion/onboarding";
 import type { Equipo } from "@/lib/equipo/modelo";
-import { SeccionEquipo } from "./equipo";
-import { BotonConsumo, Configuracion } from "./configuracion";
+import { BotonConsumo } from "./uso-ia-ui";
 import "./estudio.css";
 import "./tokens.css";
+
+function SectionLoading() {
+  const { t } = useLanguage();
+  return <p role="status">{t("p_cargando")}</p>;
+}
+
+const DetalleEncargo = dynamic(() => import("./encargos").then((m) => m.DetalleEncargo), { loading: SectionLoading });
+const VistaEncargos = dynamic(() => import("./encargos").then((m) => m.VistaEncargos), { loading: SectionLoading });
+const Configuracion = dynamic(() => import("./configuracion").then((m) => m.Configuracion), { loading: SectionLoading });
+const SeccionGranjas = dynamic(() => import("../granjas/granjas").then((m) => m.SeccionGranjas), { loading: SectionLoading });
+const ConexionesGranjas = dynamic(() => import("../granjas/conexiones").then((m) => m.ConexionesGranjas), { loading: SectionLoading });
+const ColocarEnGranja = dynamic(() => import("../granjas/colocar").then((m) => m.ColocarEnGranja), { loading: SectionLoading });
+const SeccionEventos = dynamic(() => import("../granjas/eventos").then((m) => m.SeccionEventos), { loading: SectionLoading });
+const PaginaInstagram = dynamic(() => import("../granjas/instagram-pagina").then((m) => m.PaginaInstagram), { loading: SectionLoading });
+const PaginaYoutube = dynamic(() => import("../granjas/youtube-pagina").then((m) => m.PaginaYoutube), { loading: SectionLoading });
+const NuevoEncargo = dynamic(() => import("./nuevo-encargo").then((m) => m.NuevoEncargo), { loading: SectionLoading });
+const ConexionesIALocal = dynamic(() => import("./ia-local").then((m) => m.ConexionesIALocal), { loading: SectionLoading });
+const AgendaCalendario = dynamic(() => import("./agenda").then((m) => m.AgendaCalendario), { loading: SectionLoading });
+const CalendarioVistas = dynamic(() => import("./calendario").then((m) => m.CalendarioVistas), { loading: SectionLoading });
+const SeccionEquipo = dynamic(() => import("./equipo").then((m) => m.SeccionEquipo), { loading: SectionLoading });
 
 // Barra lateral estilo Buffer: Inicio y Encargos arriba; las secciones anteriores siguen igual.
 const secciones = [
@@ -149,9 +161,11 @@ async function datosRespuesta(respuesta: Response) {
 export function EstudioProduccion({
   soloLectura = false,
   equipo = null,
+  initialSection = null,
 }: {
   soloLectura?: boolean;
   equipo?: Equipo | null;
+  initialSection?: string | null;
 }) {
   // Secciones de esta sesión (el servidor vuelve a comprobarlas en cada solicitud).
   const esPropietario = equipo?.rol === "propietario";
@@ -161,12 +175,15 @@ export function EstudioProduccion({
   const accesible = (s: Seccion | null) => (s && permitida(s) ? s : s ? primera : null);
   const { signOut } = useClerk();
   const { t, locale } = useLanguage();
-  const tr = (clave: string) => t(clave as MessageKey);
-  const g = (clave: string) => t(`g_${clave}` as MessageKey);
-  const [seccion, setSeccion] = useState<Seccion>(primera);
+  const tr = useCallback((clave: string) => t(clave as MessageKey), [t]);
+  const g = useCallback((clave: string) => t(`g_${clave}` as MessageKey), [t]);
+  const [seccion, setSeccion] = useState<Seccion>(() => accesible(seccionDe(initialSection)) ?? primera);
   // % del día para la píldora del menú (se recalcula con cada cambio que refresca el Inicio).
   // Contadores de la barra lateral (solo cuando aportan): eventos nuevos por revisar.
-  const [eventosNuevos, setEventosNuevos] = useState(0);
+  const [resumenInicio, setResumenInicio] = useState<ResumenInicio | null>(null);
+  const [errorInicio, setErrorInicio] = useState("");
+  const [leidoInicio, setLeidoInicio] = useState<string | null>(null);
+  const eventosNuevos = resumenInicio?.eventos.nuevos ?? 0;
   // Detalle de un encargo (lectura y acciones); el editor se abre aparte para cambiar el pedido.
   const [detalle, setDetalle] = useState<string | null>(null);
   const [ejecutandoId, setEjecutandoId] = useState<string | null>(null);
@@ -182,6 +199,7 @@ export function EstudioProduccion({
   const [especialistas, setEspecialistas] = useState<Agente[]>([...agentes]);
   const [avisoOAuth, setAvisoOAuth] = useState<string | null>(null);
   const [produccion, setProduccion] = useState<Produccion | null>(null);
+  const produccionCargada = produccion !== null;
   const [conexiones, setConexiones] = useState<Conexiones | null>(null);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
@@ -202,17 +220,18 @@ export function EstudioProduccion({
   // Menú desplegable de móvil: Escape lo cierra y devuelve el foco al botón.
   useEffect(() => {
     if (soloLectura || !permitida("inicio")) return;
-    let vivo = true;
-    fetch("/api/produccion/inicio", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then(
-        (d: { eventos?: { nuevos: number } } | null) =>
-          vivo && setEventosNuevos(d?.eventos?.nuevos ?? 0),
-      )
-      .catch(() => vivo && setEventosNuevos(0));
-    return () => {
-      vivo = false;
-    };
+    const controller = new AbortController();
+    fetch("/api/produccion/inicio", { cache: "no-store", signal: controller.signal })
+      .then(datosRespuesta)
+      .then((d: ResumenInicio) => {
+        setResumenInicio(d);
+        setLeidoInicio(new Date().toISOString());
+        setErrorInicio("");
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setErrorInicio(error.message);
+      });
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [versionInicio, soloLectura]);
   // Aviso del navegador si cierras o recargas con cambios del encargo sin guardar.
@@ -222,12 +241,12 @@ export function EstudioProduccion({
     window.addEventListener("beforeunload", avisar);
     return () => window.removeEventListener("beforeunload", avisar);
   }, [modificado]);
-  const fecha = (valor: string) =>
-    new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
+  const dateFormatter = useMemo(() => new Intl.DateTimeFormat(locale === "es" ? "es-SV" : "en-US", {
       dateStyle: "medium",
       timeStyle: "short",
       timeZone: "America/El_Salvador",
-    }).format(new Date(valor.length === 16 ? `${valor}:00-06:00` : valor));
+    }), [locale]);
+  const fecha = useCallback((valor: string) => dateFormatter.format(new Date(valor.length === 16 ? `${valor}:00-06:00` : valor)), [dateFormatter]);
 
   async function cargar() {
     setError("");
@@ -255,6 +274,18 @@ export function EstudioProduccion({
       });
     return () => controlador.abort();
   }, [soloLectura]);
+  useEffect(() => {
+    if (soloLectura || !esPropietario || !produccionCargada) return;
+    const controller = new AbortController();
+    fetch("/api/produccion/ia-local?actualizar=1", { cache: "no-store", signal: controller.signal })
+      .then(datosRespuesta)
+      .then((d: { astra: DiagnosticoIA; claude: DiagnosticoIA }) => {
+        const disponible = (v: DiagnosticoIA) => ["sesion_ok", "prueba_ok", "limite"].includes(v.estado);
+        setConexiones((c) => c && ({ ...c, astraLocal: disponible(d.astra), claudeLocal: disponible(d.claude) }));
+      })
+      .catch(() => { /* El estado se puede verificar de nuevo desde Conexiones. */ });
+    return () => controller.abort();
+  }, [soloLectura, esPropietario, produccionCargada]);
   useEffect(() => {
     if (soloLectura || !esPropietario) return;
     let vivo = true;
@@ -876,7 +907,7 @@ export function EstudioProduccion({
               )}
             </>
           )}
-          {!soloLectura && seccion === "inicio" && produccion && (
+          {!soloLectura && seccion === "inicio" && (
             <Inicio
               tr={tr}
               fecha={fecha}
@@ -884,7 +915,10 @@ export function EstudioProduccion({
               onNuevo={() => crear()}
               onGuia={() => setGuiaAbierta(true)}
               guia={guia}
-              version={versionInicio}
+              datos={resumenInicio}
+              errorResumen={errorInicio}
+              leido={leidoInicio}
+              onRecargar={() => setVersionInicio((v) => v + 1)}
             />
           )}
           {!soloLectura && seccion === "encargos" && (

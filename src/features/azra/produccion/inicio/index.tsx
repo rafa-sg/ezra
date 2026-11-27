@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -18,10 +18,11 @@ import { DatosYConexiones } from "../../granjas/trazabilidad";
 import { Modal } from "../../ui";
 import { Aparece } from "./aparece";
 import { componentes, equipo, nombreAgente, rolAgente, type DestinoInicio } from "./widgets";
-import { haceCuanto } from "../encargos";
+import { haceCuanto } from "../tiempo";
 import "./inicio.css";
 
 export type { DestinoInicio };
+const DataMap = memo(DatosYConexiones);
 
 async function pedirJson<T>(url: string, cuerpo?: unknown): Promise<T> {
   const r = await fetch(
@@ -51,7 +52,10 @@ export function Inicio({
   onNuevo,
   onGuia,
   guia,
-  version,
+  datos,
+  errorResumen,
+  leido,
+  onRecargar,
 }: {
   tr: (clave: string) => string;
   fecha: (iso: string) => string;
@@ -59,36 +63,32 @@ export function Inicio({
   onNuevo: () => void;
   onGuia: () => void;
   guia: EstadoOnboarding | null;
-  version: number;
+  datos: ResumenInicio | null;
+  errorResumen: string;
+  leido: string | null;
+  onRecargar: () => void;
 }) {
-  const [datos, setDatos] = useState<ResumenInicio | null>(null);
   const [prefs, setPrefs] = useState<Preferencias | null>(null);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [recarga, setRecarga] = useState(0);
-  const [leido, setLeido] = useState<string | null>(null);
   const [editando, setEditando] = useState(false);
   const [propiedades, setPropiedades] = useState<WidgetPulso | "agentes_equipo" | null>(null);
   const [arrastrando, setArrastrando] = useState<WidgetPulso | null>(null);
   const tablero = useRef<HTMLElement>(null);
   useEffect(() => {
     let vivo = true;
-    Promise.all([
-      pedirJson<ResumenInicio>("/api/produccion/inicio"),
-      pedirJson<{ preferencias: Preferencias }>("/api/produccion/preferencias"),
-    ])
-      .then(([d, p]) => {
+    pedirJson<{ preferencias: Preferencias }>("/api/produccion/preferencias")
+      .then((p) => {
         if (!vivo) return;
-        setDatos(d);
         setPrefs(p.preferencias);
-        setLeido(new Date().toISOString());
         setError("");
       })
       .catch((e) => vivo && setError((e as Error).message));
     return () => {
       vivo = false;
     };
-  }, [version, recarga]);
+  }, [recarga]);
 
   async function guardar(cambios: Partial<Omit<Preferencias, "revision">>) {
     if (!prefs) return;
@@ -131,19 +131,29 @@ export function Inicio({
   const cambiar = (id: WidgetPulso, cambio: Partial<Preferencias["widgets"][number]>) =>
     void guardar({ widgets: widgets.map((w) => (w.id === id ? { ...w, ...cambio } : w)) });
 
-  if (error && !datos)
+  const refrescar = () => {
+    onRecargar();
+    setRecarga((x) => x + 1);
+  };
+  if ((error || errorResumen) && (!datos || !prefs))
     return (
       <div className="ez-inicio">
-        <div className="ep-alerta" role="alert">
-          {error}
-          <button onClick={() => setRecarga((x) => x + 1)}>{tr("p_reintentar")}</button>
-        </div>
+        <section className="ez-tablero">
+          <DataMap tr={tr} fecha={fecha} />
+          <div className="ep-alerta" role="alert">
+            {error || errorResumen}
+            <button onClick={refrescar}>{tr("p_reintentar")}</button>
+          </div>
+        </section>
       </div>
     );
   if (!datos || !prefs)
     return (
       <div className="ez-inicio">
-        <p role="status">{tr("p_cargando")}</p>
+        <section className="ez-tablero">
+          <DataMap tr={tr} fecha={fecha} />
+          <p role="status">{tr("p_cargando")}</p>
+        </section>
       </div>
     );
   const pasoGuia = guia?.paso ?? 1;
@@ -160,7 +170,7 @@ export function Inicio({
         tabIndex={-1}
       >
         {/* Arriba, sin texto: solo el mapa con ezrá y sus conexiones. Los controles y el resumen van debajo. */}
-        <DatosYConexiones tr={tr} fecha={fecha} />
+        <DataMap tr={tr} fecha={fecha} />
         <div className="ez-trabajo-cabecera">
           <div>
             <h2 id="ez-tablero-titulo" className="ez-titulo-seccion">
@@ -177,7 +187,7 @@ export function Inicio({
           <div className="ez-tablero-controles">
             <button
               className="ez-boton-blanco"
-              onClick={() => setRecarga((x) => x + 1)}
+              onClick={refrescar}
               aria-label={tr("p_actualizar")}
               title={tr("p_actualizar")}
             >

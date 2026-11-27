@@ -490,7 +490,11 @@ test(
       const acceso = await get("/");
       assert.equal(acceso.status, 200);
       const accesoHtml = await acceso.text();
-      assert.match(accesoHtml, /Tu estudio de contenido para Spotmi/);
+      const accessTitle = /<h1\b[^>]*>([\s\S]*?)<\/h1>/.exec(accesoHtml)?.[1]
+        .replace(/<!--[\s\S]*?-->|<[^>]*>/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      assert.equal(accessTitle, "Deja que Ezra produzca tu contenido");
       assert.doesNotMatch(accesoHtml, /arcade-panel|AUTOMATIZA TU PRESENCIA/);
       // The Users screen reads the real access accounts through the pilot API.
       const accounts = (await (await get("/api/auth/accounts", admin)).json()).accounts;

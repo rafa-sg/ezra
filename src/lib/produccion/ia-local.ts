@@ -269,10 +269,18 @@ export const utilizable = (d: DiagnosticoIA | null) =>
 
 /* Estado reciente en memoria (las rutas que lo consultan seguido no lanzan procesos en cada petición). */
 const cache = new Map<ProveedorLocal, { en: number; d: DiagnosticoIA }>();
-export async function diagnosticoReciente(proveedor: ProveedorLocal, maxMs = 120_000) {
+const pendientes = new Map<ProveedorLocal, Promise<DiagnosticoIA>>();
+/** Lectura inmediata para abrir el estudio; nunca ejecuta herramientas locales. */
+export function diagnosticoGuardado(proveedor: ProveedorLocal, maxMs = 120_000) {
   const c = cache.get(proveedor);
-  if (c && Date.now() - c.en < maxMs) return c.d;
-  const d = await diagnosticar(proveedor).catch((): DiagnosticoIA => ({
+  return c && Date.now() - c.en < maxMs ? c.d : null;
+}
+export async function diagnosticoReciente(proveedor: ProveedorLocal, maxMs = 120_000) {
+  const c = diagnosticoGuardado(proveedor, maxMs);
+  if (c) return c;
+  const pendiente = pendientes.get(proveedor);
+  if (pendiente) return pendiente;
+  const tarea = diagnosticar(proveedor).catch((): DiagnosticoIA => ({
     proveedor,
     estado: "error",
     version: null,
@@ -280,9 +288,12 @@ export async function diagnosticoReciente(proveedor: ProveedorLocal, maxMs = 120
     detalle: "No se pudo comprobar.",
     comprobado: new Date().toISOString(),
     prueba: null,
-  }));
-  cache.set(proveedor, { en: Date.now(), d });
-  return d;
+  })).then((d) => {
+    cache.set(proveedor, { en: Date.now(), d });
+    return d;
+  }).finally(() => pendientes.delete(proveedor));
+  pendientes.set(proveedor, tarea);
+  return tarea;
 }
 export function recordar(d: DiagnosticoIA) {
   cache.set(d.proveedor, { en: Date.now(), d });

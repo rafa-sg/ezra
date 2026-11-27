@@ -1,5 +1,31 @@
 # Estado y relevo
 
+## 2026-11-27 · Corrección de integraciones de rendimiento
+
+- [x] El propietario ejecutó las integraciones desde su Terminal. La captura permite identificar dos fallos: `azra.test.ts` esperaba el título anterior de la portada; `performance.test.ts` recibió `Cache-Control: no-store` en la miniatura.
+- [x] Se actualizó la prueba de acceso para comprobar el h1 visible del diseño vigente («Deja que Ezra produzca tu contenido»), sin volcar todo el HTML ante un fallo.
+- [x] Causa de caché corregida en `src/proxy.ts`: la regla general de no-store sobrescribía la cabecera de la ruta. Sólo GET/HEAD de miniaturas 160/480, sin descarga y cuando Clerk permite continuar, dejan que la ruta defina su política privada. La autenticación, origen y permisos siguen comprobándose; errores de medios indican explícitamente no-store.
+- [x] La integración ahora comprueba también Vary, miniatura de 480 px, rechazo sin sesión y de una cuenta externa aun con ETag, tamaño inválido y descarga original sin caché.
+- [x] `npm run check`: 228/228, lint y tipos correctos. Compilación de producción actualizada correctamente en `work/verify-performance/.next-verificar`.
+- [x] Integraciones confirmadas por la nueva captura del propietario: `EZRA_DIST_DIR=.next-verificar npm run test:integration`, en `work/verify-performance`, terminó con tests=9, pass=9, fail=0, cancelled=0 y skipped=0 (~2.24 s). Incluye acceso por rol y rendimiento/miniaturas privadas. El error de caché que aparece arriba en esa captura pertenece a la ejecución anterior. El entorno del agente sigue limitado por EPERM, pero la ejecución posterior en la Terminal del propietario sí completó la suite.
+- No se reinició el servidor activo ni se modificó data/.
+
+
+## 2026-11-26 · Optimización de la interfaz
+
+- [x] Apertura sin procesos de diagnóstico bloqueantes; consulta independiente de IA y deduplicación del diagnóstico en curso.
+- [x] Carga diferida de secciones y editores; enlaces directos inicializados desde el servidor; resumen de Inicio compartido con el menú.
+- [x] Índice espacial del mapa, cálculo inicial con límites rectangulares, actualización de ancho al estabilizarse y consultas de ingresos independientes/cancelables.
+- [x] Una lectura de eventos por listado, contrato de resúmenes y detalle bajo demanda; páginas de 50 en bandeja y catálogo, manteniendo búsqueda histórica.
+- [x] Miniaturas privadas y revalidadas, caché acotada en memoria, originales por streaming y pausas de actualización en segundo plano.
+- [x] `npm run check`: 228/228 pruebas, lint y TypeScript correctos. Build de producción en `work/verify-performance`, con `EZRA_DIST_DIR=.next-verificar`; no se sobrescribe el servidor activo ni su configuración generada. Compilación final repetida tras los últimos ajustes de navegación.
+- [x] Regresiones unitarias del índice espacial, resúmenes de eventos y miniaturas. Nueva integración `tests/integration/performance.test.ts`: arranque sin ejecutar IA, ficha bajo demanda, enlace directo sin montar el mapa, privacidad de ETag, original y rangos.
+- [x] Observación en navegador con sesión: Inicio muestra el mapa y Eventos muestra «1–50 de 59» con controles de página. No se aprobó, editó, exportó ni publicó contenido.
+- [x] Integraciones completas: tras corregir la prueba de acceso y la política de caché, el propietario confirmó con captura una ejecución de 9/9, sin fallos ni omisiones (27 nov). El bloqueo EPERM anterior correspondía únicamente al entorno del agente.
+- [ ] Revisión manual completa: segunda página, búsqueda histórica, abrir/cerrar ficha, teclado, pantalla móvil y perfil del navegador para comparar FPS/tiempo de interacción. La ventana del navegador dejó de estar disponible durante la revisión; no atribuir a esta sesión una validación completa de esos recorridos.
+- Se conserva el servidor del puerto 3001, data/ y el trabajo anterior. No hubo despliegue ni publicación.
+
+
 ## 2026-11-25 · CORRECCIÓN: destino real de la web
 
 - [x] Web pública confirmada mediante JavaScript desplegado: `bvmzrmvrdbfpkdhwazgv`. ADMIN.md de spotmi-web también lo identifica como producción; `nwcmrcgfhdufnaomzkmz` es desarrollo. Los apuntes anteriores invirtieron los destinos por error.

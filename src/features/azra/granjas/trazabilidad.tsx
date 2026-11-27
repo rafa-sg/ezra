@@ -62,7 +62,7 @@ export function DatosYConexiones({ tr, fecha }: { tr: Tr; fecha: (iso: string) =
   // Los filtros sobreviven a abrir otra sección y volver (por pestaña del navegador).
   useEffect(() => {
     const guardados = leerFiltros();
-    queueMicrotask(() => setFiltrosEstado(guardados));
+    if (JSON.stringify(guardados) !== JSON.stringify(filtrosVacios)) queueMicrotask(() => setFiltrosEstado(guardados));
   }, []);
   const setFiltros = (f: Filtros) => {
     setFiltrosEstado(f);
@@ -75,11 +75,12 @@ export function DatosYConexiones({ tr, fecha }: { tr: Tr; fecha: (iso: string) =
   };
   useEffect(() => {
     let vivo = true;
+    const controller = new AbortController();
     const q = new URLSearchParams(
       Object.entries(filtros).filter(([, v]) => v) as [string, string][],
     );
     queueMicrotask(() => vivo && setCargando(true));
-    fetch(`/api/granjas/trazabilidad?${q}`, { cache: "no-store" })
+    fetch(`/api/granjas/trazabilidad?${q}`, { cache: "no-store", signal: controller.signal })
       .then(async (r) => {
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error((j as { error?: string }).error ?? "Error");
@@ -92,6 +93,7 @@ export function DatosYConexiones({ tr, fecha }: { tr: Tr; fecha: (iso: string) =
       .finally(() => vivo && setCargando(false));
     return () => {
       vivo = false;
+      controller.abort();
     };
   }, [filtros, recarga]);
   const activos = Object.entries(filtros).filter(([k, v]) => v && k !== "tipoFecha").length;

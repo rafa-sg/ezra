@@ -2,6 +2,7 @@ import test, { before } from "node:test";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
+import { summarizeEvent } from "../src/lib/event-summary";
 
 // Base de prueba en work/; Gemini, páginas y Supabase simulados.
 process.env.EZRA_DATA_DIR = path.resolve(`work/eventos-test-${process.pid}-${Date.now()}`);
@@ -42,6 +43,7 @@ before(async () => {
   assert.ok(db.archivoBase.startsWith(process.env.EZRA_DATA_DIR!), "la base de prueba vive en work/");
 });
 const hoy = () => tiempo.diaLocal();
+
 const en = (n: number) => tiempo.sumarDias(hoy(), n);
 const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const largo = (dia: string) => `${Number(dia.slice(8, 10))} de ${meses[Number(dia.slice(5, 7)) - 1]}`;
@@ -378,4 +380,21 @@ test("cazador diario: ventana de 45 días y la lista de lo que ya está en la ba
   eventos.crearEvento({ titulo: "Fiestas en curso", fecha: en(-1), fechaFin: en(5), hora: null, lugar: "", municipio: "", departamento: "", categoria: "religioso", precio: null, boletosUrl: null, fuenteUrl: "https://gob.sv/x", confirmadoEn: {}, sugerencias: {}, descripcion: "", imagenUrl: null, notaVerificacion: "", granjaId: null, ejecucionId: null });
   const ref = eventos.referenciasLocales().find((r) => r.titulo === "Fiestas en curso");
   assert.equal(ref?.hasta, en(5));
+});
+
+test("lista ligera: conserva identidad/revisión y abre historiales solamente en la ficha", () => {
+  const evento = eventos.crearEvento({
+    titulo: "Prueba de resumen de evento", fecha: null, hora: null,
+    lugar: "Teatro", municipio: "San Salvador", departamento: "San Salvador",
+    categoria: "cultura", precio: null, boletosUrl: null,
+    fuenteUrl: "https://example.test/resumen", imagenUrl: null, descripcion: "Datos verificados", confirmadoEn: {}, sugerencias: {}, notaVerificacion: "", granjaId: null, ejecucionId: null,
+  });
+  const summary = summarizeEvent(evento);
+  assert.equal(summary.id, evento.id);
+  assert.equal(summary.revision, evento.revision);
+  assert.equal(summary.confianza.puntos, evento.confianza.puntos);
+  for (const field of ["imagenes", "fuentes", "sugerencias", "confirmadoEn", "huella", "ficha"])
+    assert.ok(!(field in summary), field);
+  const snapshot = eventos.listarEventos();
+  assert.deepEqual(eventos.filtrarEventos(snapshot, { estado: "nuevo" }).map((e) => e.id), eventos.listarEventos({ estado: "nuevo" }).map((e) => e.id));
 });

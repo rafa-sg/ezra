@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useVisiblePolling } from "../use-visible-polling";
 import {
   Plus,
   Copy,
@@ -86,16 +87,16 @@ export function SeccionGranjas({
       setError((e as Error).message);
     }
   }, []);
-  const cargarDetalle = useCallback(async (id: string, reiniciar = false) => {
+  const cargarDetalle = useCallback(async (id: string, reiniciar = false, signal?: AbortSignal) => {
     try {
-      const d = await pedir<Detalle>(`/api/granjas/${id}`);
+      const d = await pedir<Detalle>(`/api/granjas/${id}`, undefined, { signal });
       setDetalle(d);
       if (reiniciar) {
         setGrafo(d.granja.grafo);
         setNombre(d.granja.nombre);
       }
     } catch (e) {
-      setError((e as Error).message);
+      if ((e as Error).name !== "AbortError") setError((e as Error).message);
     }
   }, []);
   useEffect(() => {
@@ -127,11 +128,8 @@ export function SeccionGranjas({
     ) ||
     // Clips: un clip al que pediste cambios se está volviendo a renderizar.
     Boolean(detalle?.clips.some((c) => c.estado === "cambios" || c.estado === "renderizando"));
-  useEffect(() => {
-    if (!abierta) return;
-    const reloj = setInterval(() => void cargarDetalle(abierta), activa ? 2000 : 10000);
-    return () => clearInterval(reloj);
-  }, [abierta, activa, cargarDetalle]);
+  const refreshDetail = useCallback((signal: AbortSignal) => abierta ? cargarDetalle(abierta, false, signal) : Promise.resolve(), [abierta, cargarDetalle]);
+  useVisiblePolling(refreshDetail, abierta ? (activa ? 2000 : 10000) : null);
 
   const modificado = Boolean(
     detalle &&

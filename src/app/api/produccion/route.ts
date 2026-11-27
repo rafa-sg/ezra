@@ -16,7 +16,7 @@ import {
   derivarEncargo,
   invalidarDependientes,
 } from "@/lib/produccion/modelo";
-import { diagnosticoReciente, utilizable } from "@/lib/produccion/ia-local";
+import { diagnosticoGuardado, utilizable } from "@/lib/produccion/ia-local";
 import { direccionSpotmi } from "@/lib/produccion/spotmi";
 import { invalidarPorEncargo } from "@/lib/granjas/ejecucion";
 import { especialistasVisibles } from "@/lib/granjas/especialistas";
@@ -73,10 +73,8 @@ export async function GET() {
     // El estudio lo lee al abrir: cualquier miembro; los encargos solo si su acceso incluye esa sección.
     const { equipo } = await administrador("*");
     // Disponible = sesión comprobada (no basta con encontrar el programa).
-    const [codex, claude] = await Promise.all([
-      diagnosticoReciente("astra"),
-      diagnosticoReciente("claude"),
-    ]);
+    const codex = diagnosticoGuardado("astra");
+    const claude = diagnosticoGuardado("claude");
     // Antes de mostrar nada: los resultados de «Videos virales» con más de 30 días se borran.
     await purgarViralesVencidos().catch(() => 0);
     return Response.json({
@@ -87,8 +85,8 @@ export async function GET() {
         spotmi: direccionSpotmi(),
         astraLocal: utilizable(codex),
         claudeLocal: utilizable(claude),
-        astraEstado: codex.estado,
-        claudeEstado: claude.estado,
+        astraEstado: codex?.estado ?? null,
+        claudeEstado: claude?.estado ?? null,
         geminiConfigurado: Boolean(process.env.GEMINI_API_KEY?.trim()),
         geminiHabilitado: geminiProduccionHabilitado(),
         modelo: modeloGemini(),

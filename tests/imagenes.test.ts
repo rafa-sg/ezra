@@ -161,7 +161,7 @@ test("importar JSON: mismo verificador, eventos de varios días vigentes, termin
   const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
   const largo = (x: string) => `${Number(x.slice(8))} de ${meses[Number(x.slice(5, 7)) - 1]}`;
   const sitios = web({
-    "https://prensa.sv/fiestas": `<html><body><h1>Fiestas patronales de Apopa</h1><p>Del ${largo(d(-2)).split(" de ")[0]} al ${largo(d(5))}.</p></body></html>`,
+    "https://prensa.sv/fiestas": `<html><body><h1>Fiestas patronales de Apopa</h1><p>Del ${largo(d(-2))} al ${largo(d(5))}.</p></body></html>`,
     "https://prensa.sv/feria": `<html><body><h1>Feria agostina</h1><p>${largo(d(-3))} al ${largo(d(-1))}</p></body></html>`,
   });
   const r = await importarEventos(

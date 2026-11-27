@@ -50,13 +50,20 @@ export function trazabilidad(filtros: FiltrosTraza = {}, opciones: { encargos?: 
   for (const f of filasFu) fuentesDe.set(String(f.evento_id), [...(fuentesDe.get(String(f.evento_id)) ?? []), f]);
   const pasosDe = new Map<string, { agente: string; titulo: string; estado: string }[]>();
   const ejecuciones = db.prepare("select id, granja_id, instantanea from ejecuciones").all() as Fila[];
+  const pasosPorEjecucion = new Map<string, Map<string, string>>();
+  for (const paso of db.prepare("select ejecucion_id, nodo_id, estado from pasos").all() as Fila[]) {
+    const id = String(paso.ejecucion_id);
+    const pasos = pasosPorEjecucion.get(id) ?? new Map<string, string>();
+    pasos.set(String(paso.nodo_id), String(paso.estado));
+    pasosPorEjecucion.set(id, pasos);
+  }
   const granjaNombre = new Map((db.prepare("select id, nombre from granjas").all() as Fila[]).map((g) => [String(g.id), String(g.nombre)]));
   for (const ej of ejecuciones) {
     const nodos = json<{ grafo?: { nodos?: { id: string; agente?: string; titulo: string }[] } }>(String(ej.instantanea), {}).grafo?.nodos ?? [];
-    const pasos = db.prepare("select nodo_id, estado from pasos where ejecucion_id = ?").all(String(ej.id)) as Fila[];
+    const pasos = pasosPorEjecucion.get(String(ej.id));
     pasosDe.set(
       String(ej.id),
-      nodos.filter((n) => n.agente).map((n) => ({ agente: n.agente!, titulo: n.titulo, estado: String(pasos.find((p) => p.nodo_id === n.id)?.estado ?? "sin_ejecutar") })),
+      nodos.filter((n) => n.agente).map((n) => ({ agente: n.agente!, titulo: n.titulo, estado: pasos?.get(n.id) ?? "sin_ejecutar" })),
     );
   }
   const eventos = filasEv.map((f) => {
@@ -96,6 +103,7 @@ export function trazabilidad(filtros: FiltrosTraza = {}, opciones: { encargos?: 
   for (const e of eventos) for (const r of e.registros) porUrl.set(r.url, [...(porUrl.get(r.url) ?? []), e.id]);
 
   // Contenidos: posts de Instagram (uno por evento) y encargos (sus eventos, por URL exacta de las fuentes).
+  const eventosPorId = new Map(eventos.map((e) => [e.id, e]));
   const posts = (db.prepare("select * from posts_ig").all() as Fila[]).map((p) => {
     const estado = String(p.estado);
     const destino: DestinoTraza =
@@ -107,7 +115,7 @@ export function trazabilidad(filtros: FiltrosTraza = {}, opciones: { encargos?: 
     return {
       id: `post:${p.id}`,
       tipo: "post_ig" as const,
-      titulo: `Post · ${eventos.find((e) => e.id === String(p.evento_id))?.titulo ?? "evento"}`,
+      titulo: `Post · ${eventosPorId.get(String(p.evento_id))?.titulo ?? "evento"}`,
       estado,
       creado: String(p.creado),
       publicado: txt(p.subido),
@@ -131,6 +139,7 @@ export function trazabilidad(filtros: FiltrosTraza = {}, opciones: { encargos?: 
     };
   });
   const contenidos = [...posts, ...encargos];
+  const contenidosPorId = new Map(contenidos.map((c) => [c.id, c]));
   const contenidosDe = new Map<string, string[]>();
   for (const c of contenidos) for (const id of c.eventos) contenidosDe.set(id, [...(contenidosDe.get(id) ?? []), c.id]);
 
@@ -141,7 +150,7 @@ export function trazabilidad(filtros: FiltrosTraza = {}, opciones: { encargos?: 
     // Descubrimiento y publicación son instantes (UTC): se comparan por su día en El Salvador.
     if (tipoFecha === "descubrimiento") return diaLocal(new Date(e.descubierto));
     if (tipoFecha === "publicacion") {
-      const fechas = (contenidosDe.get(e.id) ?? []).map((id) => contenidos.find((c) => c.id === id)?.publicado).filter((x): x is string => Boolean(x));
+      const fechas = (contenidosDe.get(e.id) ?? []).map((id) => contenidosPorId.get(id)?.publicado).filter((x): x is string => Boolean(x));
       const primera = fechas.sort()[0];
       return primera ? diaLocal(new Date(primera)) : null;
     }
@@ -152,7 +161,7 @@ export function trazabilidad(filtros: FiltrosTraza = {}, opciones: { encargos?: 
     if (filtros.fuente && !e.registros.some((r) => r.clave === filtros.fuente)) return false;
     if (filtros.estado && e.estado !== filtros.estado) return false;
     if (filtros.destino) {
-      const destinos = [e.spotmi, ...(contenidosDe.get(e.id) ?? []).flatMap((id) => contenidos.find((c) => c.id === id)?.destinos ?? [])];
+      const destinos = [e.spotmi, ...(contenidosDe.get(e.id) ?? []).flatMap((id) => contenidosPorId.get(id)?.destinos ?? [])];
       if (!destinos.some((d) => d.canal === filtros.destino && d.estado !== "no_enviado")) return false;
     }
     return (!filtros.desde && !filtros.hasta) || enRango(fechaDe(e));

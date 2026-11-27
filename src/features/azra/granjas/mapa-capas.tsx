@@ -15,7 +15,7 @@ import { ArrowUpRight, Plane, Play, X } from "lucide-react";
 import { FUENTE_DGME, POBLACION_2024, type Acceso } from "@/lib/granjas/datos-pais";
 import type { Barra, ResumenIngresos } from "@/lib/granjas/ingresos";
 import type { EventoMapa } from "@/lib/granjas/agenda-mapa";
-import { geo, type AccesoGeo } from "./mapa-geo";
+import { geo, nearbyPointIndices, type AccesoGeo } from "./mapa-geo";
 import "./mapa-capas.css";
 
 type Tr = (c: string) => string;
@@ -566,14 +566,13 @@ export function useImanes(escala: number, reducido: boolean) {
   const capa = useRef<SVGGElement | null>(null);
   const tocados = useRef(new Set<number>());
   const cuadro = useRef(0);
+  const svgActual = useRef<SVGSVGElement | null>(null);
   const cursor = useRef<{ x: number; y: number } | null>(null);
   const [halo, setHalo] = useState<{ x: number; y: number; k: number } | null>(null);
-  const aSvg = useCallback((e: EventoPuntero) => {
-    const svg = e.currentTarget as SVGSVGElement;
-    capa.current = svg.querySelector<SVGGElement>(".ez-mp-puntos");
+  const aSvg = useCallback((svg: SVGSVGElement, client: { x: number; y: number }) => {
     const m = svg.getScreenCTM();
     if (!m) return null;
-    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    const p = new DOMPoint(client.x, client.y).matrixTransform(m.inverse());
     return { x: p.x, y: p.y };
   }, []);
   const aplicar = useCallback(() => {
@@ -584,12 +583,12 @@ export function useImanes(escala: number, reducido: boolean) {
     const hijos = g.children;
     const R = 64 / escala;
     const empuje = 6 / escala;
-    const p = cursor.current;
+    const svg = svgActual.current;
+    const p = cursor.current && svg ? aSvg(svg, cursor.current) : null;
+    g.classList.toggle("ez-mp-iman", Boolean(p));
     const nuevos = new Set<number>();
     if (p)
-      for (let i = 0; i < puntos.length; i++) {
-        // Las hileras que dibujan las divisiones quedan fijas.
-        if (puntos[i].limite) continue;
+      for (const i of nearbyPointIndices(p.x, p.y, R)) {
         const dx = puntos[i].x - p.x;
         const dy = puntos[i].y - p.y;
         if (Math.abs(dx) > R || Math.abs(dy) > R) continue;
@@ -612,29 +611,38 @@ export function useImanes(escala: number, reducido: boolean) {
         }
       }
     tocados.current = nuevos;
-  }, [escala, reducido]);
+  }, [escala, reducido, aSvg]);
   const pedir = () => {
     if (!cuadro.current) cuadro.current = requestAnimationFrame(aplicar);
   };
-  useEffect(() => () => cancelAnimationFrame(cuadro.current), []);
+  useEffect(() => {
+    // Un cambio de escala no puede dejar un cuadro pendiente con las medidas anteriores.
+    if (cursor.current) cuadro.current = requestAnimationFrame(aplicar);
+    return () => {
+      cancelAnimationFrame(cuadro.current);
+      cuadro.current = 0;
+    };
+  }, [aplicar]);
   return {
     halo,
     terminarHalo: () => setHalo(null),
     manejadores: {
       onPointerMove: (e: EventoPuntero<SVGSVGElement>) => {
         if (e.pointerType === "touch") return;
-        cursor.current = aSvg(e);
-        capa.current?.classList.add("ez-mp-iman");
+        if (svgActual.current !== e.currentTarget) {
+          svgActual.current = e.currentTarget;
+          capa.current = e.currentTarget.querySelector<SVGGElement>(".ez-mp-puntos");
+        }
+        cursor.current = { x: e.clientX, y: e.clientY };
         pedir();
       },
       onPointerLeave: () => {
         cursor.current = null;
-        capa.current?.classList.remove("ez-mp-iman");
         pedir();
       },
       onPointerDown: (e: EventoPuntero<SVGSVGElement>) => {
         if (e.pointerType === "mouse" || reducido) return;
-        const p = aSvg(e);
+        const p = aSvg(e.currentTarget, { x: e.clientX, y: e.clientY });
         if (p) setHalo({ ...p, k: e.timeStamp });
       },
     },

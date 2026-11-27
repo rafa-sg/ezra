@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { CalendarDays, MapPin, ExternalLink, Search } from "lucide-react";
-import type { Evento } from "@/lib/granjas/eventos";
+import type { EventSummary } from "@/lib/event-summary";
+import { Pagination, usePagination } from "../pagination";
 import { catalogEvents, eventCover, eventSource } from "@/lib/event-catalog";
 import "./event-catalog.css";
 
@@ -22,7 +23,7 @@ export function EventCover({
   return (
     <div className="ec-cover">
       {src && failed !== src ? (
-        <img src={src} alt={title} loading="lazy" onError={() => setFailed(src)} />
+        <img src={src} alt={title} loading="lazy" decoding="async" onError={() => setFailed(src)} />
       ) : (
         <div className="ec-placeholder">
           <span>{category}</span>
@@ -40,19 +41,20 @@ export function EventCatalog({
   locale,
   g,
 }: {
-  events: Evento[];
+  events: EventSummary[];
   locale: string;
   g: (key: string) => string;
 }) {
   const es = locale === "es";
   const [query, setQuery] = useState("");
+  const search = useDeferredValue(query);
   const [department, setDepartment] = useState("");
   const [category, setCategory] = useState("");
   const [free, setFree] = useState(false);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/El_Salvador" }).format(
     new Date(),
   );
-  const candidates = catalogEvents(events, today);
+  const candidates = useMemo(() => catalogEvents(events, today), [events, today]);
   const normalize = (text: string) =>
     text
       .normalize("NFD")
@@ -60,11 +62,12 @@ export function EventCatalog({
       .toLowerCase();
   const visible = candidates.filter(
     (e) =>
-      normalize(`${e.titulo} ${e.lugar} ${e.municipio}`).includes(normalize(query)) &&
+      normalize(`${e.titulo} ${e.lugar} ${e.municipio}`).includes(normalize(search)) &&
       (!department || e.departamento === department) &&
       (!category || e.categoria === category) &&
       (!free || e.precioDesde?.tipo === "gratis"),
   );
+  const pagination = usePagination(visible, JSON.stringify([search, department, category, free, today]));
   const formatDate = (value: string) =>
     new Intl.DateTimeFormat(es ? "es-SV" : "en-US", {
       day: "numeric",
@@ -144,12 +147,12 @@ export function EventCatalog({
         </div>
       )}
       <ul className="ec-grid">
-        {visible.map((e) => {
+        {pagination.items.map((e) => {
           const source = eventSource(e.fuenteUrl);
           return (
             <li key={e.id} className="ec-card">
               <EventCover
-                src={eventCover(e)}
+                src={eventCover(e, 480)}
                 title={e.titulo}
                 category={g(`ev_cat_${e.categoria}`)}
                 fallback={es ? "Portada por confirmar" : "Cover pending"}
@@ -211,6 +214,7 @@ export function EventCatalog({
           );
         })}
       </ul>
+      <Pagination pagination={pagination} locale={locale} />
     </section>
   );
 }

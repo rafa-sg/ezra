@@ -46,10 +46,15 @@ let geoCache: {
 } | null = null;
 export function geo() {
   if (geoCache) return geoCache;
-  const deptos = Object.values(GEOGRAFIA).map((d) => ({
-    nombre: d.nombre,
-    anillos: d.anillos.map((a) => a.map(proyectar)),
-  }));
+  const deptos = Object.values(GEOGRAFIA).map((d) => {
+    const anillos = d.anillos.map((a) => a.map(proyectar));
+    const puntos = anillos.flat();
+    return {
+      nombre: d.nombre, anillos,
+      x0: Math.min(...puntos.map((p) => p[0])), x1: Math.max(...puntos.map((p) => p[0])),
+      y0: Math.min(...puntos.map((p) => p[1])), y1: Math.max(...puntos.map((p) => p[1])),
+    };
+  });
   const todos = deptos.flatMap((d) => d.anillos.flat());
   const [x0, x1] = [Math.min(...todos.map((p) => p[0])), Math.max(...todos.map((p) => p[0]))];
   const [y0, y1] = [Math.min(...todos.map((p) => p[1])), Math.max(...todos.map((p) => p[1]))];
@@ -58,7 +63,7 @@ export function geo() {
   const crudos: { x: number; y: number; d: string; i: number; j: number }[] = [];
   for (let j = 0, y = y0; y <= y1; y += 7.5, j++)
     for (let i = 0, x = x0; x <= x1; x += 7.5, i++) {
-      const d = deptos.find((dep) => dep.anillos.some((a) => dentroDe(x, y, a)));
+      const d = deptos.find((dep) => x >= dep.x0 && x <= dep.x1 && y >= dep.y0 && y <= dep.y1 && dep.anillos.some((a) => dentroDe(x, y, a)));
       if (!d) continue;
       celda.set(`${i},${j}`, d.nombre);
       crudos.push({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, d: d.nombre, i, j });
@@ -88,6 +93,27 @@ export function geo() {
     centros: Object.fromEntries(deptos.map((d) => [d.nombre, centroide(d.anillos)])),
   };
   return geoCache;
+}
+
+// Índice espacial estable: el campo magnético sólo visita las celdas próximas al cursor.
+const CELL_SIZE = 32;
+let pointCells: Map<string, number[]> | null = null;
+export function nearbyPointIndices(x: number, y: number, radius: number): number[] {
+  if (!pointCells) {
+    pointCells = new Map();
+    geo().puntos.forEach((point, index) => {
+      if (point.limite) return;
+      const key = `${Math.floor(point.x / CELL_SIZE)},${Math.floor(point.y / CELL_SIZE)}`;
+      const cell = pointCells!.get(key) ?? [];
+      cell.push(index);
+      pointCells!.set(key, cell);
+    });
+  }
+  const indices: number[] = [];
+  for (let i = Math.floor((x - radius) / CELL_SIZE); i <= Math.floor((x + radius) / CELL_SIZE); i++)
+    for (let j = Math.floor((y - radius) / CELL_SIZE); j <= Math.floor((y + radius) / CELL_SIZE); j++)
+      indices.push(...(pointCells.get(`${i},${j}`) ?? []));
+  return indices;
 }
 /** El país centrado (sin la cápsula de arriba), con margen para los recorridos que llegan desde afuera. */
 export const VB: [number, number, number, number] = [280, 226, 700, 368];

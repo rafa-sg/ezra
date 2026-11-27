@@ -55,8 +55,19 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
     response.headers.delete("x-middleware-rewrite");
     response.headers.set("x-middleware-next", "1");
   }
-  if (request.nextUrl.pathname.startsWith("/api/"))
-    response.headers.set("Cache-Control", "no-store");
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    // Sólo esta ruta define una caché privada revalidable DESPUÉS de comprobar permisos.
+    // No se excluye del middleware de Clerk ni de las comprobaciones de origen.
+    const routeControlsCache =
+      ["GET", "HEAD"].includes(request.method) &&
+      /^\/api\/granjas\/medios\/[^/]+$/.test(request.nextUrl.pathname) &&
+      ["160", "480"].includes(request.nextUrl.searchParams.get("thumbnail") ?? "") &&
+      !request.nextUrl.searchParams.has("descargar") &&
+      response.headers.get("x-middleware-next") === "1" &&
+      response.status < 300;
+    if (routeControlsCache) response.headers.delete("Cache-Control");
+    else response.headers.set("Cache-Control", "no-store");
+  }
   return response;
 }
 

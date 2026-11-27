@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { summarizeEvent } from "@/lib/event-summary";
+import { filtrarEventos } from "@/lib/granjas/eventos";
 import { administrador, propietario, cuerpo, errorApi } from "@/lib/granjas/api";
 import { WorkflowError } from "@/lib/workflow";
 import {
@@ -110,15 +112,19 @@ export async function GET(request: Request) {
   try {
     const access = await administrador("eventos");
     const p = new URL(request.url).searchParams;
+    if (p.has("id")) {
+      const evento = leerEvento(id.parse(p.get("id")));
+      return Response.json({ evento: { ...evento, ficha: fichaTexto(evento) } }, { headers: { "Cache-Control": "no-store" } });
+    }
     const estado = z.enum(estadosVisibles).nullable().catch(null).parse(p.get("estado"));
     const filtro = { estado, desde: dia.catch(null).parse(p.get("desde")), hasta: dia.catch(null).parse(p.get("hasta")) };
     const todos = listarEventos();
     const hoy = diaLocal(new Date());
-    const eventos = listarEventos(filtro);
+    const eventos = filtrarEventos(todos, filtro);
     const conteo = Object.fromEntries(estadosVisibles.map((e) => [e, todos.filter((x) => x.estadoVisible === e).length]));
     return Response.json(
       {
-        eventos: eventos.map((e) => ({ ...e, ficha: fichaTexto(e) })),
+        eventos: p.get("vista") === "resumen" ? eventos.map(summarizeEvent) : eventos.map((e) => ({ ...e, ficha: fichaTexto(e) })),
         conteo,
         total: todos.length,
         spotmi: spotmiPuedeProponer(),
