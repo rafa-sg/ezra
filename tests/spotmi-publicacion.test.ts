@@ -118,3 +118,25 @@ test("cambiar imagen invalida aprobación; sólo la portada confirmada viaja a l
   const unconfirmed = { ...ready, imagenConfirmada: false };
   assert.equal(publishing.preparePublication(unconfirmed).media, null);
 });
+
+test("un envío a otro proyecto de Supabase (desarrollo) no bloquea publicar en la web real y queda en la auditoría", async () => {
+  const fresh = create("Duatlón enviado a desarrollo");
+  const approved = events.aprobarEvento(fresh.id, fresh.revision);
+  const sent = await publishing.publishEventToSpotmi(approved.id, auth(approved.revision));
+  const fila = () => db.base().prepare("select spotmi_destino, spotmi_propuesta_id from eventos where id = ?").get(sent.id) as { spotmi_destino: string | null; spotmi_propuesta_id: string | null };
+  assert.equal(fila().spotmi_destino, "prueba.supabase.co");
+  // Así quedaron los envíos anteriores al 27 nov 2026: en el proyecto de desarrollo.
+  db.base().prepare("update eventos set spotmi_destino = 'nwcmrcgfhdufnaomzkmz.supabase.co' where id = ?").run(sent.id);
+  const visto = events.leerEvento(sent.id);
+  assert.equal(visto.spotmiPropuestaId, null);
+  assert.equal(visto.spotmiEstado, null);
+  const reenviado = await publishing.publishEventToSpotmi(visto.id, auth(visto.revision));
+  assert.equal(reenviado.spotmiEstado, "aceptado");
+  assert.equal(fila().spotmi_destino, "prueba.supabase.co");
+  const archivo = db.base().prepare("select detalle from auditoria where accion = 'evento.spotmi.envio_otro_destino' and objeto = ?").get(sent.id) as { detalle: string } | undefined;
+  assert.ok(archivo);
+  const detalle = JSON.parse(archivo.detalle);
+  assert.equal(detalle.destino, "nwcmrcgfhdufnaomzkmz.supabase.co");
+  assert.equal(detalle.propuesta, sent.spotmiPropuestaId);
+  assert.equal(detalle.nuevoDestino, "prueba.supabase.co");
+});

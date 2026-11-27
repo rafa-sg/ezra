@@ -2,7 +2,7 @@ import { WorkflowError } from "../workflow";
 import { ErrorProveedor, sesionSpotmi, supabase, type Solicitar } from "./adaptadores";
 import { conectarDirecto, guardarSecretoRenovado, leerConexion, secretoDe, solicitar as solicitarReal } from "./conexiones";
 import { auditar, transaccion } from "./db";
-import { leerEvento, marcarSpotmi, type Evento } from "./eventos";
+import { archivarEnvioDeOtroDestino, leerEvento, marcarSpotmi, type Evento } from "./eventos";
 import { sha256 } from "./huella";
 import { canonico } from "./modelo";
 import { diaLocal } from "./tiempo";
@@ -108,6 +108,7 @@ const sinConexion = () =>
 export async function enviarEventoASpotmi(id: string, solicitar: Solicitar = solicitarReal) {
   if (!spotmiPuedeProponer()) throw sinConexion();
   const preparado = transaccion(() => {
+    archivarEnvioDeOtroDestino(id);
     const e = leerEvento(id);
     if (e.spotmiClave?.startsWith("ezra-publicar-"))
       throw new WorkflowError("Hay una publicación directa iniciada. Confírmala con «Publicar en Spotmi»; no la envíes como propuesta.", 409);

@@ -1,5 +1,22 @@
 # Publicación de eventos desde Ezra
 
+## Producción conectada el 27 de noviembre de 2026
+
+- Diagnóstico de sólo lectura en `bvmzrmvrdbfpkdhwazgv` (la base de spotmi.com.sv): no tenía nada de Ezra y su
+  regla `proteger_verificacion_evento` difiere de la de desarrollo (no tiene el endurecimiento 20261117).
+- Se escribió una instalación propia para producción, [produccion/20261127_ezra_produccion.sql](supabase/produccion/20261127_ezra_produccion.sql):
+  conserva la regla de producción tal cual y sólo añade dos excepciones para Ezra. Probada antes con 32 comprobaciones
+  en PostgreSQL local con copia del esquema ([probar_instalacion.py](supabase/produccion/probar_instalacion.py)).
+- Aplicada con autorización del propietario como migración `ezra_produccion` (20261127175501). No borró datos;
+  reemplazó `event_proposals_origin_check` (admite `ezra`) y `proteger_verificacion_evento()`.
+- Nuevo: `ezra_actualizar_portada(evento, portada_ruta, clave)` pone portada sólo a eventos publicados sin imagen;
+  nunca reemplaza una imagen ni toca otros campos.
+- Cuenta editorial `ezra@spotmi.com.sv` habilitada con `puede_publicar`. `.env.local` apunta a producción
+  (copia anterior: `.env.local.respaldo-desarrollo-20261127`).
+- Ezra guarda ahora `spotmi_destino` por evento. Lo enviado antes a desarrollo no cuenta como publicado en la web:
+  al publicar en producción, el envío anterior pasa a la auditoría (`evento.spotmi.envio_otro_destino`).
+
+
 ## Estado comprobado el 25 de noviembre de 2026
 
 Se corrigió una identificación equivocada de los proyectos. Los nombres de rama

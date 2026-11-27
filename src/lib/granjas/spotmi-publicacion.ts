@@ -2,7 +2,7 @@ import { WorkflowError } from "../workflow";
 import { ErrorProveedor, supabase, type Solicitar } from "./adaptadores";
 import { leerConexion, solicitar as solicitarReal } from "./conexiones";
 import { auditar, transaccion } from "./db";
-import { leerEvento, marcarSpotmi, type Evento } from "./eventos";
+import { archivarEnvioDeOtroDestino, leerEvento, marcarSpotmi, type Evento } from "./eventos";
 import { sha256 } from "./huella";
 import { leerBytesMedio, leerMedio } from "./medios";
 import { canonico } from "./modelo";
@@ -40,6 +40,7 @@ export async function publishEventToSpotmi(
   if (!/^[0-9a-f-]{36}$/i.test(leerConexion("spotmi").identidad?.id ?? ""))
     throw new WorkflowError("Verifica la identidad de la cuenta editorial en Conexiones.", 409);
   const prepared = transaccion(() => {
+    archivarEnvioDeOtroDestino(id);
     const event = leerEvento(id);
     if (event.revision !== authorization.revision)
       throw new WorkflowError("El evento cambió. Recarga y revisa la versión antes de publicar.", 409);

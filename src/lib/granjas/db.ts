@@ -540,6 +540,13 @@ const migraciones: string[] = [
   );
   create index solicitudes_acceso_estado on solicitudes_acceso (estado, creado);
   `,
+  // 17 · Destino de Spotmi: el proyecto de Supabase al que se envió cada evento. Hasta el 27 nov 2026
+  // todos los envíos fueron a desarrollo (nwcmrcgfhdufnaomzkmz), no a la web pública.
+  `
+  alter table eventos add column spotmi_destino text;
+  update eventos set spotmi_destino = 'nwcmrcgfhdufnaomzkmz.supabase.co'
+    where spotmi_propuesta_id is not null or spotmi_clave is not null;
+  `,
 ];
 
 export const versionEsquema = migraciones.length;

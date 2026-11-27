@@ -300,7 +300,22 @@ export function estadoVisible(e: Pick<Evento, "estado" | "spotmiEstado" | "igEst
   if (e.spotmiEstado === "propuesto") return "propuesto";
   return e.estado;
 }
+/** Proyecto de Supabase al que apunta Ezra ahora (p. ej. «bvmzrmvrdbfpkdhwazgv.supabase.co»). */
+export function destinoSpotmi(): string | null {
+  try {
+    return new URL(process.env.SPOTMI_SUPABASE_URL?.trim() || "").host || null;
+  } catch {
+    return null;
+  }
+}
+/** Un envío hecho a otro proyecto (desarrollo) no cuenta como enviado al destino actual. */
+const deOtroDestino = (f: Fila) => {
+  const destino = s(f.spotmi_destino);
+  const actual = destinoSpotmi();
+  return Boolean(destino && actual && destino !== actual);
+};
 function aEvento(f: Fila, fuentes: EventoFuente[], ajustes: ConfianzaDominios, hoy: string, imagenes: ImagenHistorial[] = []): Evento {
+  const otroDestino = deOtroDestino(f);
   const e = {
     id: String(f.id),
     titulo: String(f.titulo),
@@ -323,9 +338,9 @@ function aEvento(f: Fila, fuentes: EventoFuente[], ajustes: ConfianzaDominios, h
     imagenConfirmada: Boolean(f.imagen_confirmada) && Boolean(f.imagen_medio_id),
     estado: f.estado as Evento["estado"],
     motivoDescarte: String(f.motivo_descarte ?? ""),
-    spotmiEstado: s(f.spotmi_estado) as Evento["spotmiEstado"],
-    spotmiPropuestaId: s(f.spotmi_propuesta_id),
-    spotmiClave: s(f.spotmi_clave),
+    spotmiEstado: (otroDestino ? null : s(f.spotmi_estado)) as Evento["spotmiEstado"],
+    spotmiPropuestaId: otroDestino ? null : s(f.spotmi_propuesta_id),
+    spotmiClave: otroDestino ? null : s(f.spotmi_clave),
     spotmiConsultado: s(f.spotmi_consultado),
     igEstado: s(f.ig_estado) as Evento["igEstado"],
     huella: String(f.huella),
@@ -842,8 +857,28 @@ export function marcarSpotmi(id: string, cambios: { estado?: Evento["spotmiEstad
     ...(cambios.estado !== undefined ? { spotmi_estado: cambios.estado } : {}),
     ...(cambios.propuestaId !== undefined ? { spotmi_propuesta_id: cambios.propuestaId } : {}),
     ...(cambios.clave !== undefined ? { spotmi_clave: cambios.clave } : {}),
+    ...(cambios.clave || cambios.propuestaId ? { spotmi_destino: destinoSpotmi() } : {}),
     spotmi_consultado: ahoraIso(),
   });
+}
+/**
+ * Antes de enviar a un proyecto distinto del anterior, el envío anterior pasa a la auditoría (no se pierde)
+ * y el evento queda libre para el destino actual. No cambia la revisión autorizada del evento.
+ */
+export function archivarEnvioDeOtroDestino(id: string) {
+  const f = base().prepare("select * from eventos where id = ?").get(id) as Fila | undefined;
+  if (!f || !deOtroDestino(f)) return false;
+  auditar("evento.spotmi.envio_otro_destino", id, {
+    destino: s(f.spotmi_destino),
+    estado: s(f.spotmi_estado),
+    propuesta: s(f.spotmi_propuesta_id),
+    clave: s(f.spotmi_clave),
+    nuevoDestino: destinoSpotmi(),
+  });
+  base()
+    .prepare("update eventos set spotmi_estado = null, spotmi_propuesta_id = null, spotmi_clave = null, spotmi_destino = null where id = ?")
+    .run(id);
+  return true;
 }
 export function marcarInstagram(id: string, estado: Evento["igEstado"]) {
   return actualizar(id, { ig_estado: estado });
