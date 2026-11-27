@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, ArrowUpRight, Copy, Download, LayoutGrid, List, Pencil, RotateCcw, Search, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Copy, Download, LayoutGrid, List, Pencil, Pin, RotateCcw, Search, X } from "lucide-react";
 import type { Encargo } from "@/lib/produccion/modelo";
 import { estadoEditorial, estadoEjecucion, estadoEntrega, etapa, tipoResultado, type EstadoEditorial } from "@/lib/produccion/resumen-encargo";
 import type { RelacionesEncargo } from "@/lib/produccion/relaciones";
@@ -49,6 +49,7 @@ export function VistaEncargos({
   locale,
   ejecutandoId,
   tablero,
+  porGranja,
   onAbrir,
 }: {
   encargos: Encargo[];
@@ -56,9 +57,11 @@ export function VistaEncargos({
   locale: string;
   ejecutandoId: string | null;
   tablero: ReactNode;
+  /** Post-its en filas por granja (vista predeterminada cuando existe). Recibe los encargos filtrados. */
+  porGranja?: (visibles: Encargo[]) => ReactNode;
   onAbrir: (id: string) => void;
 }) {
-  const [vista, setVista] = useState<"lista" | "tablero">("lista");
+  const [vista, setVista] = useState<"granjas" | "lista" | "tablero">(porGranja ? "granjas" : "lista");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busqueda, setBusqueda] = useState("");
   const conteo = useMemo(() => Object.fromEntries(filtros.map((f) => [f, encargos.filter((e) => enFiltro(f, estadoEditorial(e))).length])) as Record<Filtro, number>, [encargos]);
@@ -82,6 +85,11 @@ export function VistaEncargos({
           ))}
         </div>
         <div className="ez-segmentado" role="radiogroup" aria-label={tr("ez_enc_vista")}>
+          {porGranja && (
+            <button role="radio" aria-checked={vista === "granjas"} onClick={() => setVista("granjas")}>
+              <Pin size={14} aria-hidden="true" /> {tr("ez_enc_porGranja")}
+            </button>
+          )}
           <button role="radio" aria-checked={vista === "lista"} onClick={() => setVista("lista")}>
             <List size={14} aria-hidden="true" /> {tr("ez_enc_lista")}
           </button>
@@ -90,7 +98,9 @@ export function VistaEncargos({
           </button>
         </div>
       </div>
-      {vista === "tablero" ? (
+      {vista === "granjas" && porGranja ? (
+        porGranja(visibles)
+      ) : vista === "tablero" ? (
         tablero
       ) : !visibles.length ? (
         <p className="ez-vacio ez-enc-vacio">{encargos.length ? tr("ez_enc_sinCoincidencias") : tr("p_sinEncargos")}</p>

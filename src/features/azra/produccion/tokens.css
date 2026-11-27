@@ -1008,6 +1008,55 @@
   outline-offset: 1px;
 }
 
+/* Tema: un botón redondo (sol o luna) con anillo y destello lila al cambiar. */
+.azra .ez-tema-boton {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--ep-borde);
+  border-radius: 999px;
+  background: var(--ep-superficie-2);
+  color: var(--ep-texto);
+  cursor: pointer;
+  transition: background var(--ez-transicion), transform 140ms ease;
+}
+.azra .ez-tema-boton:hover { background: var(--ep-tarjeta); }
+.azra .ez-tema-boton:active { transform: scale(0.94); }
+.azra .ez-tema-boton:focus-visible { outline: 2px solid var(--ez-violeta); outline-offset: 2px; }
+.azra .ez-tema-anillo {
+  position: absolute;
+  inset: -1px;
+  border-radius: 999px;
+  border: 2px solid #7760d8;
+  pointer-events: none;
+  animation: ez-tema-anillo 620ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes ez-tema-anillo {
+  from { transform: scale(1); opacity: 0.9; }
+  to { transform: scale(1.9); opacity: 0; }
+}
+.ez-tema-destello {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at var(--x) var(--y), rgba(119, 96, 216, 0.42) 0, rgba(119, 96, 216, 0.22) 35%, rgba(185, 168, 246, 0.12) 70%, transparent 100%);
+  animation: ez-tema-destello 950ms ease-out forwards;
+}
+@keyframes ez-tema-destello {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .azra .ez-tema-anillo, .ez-tema-destello { animation: none; display: none; }
+}
+
 /* Conexiones · Codex y Claude Code locales: estado comprobado y acciones separadas. */
 .azra .ez-ia-estado.ez-ia-ok {
   background: var(--ep-hecho-fondo, #ecfdf3);

@@ -234,36 +234,41 @@ export function guardarTema(tema: Tema) {
   }
   window.dispatchEvent(new Event("ezra:tema"));
 }
-/** Sol y luna: dos botones pequeños; el activo queda marcado (aria-pressed). Las flechas cambian entre ellos. */
+/**
+ * Sol o luna en un solo botón: muestra el tema al que vas a cambiar. Al tocarlo sale un anillo y la
+ * pantalla cambia con un destello lila de Ezra que se desvanece. Con «reducir movimiento» cambia directo.
+ */
 function SelectorTema({ tema, tt }: { tema: Tema; tt: (c: string) => string }) {
-  const opciones = [
-    { id: "claro" as const, Icono: Sun, etiqueta: tt("ez_tema_usarClaro") },
-    { id: "oscuro" as const, Icono: Moon, etiqueta: tt("ez_tema_usarOscuro") },
-  ];
+  const otro: Tema = tema === "claro" ? "oscuro" : "claro";
+  const etiqueta = tt(otro === "claro" ? "ez_tema_usarClaro" : "ez_tema_usarOscuro");
+  const [anillo, setAnillo] = useState(0);
+  const Icono = otro === "claro" ? Sun : Moon;
+  const cambiar = (boton: HTMLButtonElement) => {
+    const reducir = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reducir) return guardarTema(otro);
+    setAnillo((n) => n + 1);
+    const r = boton.getBoundingClientRect();
+    const capa = document.createElement("div");
+    capa.className = "ez-tema-destello";
+    capa.setAttribute("aria-hidden", "true");
+    capa.style.setProperty("--x", `${r.left + r.width / 2}px`);
+    capa.style.setProperty("--y", `${r.top + r.height / 2}px`);
+    document.body.appendChild(capa);
+    window.setTimeout(() => guardarTema(otro), 160);
+    window.setTimeout(() => capa.remove(), 950);
+  };
   return (
-    <div className="ez-tema" role="group" aria-label={tt("ez_tema_global")}>
-      {opciones.map(({ id, Icono, etiqueta }) => (
-        <button
-          key={id}
-          data-tema-opcion={id}
-          aria-pressed={tema === id}
-          aria-label={etiqueta}
-          title={etiqueta}
-          onClick={() => guardarTema(id)}
-          onKeyDown={(e) => {
-            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-            e.preventDefault();
-            const otro = id === "claro" ? "oscuro" : "claro";
-            guardarTema(otro);
-            e.currentTarget.parentElement
-              ?.querySelector<HTMLElement>(`[data-tema-opcion="${otro}"]`)
-              ?.focus();
-          }}
-        >
-          <Icono size={16} aria-hidden="true" />
-        </button>
-      ))}
-    </div>
+    <button
+      type="button"
+      className="ez-tema-boton"
+      data-tema-actual={tema}
+      aria-label={etiqueta}
+      title={etiqueta}
+      onClick={(e) => cambiar(e.currentTarget)}
+    >
+      <Icono size={17} aria-hidden="true" />
+      {anillo > 0 && <span key={anillo} className="ez-tema-anillo" aria-hidden="true" />}
+    </button>
   );
 }
 

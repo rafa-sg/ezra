@@ -2437,5 +2437,8 @@
   "ac_act1": "Evento agregado a la bandeja",
   "ac_act1Estado": "Verificado",
   "ac_act2": "Post para Instagram",
-  "ac_act2Estado": "En tu revisión"
+  "ac_act2Estado": "En tu revisión",
+  "ez_almacenamiento": "Almacenamiento",
+  "ez_almacenamientoAyuda": "Lo que guardan las granjas, en una carpeta por granja.",
+  "ez_enc_porGranja": "Por granja"
 }

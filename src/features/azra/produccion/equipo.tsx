@@ -12,6 +12,7 @@ const etiquetaSeccion: Record<SeccionEquipo, string> = {
   inicio: "p_inicio",
   encargos: "p_encargos",
   granjas: "p_cola",
+  almacenamiento: "ez_almacenamiento",
   eventos: "p_eventos",
   apps: "ez_apps",
   calendario: "p_calendario",

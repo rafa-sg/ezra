@@ -2437,5 +2437,8 @@
   "ac_act1": "Event added to the inbox",
   "ac_act1Estado": "Verified",
   "ac_act2": "Instagram post",
-  "ac_act2Estado": "In your review"
+  "ac_act2Estado": "In your review",
+  "ez_almacenamiento": "Storage",
+  "ez_almacenamientoAyuda": "What your farms save, one folder per farm.",
+  "ez_enc_porGranja": "By farm"
 }

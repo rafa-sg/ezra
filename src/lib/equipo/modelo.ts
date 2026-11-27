@@ -12,6 +12,7 @@ export const seccionesEquipo = [
   "inicio",
   "encargos",
   "granjas",
+  "almacenamiento",
   "eventos",
   "apps",
   "calendario",

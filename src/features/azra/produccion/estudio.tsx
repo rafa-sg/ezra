@@ -27,6 +27,7 @@ import {
   CircleArrowRight,
   LayoutGrid,
   Users,
+  FolderOpen,
 } from "lucide-react";
 import { useLanguage, type MessageKey } from "../i18n";
 import { useClerk } from "@clerk/nextjs";
@@ -50,6 +51,11 @@ import {
 } from "@/lib/produccion/modelo";
 import type { FichaSpotmi } from "@/lib/produccion/spotmi";
 import { Pixel, colores } from "../granjas/pixel";
+import { EncargosPorGranja } from "../oficina/encargos-granjas";
+import { Oficina } from "../oficina/oficina";
+import { PantallaTrabajador } from "../oficina/pantalla";
+import { Almacenamiento } from "../oficina/almacenamiento";
+import type { Clase } from "../oficina/clases";
 import {
   BotonApps,
   PendingSpotmiProfile,
@@ -98,6 +104,7 @@ const secciones = [
   "inicio",
   "encargos",
   "granjas",
+  "almacenamiento",
   "eventos",
   "apps",
   "calendario",
@@ -123,6 +130,7 @@ const seccionDe = (valor: string | null): Seccion | null =>
 const ayudaSeccion: Partial<Record<Seccion, string>> = {
   encargos: "p_encargosAyuda",
   granjas: "p_colaAyuda",
+  almacenamiento: "ez_almacenamientoAyuda",
   eventos: "p_eventosAyuda",
   calendario: "p_calendarioAyuda",
   conexiones: "p_conexionesAyuda",
@@ -178,6 +186,8 @@ export function EstudioProduccion({
   const tr = useCallback((clave: string) => t(clave as MessageKey), [t]);
   const g = useCallback((clave: string) => t(`g_${clave}` as MessageKey), [t]);
   const [seccion, setSeccion] = useState<Seccion>(() => accesible(seccionDe(initialSection)) ?? primera);
+  // Granjas: la oficina, la configuración de siempre o la pantalla de un trabajador.
+  const [vistaGranjas, setVistaGranjas] = useState<"oficina" | "configurar" | { clase: Clase; nombre: string }>("oficina");
   // % del día para la píldora del menú (se recalcula con cada cambio que refresca el Inicio).
   // Contadores de la barra lateral (solo cuando aportan): eventos nuevos por revisar.
   const [resumenInicio, setResumenInicio] = useState<ResumenInicio | null>(null);
@@ -617,6 +627,7 @@ export function EstudioProduccion({
     { id: "inicio", icono: House, etiqueta: "p_inicio" },
     { id: "encargos", icono: ListTodo, etiqueta: "p_encargos" },
     { id: "granjas", icono: Workflow, etiqueta: "p_cola" },
+    { id: "almacenamiento", icono: FolderOpen, etiqueta: "ez_almacenamiento" },
     { id: "eventos", icono: Ticket, etiqueta: "p_eventos" },
     { id: "apps", icono: LayoutGrid, etiqueta: "ez_apps" },
     { id: "calendario", icono: CalendarDays, etiqueta: "p_calendario" },
@@ -928,6 +939,15 @@ export function EstudioProduccion({
               locale={locale}
               ejecutandoId={ejecutandoId}
               onAbrir={(id) => setDetalle(id)}
+              porGranja={(visibles) => (
+                <EncargosPorGranja
+                  encargos={visibles}
+                  ejecutandoId={ejecutandoId}
+                  onAbrir={(id) => setDetalle(id)}
+                  onNuevo={() => crear()}
+                  onIrGranjas={() => navegar("granjas")}
+                />
+              )}
               tablero={
                 <>
                   <div className="ep-kanban">
@@ -961,8 +981,31 @@ export function EstudioProduccion({
           )}
           {!soloLectura && seccion === "granjas" && (
             <>
-              <SeccionGranjas g={g} tr={tr} fecha={fecha} />
+              {vistaGranjas === "configurar" ? (
+                <>
+                  <button type="button" className="of-enlace" onClick={() => setVistaGranjas("oficina")}>
+                    ← Volver a la oficina
+                  </button>
+                  <SeccionGranjas g={g} tr={tr} fecha={fecha} />
+                </>
+              ) : vistaGranjas === "oficina" ? (
+                <Oficina
+                  encargos={encargos}
+                  ejecutandoId={ejecutandoId}
+                  onEntrar={(clase, nombre) => setVistaGranjas({ clase, nombre })}
+                  onConfigurar={() => setVistaGranjas("configurar")}
+                />
+              ) : (
+                <PantallaTrabajador
+                  clase={vistaGranjas.clase}
+                  nombre={vistaGranjas.nombre}
+                  onSalir={() => setVistaGranjas("oficina")}
+                />
+              )}
             </>
+          )}
+          {!soloLectura && seccion === "almacenamiento" && (
+            <Almacenamiento encargos={encargos} onAbrirEncargo={(id) => setDetalle(id)} />
           )}
           {!soloLectura && seccion === "eventos" && (
             <>
